@@ -1,7 +1,3 @@
-# ignore the main database
-
-#/kb_sub/mandates.sqlite
-
 # ignore all sqlite files
 
 *.sqlite
@@ -13,3 +9,7 @@
 /kb_sub/pp_guide
 /kb_sub/spreadsheets
 /kb_sub/weekly_availability
+
+# ignore the hellothere file
+
+/kb_sub/hellothere.txt
