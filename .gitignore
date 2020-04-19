@@ -1,6 +1,6 @@
 # ignore the main database
 
-kb_sub/mandates.sqlite
+/kb_sub/mandates.sqlite
 
 # ignore all sqlite files
 
