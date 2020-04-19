@@ -1,0 +1,87 @@
+
+Pay Period Guide
+Year: 9992
+---------------------------------------------
+
+                 START (Sat):   END (Fri):         
+PP: 01
+	 week 1: Dec 14, 9991 - Dec 20, 9991
+	 week 2: Dec 21, 9991 - Dec 27, 9991
+PP: 02
+	 week 1: Dec 28, 9991 - Jan 03, 9992
+	 week 2: Jan 04, 9992 - Jan 10, 9992
+PP: 03
+	 week 1: Jan 11, 9992 - Jan 17, 9992
+	 week 2: Jan 18, 9992 - Jan 24, 9992
+PP: 04
+	 week 1: Jan 25, 9992 - Jan 31, 9992
+	 week 2: Feb 01, 9992 - Feb 07, 9992
+PP: 05
+	 week 1: Feb 08, 9992 - Feb 14, 9992
+	 week 2: Feb 15, 9992 - Feb 21, 9992
+PP: 06
+	 week 1: Feb 22, 9992 - Feb 28, 9992
+	 week 2: Feb 29, 9992 - Mar 06, 9992
+PP: 07
+	 week 1: Mar 07, 9992 - Mar 13, 9992
+	 week 2: Mar 14, 9992 - Mar 20, 9992
+PP: 08
+	 week 1: Mar 21, 9992 - Mar 27, 9992
+	 week 2: Mar 28, 9992 - Apr 03, 9992
+PP: 09
+	 week 1: Apr 04, 9992 - Apr 10, 9992
+	 week 2: Apr 11, 9992 - Apr 17, 9992
+PP: 10
+	 week 1: Apr 18, 9992 - Apr 24, 9992
+	 week 2: Apr 25, 9992 - May 01, 9992
+PP: 11
+	 week 1: May 02, 9992 - May 08, 9992
+	 week 2: May 09, 9992 - May 15, 9992
+PP: 12
+	 week 1: May 16, 9992 - May 22, 9992
+	 week 2: May 23, 9992 - May 29, 9992
+PP: 13
+	 week 1: May 30, 9992 - Jun 05, 9992
+	 week 2: Jun 06, 9992 - Jun 12, 9992
+PP: 14
+	 week 1: Jun 13, 9992 - Jun 19, 9992
+	 week 2: Jun 20, 9992 - Jun 26, 9992
+PP: 15
+	 week 1: Jun 27, 9992 - Jul 03, 9992
+	 week 2: Jul 04, 9992 - Jul 10, 9992
+PP: 16
+	 week 1: Jul 11, 9992 - Jul 17, 9992
+	 week 2: Jul 18, 9992 - Jul 24, 9992
+PP: 17
+	 week 1: Jul 25, 9992 - Jul 31, 9992
+	 week 2: Aug 01, 9992 - Aug 07, 9992
+PP: 18
+	 week 1: Aug 08, 9992 - Aug 14, 9992
+	 week 2: Aug 15, 9992 - Aug 21, 9992
+PP: 19
+	 week 1: Aug 22, 9992 - Aug 28, 9992
+	 week 2: Aug 29, 9992 - Sep 04, 9992
+PP: 20
+	 week 1: Sep 05, 9992 - Sep 11, 9992
+	 week 2: Sep 12, 9992 - Sep 18, 9992
+PP: 21
+	 week 1: Sep 19, 9992 - Sep 25, 9992
+	 week 2: Sep 26, 9992 - Oct 02, 9992
+PP: 22
+	 week 1: Oct 03, 9992 - Oct 09, 9992
+	 week 2: Oct 10, 9992 - Oct 16, 9992
+PP: 23
+	 week 1: Oct 17, 9992 - Oct 23, 9992
+	 week 2: Oct 24, 9992 - Oct 30, 9992
+PP: 24
+	 week 1: Oct 31, 9992 - Nov 06, 9992
+	 week 2: Nov 07, 9992 - Nov 13, 9992
+PP: 25
+	 week 1: Nov 14, 9992 - Nov 20, 9992
+	 week 2: Nov 21, 9992 - Nov 27, 9992
+PP: 26
+	 week 1: Nov 28, 9992 - Dec 04, 9992
+	 week 2: Dec 05, 9992 - Dec 11, 9992
+PP: 27
+	 week 1: Dec 12, 9992 - Dec 18, 9992
+	 week 2: Dec 19, 9992 - Dec 25, 9992

@@ -1,0 +1,48 @@
+pay period: 2012 18-1
+week of: 08/11/12 - 08/17/12
+
+60 hour violations 
+
+name                              total   over
+-----------------------------------------------
+dejesus vasquez, l................61.42    1.42
+halpin, j.........................61.33    1.33
+la, s.............................62.01    2.01
+lin, y............................60.55    0.55
+yeung, q..........................60.52    0.52
+
+                                   total:  5.83
+
+Non 5200 codes contributing to 60 hour violations  
+
+day   name                            hr type   hours
+-----------------------------------------------------
+mon   yeung, q........................annual    8.00
+
+12 hour full time carrier violations 
+
+day   name                        total   over   sum
+-----------------------------------------------------
+no violations
+
+                                         total:  0.00
+
+11.50 hour auxiliary carrier violations 
+
+day   name                        total   over   sum
+-----------------------------------------------------
+no violations
+
+                                         total:  0.00
+
+Greater of the two violations 
+
+name                              total
+---------------------------------------
+dejesus vasquez, l.................1.42
+halpin, j..........................1.33
+la, s..............................2.01
+lin, y.............................0.55
+yeung, q...........................0.52
+
+                           total:  5.83

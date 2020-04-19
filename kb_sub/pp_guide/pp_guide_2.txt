@@ -1,0 +1,84 @@
+
+Pay Period Guide
+Year: 2
+---------------------------------------------
+
+                 START (Sat):   END (Fri):         
+PP: 01
+	 week 1: Dec 22, 0001 - Dec 28, 0001
+	 week 2: Dec 29, 0001 - Jan 04, 0002
+PP: 02
+	 week 1: Jan 05, 0002 - Jan 11, 0002
+	 week 2: Jan 12, 0002 - Jan 18, 0002
+PP: 03
+	 week 1: Jan 19, 0002 - Jan 25, 0002
+	 week 2: Jan 26, 0002 - Feb 01, 0002
+PP: 04
+	 week 1: Feb 02, 0002 - Feb 08, 0002
+	 week 2: Feb 09, 0002 - Feb 15, 0002
+PP: 05
+	 week 1: Feb 16, 0002 - Feb 22, 0002
+	 week 2: Feb 23, 0002 - Mar 01, 0002
+PP: 06
+	 week 1: Mar 02, 0002 - Mar 08, 0002
+	 week 2: Mar 09, 0002 - Mar 15, 0002
+PP: 07
+	 week 1: Mar 16, 0002 - Mar 22, 0002
+	 week 2: Mar 23, 0002 - Mar 29, 0002
+PP: 08
+	 week 1: Mar 30, 0002 - Apr 05, 0002
+	 week 2: Apr 06, 0002 - Apr 12, 0002
+PP: 09
+	 week 1: Apr 13, 0002 - Apr 19, 0002
+	 week 2: Apr 20, 0002 - Apr 26, 0002
+PP: 10
+	 week 1: Apr 27, 0002 - May 03, 0002
+	 week 2: May 04, 0002 - May 10, 0002
+PP: 11
+	 week 1: May 11, 0002 - May 17, 0002
+	 week 2: May 18, 0002 - May 24, 0002
+PP: 12
+	 week 1: May 25, 0002 - May 31, 0002
+	 week 2: Jun 01, 0002 - Jun 07, 0002
+PP: 13
+	 week 1: Jun 08, 0002 - Jun 14, 0002
+	 week 2: Jun 15, 0002 - Jun 21, 0002
+PP: 14
+	 week 1: Jun 22, 0002 - Jun 28, 0002
+	 week 2: Jun 29, 0002 - Jul 05, 0002
+PP: 15
+	 week 1: Jul 06, 0002 - Jul 12, 0002
+	 week 2: Jul 13, 0002 - Jul 19, 0002
+PP: 16
+	 week 1: Jul 20, 0002 - Jul 26, 0002
+	 week 2: Jul 27, 0002 - Aug 02, 0002
+PP: 17
+	 week 1: Aug 03, 0002 - Aug 09, 0002
+	 week 2: Aug 10, 0002 - Aug 16, 0002
+PP: 18
+	 week 1: Aug 17, 0002 - Aug 23, 0002
+	 week 2: Aug 24, 0002 - Aug 30, 0002
+PP: 19
+	 week 1: Aug 31, 0002 - Sep 06, 0002
+	 week 2: Sep 07, 0002 - Sep 13, 0002
+PP: 20
+	 week 1: Sep 14, 0002 - Sep 20, 0002
+	 week 2: Sep 21, 0002 - Sep 27, 0002
+PP: 21
+	 week 1: Sep 28, 0002 - Oct 04, 0002
+	 week 2: Oct 05, 0002 - Oct 11, 0002
+PP: 22
+	 week 1: Oct 12, 0002 - Oct 18, 0002
+	 week 2: Oct 19, 0002 - Oct 25, 0002
+PP: 23
+	 week 1: Oct 26, 0002 - Nov 01, 0002
+	 week 2: Nov 02, 0002 - Nov 08, 0002
+PP: 24
+	 week 1: Nov 09, 0002 - Nov 15, 0002
+	 week 2: Nov 16, 0002 - Nov 22, 0002
+PP: 25
+	 week 1: Nov 23, 0002 - Nov 29, 0002
+	 week 2: Nov 30, 0002 - Dec 06, 0002
+PP: 26
+	 week 1: Dec 07, 0002 - Dec 13, 0002
+	 week 2: Dec 14, 0002 - Dec 20, 0002

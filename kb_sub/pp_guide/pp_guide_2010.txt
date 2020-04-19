@@ -1,0 +1,84 @@
+
+Pay Period Guide
+Year: 2010
+---------------------------------------------
+
+                 START (Sat):   END (Fri):         
+PP: 01
+	 week 1: Dec 19, 2009 - Dec 25, 2009
+	 week 2: Dec 26, 2009 - Jan 01, 2010
+PP: 02
+	 week 1: Jan 02, 2010 - Jan 08, 2010
+	 week 2: Jan 09, 2010 - Jan 15, 2010
+PP: 03
+	 week 1: Jan 16, 2010 - Jan 22, 2010
+	 week 2: Jan 23, 2010 - Jan 29, 2010
+PP: 04
+	 week 1: Jan 30, 2010 - Feb 05, 2010
+	 week 2: Feb 06, 2010 - Feb 12, 2010
+PP: 05
+	 week 1: Feb 13, 2010 - Feb 19, 2010
+	 week 2: Feb 20, 2010 - Feb 26, 2010
+PP: 06
+	 week 1: Feb 27, 2010 - Mar 05, 2010
+	 week 2: Mar 06, 2010 - Mar 12, 2010
+PP: 07
+	 week 1: Mar 13, 2010 - Mar 19, 2010
+	 week 2: Mar 20, 2010 - Mar 26, 2010
+PP: 08
+	 week 1: Mar 27, 2010 - Apr 02, 2010
+	 week 2: Apr 03, 2010 - Apr 09, 2010
+PP: 09
+	 week 1: Apr 10, 2010 - Apr 16, 2010
+	 week 2: Apr 17, 2010 - Apr 23, 2010
+PP: 10
+	 week 1: Apr 24, 2010 - Apr 30, 2010
+	 week 2: May 01, 2010 - May 07, 2010
+PP: 11
+	 week 1: May 08, 2010 - May 14, 2010
+	 week 2: May 15, 2010 - May 21, 2010
+PP: 12
+	 week 1: May 22, 2010 - May 28, 2010
+	 week 2: May 29, 2010 - Jun 04, 2010
+PP: 13
+	 week 1: Jun 05, 2010 - Jun 11, 2010
+	 week 2: Jun 12, 2010 - Jun 18, 2010
+PP: 14
+	 week 1: Jun 19, 2010 - Jun 25, 2010
+	 week 2: Jun 26, 2010 - Jul 02, 2010
+PP: 15
+	 week 1: Jul 03, 2010 - Jul 09, 2010
+	 week 2: Jul 10, 2010 - Jul 16, 2010
+PP: 16
+	 week 1: Jul 17, 2010 - Jul 23, 2010
+	 week 2: Jul 24, 2010 - Jul 30, 2010
+PP: 17
+	 week 1: Jul 31, 2010 - Aug 06, 2010
+	 week 2: Aug 07, 2010 - Aug 13, 2010
+PP: 18
+	 week 1: Aug 14, 2010 - Aug 20, 2010
+	 week 2: Aug 21, 2010 - Aug 27, 2010
+PP: 19
+	 week 1: Aug 28, 2010 - Sep 03, 2010
+	 week 2: Sep 04, 2010 - Sep 10, 2010
+PP: 20
+	 week 1: Sep 11, 2010 - Sep 17, 2010
+	 week 2: Sep 18, 2010 - Sep 24, 2010
+PP: 21
+	 week 1: Sep 25, 2010 - Oct 01, 2010
+	 week 2: Oct 02, 2010 - Oct 08, 2010
+PP: 22
+	 week 1: Oct 09, 2010 - Oct 15, 2010
+	 week 2: Oct 16, 2010 - Oct 22, 2010
+PP: 23
+	 week 1: Oct 23, 2010 - Oct 29, 2010
+	 week 2: Oct 30, 2010 - Nov 05, 2010
+PP: 24
+	 week 1: Nov 06, 2010 - Nov 12, 2010
+	 week 2: Nov 13, 2010 - Nov 19, 2010
+PP: 25
+	 week 1: Nov 20, 2010 - Nov 26, 2010
+	 week 2: Nov 27, 2010 - Dec 03, 2010
+PP: 26
+	 week 1: Dec 04, 2010 - Dec 10, 2010
+	 week 2: Dec 11, 2010 - Dec 17, 2010

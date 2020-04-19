@@ -1,0 +1,2954 @@
+
+Employee Everything Report Reader
+pay period: 2019 03-2
+
+
+moody, k
+FT
+route:1025
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     9.53  
+	BT    8.04   to street  1025      
+	MV    9.27   to street  1033   off
+	MV   11.33   to street  1025      
+	MV   12.11   to office  0950   off
+	MV   15.50   to office  0950   off
+	MV   18.07   to street  1025      
+	ET   18.07   to street  1025      
+------------------------------------------------
+Monday      total     10.48 
+	BT    8.20   to street  1025      
+	MV    8.85   to street  0950   off
+	MV    9.11   to street  1025      
+	MV   10.09   to street  0950   off
+	MV   10.42   to travel  1025      
+	MV   13.00   to office  0925   off
+	MV   16.00   to office  0950   off
+	MV   19.18   to street  1025      
+	ET   19.18   to street  1025      
+------------------------------------------------
+Tuesday     total     9.97  
+	BT    8.14   to street  1025      
+	MV   10.37   to office  1033   off
+	MV   12.00   to travel  0925   off
+	MV   18.43         743  0000      
+	MV   18.61   to street  1025      
+	ET   18.61   to street  1025      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    8.09   to street  1025      
+	MV    9.35   to office  1025      
+	ET   16.66   to street  1025      
+	MV   16.66   to street  1025      
+------------------------------------------------
+Friday      total     8.00  
+	BT    8.07   to street  1025      
+	MV    9.28   to office  1025      
+	MV   16.55   to street  1025      
+	ET   16.55   to street  1025      
+
+weeks, t
+FT
+route:1024
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    total     12.00 
+	BT    9.23   to street  1024      
+	MV   10.24   to office  1024      
+	MV   10.80     steward  0000      
+	MV   11.69   to office  1024      
+	MV   12.00   to office  1004   off
+	MV   15.42   to office  1024      
+	MV   21.59   to street  1024      
+	ET   21.73   to street  1024      
+------------------------------------------------
+Monday      total     10.05 
+	BT    9.01   to street  1024      
+	MV   20.65   to street  1024      
+	ET   20.81   to street  1024      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.00   to street  1024      
+	MV    9.74     steward  0000      
+	MV    9.94   to office  1024      
+	MV   17.22   to street  1024      
+	ET   17.44   to street  1024      
+------------------------------------------------
+Wednesday   total     11.33 
+	BT    9.01   to street  1024      
+	MV   10.18   to office  1024      
+	MV   11.33   to office  1007   off
+	MV   12.16   to office  1024      
+	MV   12.33   to office  1007   off
+	MV   14.00   to office  1024      
+	MV   20.74   to street  1024      
+	ET   20.84   to street  1024      
+------------------------------------------------
+Thursday    total     8.69             ns day
+	BT    9.01   to street  1024      
+	MV    9.73   to office  1024      
+	MV   18.14   to street  1024      
+	ET   18.20   to street  1024      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.24   to street  1024      
+	MV   10.11   to office  1024      
+	MV   17.27   to street  1024      
+	ET   17.74   to street  1024      
+
+widmann, m
+FT
+route:0932
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    total     9.07  
+	BT    8.00   to street  0932      
+	MV    8.00   to street  0930   off
+	MV    9.39   to street  0932      
+	MV   10.05   to office  0932      
+	MV   10.58   to street  0930   off
+	MV   10.92   to street  0932      
+	MV   11.10   to office  0932      
+	MV   17.51   to street  0932      
+	ET   17.57   to street  0932      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.01   to street  0932      
+	MV   10.75   to office  0932      
+	MV   17.46   to street  0932      
+	ET   17.50   to street  0932      
+------------------------------------------------
+Wednesday   total     8.92  
+	BT    9.00   to street  0932      
+	MV   10.25   to office  0932      
+	MV   12.62   to office  0936   off
+	MV   13.54   to office  0932      
+	MV   18.38   to street  0932      
+	ET   18.42   to street  0932      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.01   to street  0932      
+	MV   10.50   to office  0932      
+	MV   17.31   to street  0932      
+	MV   17.44   to street  0932      
+	ET   17.51   to street  0932      
+------------------------------------------------
+Friday      total     8.66  
+	BT    9.01   to street  0932      
+	MV   10.02   to office  0932      
+	MV   10.23   to street  0932      
+	MV   10.46   to office  0932      
+	MV   10.83   to office  0918   off
+	MV   11.80   to office  0932      
+	MV   18.15   to street  0932      
+	ET   18.17   to street  0932      
+
+manibusan, p
+FT
+route:0938
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     8.89  
+	BT    9.11   to street  0938      
+	MV   10.41   to office  0938      
+	ET   18.50   to street  0938      
+------------------------------------------------
+Tuesday     total     9.00  
+	BT    9.00   to street  0938      
+	MV   10.06   to office  0938      
+	MV   16.97   to office  1033   off
+	MV   17.97   to street  0938      
+	ET   18.00   to street  0938      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.00   to street  0938      
+	MV    9.84   to office  0938      
+	MV   16.96   to street  0938      
+	ET   17.00   to street  0938      
+------------------------------------------------
+Thursday    total     9.50  
+	BT    9.00   to street  0938      
+	MV    9.87   to office  0938      
+	MV   17.00   to office  1032   off
+	MV   18.48   to street  0938      
+	ET   18.50   to street  0938      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.00   to street  0938      
+	MV    9.92   to office  0938      
+	MV   16.99   to street  0938      
+	ET   17.00   to street  0938      
+
+edelman, c
+FT
+route:1021
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     9.99  
+	BT    9.01   to street  1021      
+	MV    9.47   to office  1021      
+	MV    9.67   to street  1021      
+	MV   10.19   to office  1021      
+	MV   16.00   to office  1045   off
+	MV   18.00   to office  1021      
+	MV   19.42   to street  1021      
+	ET   19.50   to street  1021      
+------------------------------------------------
+Monday      total     10.47 
+	BT    8.76   to street  1021      
+	MV   10.28   to street  1021      
+	MV   10.84   to office  1021      
+	MV   19.64   to street  1021      
+	ET   19.73   to street  1021      
+------------------------------------------------
+Tuesday     total     8.53  
+	BT    9.00   to street  1021      
+	MV    9.12   to office  1021      
+	MV    9.64   to street  1021      
+	MV   10.32   to office  1021      
+	MV   10.34   to office  1021      
+	MV   17.98   to street  1021      
+	ET   18.03   to street  1021      
+------------------------------------------------
+Wednesday   total     8.85  
+	BT    9.01   to street  1021      
+	MV    9.21   to office  1021      
+	MV    9.62   to street  1021      
+	MV    9.62   to office  1021      
+	MV   10.28   to office  1021      
+	MV   10.47   to office  1021      
+	MV   16.00   to office  1007   off
+	MV   16.75   to office  1021      
+	MV   18.30   to street  1021      
+	MV   18.31   to street  1021      
+	ET   18.36   to street  1021      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  1021      
+	MV    9.32   to office  1021      
+	MV    9.90   to street  1021      
+	MV   10.19   to office  1021      
+	MV   17.46   to street  1021      
+	ET   17.52   to street  1021      
+------------------------------------------------
+Friday      total     8.00             ns day
+	BT    9.01   to street  1021      
+	MV    9.31   to office  1021      
+	MV   17.42   to street  1021      
+	ET   17.51   to street  1021      
+
+babinskiy, m
+FT
+route:1032
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    total     11.67 
+	BT    8.02   to street  1032      
+	MV   10.43   to office  1032      
+	MV   17.00   to office  1015   off
+	MV   18.30   to office  1004   off
+	MV   19.87   to street  1032      
+	ET   20.19   to street  1032      
+------------------------------------------------
+Monday      total     11.66 
+	BT    8.00   to street  1032      
+	MV   10.74   to office  1032      
+	ET   20.16   to street  1032      
+	MV   20.16   to street  1032      
+------------------------------------------------
+Tuesday     total     9.70  
+	BT    8.00   to street  1032      
+	MV   10.31   to office  1032      
+	MV   18.20   to street  1032      
+	ET   18.20   to street  1032      
+------------------------------------------------
+Wednesday   total     10.85 
+	BT    8.00   to street  1032      
+	MV   10.69   to office  1032      
+	ET   19.35   to street  1032      
+	MV   19.35   to street  1032      
+------------------------------------------------
+Friday      total     8.83  
+	BT    9.00   to street  1032      
+	MV   10.15   to office  1032      
+	ET   18.33   to street  1032      
+	MV   18.33   to street  1032      
+
+mcmains, t
+FT
+route:0935
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     9.22  
+	BT    9.00   to street  0935      
+	MV   10.52   to office  0935      
+	MV   18.63   to street  0935      
+	ET   18.72   to street  0935      
+------------------------------------------------
+Tuesday     total     8.51  
+	BT    9.01   to street  0935      
+	MV   10.03   to office  0935      
+	MV   17.95   to street  0935      
+	ET   18.02   to street  0935      
+------------------------------------------------
+Wednesday   total     7.88  
+------------------------------------------------
+Wednesday   lwop      0.12  
+	BT    9.11   to street  0935      
+	MV    9.98   to office  0935      
+	MV   17.38   to street  0935      
+	ET   17.49   to street  0935      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.01   to street  0935      
+	MV   10.25   to office  0935      
+	MV   17.44   to street  0935      
+	ET   17.52   to street  0935      
+------------------------------------------------
+Friday      total     7.48  
+------------------------------------------------
+Friday      lwop      0.52  
+	BT    9.02   to street  0935      
+	MV   10.08   to office  0935      
+	MV   16.96   to street  0935      
+	ET   17.00   to street  0935      
+
+mccoumb, s
+FT
+route:1001
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    total     12.00 
+	BT    8.75   to street  1001      
+	MV    9.87   to office  1001      
+	MV   16.99   to office  1025   off
+	MV   20.99   to street  1001      
+	ET   21.25   to street  1001      
+------------------------------------------------
+Monday      total     11.68            ns day
+	BT    9.20   to street  1001      
+	MV   10.41   to office  1001      
+	MV   19.14   to office  1025   off
+	MV   21.14   to street  1001      
+	ET   21.38   to street  1001      
+------------------------------------------------
+Tuesday     total     11.95 
+	BT    8.66   to street  1001      
+	MV    9.73   to office  1001      
+	MV   18.42   to office  1025   off
+	MV   20.92   to street  1001      
+	ET   21.11   to street  1001      
+------------------------------------------------
+Wednesday   total     10.50 
+	BT    8.84   to street  1001      
+	MV    9.82   to office  1001      
+	MV   17.83   to office  1025   off
+	ET   19.84   to street  1001      
+	MV   19.84   to street  1001      
+------------------------------------------------
+Thursday    total     10.51 
+	BT    8.72   to street  1001      
+	MV    9.81   to office  1001      
+	MV   17.46   to office  1032   off
+	MV   19.46   to street  1001      
+	ET   19.73   to street  1001      
+------------------------------------------------
+Friday      total     10.61 
+	BT    8.65   to street  1001      
+	MV    9.88   to office  1001      
+	MV   17.00   to office  1011   off
+	MV   19.76   to street  1001      
+	ET   19.76   to street  1001      
+
+driste, m
+FT
+route:1015
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    sick      8.00  
+------------------------------------------------
+Monday      total     9.11  
+	BT    9.00   to street  1015      
+	MV   10.52   to office  1015      
+	MV   18.55   to street  1015      
+	ET   18.61   to street  1015      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.03   to street  1015      
+	MV   10.29   to office  1015      
+	MV   17.32   to street  1015      
+	ET   17.45   to street  1015      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.01   to street  1015      
+	MV   10.14   to office  1015      
+	MV   17.35   to street  1015      
+	ET   17.50   to street  1015      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.00   to street  1015      
+	MV   10.12   to office  1015      
+	MV   17.33   to street  1015      
+	ET   17.47   to street  1015      
+
+rose jr, a
+FT
+route:0929
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     10.10 
+	BT    9.09   to street  0929      
+	MV   10.48   to office  0929      
+	MV   17.87   to office  0930   off
+	MV   19.58   to street  0929      
+	ET   19.69   to street  0929      
+------------------------------------------------
+Monday      total     10.68 
+	BT    9.79   to street  0929      
+	MV   11.66   to office  0929      
+	MV   20.76   to street  0929      
+	ET   20.97   to street  0929      
+------------------------------------------------
+Tuesday     total     8.73  
+	BT    9.00   to street  0929      
+	MV   10.08   to office  0929      
+	MV   18.08   to street  0929      
+	ET   18.23   to street  0929      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.00   to street  0929      
+	MV    9.85   to office  0929      
+	MV   17.46   to street  0929      
+	ET   17.54   to street  0929      
+------------------------------------------------
+Thursday    total     9.11  
+	BT    9.00   to street  0929      
+	MV   10.31   to office  0929      
+	MV   18.51   to street  0929      
+	ET   18.61   to street  0929      
+
+gross, j
+FT
+route:0931
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     11.50 
+	BT    8.03   to street  0931      
+	MV    8.10   to street  0925   off
+	MV   10.10   to street  0950   off
+	MV   11.11   to street  0931      
+	MV   11.98   to office  0931      
+	MV   12.92   to office  0925   off
+	MV   13.92   to office  0931      
+	MV   19.54   to street  0931      
+	ET   20.03   to street  0931      
+------------------------------------------------
+Monday      total     12.58 
+	BT    8.00   to street  0931      
+	MV    8.05   to street  0925   off
+	MV   11.05   to street  0931      
+	MV   12.33   to office  0931      
+	MV   13.83   to office  0925   off
+	MV   14.83   to office  0931      
+	MV   20.56   to street  0931      
+	ET   21.08   to street  0931      
+------------------------------------------------
+Tuesday     total     10.25 
+	BT    8.00   to street  0931      
+	MV    8.05   to street  0925   off
+	MV   10.55   to street  0931      
+	MV   11.42   to office  0931      
+	MV   18.53   to street  0931      
+	ET   18.75   to street  0931      
+------------------------------------------------
+Wednesday   total     9.62             ns day
+	BT    8.00   to street  0931      
+	MV    8.50   to street  0925   off
+	MV   10.18   to street  0931      
+	MV   10.67   to office  0931      
+	MV   18.01   to street  0931      
+	ET   18.12   to street  0931      
+------------------------------------------------
+Thursday    total     11.43 
+	BT    8.00   to street  0931      
+	MV    8.05   to street  0925   off
+	MV   10.80   to street  0931      
+	MV   11.72   to office  0931      
+	MV   12.67   to office  0925   off
+	MV   13.67   to office  0931      
+	MV   19.65   to street  0931      
+	ET   19.93   to street  0931      
+------------------------------------------------
+Friday      total     10.51 
+	BT    8.00   to street  0931      
+	MV    8.05   to street  0925   off
+	MV    9.55   to street  0931      
+	MV   10.55   to office  0931      
+	MV   11.67   to office  0925   off
+	MV   12.67   to office  0931      
+	MV   18.85   to street  0931      
+	ET   19.01   to street  0931      
+
+williams, l
+FT
+route:0927
+ns day:Thursday
+================================================
+
+torpey, m
+FT
+route:0928
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    annual    8.00  
+------------------------------------------------
+Tuesday     total     8.23  
+	BT    9.05   to street  0928      
+	MV   10.16   to office  0928      
+	ET   17.28   to street  0928      
+	MV   17.28   to street  0928      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.02   to street  0928      
+	MV   10.01   to office  0928      
+	MV   16.96   to street  0928      
+	ET   17.00   to street  0928      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  0928      
+	MV   10.52   to office  0928      
+	MV   17.00   to street  0928      
+	ET   17.01   to street  0928      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.02   to street  0928      
+	MV   10.15   to office  0928      
+	MV   16.99   to street  0928      
+	ET   17.00   to street  0928      
+
+ahmed, t
+FT
+route:0922
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    total     12.29 
+	BT    9.03   to street  0922      
+	MV   10.29   to office  0922      
+	MV   14.00   to office  0935   off
+	MV   18.50   to office  0922      
+	MV   21.47   to street  0922      
+	MV   21.48   to street  0922      
+	ET   21.82   to street  0922      
+------------------------------------------------
+Monday      total     8.15             ns day
+	BT   11.60   to street  0922      
+	MV   12.08   to office  0922      
+	MV   20.17   to street  0922      
+	ET   20.25   to street  0922      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.00   to street  0922      
+	MV   10.15   to office  0922      
+	MV   17.48   to street  0922      
+	ET   17.50   to street  0922      
+------------------------------------------------
+Wednesday   total     10.52 
+	BT    9.00   to street  0922      
+	MV   10.17   to office  0922      
+	MV   17.50   to office  0925   off
+	MV   19.93   to street  0922      
+	ET   20.02   to street  0922      
+------------------------------------------------
+Thursday    total     10.68 
+	BT    9.00   to street  0922      
+	MV   10.25   to office  0922      
+	MV   17.50   to office  0925   off
+	MV   19.95   to street  0922      
+	ET   20.18   to street  0922      
+------------------------------------------------
+Friday      total     10.58 
+	BT    9.00   to street  0922      
+	MV   10.25   to office  0922      
+	MV   17.50   to office  0925   off
+	MV   19.93   to street  0922      
+	ET   20.08   to street  0922      
+
+lopez, d
+FT
+route:1005
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    annual    8.00  
+------------------------------------------------
+Tuesday     total     9.26  
+	BT    9.02   to street  1005      
+	MV   10.41   to office  1005      
+	MV   18.36         733  1005      
+	MV   18.78   to street  1005      
+	ET   18.78   to street  1005      
+------------------------------------------------
+Wednesday   total     9.26  
+	BT    9.01   to street  1005      
+	MV   10.25   to office  1005      
+	MV   18.72   to street  1005      
+	ET   18.77   to street  1005      
+------------------------------------------------
+Thursday    total     8.10  
+	BT    9.01   to street  1005      
+	MV    9.69   to office  1005      
+	ET   17.61   to street  1005      
+	MV   17.61   to street  1005      
+------------------------------------------------
+Friday      total     8.58  
+	BT    9.01   to street  1005      
+	MV    9.84   to office  1005      
+	MV   17.96   to street  1005      
+	ET   18.09   to street  1005      
+
+l huillier jr, w
+FT
+route:1058
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     8.85  
+	BT    9.00   to street  1058      
+	MV    9.38   to office  1058      
+	MV   18.33   to street  1058      
+	ET   18.35   to street  1058      
+------------------------------------------------
+Tuesday     total     7.49  
+------------------------------------------------
+Tuesday     sick      0.51  
+	BT    9.01   to street  1058      
+	MV   10.33   to office  1058      
+	ET   16.50   to street  1058      
+------------------------------------------------
+Wednesday   sick      8.00  
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  1058      
+	MV   10.05   to office  1058      
+	MV   17.50   to street  1058      
+	ET   17.51   to street  1058      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.00   to street  1058      
+	MV   10.18   to office  1058      
+	MV   16.97   to street  1058      
+	ET   17.00   to street  1058      
+
+barnett, j
+FT
+route:1003
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     11.52 
+	BT    8.03   to street  1003      
+	MV    8.04   to street  1015   off
+	MV   10.57   to street  1051   off
+	MV   12.22   to street  1003      
+	MV   12.60   to office  1003      
+	MV   19.50   to street  1003      
+	ET   19.55   to street  1003      
+------------------------------------------------
+Monday      total     12.40 
+	BT    8.69   to street  1003      
+	MV    9.21   to street  1023   off
+	MV   11.29   to street  1003      
+	MV   12.22   to office  1003      
+	MV   20.80   to street  1003      
+	ET   21.09   to street  1003      
+------------------------------------------------
+Tuesday     total     12.25 
+	BT    8.00   to street  1003      
+	MV    8.21   to street  1003      
+	MV   10.52   to street  1003      
+	MV   11.65   to office  1003      
+	MV   20.23   to street  1003      
+	ET   20.25   to street  1003      
+------------------------------------------------
+Wednesday   total     11.22 
+	BT    8.00   to street  1003      
+	MV    8.12   to office  1051   off
+	MV   10.42   to street  1003      
+	MV   11.63   to office  1003      
+	MV   18.98   to street  1003      
+	ET   19.22   to street  1003      
+------------------------------------------------
+Thursday    total     11.27 
+	BT    8.00   to street  1003      
+	MV    8.10   to street  1004   off
+	MV   10.15   to street  1003      
+	MV   10.66   to office  1003      
+	MV   16.17   to office  1004   off
+	MV   16.92   to office  1003      
+	MV   19.69   to street  1003      
+	ET   19.77   to street  1003      
+------------------------------------------------
+Friday      total     10.70            ns day
+	BT    8.00   to street  1003      
+	MV    9.86   to street  1003      
+	MV   10.60   to office  1003      
+	MV   18.59   to street  1003      
+	ET   18.70   to street  1003      
+
+bonilla, g
+FT
+route:1013
+ns day:Thursday
+================================================
+------------------------------------------------
+Monday      total     13.11 
+	BT    9.89   to office  1013      
+	MV   11.10   to office  1013      
+	MV   12.50   to office  1004   off
+	MV   17.08   to office  1013      
+	MV   23.50   to street  1013      
+	ET   23.50   to street  1013      
+------------------------------------------------
+Tuesday     total     10.04 
+	BT    9.44   to street  1013      
+	MV   10.64   to office  1013      
+	MV   19.97   to street  1013      
+	ET   19.98   to street  1013      
+------------------------------------------------
+Wednesday   total     10.82 
+	BT    9.41   to street  1013      
+	MV   10.65   to office  1013      
+	MV   12.08   to office  1007   off
+	MV   13.50   to office  1013      
+	MV   20.68   to street  1013      
+	MV   20.72   to office  1013      
+	ET   20.73   to street  1013      
+------------------------------------------------
+Friday      total     10.23 
+	BT    9.27   to street  1013      
+	MV   10.63   to office  1013      
+	MV   12.08   to office  0918   off
+	MV   13.25   to office  1013      
+	MV   19.98   to street  1013      
+	ET   20.00   to street  1013      
+
+yeung, q
+FT
+route:1051
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    annual    8.00  
+------------------------------------------------
+Monday      annual    8.00  
+------------------------------------------------
+Tuesday     annual    8.00  
+------------------------------------------------
+Wednesday   annual    8.00  
+------------------------------------------------
+Friday      annual    8.00  
+
+osei tutu, m
+FT
+route:1034
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     12.00 
+	BT    8.00   to street  1034      
+	MV    8.13   to street  1045   off
+	MV    9.90   to street  1044   off
+	MV   10.63   to street  1034      
+	MV   11.66   to office  1034      
+	MV   20.37   to street  1034      
+	ET   20.50   to street  1034      
+------------------------------------------------
+Monday      total     12.06 
+	BT    8.48   to street  1034      
+	MV    9.12   to street  1037   off
+	MV    9.24   to street  1037   off
+	MV   11.13   to street  1034      
+	MV   12.07   to office  1034      
+	MV   21.02   to street  1034      
+	ET   21.04   to street  1034      
+------------------------------------------------
+Tuesday     total     10.80            ns day
+	BT    8.24   to street  1034      
+	MV    9.87   to office  1034      
+	MV   19.51   to street  1034      
+	ET   19.54   to street  1034      
+------------------------------------------------
+Wednesday   total     10.66 
+	BT    8.15   to street  1034      
+	MV    8.49   to street  1025   off
+	MV    9.73   to street  1025   off
+	MV   10.66   to office  1034      
+	MV   19.31   to street  1034      
+	ET   19.31   to street  1034      
+------------------------------------------------
+Thursday    total     11.26 
+	BT    8.03   to street  1034      
+	MV    8.31   to street  1032   off
+	MV   10.28   to street  1034      
+	MV   10.97   to office  1034      
+	MV   19.79   to street  1034      
+	ET   19.79   to street  1034      
+------------------------------------------------
+Friday      total     8.00  
+	BT    8.02   to street  1034      
+	MV    9.02   to office  1034      
+	MV   16.44   to street  1034      
+	ET   16.49   to street  1034      
+
+fisher, c
+FT
+route:1036
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    annual    8.00  
+------------------------------------------------
+Monday      annual    8.00  
+------------------------------------------------
+Tuesday     annual    8.00  
+------------------------------------------------
+Wednesday   annual    8.00  
+------------------------------------------------
+Thursday    annual    8.00  
+
+sanchez, p
+FT
+route:0918
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     8.00  
+	BT    9.00   to street  0918      
+	MV    9.93   to office  0918      
+	MV   17.43   to street  0918      
+	ET   17.50   to street  0918      
+------------------------------------------------
+Monday      total     9.42  
+	BT    9.00   to street  0918      
+	MV   10.44   to office  0918      
+	MV   18.85   to street  0918      
+	ET   18.92   to street  0918      
+------------------------------------------------
+Tuesday     total     8.85  
+	BT    9.00   to street  0918      
+	MV   10.10   to office  0918      
+	MV   18.29   to street  0918      
+	ET   18.35   to street  0918      
+------------------------------------------------
+Thursday    sick      8.00  
+------------------------------------------------
+Friday      sick      8.00  
+
+dejesus vasquez, l
+FT
+route:0926
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     10.00 
+	BT    9.00   to street  0926      
+	MV   10.28   to office  0926      
+	MV   14.50   to office  1025   off
+	MV   16.50   to office  0926      
+	MV   18.81   to street  0926      
+	ET   19.50   to street  0926      
+------------------------------------------------
+Monday      total     10.24 
+	BT    9.00   to street  0926      
+	MV   10.05   to street  1022   off
+	MV   10.34   to street  0926      
+	MV   11.05   to office  0926      
+	MV   19.65   to street  0926      
+	ET   19.74   to street  0926      
+------------------------------------------------
+Tuesday     total     8.00             ns day
+	BT    9.00   to street  0926      
+	MV   10.48   to office  0926      
+	MV   17.48   to street  0926      
+	ET   17.50   to street  0926      
+	MV   17.50   to street  0926      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.00   to street  0926      
+	MV   10.35   to office  0926      
+	MV   17.44   to street  0926      
+	ET   17.50   to street  0926      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  0926      
+	MV    9.80   to office  0926      
+	MV   17.50   to street  0926      
+	ET   17.50   to street  0926      
+------------------------------------------------
+Friday      total     9.25  
+	BT    9.00   to street  0926      
+	MV   10.06   to office  0926      
+	MV   14.00   to office  0918   off
+	MV   15.00   to office  0926      
+	MV   18.20   to street  0926      
+	ET   18.75   to street  0926      
+
+la, s
+FT
+route:1035
+ns day:Saturday
+================================================
+------------------------------------------------
+Saturday    total     11.50            ns day
+	BT    9.00   to street  1035      
+	MV    9.36   to office  1035      
+	MV    9.68   to street  1035      
+	MV   10.37   to office  1035      
+	MV   17.25   to office  1015   off
+	MV   20.75   to office  1035      
+	MV   20.96   to street  1035      
+	ET   21.00   to street  1035      
+------------------------------------------------
+Monday      total     11.53 
+	BT    9.00   to street  1035      
+	MV   10.35   to office  1035      
+	MV   10.75   to office  1025   off
+	MV   12.50   to office  1035      
+	MV   13.00   to office  1025   off
+	MV   13.95   to office  1035      
+	MV   20.97   to street  1035      
+	ET   21.03   to street  1035      
+------------------------------------------------
+Tuesday     total     10.90 
+	BT    9.00   to street  1035      
+	MV   10.06   to office  1035      
+	MV   10.90   to office  1025   off
+	MV   13.10   to office  1035      
+	MV   20.35   to street  1035      
+	ET   20.40   to street  1035      
+------------------------------------------------
+Wednesday   total     10.43 
+	BT    9.00   to street  1035      
+	MV    9.95   to office  1035      
+	MV   10.50   to office  1025   off
+	MV   12.60   to office  1035      
+	MV   19.87   to street  1035      
+	ET   19.93   to street  1035      
+------------------------------------------------
+Thursday    total     10.12 
+	BT    9.00   to street  1035      
+	MV    9.86   to office  1035      
+	MV   10.35   to office  1032   off
+	MV   12.50   to office  1035      
+	MV   19.57   to street  1035      
+	ET   19.62   to street  1035      
+------------------------------------------------
+Friday      total     10.05 
+	BT    9.00   to street  1035      
+	MV    9.96   to office  1035      
+	MV   10.50   to office  1007   off
+	MV   12.55   to office  1035      
+	MV   19.50   to street  1035      
+	ET   19.55   to street  1035      
+
+an, j
+FT
+route:1018
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     9.00  
+	BT    8.00   to street  1018      
+	MV    8.00   to street  1072   off
+	MV    8.57   to street  1018      
+	MV    8.59   to street  1072   off
+	MV    8.90   to street  1018      
+	MV    9.08   to street  1072   off
+	MV    9.42   to street  1018      
+	MV    9.71   to office  1018      
+	MV   17.46   to street  1018      
+	ET   17.50   to street  1018      
+------------------------------------------------
+Monday      total     12.50 
+	MV    8.02   to street  1072   off
+	BT    8.02   to street  1018      
+	MV    8.72   to street  1018      
+	MV    9.20   to office  1018      
+	MV    9.43   to street  1072   off
+	MV    9.49   to street  1018      
+	MV    9.49   to office  1018      
+	MV   10.38   to office  1018      
+	MV   10.61   to street  1022   off
+	MV   11.77   to office  1018      
+	MV   11.77   to street  1018      
+	MV   20.91   to street  1018      
+	ET   21.02   to street  1018      
+------------------------------------------------
+Tuesday     total     8.00             ns day
+	BT    8.00   to street  1018      
+	MV    8.48   to office  1018      
+	MV    9.18   to office  1018      
+	MV   16.45   to street  1018      
+	ET   16.50   to street  1018      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    8.05   to street  1018      
+	MV    8.44   to office  1018      
+	ET   16.50   to street  1018      
+	MV   16.50   to street  1018      
+------------------------------------------------
+Thursday    total     9.25  
+	BT    8.00   to street  1018      
+	MV    8.00   to street  1013   off
+	MV    8.80   to street  1018      
+	MV    9.10   to office  1018      
+	MV    9.37   to street  1018      
+	MV    9.85   to office  1018      
+	MV   17.72   to street  1018      
+	ET   17.75   to street  1018      
+------------------------------------------------
+Friday      total     9.50  
+	BT    8.00   to street  1018      
+	MV    8.00   to street  0950   off
+	MV    9.56   to street  1018      
+	MV    9.56   to office  1018      
+	MV    9.91   to street  1018      
+	MV   10.26   to office  1018      
+	MV   17.96   to street  1018      
+	ET   18.00   to street  1018      
+
+yates, l
+FT
+route:0941
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     8.00  
+	BT    9.00   to street  0941      
+	MV    9.72   to office  0941      
+	MV   10.05   to office  0941      
+	MV   10.70   to office  0927   off
+	MV   13.00   to office  0941      
+	MV   16.96   to street  0941      
+	ET   16.96   to street  0941      
+------------------------------------------------
+Monday      total     12.73 
+	BT    8.79   to street  0941      
+	MV   10.36   to office  0941      
+	MV   11.67   to office  0950   off
+	MV   15.25   to office  0941      
+	MV   20.67         733  0941      
+	MV   21.73   to street  0941      
+	ET   22.02   to street  0941      
+------------------------------------------------
+Tuesday     total     8.00             ns day
+	BT    9.00   to street  0941      
+	MV   10.50   to office  0941      
+	ET   17.50   to street  0941      
+	MV   17.50   to street  0941      
+------------------------------------------------
+Wednesday   total     9.53  
+	BT    9.00   to street  0941      
+	MV    9.72   to office  0941      
+	MV   10.63   to office  0950   off
+	MV   11.50   to office  0941      
+	MV   17.25   to office  0950   off
+	MV   18.78   to street  0941      
+	ET   19.03   to street  0941      
+------------------------------------------------
+Thursday    total     7.28  
+------------------------------------------------
+Thursday    annual    0.72  
+	BT    9.02   to street  0941      
+	MV   10.00   to office  0941      
+	MV   16.64   to street  0941      
+	ET   16.80   to street  0941      
+------------------------------------------------
+Friday      total     9.24  
+	BT    9.00   to street  0941      
+	MV   10.08   to office  0941      
+	MV   10.83   to office  0918   off
+	MV   12.50   to office  0941      
+	MV   18.40   to street  0941      
+	ET   18.74   to street  0941      
+
+salih-mohamed, s
+FT
+route:1056
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     9.26  
+	BT    9.00   to street  1056      
+	MV   10.20   to office  1056      
+	MV   15.50   to office  1033   off
+	MV   17.00   to office  1056      
+	MV   18.66   to street  1056      
+	ET   18.76   to street  1056      
+------------------------------------------------
+Monday      total     11.22 
+	BT    9.00   to street  1056      
+	MV   11.06   to office  1056      
+	MV   20.46   to street  1056      
+	ET   20.72   to street  1056      
+------------------------------------------------
+Tuesday     total     9.76  
+	BT    9.00   to street  1056      
+	MV   10.30   to office  1056      
+	MV   18.96   to street  1056      
+	MV   19.23   to street  1056      
+	ET   19.26   to street  1056      
+------------------------------------------------
+Wednesday   total     7.50             ns day
+	BT    8.00   to street  1056      
+	MV    9.60   to office  1056      
+	MV   15.53   to street  1056      
+	ET   16.00   to street  1056      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  1056      
+	MV    9.64   to office  1056      
+	MV   17.27   to street  1056      
+	MV   17.45   to office  1056      
+	ET   17.50   to street  1056      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.00   to street  1056      
+	MV   10.06   to office  1056      
+	MV   17.41   to street  1056      
+	ET   17.50   to street  1056      
+
+weyerman, t
+FT
+route:0927
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    annual    8.00  
+------------------------------------------------
+Monday      total     10.19 
+	BT    9.04   to street  0927      
+	MV   10.75   to office  0927      
+	MV   19.43   to street  0927      
+	ET   19.73   to street  0927      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.27   to street  0927      
+	MV   10.75   to office  0927      
+	MV   17.58   to street  0927      
+	ET   17.73   to street  0927      
+------------------------------------------------
+Wednesday   annual    8.00  
+------------------------------------------------
+Thursday    total     8.09             ns day
+	BT    9.01   to street  0927      
+	MV   10.45   to office  0927      
+	MV   17.49   to street  0927      
+	ET   17.60   to street  0927      
+------------------------------------------------
+Friday      total     9.96  
+	BT    9.01   to street  0927      
+	MV   10.25   to office  0927      
+	MV   17.50   to office  0950   off
+	ET   19.47   to street  0927      
+
+trujillo, s
+FT
+route:0936
+ns day:Thursday
+================================================
+------------------------------------------------
+Monday      total     5.71  
+------------------------------------------------
+Monday      sick      2.29  
+	BT    8.01   to street  0936      
+	MV    8.01   to travel  0000      
+	ET   13.72   to street  0936      
+------------------------------------------------
+Tuesday     total     6.41  
+------------------------------------------------
+Tuesday     sick      1.59  
+	MV    8.01   to travel  0000      
+	BT    8.01   to street  0936      
+	ET   14.42   to street  0936      
+------------------------------------------------
+Wednesday   total     8.00  
+	MV    8.00   to travel  0000      
+	BT    8.00   to street  0936      
+	MV   11.57   to office  0936      
+	MV   15.88   to street  0936      
+	ET   16.02   to street  0936      
+------------------------------------------------
+Friday      total     7.47  
+------------------------------------------------
+Friday      sick      0.53  
+	BT    8.09   to street  0936      
+	MV    8.10   to travel  0000      
+	MV   11.08   to office  0936      
+	MV   14.42   to street  0936      
+	ET   15.56   to street  0936      
+
+daylie, j
+FT
+route:0911
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    annual    8.00  
+------------------------------------------------
+Monday      total     8.71  
+	BT    9.22   to street  0911      
+	MV    9.92   to office  0911      
+	MV   18.43   to street  0911      
+	ET   18.43   to street  0911      
+------------------------------------------------
+Tuesday     total     8.60  
+	BT    9.25   to street  0911      
+	MV    9.87   to office  0911      
+	ET   18.35   to street  0911      
+	MV   18.35   to street  0911      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.31   to street  0911      
+	MV    9.60   to office  0911      
+	ET   17.89   to street  0911      
+	MV   17.89   to street  0911      
+------------------------------------------------
+Thursday    total     8.23  
+	BT    9.21   to street  0911      
+	MV    9.94   to office  0911      
+	ET   17.94   to street  0911      
+	MV   17.94   to street  0911      
+
+nguyen, d
+FT
+route:1046
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    total     10.25 
+	BT    8.02   to street  1046      
+	MV    9.91   to office  1046      
+	MV   15.25   to office  1045   off
+	MV   17.00   to office  1046      
+	MV   18.68   to street  1046      
+	ET   18.77   to street  1046      
+------------------------------------------------
+Monday      total     11.51 
+	BT    8.30   to street  1046      
+	MV   11.02   to office  1046      
+	MV   20.28   to street  1046      
+	ET   20.31   to street  1046      
+------------------------------------------------
+Tuesday     total     10.42 
+	BT    8.04   to street  1046      
+	MV    9.92   to office  1046      
+	MV   18.92   to street  1046      
+	ET   18.96   to street  1046      
+------------------------------------------------
+Wednesday   total     8.66  
+	BT    8.50   to street  1046      
+	MV    9.65   to office  1046      
+	MV   17.64   to street  1046      
+	ET   17.66   to street  1046      
+------------------------------------------------
+Thursday    total     8.25             ns day
+	BT    8.50   to street  1046      
+	MV    9.52   to office  1046      
+	MV   17.20   to street  1046      
+	ET   17.25   to street  1046      
+------------------------------------------------
+Friday      total     8.49  
+	BT    8.01   to street  1046      
+	MV    9.37   to office  1046      
+	MV   16.94   to street  1046      
+	ET   17.00   to street  1046      
+
+bustos, h
+FT
+route:0905
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      sick      8.00  
+------------------------------------------------
+Tuesday     total     9.00  
+	BT    9.00   to street  0905      
+	MV   10.30   to office  0905      
+	MV   17.29   to street  0905      
+	MV   17.43   to office  1033   off
+	MV   18.41   to street  0905      
+	ET   18.50   to street  0905      
+------------------------------------------------
+Wednesday   total     8.91  
+	BT    9.00   to street  0905      
+	MV    9.80   to office  0905      
+	MV   17.50   to office  0950   off
+	MV   18.35   to street  0905      
+	ET   18.41   to street  0905      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  0905      
+	MV    9.83   to office  0905      
+	MV   17.41   to street  0905      
+	ET   17.50   to street  0905      
+------------------------------------------------
+Friday      total     8.80  
+	BT    9.00   to street  0905      
+	MV    9.79   to office  0905      
+	MV   17.50   to office  0950   off
+	MV   18.19   to street  0905      
+	ET   18.30   to street  0905      
+
+mariami, a
+FT
+route:1059
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     11.49 
+	BT    9.01   to street  1059      
+	MV    9.67   to office  1059      
+	MV   13.00   to office  1043   off
+	MV   17.25   to office  1059      
+	MV   20.99   to street  1059      
+	ET   21.00   to street  1059      
+------------------------------------------------
+Monday      total     13.07 
+	BT    9.00   to street  1059      
+	MV    9.25   to office  1059      
+	MV    9.67   to street  1059      
+	MV   10.65   to office  1059      
+	MV   13.00   to office  1004   off
+	MV   16.50   to office  1059      
+	MV   22.56   to street  1059      
+	ET   22.57   to street  1059      
+------------------------------------------------
+Tuesday     total     12.06 
+	BT    9.00   to street  1059      
+	MV    9.50   to street  1059      
+	MV   10.05   to office  1059      
+	MV   14.50   to office  1033   off
+	MV   17.50   to office  1059      
+	ET   21.56   to street  1059      
+------------------------------------------------
+Wednesday   total     10.48            ns day
+	BT    9.00   to street  1059      
+	MV    9.68   to office  1059      
+	MV   17.75   to office  1056   off
+	MV   19.98   to street  1059      
+	ET   19.98   to street  1059      
+------------------------------------------------
+Thursday    total     10.40 
+	BT    9.01   to street  1059      
+	MV    9.50   to office  1059      
+	MV   13.50   to office  1004   off
+	MV   16.50   to office  1059      
+	MV   19.89   to street  1059      
+	ET   19.91   to street  1059      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.00   to street  1059      
+	MV    9.12   to office  1059      
+	MV    9.42   to street  1059      
+	MV   10.02   to office  1059      
+	MV   17.46   to street  1059      
+	ET   17.50   to street  1059      
+
+mcdonald, n
+FT
+route:1045
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     10.50 
+	BT    9.00   to street  1045      
+	MV   10.49   to office  1045      
+	MV   18.47   to office  1037   off
+	MV   19.96   to street  1045      
+	ET   20.00   to street  1045      
+------------------------------------------------
+Tuesday     total     11.71 
+	BT    8.07   to street  1045      
+	MV    9.20   to office  1045      
+	MV    9.76     steward  0000      
+	MV    9.94   to office  1045      
+	MV   17.67   to office  1043   off
+	MV   20.25   to street  1045      
+	ET   20.28   to street  1045      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    8.02   to street  1045      
+	MV    9.17   to office  1045      
+	MV   15.94   to street  1045      
+	ET   16.00   to street  1045      
+------------------------------------------------
+Thursday    total     9.00  
+	BT    8.00   to street  1045      
+	MV    9.11   to office  1045      
+	MV   15.71   to office  1037   off
+	MV   16.92   to street  1045      
+	ET   17.00   to street  1045      
+------------------------------------------------
+Friday      total     8.00  
+	BT    8.00   to street  1045      
+	MV    9.17   to office  1045      
+	MV   15.92   to street  1045      
+	ET   16.00   to street  1045      
+
+chung, b
+FT
+route:0907
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     9.90  
+	BT    9.00   to street  0907      
+	MV   10.32   to office  1044   off
+	MV   12.67   to street  1044   off
+	MV   12.92   to office  0907      
+	MV   19.22   to street  0907      
+	ET   19.40   to street  0907      
+------------------------------------------------
+Monday      total     12.07 
+	BT    9.00   to street  0907      
+	MV   10.89   to office  0907      
+	MV   18.82   to office  0950   off
+	MV   18.82   to street  0907      
+	MV   21.38   to street  0950   off
+	ET   21.57   to street  0907      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.00   to street  0907      
+	MV    9.82   to office  0907      
+	MV   17.33   to street  0907      
+	ET   17.50   to street  0907      
+------------------------------------------------
+Wednesday   total     9.65  
+	BT    9.00   to street  0907      
+	MV    9.73   to office  0907      
+	MV   16.83   to street  0907      
+	MV   16.83   to office  0950   off
+	MV   18.97   to street  0950   off
+	ET   19.15   to street  0907      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  0907      
+	MV    9.51   to office  0907      
+	MV   17.14   to street  0907      
+	ET   17.50   to street  0907      
+
+nelson, g
+FT
+route:1071
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     10.33 
+	BT    9.00   to street  1071      
+	MV    9.22   to office  1071      
+	MV    9.82   to street  1071      
+	MV   10.22   to office  1071      
+	MV   18.54   to street  1071      
+	MV   18.62   to office  1072   off
+	ET   19.33   to street  1071      
+------------------------------------------------
+Monday      total     10.52 
+	BT    9.18   to street  1071      
+	MV    9.55   to office  1071      
+	MV   10.16   to street  1071      
+	MV   10.68   to office  1071      
+	MV   19.64   to street  1071      
+	ET   19.70   to street  1071      
+------------------------------------------------
+Tuesday     total     10.00 
+	BT    9.00   to street  1071      
+	MV    9.73   to office  1071      
+	MV   10.18   to street  1071      
+	MV   10.44   to office  1071      
+	MV   18.92   to street  1071      
+	ET   19.00   to street  1071      
+------------------------------------------------
+Wednesday   total     10.69 
+	BT    9.00   to street  1071      
+	MV    9.18   to office  1071      
+	MV   10.00   to street  1071      
+	MV   10.30   to office  1071      
+	MV   19.60   to street  1071      
+	ET   19.69   to street  1071      
+------------------------------------------------
+Thursday    total     9.93  
+	BT    9.00   to street  1071      
+	MV    9.51   to office  1071      
+	MV   18.87   to street  1071      
+	ET   18.93   to street  1071      
+------------------------------------------------
+Friday      total     10.55            ns day
+	BT    9.00   to street  1071      
+	MV    9.60   to office  1071      
+	MV   19.47   to street  1071      
+	ET   19.55   to street  1071      
+
+foster, p
+FT
+route:floater
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     12.67 
+	BT    9.06   to street  1058      
+	MV    9.54   to office  1058      
+	MV   16.02   to office  1051      
+	MV   21.50   to street  1058      
+	ET   21.73   to street  1007      
+------------------------------------------------
+Monday      total     12.36 
+	BT    9.12   to street  1051      
+	MV    9.96   to office  1051      
+	MV   14.50   to office  1022      
+	MV   15.50   to office  1051      
+	MV   21.46   to street  1051      
+	ET   21.48   to street  1007      
+------------------------------------------------
+Tuesday     total     10.69            ns day
+	BT    9.09   to street  1051      
+	MV   10.28   to office  1051      
+	MV   12.00   to office  1015      
+	MV   15.00   to office  1051      
+	MV   19.99   to street  1051      
+	ET   20.28   to street  1007      
+------------------------------------------------
+Wednesday   total     10.86 
+	BT    9.09   to street  1058      
+	MV    9.85   to office  1058      
+	MV   14.00   to office  1051      
+	MV   17.00   to office  1058      
+	MV   19.94   to street  1058      
+	ET   19.95   to street  1007      
+------------------------------------------------
+Thursday    total     9.53  
+	BT    8.02   to street  1051      
+	MV    8.73   to office  1051      
+	MV   15.00   to office  1007      
+	MV   17.55   to street  1007      
+	ET   17.55   to street  1007      
+------------------------------------------------
+Friday      total     10.00 
+	BT    9.00   to street  1051      
+	MV    9.92   to office  1051      
+	MV   14.00   to office  0911      
+	MV   16.00   to office  1051      
+	MV   18.92   to street  1051      
+	ET   19.00   to street  1007      
+
+symons, s
+FT
+route:0933
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     10.70 
+	BT    9.00   to street  0933      
+	MV    9.94   to office  0933      
+	MV   17.50   to office  0936   off
+	MV   20.04   to street  0933      
+	ET   20.20   to street  0933      
+------------------------------------------------
+Monday      total     11.11 
+	BT    9.02   to street  0933      
+	MV   10.45   to office  0933      
+	MV   20.48   to street  0933      
+	ET   20.63   to street  0933      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.00   to street  0933      
+	MV    9.96   to office  0933      
+	MV   17.33   to street  0933      
+	ET   17.51   to street  0933      
+------------------------------------------------
+Wednesday   total     9.11  
+	BT    9.00   to street  0933      
+	MV   10.11   to office  0933      
+	MV   12.75   to office  0936   off
+	MV   13.50   to office  0933      
+	MV   18.50   to street  0933      
+	ET   18.61   to street  0933      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  0933      
+	MV    9.69   to office  0933      
+	MV   17.32   to street  0933      
+	ET   17.50   to street  0933      
+
+rodriquez, j
+FT
+route:floater
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    sick      8.00  
+------------------------------------------------
+Monday      sick      8.00  
+------------------------------------------------
+Tuesday     sick      8.00  
+------------------------------------------------
+Thursday    sick      8.00  
+------------------------------------------------
+Friday      lwop      8.00  
+
+green, s
+aux
+================================================
+
+wooten, c
+FT
+route:1007
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     5.89  
+------------------------------------------------
+Saturday    annual    2.11  
+	BT    9.00   to street  1007      
+	MV   10.45   to office  1007      
+	MV   14.48   to travel  0000      
+	ET   15.39   to street  1007      
+------------------------------------------------
+Monday      total     7.13  
+------------------------------------------------
+Monday      annual    0.87  
+	BT    9.05   to street  1007      
+	MV   10.65   to travel  1007      
+	MV   16.17   to street  1007      
+	ET   16.18   to street  1007      
+------------------------------------------------
+Tuesday     total     5.85  
+------------------------------------------------
+Tuesday     annual    2.15  
+	BT    9.00   to street  1007      
+	MV   10.67   to office  1007      
+	MV   15.25   to office  1007      
+	ET   15.35   to street  1007      
+------------------------------------------------
+Wednesday   total     5.96  
+------------------------------------------------
+Wednesday   annual    2.04  
+	BT    9.00   to street  1007      
+	MV   10.70   to office  1007      
+	MV   15.42   to street  1007      
+	ET   15.46   to street  1007      
+------------------------------------------------
+Thursday    total     6.25  
+------------------------------------------------
+Thursday    annual    1.75  
+	BT    9.02   to street  1007      
+	MV   10.23   to office  1007      
+	MV   15.71   to street  1007      
+	ET   15.77   to street  1007      
+
+miller, b
+FT
+route:floater
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     10.70 
+	BT    8.01   to street  0907      
+	MV    8.07   to street  0928      
+	MV    8.89   to street  0927      
+	MV   10.09   to street  0928      
+	MV   10.47   to street  0938      
+	MV   11.44   to office  0938      
+	MV   19.17   to street  0938      
+	ET   19.21   to street  0907      
+------------------------------------------------
+Monday      sick      8.00  
+------------------------------------------------
+Tuesday     total     6.80             ns day
+	BT    8.07   to street  1033      
+	MV    8.37   to street  1033      
+	MV    9.45   to office  0925      
+	MV   15.31   to street  0925      
+	ET   15.37   to street  0907      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    8.00   to street  0907      
+	MV    9.42   to office  0927      
+	MV   15.94   to street  0927      
+	ET   16.00   to street  0907      
+------------------------------------------------
+Thursday    total     10.16 
+	BT    8.00   to street  0936      
+	MV    9.59   to office  0936      
+	MV   16.50   to office  0950      
+	MV   18.64   to street  0936      
+	ET   18.66   to street  0907      
+------------------------------------------------
+Friday      total     9.47  
+	BT    8.03   to street  0907      
+	MV    9.11   to office  0907      
+	MV    9.35   to street  0907      
+	MV    9.55   to street  0907      
+	MV    9.55   to office  0907      
+	MV   16.50   to office  0918      
+	MV   17.92   to street  0907      
+	ET   18.00   to street  0907      
+
+robertson, c
+FT
+route:1020
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     1.99  
+------------------------------------------------
+Saturday    total     8.00  
+	BT    8.01   to street  1020      
+	MV    9.86   to office  1020      
+	MV   17.75   to street  1020      
+	ET   18.00   to street  1020      
+------------------------------------------------
+Monday      total     10.44 
+	BT    9.28   to street  1020      
+	MV   10.05   to office  1020      
+	MV   17.50   to office  1022   off
+	ET   20.22   to street  1020      
+------------------------------------------------
+Tuesday     total     10.68 
+	BT    8.32   to street  1020      
+	MV   10.75   to office  1020      
+	MV   15.00   to office  1022   off
+	MV   19.44   to street  1020      
+	ET   19.50   to street  1020      
+------------------------------------------------
+Wednesday   total     8.67             ns day
+	BT    8.12   to street  1020      
+	MV   10.14   to office  1020      
+	MV   16.75   to street  1020      
+	ET   16.79   to street  1020      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    8.02   to street  1020      
+	MV    9.36   to office  1020      
+	MV   15.98   to street  1020      
+	ET   16.03   to street  1020      
+------------------------------------------------
+Friday      total     9.02  
+	BT    8.01   to street  1020      
+	MV    9.87   to office  1020      
+	MV   15.50   to office  1007   off
+	ET   17.03   to street  1020      
+
+nelson, j
+aux
+================================================
+
+bratland, d
+FT
+route:1044
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     13.02 
+	BT    8.15   to street  1044      
+	MV   11.39   to office  1044      
+	MV   18.75   to office  1022   off
+	MV   21.67   to street  1044      
+	ET   21.67   to street  1044      
+------------------------------------------------
+Tuesday     total     9.67  
+	BT    8.56   to street  1044      
+	MV    9.82   to office  1044      
+	MV   17.50   to office  1033   off
+	MV   18.72   to street  1044      
+	ET   18.73   to street  1044      
+------------------------------------------------
+Wednesday   total     7.82  
+------------------------------------------------
+Wednesday   lwop      0.18  
+	BT    8.69   to street  1044      
+	MV    9.48   to office  1044      
+	ET   17.01   to street  1044      
+	MV   17.01   to street  1044      
+------------------------------------------------
+Thursday    total     8.61  
+	BT    8.59   to street  1044      
+	MV    9.34   to office  1044      
+	MV   16.00   to office  1004   off
+	MV   17.70   to street  1044      
+	ET   17.70   to street  1044      
+------------------------------------------------
+Friday      total     7.48  
+------------------------------------------------
+Friday      lwop      0.52  
+	BT    8.85   to street  1044      
+	MV    9.72   to office  1044      
+	MV   16.82   to street  1044      
+	ET   16.83   to street  1044      
+
+steinke, s
+FT
+route:floater
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    total     9.00  
+	BT    8.00   to street  1004      
+	MV    9.30   to street  1005      
+	MV   10.05   to office  1005      
+	MV   17.42   to street  1005      
+	ET   17.50   to street  1011      
+------------------------------------------------
+Monday      total     9.98  
+	BT    8.00   to street  1004      
+	MV    9.50   to street  1005      
+	MV   10.72   to office  1005      
+	MV   18.43   to street  1005      
+	ET   18.48   to street  1011      
+------------------------------------------------
+Tuesday     total     9.01  
+	BT    8.00   to street  1022      
+	MV    9.38   to street  1004      
+	MV   10.33   to office  1004      
+	MV   17.47   to street  1004      
+	ET   17.51   to street  1011      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.00   to street  1004      
+	MV    9.51   to office  1004      
+	MV   17.43   to street  1004      
+	ET   17.50   to street  1011      
+------------------------------------------------
+Friday      total     9.00  
+	BT    8.00   to street  1011      
+	MV    9.38   to street  1004      
+	MV   10.21   to office  1004      
+	MV   17.43   to street  1004      
+	ET   17.50   to street  1011      
+
+alhayali, a
+FT
+route:floater
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     10.85 
+	BT    9.15   to street  1016      
+	MV   10.50   to office  1016      
+	MV   17.00   to office  1033      
+	MV   20.40   to street  1016      
+	ET   20.50   to street  1001      
+------------------------------------------------
+Monday      total     10.35 
+	BT    9.26   to street  1072      
+	MV   10.64   to office  1072      
+	MV   16.50   to office  1023      
+	MV   20.10   to street  1072      
+	ET   20.11   to street  1001      
+------------------------------------------------
+Tuesday     total     10.36 
+	BT    9.13   to street  1072      
+	MV   10.74   to office  1072      
+	MV   15.50   to office  1022      
+	MV   19.98   to street  1072      
+	ET   19.99   to street  1001      
+------------------------------------------------
+Wednesday   total     7.22             ns day
+	BT    9.57   to street  1072      
+	MV   10.56   to office  1072      
+	MV   17.27   to street  1072      
+	ET   17.29   to street  1001      
+------------------------------------------------
+Thursday    total     9.47  
+	BT    9.03   to street  1072      
+	MV   10.46   to office  1072      
+	MV   15.50   to office  1053      
+	MV   18.99   to street  1072      
+	ET   19.00   to street  1001      
+------------------------------------------------
+Friday      total     9.26  
+	BT    9.01   to street  1072      
+	MV   10.27   to office  1072      
+	ET   18.77   to street  1001      
+
+pang, d
+FT
+route:1022
+ns day:Saturday
+================================================
+------------------------------------------------
+Saturday    total     12.03            ns day
+	BT    8.00   to street  1022      
+	MV    9.35   to office  1022      
+	MV    9.59   to street  1022      
+	MV    9.83   to office  1022      
+	MV   16.83   to office  0927   off
+	MV   19.83   to office  1022      
+	MV   20.36   to street  1022      
+	ET   20.53   to street  1022      
+------------------------------------------------
+Monday      annual    8.00  
+------------------------------------------------
+Tuesday     annual    8.00  
+------------------------------------------------
+Wednesday   total     11.60 
+	BT    8.85   to street  1022      
+	MV    9.92   to office  1022      
+	MV   18.42   to office  1043   off
+	MV   20.53   to office  1022      
+	MV   20.72   to street  1022      
+	ET   20.95   to street  1022      
+------------------------------------------------
+Thursday    total     11.32 
+	BT    8.36   to street  1022      
+	MV    9.15   to office  1022      
+	MV    9.23   to street  1022      
+	MV    9.55   to office  1022      
+	MV   17.47   to office  1013   off
+	MV   19.78   to office  1022      
+	MV   19.99   to street  1022      
+	ET   20.18   to street  1022      
+------------------------------------------------
+Friday      total     11.33 
+	BT    8.00   to street  1022      
+	MV    9.08   to office  1022      
+	MV    9.29   to street  1022      
+	MV    9.57   to office  1022      
+	MV   17.55   to office  0936   off
+	MV   19.32   to office  1022      
+	MV   19.74   to street  1022      
+	ET   19.83   to street  1022      
+
+shrestha, p
+FT
+route:0901
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     9.78  
+	BT    9.00   to street  0901      
+	MV   10.18   to office  0901      
+	MV   17.50   to office  0950   off
+	MV   18.65   to street  0901      
+	ET   18.78   to street  0901      
+------------------------------------------------
+Monday      total     11.46 
+	BT    9.00   to street  0901      
+	MV   10.53   to office  0901      
+	MV   17.50   to office  0905   off
+	MV   20.40   to street  0901      
+	ET   20.46   to street  0901      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.00   to street  0901      
+	MV    9.69   to office  0901      
+	MV   16.97   to street  0901      
+	ET   17.00   to street  0901      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  0901      
+	MV    9.62   to office  0901      
+	MV   16.95   to street  0901      
+	ET   17.00   to street  0901      
+------------------------------------------------
+Friday      sick      8.00  
+
+stevens, a
+FT
+route:floater
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     10.31 
+	BT    6.16         708  0000      
+	ET   17.47         708  0000      
+------------------------------------------------
+Sunday      total     8.72  
+	BT    6.91         708  0000      
+	ET   16.45         708  0000      
+------------------------------------------------
+Monday      total     8.00  
+	BT    5.86         708  0000      
+	ET   14.00         708  0000      
+------------------------------------------------
+Tuesday     total     4.75             ns day
+	BT    6.15         708  0000      
+	ET   10.90         708  0000      
+------------------------------------------------
+Wednesday   total     9.03  
+	BT    6.19         708  0000      
+	ET   15.22         708  0000      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    6.19         708  0000      
+	ET   15.19         708  0000      
+------------------------------------------------
+Friday      total     8.00  
+	BT    6.11         708  0000      
+	ET   15.11         708  0000      
+
+hunholz, k
+FT
+route:0906
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    total     9.97  
+	BT    8.78   to street  0906      
+	MV    9.98   to office  0906      
+	MV   16.96   to street  0906      
+	MV   16.97   to office  1044   off
+	MV   19.17   to street  0906      
+	ET   19.25   to street  0906      
+------------------------------------------------
+Monday      annual    8.00  
+------------------------------------------------
+Tuesday     total     9.96  
+	BT    8.06   to street  0906      
+	MV   10.84   to office  0906      
+	MV   18.52   to street  0906      
+	ET   18.52   to street  0906      
+------------------------------------------------
+Wednesday   total     9.65  
+	BT    8.85   to street  0906      
+	MV    9.81   to office  0906      
+	MV   17.42   to street  0906      
+	MV   17.43   to office  0925   off
+	MV   18.94   to street  0906      
+	ET   19.00   to street  0906      
+------------------------------------------------
+Thursday    total     8.61             ns day
+	BT    8.89   to street  0906      
+	MV   10.01   to office  0906      
+	MV   10.01   to office  1032   off
+	MV   11.30   to office  0906      
+	MV   17.92   to street  0906      
+	ET   18.00   to street  0906      
+------------------------------------------------
+Friday      total     9.14  
+	BT    8.86   to street  0906      
+	MV    9.78   to office  0950   off
+	MV   11.50   to office  0906      
+	MV   18.48   to street  0906      
+	ET   18.50   to street  0906      
+
+matthews, p
+FT
+route:0000
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    total     11.33 
+	BT    8.87   to office  2647   off
+	MV   16.41   to office  2867   off
+	MV   19.02   to office  2864   off
+	MV   19.82   to street  2647   off
+	ET   20.20   to street  0000      
+------------------------------------------------
+Monday      total     15.12 
+	BT    9.06   to street  2647   off
+	MV   11.32   to office  2666   off
+	MV   14.00   to office  2647   off
+	ET    0.18   to street  0000      
+------------------------------------------------
+Tuesday     total     13.30 
+	BT    8.17   to office  2647   off
+	MV    9.60   to street  2647   off
+	MV   10.95   to office  2647   off
+	MV   14.72   to office  2653   off
+	MV   16.45   to office  2647   off
+	MV   21.23   to street  2647   off
+	ET   21.47   to street  0000      
+------------------------------------------------
+Wednesday   total     9.74  
+	BT    8.70   to street  2647   off
+	MV    9.60   to office  2647   off
+	MV   16.45   to office  2653   off
+	MV   17.43   to office  2647   off
+	MV   18.72   to street  2647   off
+	ET   18.94   to street  0000      
+------------------------------------------------
+Thursday    total     8.69             ns day
+	BT    8.97   to street  2647   off
+	MV    9.74   to office  2647   off
+	MV   16.20   to office  2668   off
+	MV   17.39   to street  2647   off
+	ET   17.66   to street  0000      
+------------------------------------------------
+Friday      total     9.89  
+	BT    8.85   to street  2647   off
+	MV    9.70   to office  2647   off
+	MV   10.24   to office  2626   off
+	MV   12.42   to office  2647   off
+	MV   18.94   to street  2647   off
+	ET   19.24   to street  0000      
+
+martines, j
+FT
+route:0903
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    sick      8.00  
+------------------------------------------------
+Monday      total     12.03            ns day
+	BT    8.52   to street  0903      
+	MV   10.16   to office  0903      
+	MV   18.00   to office  0906   off
+	ET   20.55   to street  0903      
+	MV   20.55   to street  0903      
+------------------------------------------------
+Tuesday     total     9.76  
+	BT    8.49   to street  0903      
+	MV   10.48   to office  0903      
+	MV   18.25   to street  0903      
+	ET   18.25   to street  0903      
+------------------------------------------------
+Wednesday   total     9.54  
+	BT    8.87   to street  0903      
+	MV    9.63   to office  0903      
+	MV   18.00   to office  0950   off
+	ET   18.41   to street  0903      
+	MV   18.41   to street  0903      
+------------------------------------------------
+Thursday    total     10.07 
+	BT    8.44   to street  0903      
+	MV    9.59   to office  0903      
+	MV   17.00   to office  0925   off
+	MV   18.51   to street  0903      
+	ET   18.51   to street  0903      
+------------------------------------------------
+Friday      total     9.34  
+	BT    8.66   to street  0903      
+	MV    9.50   to office  0903      
+	MV   17.00   to office  0911   off
+	ET   18.00   to street  0903      
+	MV   18.00   to street  0903      
+
+henderson, j
+FT
+route:1037
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    total     12.48 
+	BT    8.00   to street  1037      
+	MV   10.09   to office  1037      
+	MV   17.52   to office  1072   off
+	MV   19.50   to office  1045   off
+	MV   20.91   to street  1037      
+	ET   20.98   to street  1037      
+------------------------------------------------
+Tuesday     total     12.35 
+	BT    8.04   to street  1037      
+	MV   10.00   to office  1037      
+	MV   18.50   to office  1043   off
+	MV   19.00   to office  1023   off
+	ET   20.89   to street  1037      
+------------------------------------------------
+Wednesday   total     11.38 
+	BT    8.02   to street  1037      
+	MV    9.74   to office  1037      
+	MV   17.00   to office  1036   off
+	MV   18.50   to office  1072   off
+	MV   19.00   to office  1023   off
+	MV   19.71   to street  1037      
+	ET   19.90   to street  1037      
+------------------------------------------------
+Thursday    total     7.16  
+------------------------------------------------
+Thursday    lwop      0.84  
+	BT    7.70   to street  1037      
+	MV    9.00   to office  1037      
+	ET   14.86   to street  1037      
+------------------------------------------------
+Friday      total     9.17  
+	BT    8.10   to street  1037      
+	MV    9.97   to office  1037      
+	MV   17.00   to office  1072   off
+	ET   17.77   to street  1037      
+
+kelly, x
+aux
+================================================
+
+benlmaloua, m
+FT
+route:1008
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    total     12.47 
+	BT    8.46   to street  1008      
+	MV    9.89   to office  1008      
+	MV   11.00   to office  1008      
+	MV   18.50   to office  1043   off
+	MV   21.40   to street  1008      
+	ET   21.43   to street  1008      
+------------------------------------------------
+Monday      total     11.59            ns day
+	BT   10.37   to street  1008      
+	MV   11.40   to office  1008      
+	MV   12.00   to office  1008      
+	MV   19.50   to office  1025   off
+	MV   22.42   to street  1008      
+	ET   22.46   to street  1008      
+------------------------------------------------
+Tuesday     total     11.39 
+	BT    8.61   to street  1008      
+	MV    9.70   to office  1008      
+	MV   10.50   to office  1008      
+	MV   18.50   to office  1025   off
+	MV   20.47   to street  1008      
+	ET   20.50   to street  1008      
+------------------------------------------------
+Wednesday   total     11.37 
+	BT    8.23   to street  1008      
+	MV    9.03   to street  1008      
+	MV    9.97   to office  1008      
+	MV   10.50   to office  1008      
+	MV   18.00   to office  1025   off
+	MV   19.99   to street  1008      
+	ET   20.10   to street  1008      
+------------------------------------------------
+Thursday    total     11.36 
+	BT    8.29   to street  1008      
+	MV    8.31   to street  1008      
+	MV    9.90   to office  1008      
+	MV   18.00   to office  1053   off
+	MV   20.11   to street  1008      
+	ET   20.15   to street  1008      
+------------------------------------------------
+Friday      total     11.19 
+	BT    8.22   to street  1008      
+	MV    9.90   to office  1008      
+	MV   17.50   to office  1007   off
+	MV   19.87   to street  1008      
+	ET   19.91   to street  1008      
+
+mcneely, a
+FT
+route:1023
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    total     11.94 
+	BT    8.59   to street  1043   off
+	MV   10.40   to street  1043   off
+	MV   11.31   to office  1023      
+	MV   17.50   to office  1045   off
+	MV   17.62   to office  1072   off
+	MV   20.75   to street  1023      
+	ET   21.03   to street  1023      
+------------------------------------------------
+Tuesday     total     11.64 
+	BT    9.06   to street  1023      
+	MV   10.00   to office  1023      
+	MV   17.56   to office  1037   off
+	MV   18.35   to office  1043   off
+	MV   21.00   to street  1023      
+	ET   21.20   to street  1023      
+------------------------------------------------
+Wednesday   total     10.89 
+	BT    8.47   to street  1023      
+	MV    9.21   to street  1043   off
+	MV    9.81   to office  1023      
+	MV   17.00   to office  1023      
+	MV   17.00   to office  1036   off
+	MV   18.50   to office  1072   off
+	MV   19.00   to office  1023      
+	MV   19.51   to street  1023      
+	ET   19.86   to street  1023      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    7.00   to street  1023      
+	MV    9.00   to office  1023      
+	MV   15.31   to street  1023      
+	ET   15.53   to street  1023      
+------------------------------------------------
+Friday      total     8.79  
+	BT    8.59   to street  1023      
+	MV    9.50   to office  1023      
+	MV   17.00   to office  1072   off
+	MV   17.64   to street  1023      
+	ET   17.88   to street  1023      
+
+walker, c
+FT
+route:1033
+ns day:Tuesday
+================================================
+------------------------------------------------
+Monday      total     12.12 
+	BT    9.65   to office  1033      
+	MV   10.83   to office  1033      
+	MV   10.92   to street  1033      
+	MV   11.64   to office  1033      
+	MV   22.24   to street  1033      
+	ET   22.27   to street  1033      
+------------------------------------------------
+Wednesday   total     9.53  
+	BT    9.44   to street  1033      
+	MV   11.04   to office  1033      
+	MV   19.43   to street  1033      
+	ET   19.47   to street  1033      
+------------------------------------------------
+Thursday    total     7.84  
+------------------------------------------------
+Thursday    lwop      0.16  
+	BT    9.47   to street  1033      
+	MV   10.21   to office  1033      
+	MV   17.76   to street  1033      
+	ET   17.81   to street  1033      
+------------------------------------------------
+Friday      total     8.56  
+	BT    9.26   to street  1033      
+	MV   10.08   to office  1033      
+	ET   18.32   to street  1033      
+	MV   18.32   to street  1033      
+
+turner, u
+aux
+================================================
+
+helmbold, a
+FT
+route:0930
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     8.97  
+	BT    9.68   to street  0930      
+	MV   12.43   to office  0930      
+	MV   19.05   to street  0930      
+	ET   19.15   to street  0930      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.00   to street  0930      
+	MV   10.00   to office  0930      
+	MV   17.37   to street  0930      
+	ET   17.50   to street  0930      
+------------------------------------------------
+Wednesday   total     8.00  
+	BT    9.11   to street  0930      
+	MV   10.03   to office  0930      
+	MV   17.16   to street  0930      
+	ET   17.59   to street  0930      
+------------------------------------------------
+Thursday    total     9.00  
+	BT    9.00   to street  0930      
+	MV   10.99   to office  0930      
+	MV   18.17   to street  0930      
+	ET   18.50   to street  0930      
+------------------------------------------------
+Friday      total     8.00  
+	BT    9.00   to street  0930      
+	MV    9.74   to office  0930      
+	MV   16.70   to street  0930      
+	ET   17.00   to street  0930      
+
+wood, n
+FT
+route:0916
+ns day:Monday
+================================================
+------------------------------------------------
+Saturday    total     11.45 
+	BT    9.16   to street  0916      
+	MV   10.49   to office  0916      
+	MV   11.53   to office  1044   off
+	MV   14.10   to office  0916      
+	MV   20.96   to street  0916      
+	ET   21.11   to street  0916      
+------------------------------------------------
+Monday      total     13.32            ns day
+	BT    9.38   to street  0916      
+	MV   10.02   to office  0916      
+	MV   20.35   to office  0905   off
+	MV   22.90   to office  0916      
+	MV   23.14   to street  0905   off
+	ET   23.20   to street  0916      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.03   to street  0916      
+	MV   10.23   to office  0916      
+	MV   17.46   to street  0916      
+	ET   17.52   to street  0916      
+------------------------------------------------
+Wednesday   total     10.49 
+	BT    9.08   to street  0916      
+	MV   10.56   to office  0916      
+	MV   13.88   to office  0925   off
+	MV   15.08   to office  0916      
+	MV   19.98   to street  0916      
+	ET   20.07   to street  0916      
+------------------------------------------------
+Thursday    total     8.47  
+	BT    9.04   to street  0916      
+	MV   10.28   to office  0916      
+	MV   17.90   to street  0916      
+	ET   18.01   to street  0916      
+------------------------------------------------
+Friday      total     10.04 
+	BT    9.00   to street  0916      
+	MV   10.37   to office  0916      
+	MV   11.28   to office  0925   off
+	MV   12.40   to office  0916      
+	MV   19.47   to street  0916      
+	ET   19.54   to street  0916      
+
+carroll, r
+FT
+route:floater
+ns day:Thursday
+================================================
+------------------------------------------------
+Saturday    lwop      8.00  
+------------------------------------------------
+Monday      annual    8.00  
+------------------------------------------------
+Tuesday     annual    8.00  
+------------------------------------------------
+Wednesday   annual    8.00  
+------------------------------------------------
+Friday      annual    8.00  
+
+brown, a
+FT
+route:1011
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     3.02  
+------------------------------------------------
+Saturday    total     8.00  
+	BT    7.00         733  1011      
+	MV    9.12   to street  1011      
+	MV    9.71   to office  1011      
+	ET   18.02   to street  1011      
+------------------------------------------------
+Monday      total     12.50 
+	BT    7.00         733  1011      
+	MV   10.04   to street  1011      
+	MV   11.04   to office  1011      
+	ET   20.00   to street  1011      
+------------------------------------------------
+Tuesday     total     11.00 
+	BT    7.00         733  1011      
+	MV    9.01   to street  1011      
+	MV    9.61   to office  1011      
+	ET   18.00   to street  1011      
+------------------------------------------------
+Wednesday   total     9.97  
+	BT    7.05         733  1011      
+	MV    9.03   to street  1011      
+	MV    9.46   to office  1011      
+	ET   17.02   to street  1011      
+------------------------------------------------
+Thursday    total     8.96  
+	BT    7.39         733  1011      
+	MV    8.95   to street  1011      
+	MV    9.36   to office  1011      
+	ET   16.35   to street  1011      
+
+murray, k
+FT
+route:1016
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     12.00 
+	BT    9.00   to street  1016      
+	MV    9.54   to office  1016      
+	MV   17.00   to office  1004   off
+	MV   21.47   to street  1016      
+	ET   21.50   to street  1016      
+------------------------------------------------
+Tuesday     total     8.53  
+	BT    9.01   to street  1016      
+	MV    9.50   to office  1016      
+	MV   18.75   to street  1016      
+	ET   18.79   to street  1016      
+------------------------------------------------
+Wednesday   total     10.01 
+	BT    9.00   to street  1016      
+	MV    9.66   to office  1016      
+	MV   17.50   to office  1051   off
+	MV   19.50   to street  1016      
+	ET   19.51   to street  1016      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    9.00   to street  1016      
+	MV    9.40   to office  1016      
+	MV   16.95   to street  1016      
+	ET   17.00   to street  1016      
+------------------------------------------------
+Friday      total     8.49  
+	BT    9.00   to street  1016      
+	MV    9.50   to office  1016      
+	MV   17.98   to street  1016      
+	ET   17.99   to street  1016      
+
+mudesir sr, h
+FT
+route:1053
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     11.61 
+	BT    8.06   to street  1053      
+	MV    8.90   to office  1053      
+	MV   16.22   to office  1013   off
+	MV   19.97   to street  1053      
+	ET   20.17   to street  1053      
+------------------------------------------------
+Monday      total     13.20 
+	BT    8.68   to street  1053      
+	MV   11.42   to office  1053      
+	MV   19.15   to office  1023   off
+	MV   22.23   to street  1053      
+	ET   22.38   to street  1053      
+------------------------------------------------
+Tuesday     total     11.33 
+	BT    8.38   to street  1053      
+	MV   10.69   to office  1053      
+	MV   18.05   to office  1043   off
+	MV   19.98   to street  1053      
+	ET   20.21   to street  1053      
+------------------------------------------------
+Wednesday   total     11.07            ns day
+	BT    8.50   to street  1053      
+	MV   10.34   to office  1053      
+	MV   18.21   to office  1051   off
+	MV   19.64   to street  1053      
+	ET   20.07   to street  1053      
+------------------------------------------------
+Thursday    total     4.00  
+------------------------------------------------
+Thursday    lwop      4.00  
+	BT    8.00   to street  1053      
+	MV   10.23   to office  1053      
+	MV   11.98   to street  1053      
+	ET   12.00   to street  1053      
+------------------------------------------------
+Friday      total     11.15 
+	BT    8.13   to street  1053      
+	MV    9.98   to office  1053      
+	MV   18.05   to office  1011   off
+	MV   19.63   to street  1053      
+	ET   19.78   to street  1053      
+
+baez, e
+FT
+route:floater
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     9.53  
+	BT    9.00   to street  0929      
+	MV    9.08   to street  0936      
+	MV   10.59   to street  0903      
+	MV   11.96   to office  0903      
+	MV   18.76   to street  0903      
+	ET   19.03   to street  0929      
+------------------------------------------------
+Monday      total     11.48 
+	BT    9.09   to street  0929      
+	MV    9.18   to street  0936      
+	MV   11.50   to office  0936      
+	MV   18.75   to office  0905      
+	MV   20.75   to street  0936      
+	ET   21.07   to street  0929      
+------------------------------------------------
+Tuesday     total     8.00  
+	BT    9.00   to street  0936      
+	MV    9.16   to street  0936      
+	MV   10.50   to office  0936      
+	MV   17.48   to street  0936      
+	ET   17.50   to street  0929      
+------------------------------------------------
+Thursday    total     8.51  
+	BT    9.00   to street  0929      
+	MV    9.10   to street  0937      
+	MV   10.30   to office  0937      
+	MV   11.00   to office  1025      
+	MV   11.75   to office  0937      
+	MV   17.89   to street  0937      
+	ET   18.01   to street  0929      
+------------------------------------------------
+Friday      total     8.65  
+	BT    9.00   to street  0929      
+	MV    9.09   to street  0929      
+	MV   10.33   to office  0929      
+	MV   10.68   to office  0936      
+	MV   11.75   to office  0929      
+	MV   18.10   to street  0929      
+	ET   18.15   to street  0929      
+
+rodriguez, a
+FT
+route:floater
+ns day:Wednesday
+================================================
+------------------------------------------------
+Saturday    total     10.83 
+	BT    9.12   to street  0901      
+	MV   10.22   to office  0905      
+	MV   15.25   to office  0950      
+	MV   17.00   to office  0905      
+	MV   20.37   to street  0905      
+	ET   20.45   to street  0906      
+------------------------------------------------
+Monday      total     11.54 
+	BT   10.17   to street  0905      
+	MV   10.22   to street  0932      
+	MV   12.09   to office  0932      
+	MV   20.83   to office  1037      
+	MV   22.16   to street  0932      
+	ET   22.21   to street  0906      
+------------------------------------------------
+Tuesday     total     9.35  
+	BT    9.18   to street  0901      
+	MV   10.60   to office  0901      
+	MV   10.63   to office  0901      
+	MV   18.95   to street  0901      
+	ET   19.03   to street  0906      
+------------------------------------------------
+Thursday    total     9.79  
+	BT    9.16   to street  0906      
+	MV    9.19   to street  0950      
+	MV   11.16   to office  0950      
+	MV   16.59   to office  0925      
+	MV   19.34   to street  0950      
+	ET   19.45   to street  0906      
+------------------------------------------------
+Friday      total     9.99  
+	BT    9.02   to street  0932      
+	MV    9.04   to street  0901      
+	MV   10.37   to office  0901      
+	MV   17.83   to office  0950      
+	MV   19.38   to street  0901      
+	ET   19.51   to street  0906      
+
+nelson, p
+FT
+route:0937
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      lwop      8.00  
+------------------------------------------------
+Tuesday     lwop      8.00  
+------------------------------------------------
+Wednesday   lwop      8.00  
+------------------------------------------------
+Thursday    lwop      8.00  
+------------------------------------------------
+Friday      lwop      8.00  
+
+custodio, t
+FT
+route:floater
+ns day:Saturday
+================================================
+------------------------------------------------
+Monday      total     13.14 
+	BT    9.19   to street  1043      
+	MV   10.07   to office  1043      
+	MV   22.69   to street  1043      
+	ET   22.83   to street  1056      
+------------------------------------------------
+Tuesday     sick      8.00  
+------------------------------------------------
+Wednesday   sick      8.00  
+------------------------------------------------
+Thursday    total     9.97  
+	BT    8.09   to street  1056      
+	MV    8.20   to street  1043      
+	MV    9.15   to office  1043      
+	MV   18.44   to street  1043      
+	ET   18.56   to street  1056      
+------------------------------------------------
+Friday      total     9.51  
+	BT    8.02   to street  1043      
+	MV    9.39   to office  1043      
+	MV   17.87   to street  1043      
+	ET   18.03   to street  1056      
+
+kitchen, d
+FT
+route:floater
+ns day:Tuesday
+================================================
+------------------------------------------------
+Saturday    total     11.81 
+	BT    9.01   to street  0935      
+	MV    9.95   to office  0935      
+	MV   16.50   to office  0925      
+	MV   20.17   to office  0922      
+	MV   21.00   to street  0935      
+	ET   21.32   to street  0906      
+------------------------------------------------
+Monday      total     11.30 
+	BT   10.21   to street  0928      
+	MV   11.21   to office  0928      
+	MV   18.83   to office  0922      
+	MV   21.82   to street  0928      
+	ET   22.01   to street  0906      
+------------------------------------------------
+Tuesday     total     8.27             ns day
+	BT    9.29   to street  0950      
+	MV   10.38   to office  0950      
+	MV   11.01   to office  1015      
+	MV   14.50   to office  0950      
+	MV   17.87   to street  0950      
+	ET   18.06   to street  0906      
+------------------------------------------------
+Wednesday   total     8.73  
+	BT    9.13   to street  0918      
+	MV    9.79   to office  0918      
+	MV   10.28   to office  0925      
+	MV   12.83   to office  0918      
+	MV   18.24   to street  0918      
+	ET   18.36   to street  0906      
+------------------------------------------------
+Thursday    total     9.82  
+	BT    9.12   to street  0913      
+	MV    9.13   to street  0918      
+	MV    9.95   to office  0918      
+	MV   16.46   to office  0925      
+	MV   19.32   to street  0918      
+	ET   19.44   to street  0906      
+------------------------------------------------
+Friday      total     10.16 
+	BT    9.03   to street  0933      
+	MV   10.00   to office  0933      
+	MV   10.48   to office  0925      
+	MV   13.25   to office  0933      
+	MV   19.45   to street  0933      
+	ET   19.69   to street  0906      
+
+kefene, a
+FT
+route:floater
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     9.77  
+	BT    8.00   to street  2202      
+	MV    9.88   to office  2202      
+	MV   12.00         731  2298      
+	MV   18.18   to street  2202      
+	ET   18.27   to street  0512      
+------------------------------------------------
+Monday      total     11.61 
+	BT    8.36   to street  2202      
+	MV   10.48   to office  2202      
+	MV   11.50   to travel  0000      
+	MV   12.40   to office  3937      
+	MV   20.42   to street  3937      
+	ET   20.47   to street  0512      
+------------------------------------------------
+Tuesday     total     12.46 
+	BT    8.16   to street  2202      
+	MV    9.65   to office  2202      
+	MV   10.83   to travel  0000      
+	MV   11.23   to office  2314      
+	MV   18.00   to office  2311      
+	MV   21.09   to street  2314      
+	ET   21.12   to street  0512      
+------------------------------------------------
+Wednesday   total     11.21 
+	BT    8.00   to street  2202      
+	MV    9.81   to office  2202      
+	MV   10.39   to travel  0000      
+	MV   10.73   to office  2314      
+	MV   18.95   to office  2335      
+	MV   19.68   to street  2314      
+	ET   19.71   to street  0512      
+------------------------------------------------
+Thursday    total     9.73  
+	BT    8.14   to street  2202      
+	MV    9.54   to office  2202      
+	MV   10.45   to travel  0000      
+	MV   10.81   to office  2314      
+	MV   18.34   to street  2314      
+	ET   18.37   to street  0512      
+------------------------------------------------
+Friday      total     9.94             ns day
+	BT    8.08   to street  2451      
+	MV    9.50   to office  2451      
+	MV   11.01   to office  2224      
+	MV   18.00         733  2451      
+	MV   18.35   to street  2451      
+	ET   18.52   to street  0512      
+
+geffrso, t
+FT
+route:1043
+ns day:Friday
+================================================
+------------------------------------------------
+Saturday    total     12.25 
+	BT    8.00   to street  0913   off
+	MV    9.71   to office  0913   off
+	MV   16.50   to office  0930   off
+	MV   20.61   to street  0913   off
+	ET   20.75   to street  1043      
+------------------------------------------------
+Monday      total     12.86 
+	BT    8.17   to street  1043      
+	MV   10.37   to office  0913   off
+	MV   18.00   to office  0925   off
+	MV   21.53   to street  0913   off
+	ET   21.53   to street  1043      
+------------------------------------------------
+Tuesday     total     11.61 
+	BT    8.00   to street  0913   off
+	MV    9.82   to office  0913   off
+	MV   17.80   to office  0925   off
+	MV   19.96   to street  0913   off
+	ET   20.11   to street  1043      
+------------------------------------------------
+Wednesday   total     11.52 
+	BT    8.00   to street  0913   off
+	MV    9.55   to office  0913   off
+	MV   17.50   to office  0925   off
+	MV   19.92   to street  0913   off
+	ET   20.02   to street  1043      
+------------------------------------------------
+Thursday    total     8.00  
+	BT    8.00   to street  0913   off
+	MV    9.40   to office  0913   off
+	MV   16.48   to street  0913   off
+	ET   16.53   to street  1043      
+------------------------------------------------
+Friday      total     11.10            ns day
+	BT    8.00   to street  0913   off
+	MV    9.65   to office  0913   off
+	MV   17.00   to office  0925   off
+	MV   19.59   to street  0913   off
+	ET   19.60   to street  1043      
+
+del toro, d
+aux
+================================================
+------------------------------------------------
+Saturday    total     12.19 
+	BT    8.30   to street  1036      
+	MV   10.09   to office  1036      
+	MV   17.87   to office  1072      
+	MV   19.25   to office  1045      
+	ET   20.99   to street  0000      
+------------------------------------------------
+Monday      total     13.61 
+	BT    9.00   to street  1036      
+	MV   11.46   to office  1036      
+	ET   23.11   to street  0000      
+------------------------------------------------
+Tuesday     total     11.72 
+	BT    9.00   to street  1036      
+	MV   10.01   to office  1036      
+	MV   19.00   to office  1043      
+	MV   21.00   to street  1036      
+	ET   21.22   to street  0000      
+------------------------------------------------
+Wednesday   total     11.16 
+	BT    8.25   to street  1036      
+	MV    9.75   to office  1036      
+	MV   11.75   to office  1043      
+	MV   14.00   to office  1036      
+	ET   19.91   to street  0000      
+------------------------------------------------
+Thursday    total     9.89  
+	BT    8.92   to street  1036      
+	MV    9.78   to office  1036      
+	MV   16.66   to office  1004      
+	MV   19.08   to street  1004      
+	ET   19.31   to street  0000      
+------------------------------------------------
+Friday      total     9.16  
+	BT    9.03   to street  1036      
+	MV   10.00   to office  1036      
+	MV   17.25   to office  0911      
+	MV   18.53   to street  1036      
+	ET   18.69   to street  0000      
+
+maes ii, d
+aux
+================================================
+
+payton, d
+aux
+================================================
+------------------------------------------------
+Sunday      total     7.95  
+	BT    7.96         724  0000      
+	MV    8.14         723  0000      
+	ET   16.41   to street  0000      
+------------------------------------------------
+Monday      total     11.80 
+	BT   10.13         782  0000      
+	MV   11.16   to office  1007      
+	MV   19.00   to office  1037      
+	ET   21.93   to street  0000      
+	MV   21.93   to street  1007      
+------------------------------------------------
+Tuesday     total     9.74  
+	BT    9.98   to office  1007      
+	MV   11.10   to office  1007      
+	MV   17.22   to office  1033      
+	ET   20.22   to street  0000      
+------------------------------------------------
+Wednesday   total     9.81  
+	BT   10.18   to travel  4955      
+	MV   11.27   to office  4955      
+	MV   11.67   to office  4955      
+	MV   19.38   to travel  4955      
+	ET   19.99   to street  0000      
+------------------------------------------------
+Thursday    total     9.77  
+	BT   10.00   to travel  0000      
+	MV   10.41   to office  2333      
+	MV   20.06   to travel  0000      
+	ET   20.27   to street  0000      
+------------------------------------------------
+Friday      lwop      4.00  
+
+corothers, y
+aux
+================================================
+------------------------------------------------
+Saturday    total     8.25  
+	BT    9.00         782  0000      
+	ET   17.25   to street  0000      
+------------------------------------------------
+Tuesday     total     6.42  
+	BT    7.50         782  0000      
+	ET   13.92   to street  0000      
+
+flaig, b
+aux
+================================================
+------------------------------------------------
+Saturday    total     7.75  
+	BT   10.00         782  0000      
+	ET   17.75   to street  0000      
+------------------------------------------------
+Tuesday     total     6.50  
+	BT    7.50         782  0000      
+	ET   14.00   to street  0000      

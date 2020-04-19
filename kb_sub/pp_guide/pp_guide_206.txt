@@ -1,0 +1,84 @@
+
+Pay Period Guide
+Year: 206
+---------------------------------------------
+
+                 START (Sat):   END (Fri):         
+PP: 01
+	 week 1: Dec 21, 0205 - Dec 27, 0205
+	 week 2: Dec 28, 0205 - Jan 03, 0206
+PP: 02
+	 week 1: Jan 04, 0206 - Jan 10, 0206
+	 week 2: Jan 11, 0206 - Jan 17, 0206
+PP: 03
+	 week 1: Jan 18, 0206 - Jan 24, 0206
+	 week 2: Jan 25, 0206 - Jan 31, 0206
+PP: 04
+	 week 1: Feb 01, 0206 - Feb 07, 0206
+	 week 2: Feb 08, 0206 - Feb 14, 0206
+PP: 05
+	 week 1: Feb 15, 0206 - Feb 21, 0206
+	 week 2: Feb 22, 0206 - Feb 28, 0206
+PP: 06
+	 week 1: Mar 01, 0206 - Mar 07, 0206
+	 week 2: Mar 08, 0206 - Mar 14, 0206
+PP: 07
+	 week 1: Mar 15, 0206 - Mar 21, 0206
+	 week 2: Mar 22, 0206 - Mar 28, 0206
+PP: 08
+	 week 1: Mar 29, 0206 - Apr 04, 0206
+	 week 2: Apr 05, 0206 - Apr 11, 0206
+PP: 09
+	 week 1: Apr 12, 0206 - Apr 18, 0206
+	 week 2: Apr 19, 0206 - Apr 25, 0206
+PP: 10
+	 week 1: Apr 26, 0206 - May 02, 0206
+	 week 2: May 03, 0206 - May 09, 0206
+PP: 11
+	 week 1: May 10, 0206 - May 16, 0206
+	 week 2: May 17, 0206 - May 23, 0206
+PP: 12
+	 week 1: May 24, 0206 - May 30, 0206
+	 week 2: May 31, 0206 - Jun 06, 0206
+PP: 13
+	 week 1: Jun 07, 0206 - Jun 13, 0206
+	 week 2: Jun 14, 0206 - Jun 20, 0206
+PP: 14
+	 week 1: Jun 21, 0206 - Jun 27, 0206
+	 week 2: Jun 28, 0206 - Jul 04, 0206
+PP: 15
+	 week 1: Jul 05, 0206 - Jul 11, 0206
+	 week 2: Jul 12, 0206 - Jul 18, 0206
+PP: 16
+	 week 1: Jul 19, 0206 - Jul 25, 0206
+	 week 2: Jul 26, 0206 - Aug 01, 0206
+PP: 17
+	 week 1: Aug 02, 0206 - Aug 08, 0206
+	 week 2: Aug 09, 0206 - Aug 15, 0206
+PP: 18
+	 week 1: Aug 16, 0206 - Aug 22, 0206
+	 week 2: Aug 23, 0206 - Aug 29, 0206
+PP: 19
+	 week 1: Aug 30, 0206 - Sep 05, 0206
+	 week 2: Sep 06, 0206 - Sep 12, 0206
+PP: 20
+	 week 1: Sep 13, 0206 - Sep 19, 0206
+	 week 2: Sep 20, 0206 - Sep 26, 0206
+PP: 21
+	 week 1: Sep 27, 0206 - Oct 03, 0206
+	 week 2: Oct 04, 0206 - Oct 10, 0206
+PP: 22
+	 week 1: Oct 11, 0206 - Oct 17, 0206
+	 week 2: Oct 18, 0206 - Oct 24, 0206
+PP: 23
+	 week 1: Oct 25, 0206 - Oct 31, 0206
+	 week 2: Nov 01, 0206 - Nov 07, 0206
+PP: 24
+	 week 1: Nov 08, 0206 - Nov 14, 0206
+	 week 2: Nov 15, 0206 - Nov 21, 0206
+PP: 25
+	 week 1: Nov 22, 0206 - Nov 28, 0206
+	 week 2: Nov 29, 0206 - Dec 05, 0206
+PP: 26
+	 week 1: Dec 06, 0206 - Dec 12, 0206
+	 week 2: Dec 13, 0206 - Dec 19, 0206

@@ -1,0 +1,84 @@
+
+Pay Period Guide
+Year: 9999
+---------------------------------------------
+
+                 START (Sat):   END (Fri):         
+PP: 01
+	 week 1: Dec 19, 9998 - Dec 25, 9998
+	 week 2: Dec 26, 9998 - Jan 01, 9999
+PP: 02
+	 week 1: Jan 02, 9999 - Jan 08, 9999
+	 week 2: Jan 09, 9999 - Jan 15, 9999
+PP: 03
+	 week 1: Jan 16, 9999 - Jan 22, 9999
+	 week 2: Jan 23, 9999 - Jan 29, 9999
+PP: 04
+	 week 1: Jan 30, 9999 - Feb 05, 9999
+	 week 2: Feb 06, 9999 - Feb 12, 9999
+PP: 05
+	 week 1: Feb 13, 9999 - Feb 19, 9999
+	 week 2: Feb 20, 9999 - Feb 26, 9999
+PP: 06
+	 week 1: Feb 27, 9999 - Mar 05, 9999
+	 week 2: Mar 06, 9999 - Mar 12, 9999
+PP: 07
+	 week 1: Mar 13, 9999 - Mar 19, 9999
+	 week 2: Mar 20, 9999 - Mar 26, 9999
+PP: 08
+	 week 1: Mar 27, 9999 - Apr 02, 9999
+	 week 2: Apr 03, 9999 - Apr 09, 9999
+PP: 09
+	 week 1: Apr 10, 9999 - Apr 16, 9999
+	 week 2: Apr 17, 9999 - Apr 23, 9999
+PP: 10
+	 week 1: Apr 24, 9999 - Apr 30, 9999
+	 week 2: May 01, 9999 - May 07, 9999
+PP: 11
+	 week 1: May 08, 9999 - May 14, 9999
+	 week 2: May 15, 9999 - May 21, 9999
+PP: 12
+	 week 1: May 22, 9999 - May 28, 9999
+	 week 2: May 29, 9999 - Jun 04, 9999
+PP: 13
+	 week 1: Jun 05, 9999 - Jun 11, 9999
+	 week 2: Jun 12, 9999 - Jun 18, 9999
+PP: 14
+	 week 1: Jun 19, 9999 - Jun 25, 9999
+	 week 2: Jun 26, 9999 - Jul 02, 9999
+PP: 15
+	 week 1: Jul 03, 9999 - Jul 09, 9999
+	 week 2: Jul 10, 9999 - Jul 16, 9999
+PP: 16
+	 week 1: Jul 17, 9999 - Jul 23, 9999
+	 week 2: Jul 24, 9999 - Jul 30, 9999
+PP: 17
+	 week 1: Jul 31, 9999 - Aug 06, 9999
+	 week 2: Aug 07, 9999 - Aug 13, 9999
+PP: 18
+	 week 1: Aug 14, 9999 - Aug 20, 9999
+	 week 2: Aug 21, 9999 - Aug 27, 9999
+PP: 19
+	 week 1: Aug 28, 9999 - Sep 03, 9999
+	 week 2: Sep 04, 9999 - Sep 10, 9999
+PP: 20
+	 week 1: Sep 11, 9999 - Sep 17, 9999
+	 week 2: Sep 18, 9999 - Sep 24, 9999
+PP: 21
+	 week 1: Sep 25, 9999 - Oct 01, 9999
+	 week 2: Oct 02, 9999 - Oct 08, 9999
+PP: 22
+	 week 1: Oct 09, 9999 - Oct 15, 9999
+	 week 2: Oct 16, 9999 - Oct 22, 9999
+PP: 23
+	 week 1: Oct 23, 9999 - Oct 29, 9999
+	 week 2: Oct 30, 9999 - Nov 05, 9999
+PP: 24
+	 week 1: Nov 06, 9999 - Nov 12, 9999
+	 week 2: Nov 13, 9999 - Nov 19, 9999
+PP: 25
+	 week 1: Nov 20, 9999 - Nov 26, 9999
+	 week 2: Nov 27, 9999 - Dec 03, 9999
+PP: 26
+	 week 1: Dec 04, 9999 - Dec 10, 9999
+	 week 2: Dec 11, 9999 - Dec 17, 9999
