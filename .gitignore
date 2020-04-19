@@ -4,7 +4,7 @@
 
 # ignore all sqlite files
 
-.sqlite
+*.sqlite
 
 # ignore kb generated dirs and files from kb_sub dir
 
