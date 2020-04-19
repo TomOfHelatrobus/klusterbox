@@ -8,8 +8,8 @@ mandates.sqlite
 
 # ignore kb generated dirs and files from kb_sub dir
 
-kb_sub/ee_reader
-kb_sub/over_max
-kb_sub/pp_guide
-kb_sub/spreadsheets
-kb_sub/weekly_availability
+/kb_sub/ee_reader
+/kb_sub/over_max
+/kb_sub/pp_guide
+/kb_sub/spreadsheets
+/kb_sub/weekly_availability
