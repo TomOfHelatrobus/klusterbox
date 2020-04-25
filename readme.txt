@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 3.001
-released: september 2019
+most recent version: 3.003
+released: in development
 
 For tutorials and help with using Klusterbox, visit www.klusterbox.com. Click on the links for Tutorials and Help. There you will find all the supporting documentation and video tutorials that I have produced so far. The process of creating new tutorials and updating old tutorials is on going. As I make daily changes to the software, some to the instructions might be slighly off.
 

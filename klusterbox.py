@@ -8,8 +8,6 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 3.002
-released: november 2019
 
 Non-standard libraries: (located in requirements.txt file)
 chardet==3.0.4
@@ -34,7 +32,10 @@ For the newest version of Klusterbox, visit www.klusterbox.com/download. The sou
 
 Klusterbox version 3.002 is being released under the GNU General Public License version 3.
 """
-
+# version variables
+from version_vars import version, release_date
+print("version: ", version)
+print("release date: ", release_date)
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox
@@ -69,6 +70,7 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
+
 
 
 def inquire(sql):
@@ -5671,7 +5673,8 @@ def about_klusterbox(self):  # gives information about the program
     except:
         pass
     Label(FF, text="Klusterbox", font="bold", fg="red", anchor=W).pack(fill=X)
-    Label(FF, text="version 3.002 November 2019", anchor=W).pack(fill=X)
+    Label(FF, text="version: {}".format(version), anchor=W).pack(fill=X)
+    Label(FF, text="release date: {}".format(release_date), anchor=W).pack(fill=X)
     Label(FF, text="created by Thomas Weeks", anchor=W).pack(fill=X)
     Label(FF, text="Original release: October 2018", anchor=W).pack(fill=X)
     Label(FF, text=" ", anchor=W).pack(fill=X)
@@ -10055,7 +10058,7 @@ if __name__ == "__main__":
             root.tk.call('wm', 'iconphoto', root._w, img)
         except:
             pass
-    root.title("KLUSTERBOX version 3.002")
+    root.title("KLUSTERBOX version {}".format(version))
     root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
     # if there are no stations in the stations list
     if len(list_of_stations) < 2:
