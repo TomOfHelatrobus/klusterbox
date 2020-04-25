@@ -33,9 +33,9 @@ For the newest version of Klusterbox, visit www.klusterbox.com/download. The sou
 Klusterbox version 3.002 is being released under the GNU General Public License version 3.
 """
 # version variables
-from version_vars import version, release_date
-print("version: ", version)
-print("release date: ", release_date)
+version = "3.003"
+release_date = "in development"
+
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox
@@ -70,8 +70,6 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
-
-
 
 def inquire(sql):
     db = sqlite3.connect("kb_sub/mandates.sqlite")
@@ -3008,7 +3006,6 @@ def informalc_por(frame):
     Button(wd[4], text="By Carrier", width=16).grid(row=0, column=3)
     rear_window(wd)
 
-
 def informalc(frame):
     if os.path.isdir('kb_sub/infc_grv') == True:  # clear contents of temp folder
         shutil.rmtree('kb_sub/infc_grv')
@@ -3038,7 +3035,6 @@ def informalc(frame):
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: (wd[0].destroy(), main_frame())).grid(row=0,
                                                                                                               column=0)
     rear_window(wd)
-
 
 def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availability
     file_path = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=[("Excel files", "*.csv *.xls")])
