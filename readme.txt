@@ -11,15 +11,19 @@ Copyright 2019 Thomas Weeks
 most recent version: 3.003
 released: in development
 
-For tutorials and help with using Klusterbox, visit www.klusterbox.com. Click on the links for Tutorials and Help. There you will find all the supporting documentation and video tutorials that I have produced so far. The process of creating new tutorials and updating old tutorials is on going. As I make daily changes to the software, some to the instructions might be slighly off.
+Caution: 
 
-Caution: To ensure proper operation of Klusterbox, make sure to keep the Klusterbox application and the kb_sub folder in the same folder.  
-
-For the newest version of Klusterbox, visit www.klusterbox.com/download. The source code is also available there. 
+To ensure proper operation of Klusterbox, make sure to keep the Klusterbox application and the kb_sub folder in the same folder.  
 
 Overview:
 
 Klusterbox is a computer program currently available on windows operating system which assist NALC union stewards in the investigation of improper mandate grievances. Klusterbox has a graphic user interface which allows stewards to easily build list of carriers, entering in their names, what list they are on (such as OTDL, WAL, etc), their n/s day, their route or string and what station they are currently at. Klusterbox creates and uses a database to keep track of changes in carrier's statuses. Klusterbox also allows for easy entry of clock rings and can track when carriers are working off their routes, even when it happens multiple times per day. Klusterbox uses codes which help to track when non list carriers are working on their n/s days or when OTDL carriers call in sick. Klusterbox can generate a report for quick display or a spreadsheet which stewards can bring with them for informal A meetings. Klusterbox will save the reports and spreadsheets generated in libraries which can be easily accessed. 
+
+Help and tutorials: 
+
+For tutorials and help with using Klusterbox, visit www.klusterbox.com. Click on the links for Tutorials and Help. There you will find all the supporting documentation and video tutorials that I have produced so far. The process of creating new tutorials and updating old tutorials is on going. As I make daily changes to the software, some to the instructions might be slighly off.
+
+For the newest version of Klusterbox, visit www.klusterbox.com/download. The source code is also available there. 
 
 History:
 
