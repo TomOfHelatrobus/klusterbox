@@ -5299,10 +5299,10 @@ def max_hr():  # generates a report for 12/60 hour violations
                         messagebox.showwarning("File Selection Error", "The selected file does not appear to be an "
                                                                        "Employee Everything report.")
                         return
-                if c == 2:
+                if c == 2: # on the second line
                     pp = line[0]  # find the pay period
                     pp = pp.strip()  # strip whitespace out of pay period information
-                if c != 0:
+                if c != 0: # on all but the first line
                     if line[18] == "Base" and good_id and len(day_hours) > 0:
                         # find fri hours for friday adjustment
                         fri_hrs = 0
