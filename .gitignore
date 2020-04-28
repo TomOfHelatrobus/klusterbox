@@ -9,3 +9,7 @@
 /kb_sub/pp_guide
 /kb_sub/spreadsheets
 /kb_sub/weekly_availability
+
+# ignore the kb_install folder
+
+/kb_install
