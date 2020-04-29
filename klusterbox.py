@@ -4411,7 +4411,6 @@ def gen_rev_ns_dict():  # creates full day/color ns day dictionary
 def auto_indexer_5(self, file_path, check_these):  # correct discrepancies
     if len(check_these) == 0: auto_indexer_6(self, file_path)
     check_these.sort(key=itemgetter(1))  # sort the incoming tacs information
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     self.destroy()
     opt_nsday = []  # make an array of "day / color" options for option menu
     ns_opt_dict = {}  # creates a dictionary of ns colors/ options for menu
@@ -4422,15 +4421,6 @@ def auto_indexer_5(self, file_path, check_these):  # correct discrepancies
             ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
             ns_opt_dict[each] = ns_option
         opt_nsday.append(ns_option)
-    # for each in ns_opt_dict: printe (each, ":", ns_opt_dict[each])
-    # full_ns_dict = {} # Make a dictionary to match full days and option menu options
-    # for each in opt_nsday:
-    #     for day in days:
-    #         if day[:3] == each[:3]:
-    #             full_ns_dict[day] = each  # creates full_ns_dict
-    #     if each[-4:] == "none":
-    #         ns_option = "       " + " - " + "none"  # if the ns day is "none" - make a special string
-    #         full_ns_dict["None"] = ns_option  # creates full_ns_dict None option
     results = gen_ns_dict(file_path, check_these)  # returns id and name
     ns_dict = {}  # create dictionary for ns day data
     for id in results:  # loop to fill dictionary with ns day info
@@ -4590,7 +4580,6 @@ def apply_auto_indexer_5(self, buttons, file_path, carrier_name, l_s, l_ns, e_ro
             self.destroy()
             auto_indexer_5(self, file_path, check_these)
             break
-
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
@@ -4645,8 +4634,8 @@ def apply_2_auto_indexer_5(date, carrier, ls, ns, route, station, self):
         commit(sql)
 
 
-def auto_indexer_6(self,
-                   file_path):  # identify and remove any carriers in the carrier list who are not in the TACS list
+def auto_indexer_6(self,file_path):  # identify and remove any carriers in the carrier
+                                    # list who are not in the TACS list
     carrier_list = gen_carrier_list()  # create names_list array
     names_list = []
     for name in carrier_list:
