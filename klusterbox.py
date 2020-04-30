@@ -8647,7 +8647,6 @@ def rings2(carrier, origin_frame):
     del wed_mm[:]
     del thr_mm[:]
     del fri_mm[:]
-    all_moves = [sat_mm, sun_mm, mon_mm, tue_mm, wed_mm, thr_mm, fri_mm]
     date = datetime(int(gs_year), int(gs_mo), int(gs_day))
     dates = []
     list_carrier = []
@@ -9380,6 +9379,20 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
 
 
 def input_carriers(frame):  # window for inputting new carriers
+    # get ns day color configurations
+    sql = "SELECT * FROM ns_configuration"
+    ns_results = inquire(sql)
+    ns_dict = {}  # build dictionary for ns days
+    ns_color_dict = {}
+    days = ("sat", "mon", "tue", "wed", "thu", "fri")
+    for r in ns_results:  # build dictionary for rotating ns days
+        ns_dict[r[0]] = r[2]
+        ns_color_dict[r[0]] = r[1]  # build dictionary for ns fill colors
+    for d in days:  # expand dictionary for fixed days
+        ns_dict[d] = "fixed: " + d
+        ns_color_dict[d] = "teal"
+    ns_dict["none"] = "none"  # add "none" to dictionary
+    ns_color_dict["none"] = "teal"
     frame.destroy()
     switchF6 = Frame(root)
     switchF6.pack(fill=BOTH, side=LEFT)
@@ -9453,19 +9466,34 @@ def input_carriers(frame):  # window for inputting new carriers
     nc_ns = StringVar(ns_frame)
     nc_ns.set("none")
     Radiobutton(ns_frame, text="{}:   yellow".format(ns_code['yellow']), variable=nc_ns, value="yellow", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor="yellow").grid(row=1, column=0)
+                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["yellow"]).grid(row=1, column=0)
     Radiobutton(ns_frame, text="{}:   blue".format(ns_code['blue']), variable=nc_ns, value="blue", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor="blue").grid(row=2, column=0)
+                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["blue"]).grid(row=2, column=0)
     Radiobutton(ns_frame, text="{}:   green".format(ns_code['green']), variable=nc_ns, value="green", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor="green").grid(row=3, column=0)
+                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["green"]).grid(row=3, column=0)
     Radiobutton(ns_frame, text="{}:   brown".format(ns_code['brown']), variable=nc_ns, value="brown", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor="brown").grid(row=1, column=1)
+                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["brown"]).grid(row=1, column=1)
     Radiobutton(ns_frame, text="{}:   red".format(ns_code['red']), variable=nc_ns, value="red", indicatoron=0, width=15,
-                anchor="w", bg="grey", fg="white", selectcolor="red").grid(row=2, column=1)
+                anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["red"]).grid(row=2, column=1)
     Radiobutton(ns_frame, text="{}:   black".format(ns_code['black']), variable=nc_ns, value="black", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor="black").grid(row=3, column=1)
-    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=0, width=15, anchor="w").grid(row=4,
-                                                                                                               column=1)
+                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
+    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=0, width=15, anchor="w")\
+                .grid(row=4,column=1)
+    Label(ns_frame, text="Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
+    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=0, width=15, bg="grey", fg="white",
+                selectcolor=ns_color_dict["none"], anchor="w").grid(row=4, column=1)
+    Radiobutton(ns_frame, text="Sat:   fixed", variable=nc_ns, value="sat", bg="grey", fg="white",
+                selectcolor=ns_color_dict["sat"], indicatoron=0, width=15, anchor="w").grid(row=5, column=0)
+    Radiobutton(ns_frame, text="Mon:   fixed", variable=nc_ns, value="mon", bg="grey", fg="white",
+                selectcolor=ns_color_dict["mon"], indicatoron=0, width=15, anchor="w").grid(row=5, column=1)
+    Radiobutton(ns_frame, text="Tue:   fixed", variable=nc_ns, value="tue", bg="grey", fg="white",
+                selectcolor=ns_color_dict["tue"], indicatoron=0, width=15, anchor="w").grid(row=6, column=0)
+    Radiobutton(ns_frame, text="Wed:   fixed", variable=nc_ns, value="wed", bg="grey", fg="white",
+                selectcolor=ns_color_dict["wed"], indicatoron=0, width=15, anchor="w").grid(row=6, column=1)
+    Radiobutton(ns_frame, text="Thu:   fixed", variable=nc_ns, value="thu", bg="grey", fg="white",
+                selectcolor=ns_color_dict["thu"], indicatoron=0, width=15, anchor="w").grid(row=7, column=0)
+    Radiobutton(ns_frame, text="Fri:   fixed", variable=nc_ns, value="fri", bg="grey", fg="white",
+                selectcolor=ns_color_dict["fri"], indicatoron=0, width=15, anchor="w").grid(row=7, column=1)
     ns_frame.grid(row=4, sticky=W)
     # set route entry field
     route_frame = Frame(nc_F, bd=1, relief=RIDGE, pady=2)
@@ -9789,7 +9817,7 @@ def main_frame():
         candidates = []
         more_rows = []
         pre_invest = []
-        # take raw data and sort into appropiate arrays
+        # take raw data and sort into appropriate arrays
         for i in range(len(results)):
             candidates.append(results[i])  # put name into candidates array
             jump = "no"  # triggers an analysis of the candidates array
@@ -9879,7 +9907,7 @@ def main_frame():
                 color = "light yellow"
             else:
                 color = "white"
-            if carrier_list[i][7] == "A_in" or carrier_list[i][7] == "A_out":
+            if carrier_list[i][len(carrier_list[i])-1] == "A_in" or carrier_list[i][len(carrier_list[i])-1] == "A_out":
                 Label(FF, text=ii).grid(row=r, column=0)
                 ii += 1
                 Button(FF, text=line[1], width=24, bg=color, anchor="w",
@@ -9888,7 +9916,7 @@ def main_frame():
                 dt = datetime.strptime(line[0], "%Y-%m-%d %H:%M:%S")
                 Button(FF, text=dt.strftime("%a"), width=24, bg=color, anchor="e",
                        command=lambda x=line: rings2(x, root)).grid(row=r, column=1)
-            if line[7] == "A_in" or line[7] == "B_in":
+            if line[len(line)-1] == "A_in" or line[len(line)-1] == "B_in":
                 Button(FF, text=line[2], width=3, bg=color, anchor="w").grid(row=r, column=2)
                 day_off = ns_code[line[3]].lower()
                 Button(FF, text=day_off, width=4, bg=color, anchor="w").grid(row=r, column=3)
@@ -9994,8 +10022,17 @@ if __name__ == "__main__":
           ' ns_day varchar, route_s varchar, station varchar)'
     commit(sql)
     sql = 'CREATE table IF NOT EXISTS rings3 ' \
-          '(rings_date date, carrier_name varchar, total varchar, rs varchar, code varchar, moves varchar)'
+          '(rings_date date, carrier_name varchar, total varchar, rs varchar, code varchar, moves varchar, ' \
+          'leave_type varchar, leave_time varchar)'
     commit(sql)
+    # modify table for legacy version which did not have leave type and leave time columns of rings3 table.
+    sql = 'PRAGMA table_info(rings3)' # get table info. returns an array of columns.
+    result = inquire (sql)
+    if len(result)<= 6: # if there are not enough columns add the leave type and leave time columns
+        sql = 'ALTER table rings3 ADD COLUMN leave_type varchar'
+        commit(sql)
+        sql = 'ALTER table rings3 ADD COLUMN leave_time varchar'
+        commit(sql)
     sql = 'CREATE table IF NOT EXISTS name_index (tacs_name varchar, kb_name varchar, emp_id varchar)'
     commit(sql)
     pb["value"] = 15  # increment progress bar
