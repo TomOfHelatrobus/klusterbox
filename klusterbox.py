@@ -8370,7 +8370,7 @@ def output_tab(self, list_carrier):
     root.mainloop()
 
 
-def apply_rings(origin_frame, frame, carrier, total, RS, code, go_return):
+def apply_rings(origin_frame, frame, carrier, total, RS, code,lv_type, lv_time, go_return):
     day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     days = (sat_mm, sun_mm, mon_mm, tue_mm, wed_mm, thr_mm, fri_mm)
     c = 0
@@ -8462,6 +8462,31 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, go_return):
             rRS.append(format(float(str(r)), '.2f'))
         else:
             rRS.append(str(r))
+    # check for bad inputs in lv_time fields
+    c = -1
+    for t in lv_time:
+        c += 1
+        if isfloat(t.get()) == False:
+            if t.get().strip() == "":
+                continue
+            text = "You must enter a numeric value for leave times {}.".format(day[c])
+            messagebox.showerror("5200 entry error", text, parent=frame)
+            return
+        if float(t.get()) > 8:
+            text = "Values greater than 8 are not accepted for leave times for {}.".format(day[c])
+            messagebox.showerror("5200 entry error", text, parent=frame)
+            return
+        if float(t.get()) <= 0:
+            text = "Values less than or equal to 0 are not accepted for leave time for {}.".format(day[c])
+            messagebox.showerror("5200 entry error", text, parent=frame)
+            return
+    llv_time = []
+    for t in lv_time:
+        t = str(t.get()).strip()
+        if isfloat(t) == TRUE:
+            llv_time.append(format(float(str(t)), '.2f'))
+        else:
+            llv_time.append(str(t))
 
     dates = []
     if g_range == "week": dates = g_date
@@ -8515,10 +8540,10 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, go_return):
         for each in results:
             if str(dates[i]) == each[0]:
                 updates.append(i)
-                sql = "UPDATE rings3 SET total='%s',rs='%s' ,code='%s',moves='%s' " \
+                sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type = '%s',leave_time = '%s'" \
                       "WHERE rings_date = '%s' and carrier_name = '%s'" \
                       % (ttotal[i], rRS[i], code[i].get(),
-                         all_moves[i], dates[i], carrier[1])
+                         all_moves[i],lv_type[i].get(), llv_time[i], dates[i], carrier[1])
                 commit(sql)
     if g_range == "week":
         inserts = [0, 1, 2, 3, 4, 5, 6, ]  # seven inserts for a week and one for a day
@@ -8528,11 +8553,11 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, go_return):
         if num in inserts:
             inserts.remove(num)
     for i in inserts:  # for each day, insert the information
-        sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves)" \
-              "VALUES('%s','%s','%s','%s','%s','%s') " \
-              % (dates[i], carrier[1], ttotal[i], rRS[i], code[i].get(), all_moves[i])
+        sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time )" \
+              "VALUES('%s','%s','%s','%s','%s','%s','%s','%s') " \
+              % (dates[i], carrier[1], ttotal[i], rRS[i], code[i].get(), all_moves[i], lv_type[i].get(), llv_time[i])
         commit(sql)
-    sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' or total = '%s' and code='%s'" % ("", 'none', '0', 'none')
+    sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_time ='%s'" % ("", 'none', "")
     commit(sql)
     # destroy the old rings entry window
     if go_return == "no_return":
@@ -8619,9 +8644,11 @@ def rings2(carrier, origin_frame):
     C1.pack(fill=BOTH, side=BOTTOM)
     # apply and close buttons
     Button(C1, text="Submit", width=10, bg="light yellow", anchor="w",
-           command=lambda: [apply_rings(origin_frame, root, carrier, total, RS, code, "no_return")]).pack(side=LEFT)
+           command=lambda: [apply_rings(origin_frame, root, carrier, total, RS, code,lv_type, lv_time, "no_return")])\
+        .pack(side=LEFT)
     Button(C1, text="Apply", width=10, bg="light yellow", anchor="w",
-           command=lambda: [apply_rings(origin_frame, root, carrier, total, RS, code, "do_return")]).pack(side=LEFT)
+           command=lambda: [apply_rings(origin_frame, root, carrier, total, RS, code,lv_type, lv_time, "do_return")])\
+        .pack(side=LEFT)
     Button(C1, text="Go Back", width=10, bg="light yellow", anchor="w",
            command=lambda: root.destroy()).pack(side=LEFT)
     # define scrollbar and canvas
@@ -8668,10 +8695,14 @@ def rings2(carrier, origin_frame):
     color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
     nolist_codes = ("none", "ns day")
     ot_aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
+    lv_options = ("none","annual","sick","holiday","other")
     option_menu = ["om0", "om1", "om2", "om3", "om4", "om5", "om6"]
+    lv_option_menu = ["lom0", "lom1", "lom2", "lom3", "lom4", "lom5", "lom6"]
     total_widget = ["tw0", "tw1", "tw2", "tw3", "tw4", "tw5", "tw6"]
     total = []
     RS = []
+    lv_type = []
+    lv_time = []
     code = []
     if g_range == "week":  # Get carrier list information
         in_range = []
@@ -8750,12 +8781,19 @@ def rings2(carrier, origin_frame):
         now_rs = ""
         now_code = "none"
         now_moves = ""
+        now_lv_type = "none"
+        now_lv_time = ""
         for ring in r_rings:
             if ring[0] == str(dates[i]):  # if the dates match set the corresponding rings
                 now_total = ring[2]
                 now_rs = ring[3]
                 now_code = ring[4]
                 now_moves = ring[5]
+                now_lv_type = ring[6]
+                if str(ring[7])=='None':
+                    now_lv_time = ""
+                else:
+                    now_lv_time = ring[7]
         grid_i = 0  # counter for the grid within the frame
         frame[i] = Frame(F, width=500)
         frame[i].grid(row=frame_i, padx=5, sticky="w")
@@ -8774,9 +8812,14 @@ def rings2(carrier, origin_frame):
                 Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=2)
                 Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=3)
                 Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=4)
-                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=5)
+                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=6)
+                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=7)
+                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=8)
             else:
                 Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=3)
+                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=4)
+                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=5)
+
             grid_i += 1
             # Display the entry widgets
             total.append(StringVar(frame[i]))  # 5200 entry widget
@@ -8799,11 +8842,23 @@ def rings2(carrier, origin_frame):
             else:
                 option_menu[i] = OptionMenu(frame[i], code[i], *ot_aux_codes)
             code[i].set(now_code)
-            option_menu[i].configure(width=9)
+            option_menu[i].configure(width=7)
+            lv_type.append(StringVar(frame[i]))  # leave type entry widget
+            lv_option_menu[i] = OptionMenu(frame[i],lv_type[i], *lv_options)
+            lv_option_menu[i].configure(width=7)
+            lv_time.append(StringVar(frame[i]))  # leave time entry widget
+            lv_type[i].set(now_lv_type)  # set the starting value for leave type
+            lv_time[i].set(now_lv_time)  # set the starting value for leave type
+            # put code widgets on the grid
             if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
-                option_menu[i].grid(row=grid_i, column=6)
+                option_menu[i].grid(row=grid_i, column=6) # code widget
+                lv_option_menu[i].grid(row=grid_i, column=7)  # leave type widget
+                Entry(frame[i], width=8, textvariable=lv_time[i]).grid(row=grid_i, column=8) # leave time widget
             else:
-                option_menu[i].grid(row=grid_i, column=3)
+                option_menu[i].grid(row=grid_i, column=3) # code widget
+                lv_option_menu[i].grid(row=grid_i, column=4)  # leave type widget
+                Entry(frame[i], width=8, textvariable=lv_time[i]).grid(row=grid_i, column=5) # leave time widget
+
         else:
             total.append(StringVar(frame[i]))  # 5200 entry widget
             RS.append(StringVar(frame[i]))  # RS entry
