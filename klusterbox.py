@@ -4924,49 +4924,106 @@ def auto_weekly_analysis(array):
                             mv_triad.pop(0)
                             mv_triad.pop(0)
                 mv_str = ','.join(mv_triad)  # format array as string to fit in dbase
-                if float(line[2]) > 0 or c_code != "none":  # if hours worked > 0 and there is no code
+                # if hours worked > 0 or there is a code or a leave type
+                if float(line[2]) > 0 or c_code != "none" or line[6]!="":
                     if float(line[2]) == 0:
                         hr_52 = ""  # don't put zeros in 5200 for rings record
                     else:
                         hr_52 = float(line[2])  # if it is greater than zero, put it in as a float
-                    current_array = [str(day_dict[line[0]]), kb_name, hr_52, line[3], c_code, mv_str]
+                    lv_time = float(line[7]) # convert the leave time to a float var
+                    current_array = [str(day_dict[line[0]]), kb_name, hr_52, line[3], c_code, mv_str, line[6], lv_time]
                     # check rings table to see if record already exist.
                     sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (
                     kb_name, day_dict[line[0]])
                     result = inquire(sql)
                     if len(result) == 0:
-                        sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves) " \
-                              "VALUES('%s','%s','%s','%s','%s','%s')" % \
+                        sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves,leave_type,leave_time) " \
+                              "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
                               (current_array[0], current_array[1], current_array[2], current_array[3], current_array[4],
-                               current_array[5])
+                               current_array[5],current_array[6],current_array[7])
                         commit(sql)
                     else:
-                        sql = "UPDATE rings3 SET total='%s',rs='%s' ,code='%s',moves='%s' " \
+                        sql = "UPDATE rings3 SET total='%s',rs='%s' ,code='%s',moves='%s'," \
+                              "leave_type ='%s',leave_time = '%s'" \
                               "WHERE rings_date = '%s' and carrier_name = '%s'" \
                               % (
-                              current_array[2], current_array[3], current_array[4], current_array[5], current_array[0],
-                              current_array[1])
+                              current_array[2], current_array[3], current_array[4], current_array[5],
+                              current_array[6],current_array[7],
+                              current_array[0],current_array[1])
                         commit(sql)
 
 
 def auto_daily_analysis(rings):
     days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     mv_codes = ("BT", "MV", "ET")
-    hr_52 = 0
-    hr_55 = 0
-    hr_56 = 0
+    hr_52 = 0.0 # work hours
+    hr_55 = 0.0 # annual leave
+    hr_56 = 0.0 # sick leave
+    hr_58 = 0.0 # holiday leave
+    hr_62 = 0.0 # guaranteed time
+    hr_86 = 0.0 # other paid leave
     rs = 0
     code = ""
     moves = []
+    leave_type = []
+    leave_time = []
+    final_leave_type = ""
+    final_leave_time = 0.0
     if len(rings) > 0:
         name = rings[0][4].zfill(8)  # Get NAME
         for line in rings:
             if line[18] in days:  # get TOTAL or 5200
                 dayofweek = line[18]
                 spt_20 = line[20].split(':')  # split to get code and hours
-                if spt_20[0] == "05200": hr_52 = spt_20[1]  # get the total hours worked
-                if spt_20[0] == "05500": hr_55 = spt_20[1]  # get the annual leave hours
-                if spt_20[0] == "05600": hr_56 = spt_20[1]  # get the sick leave hours
+
+                # get second and third digits of the of the split line 20 or spt_20
+                spt_20_mod = "".join([spt_20[0][1], spt_20[0][2]])
+                if spt_20_mod == "52":
+                    hr_52 = spt_20[1]  # get the total hours worked
+                if spt_20_mod == "55":
+                    hr_55 = spt_20[1]  # get the annual leave hours
+                if spt_20_mod == "56":
+                    hr_56 = spt_20[1]  # get the sick leave hours
+                if spt_20_mod == "58":
+                    hr_58 = spt_20[1]  # get the holiday leave hours
+                if spt_20_mod == "62":
+                    hr_62 = spt_20[1]  # get the guaranteed time hours
+                if spt_20_mod == "86":
+                    hr_86 = spt_20[1]  # get other leave hours
+
+                # calculate the leave type and time:
+                if float(hr_55) > 0 or float(hr_56) > 0 or float(hr_58) > 0 or float(hr_62) > 0 or float(hr_86) > 0:
+                    if float(hr_55) > 0:
+                        leave_type.append("annual")
+                        leave_time.append(hr_55)
+                    if float(hr_56) > 0:
+                        leave_type.append("sick")
+                        leave_time.append(hr_56)
+                    if float(hr_58) > 0:
+                        leave_type.append("holiday")
+                        leave_time.append(hr_58)
+                    if float(hr_62) > 0:
+                        leave_type.append("guaranteed")
+                        leave_time.append(hr_62)
+                    if float(hr_86) > 0:
+                        leave_type.append("other")
+                        leave_time.append(hr_86)
+                    if len(leave_type) > 1:
+                        final_leave_type = "combo"
+                        final_leave_time = float(hr_55) + float(hr_56) + float(hr_58) + float(hr_62) + float(hr_86)
+                    elif len(leave_type) == 1:
+                        final_leave_type = leave_type[0]
+                        final_leave_time = leave_time[0]
+                    else:
+                        final_leave_type = ""
+                        final_leave_time = 0.0
+                # clear out non-5200 times
+                hr_55 = 0.0  # annual leave
+                hr_56 = 0.0  # sick leave
+                hr_58 = 0.0  # holiday leave
+                hr_62 = 0.0  # guaranteed time
+                hr_86 = 0.0  # other paid leave
+
             if line[19] == "MV" and line[23][:3] == "722":  # get the RETURN TO OFFICE time
                 rs = line[21]  # save the last occurrence.
             if float(hr_55) > 1: code = "annual"  # alter CODE if annual leave was used
@@ -4976,7 +5033,8 @@ def auto_daily_analysis(rings):
                 route = route_z[1] + route_z[2] + route_z[4] + route_z[5]  # reformat route to 4 digit format
                 mv_data = [line[19], line[21], line[23][:3], route]
                 moves.append(mv_data)
-        proto_array = [dayofweek, name, hr_52, rs, code, moves]  # form the proto array
+
+        proto_array = [dayofweek, name, hr_52, rs, code, moves, final_leave_type, final_leave_time]  # form the proto array
         return (proto_array)  # send it back to auto weekly analysis()
 
 
