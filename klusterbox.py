@@ -4972,10 +4972,9 @@ def auto_daily_analysis(rings):
     if len(rings) > 0:
         name = rings[0][4].zfill(8)  # Get NAME
         for line in rings:
-            if line[18] in days:  # get TOTAL or 5200
+            if line[18] in days:  # get 5200 or non 5200 times for TOTAL, code, leave_type and leave_time
                 dayofweek = line[18]
                 spt_20 = line[20].split(':')  # split to get code and hours
-
                 # get second and third digits of the of the split line 20 or spt_20
                 spt_20_mod = "".join([spt_20[0][1], spt_20[0][2]])
                 if spt_20_mod == "52":
@@ -5017,17 +5016,17 @@ def auto_daily_analysis(rings):
                     else:
                         final_leave_type = ""
                         final_leave_time = 0.0
+                if float(hr_55) > 1: code = "annual"  # alter CODE if annual leave was used
+                if float(hr_56) > 1: code = "sick"  # alter code if sick leave was used
                 # clear out non-5200 times
                 hr_55 = 0.0  # annual leave
                 hr_56 = 0.0  # sick leave
                 hr_58 = 0.0  # holiday leave
                 hr_62 = 0.0  # guaranteed time
                 hr_86 = 0.0  # other paid leave
-
             if line[19] == "MV" and line[23][:3] == "722":  # get the RETURN TO OFFICE time
                 rs = line[21]  # save the last occurrence.
-            if float(hr_55) > 1: code = "annual"  # alter CODE if annual leave was used
-            if float(hr_56) > 1: code = "sick"  # alter code if sick leave was used
+
             if line[19] in mv_codes:  # get the MOVES
                 route_z = line[24].zfill(6)  # because some reports omit leading zeros
                 route = route_z[1] + route_z[2] + route_z[4] + route_z[5]  # reformat route to 4 digit format
@@ -8534,17 +8533,20 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code,lv_type, lv_time, 
             text = "Values greater than 8 are not accepted for leave times for {}.".format(day[c])
             messagebox.showerror("5200 entry error", text, parent=frame)
             return
-        if float(t.get()) <= 0:
-            text = "Values less than or equal to 0 are not accepted for leave time for {}.".format(day[c])
-            messagebox.showerror("5200 entry error", text, parent=frame)
-            return
-    llv_time = []
+        # if float(t.get()) <= 0:
+        #     text = "Values less than or equal to 0 are not accepted for leave time for {}.".format(day[c])
+        #     messagebox.showerror("5200 entry error", text, parent=frame)
+        #     return
+    llv_time = [] # create new array to keep formated leave times
     for t in lv_time:
         t = str(t.get()).strip()
-        if isfloat(t) == TRUE:
-            llv_time.append(format(float(str(t)), '.2f'))
+        if isfloat(t) == TRUE: # if the leave time can be a float
+            if float(t)<= 0: # if the leave time is less than or equal to zero
+                llv_time.append(str("")) # insert a blank in the array
+            else: # if the leave time can be a float
+                llv_time.append(format(float(str(t)), '.2f')) # format it as a float with 2 decimal places
         else:
-            llv_time.append(str(t))
+            llv_time.append(str(t)) # otherwise input the string as it appears
 
     dates = []
     if g_range == "week": dates = g_date
@@ -8615,7 +8617,8 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code,lv_type, lv_time, 
               "VALUES('%s','%s','%s','%s','%s','%s','%s','%s') " \
               % (dates[i], carrier[1], ttotal[i], rRS[i], code[i].get(), all_moves[i], lv_type[i].get(), llv_time[i])
         commit(sql)
-    sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_time ='%s'" % ("", 'none', "")
+    sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_time ='%s'" % ("", 'none', 'none')
+
     commit(sql)
     # destroy the old rings entry window
     if go_return == "no_return":
@@ -8847,8 +8850,13 @@ def rings2(carrier, origin_frame):
                 now_rs = ring[3]
                 now_code = ring[4]
                 now_moves = ring[5]
-                now_lv_type = ring[6]
-                if str(ring[7])=='None':
+                if ring[6]=='': # format the leave type
+                    now_lv_type = "none"
+                else:
+                    now_lv_type = ring[6]
+                if str(ring[7])=='None': # format the leave time to be blank or a float
+                    now_lv_time = ""
+                elif isfloat(ring[7]) == TRUE and float(ring[7])==0: # if the leave time can be a float
                     now_lv_time = ""
                 else:
                     now_lv_time = ring[7]
