@@ -135,6 +135,468 @@ def rear_window(wd):  # This closes the window created by front_window()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
 
+def overmax_spreadsheet(carrier_list):
+    date = g_date[0]
+    dates = []  # array containing days.
+    if g_range == "week":
+        for i in range(7):
+            dates.append(date)
+            date += timedelta(days=1)
+    sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
+          % (g_date[0], g_date[6])
+    r_rings = inquire(sql)
+    # Named styles for workbook
+    bd = Side(style='thin', color="80808080")  # defines borders
+    ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+    list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+    date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+    date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                alignment=Alignment(horizontal='right'))
+    col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                            alignment=Alignment(horizontal='right'))
+    col_center_header = NamedStyle(name="col_center_header", font=Font(bold=True, name='Arial', size=8),
+                            alignment=Alignment(horizontal='center'),
+                           border=Border(left=bd, top=bd, right=bd, bottom=bd))
+    vert_header = NamedStyle(name="vert_header", font=Font(bold=True, name='Arial', size=8),
+                            alignment=Alignment(horizontal='right',text_rotation=90))
+    input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                            border=Border(left=bd, top=bd, right=bd, bottom=bd))
+    input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                         border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                         alignment=Alignment(horizontal='right'))
+    calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
+                       border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                       fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                       alignment=Alignment(horizontal='right'))
+    vert_calcs = NamedStyle(name="vert_calcs", font=Font(name='Arial', size=8),
+                       border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                       fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                       alignment=Alignment(horizontal='right',text_rotation=90))
+    wb = Workbook()  # define the workbook
+    overmax = wb.active  # create first worksheet
+    summary = wb.create_sheet("summary")
+    for x in range(2,8): overmax.row_dimensions[x].height = 10# adjust all row height
+    overmax.title = "12_60_violations"  # title first worksheet
+    overmax.oddFooter.center.text = "&A"
+    overmax.column_dimensions["A"].width = 13
+    overmax.column_dimensions["B"].width = 3
+    overmax.column_dimensions["C"].width = 5
+    overmax.column_dimensions["D"].width = 4
+    overmax.column_dimensions["E"].width = 2
+    overmax.column_dimensions["F"].width = 4
+    overmax.column_dimensions["G"].width = 2
+    overmax.column_dimensions["H"].width = 4
+    overmax.column_dimensions["I"].width = 2
+    overmax.column_dimensions["J"].width = 4
+    overmax.column_dimensions["K"].width = 2
+    overmax.column_dimensions["L"].width = 4
+    overmax.column_dimensions["M"].width = 2
+    overmax.column_dimensions["N"].width = 4
+    overmax.column_dimensions["O"].width = 2
+    overmax.column_dimensions["P"].width = 4
+    overmax.column_dimensions["Q"].width = 2
+    overmax.column_dimensions["R"].width = 4
+    overmax.column_dimensions['R'].hidden= True
+    overmax.column_dimensions["S"].width = 5
+    overmax.column_dimensions["T"].width = 5
+    overmax.column_dimensions["U"].width = 2
+    overmax.column_dimensions["V"].width = 2
+    overmax.column_dimensions["W"].width = 2
+    overmax.column_dimensions["X"].width = 5
+    # summary worksheet - format cells
+    summary.oddFooter.center.text = "&A"
+    summary.merge_cells('A1:R1')
+    summary['A1'] = "12 and 60 Hour Violations Summary"
+    summary['A1'].style = ws_header
+    summary.column_dimensions["A"].width = 15
+    summary.column_dimensions["B"].width = 8
+    summary['A3'] = "Date:"
+    summary['A3'].style = date_dov_title
+    summary.merge_cells('B3:D3')  # blank field for date
+    summary['B3'] = dates[0].strftime("%x") + " - " + dates[6].strftime("%x")
+    summary['B3'].style = date_dov
+    summary.merge_cells('K3:N3')
+    summary['F3'] = "Pay Period:" # Pay Period Header
+    summary['F3'].style = date_dov_title
+    summary.merge_cells('G3:I3')  # blank field for pay period
+    summary['G3'] = pay_period
+    summary['G3'].style = date_dov
+    summary['A4'] = "Station:" # Station Header
+    summary['A4'].style = date_dov_title
+    summary.merge_cells('B4:D4')  # blank field for station
+    summary['B4'] = g_station
+    summary['B4'].style = date_dov
+    summary['A6'] = "name"
+    summary['A6'].style = col_center_header
+    summary['B6'] = "violation"
+    summary['B6'].style = col_center_header
+    # overmax worksheet - format cells
+    overmax.merge_cells('A1:R1')
+    overmax['A1'] = "12 and 60 Hour Violations Worksheet"
+    overmax['A1'].style = ws_header
+    overmax['A3'] = "Date:"
+    overmax['A3'].style = date_dov_title
+    overmax.merge_cells('B3:J3')# blank field for date
+    overmax['B3'] = dates[0].strftime("%x") + " - " + dates[6].strftime("%x")
+    overmax['B3'].style = date_dov
+    overmax.merge_cells('K3:N3')
+    overmax['K3'] = "Pay Period:"
+    overmax['k3'].style = date_dov_title
+    overmax.merge_cells('O3:S3') # blank field for pay period
+    overmax['O3'] =  pay_period
+    overmax['O3'].style = date_dov
+    overmax['A4'] = "Station:"
+    overmax['A4'].style = date_dov_title
+    overmax.merge_cells('B4:J4')# blank field for station
+    overmax['B4'] = g_station
+    overmax['B4'].style = date_dov
+    overmax.merge_cells('D6:Q6')
+    overmax['D6'] = "Daily Paid Leave times with type"
+    overmax['D6'].style = col_center_header
+    overmax.merge_cells('D7:Q7')
+    overmax['D7'] = "Daily 5200 times"
+    overmax['D7'].style = col_center_header
+    overmax['A8'] = "name"
+    overmax['A8'].style = col_header
+    overmax['B8'] = "list"
+    overmax['B8'].style = col_header
+    overmax.merge_cells('C5:C8')
+    overmax['C5'] = "Weekly\n5200"
+    overmax['C5'].style = vert_header
+    overmax.merge_cells('D8:E8')
+    overmax['D8'] = "sat"
+    overmax['D8'].style = col_center_header
+    overmax.merge_cells('F8:G8')
+    overmax['F8'] = "sun"
+    overmax['F8'].style = col_center_header
+    overmax.merge_cells('H8:I8')
+    overmax['H8'] = "mon"
+    overmax['H8'].style = col_center_header
+    overmax.merge_cells('J8:K8')
+    overmax['J8'] = "tue"
+    overmax['J8'].style = col_center_header
+    overmax.merge_cells('L8:M8')
+    overmax['L8'] = "wed"
+    overmax['L8'].style = col_center_header
+    overmax.merge_cells('N8:O8')
+    overmax['N8'] = "thr"
+    overmax['N8'].style = col_center_header
+    overmax.merge_cells('P8:Q8')
+    overmax['P8'] = "fri"
+    overmax['P8'].style = col_center_header
+    overmax.merge_cells('S4:S8')
+    overmax['S4'] = " Weekly\nViolation"
+    overmax['S4'].style = vert_header
+    overmax.merge_cells('T4:T8')
+    overmax['T4'] = "Daily\nViolation"
+    overmax['T4'].style = vert_header
+    overmax.merge_cells('U4:U8')
+    overmax['U4'] = "Wed Adj"
+    overmax['U4'].style = vert_header
+    overmax.merge_cells('V4:V8')
+    overmax['V4'] = "Thr Adj"
+    overmax['V4'].style = vert_header
+    overmax.merge_cells('W4:W8')
+    overmax['W4'] = "Fri Adj"
+    overmax['W4'].style = vert_header
+    overmax.merge_cells('X4:X8')
+    overmax['X4'] = "Total\nViolation"
+    overmax['X4'].style = vert_header
+    daily_list = []  # array
+    candidates = []
+    for day in dates:
+        del daily_list[:]
+        # create a list of carriers for each day.
+        for ii in range(len(carrier_list)):
+            if carrier_list[ii][0] <= str(day):
+                candidates.append(carrier_list[ii])  # put name into candidates array
+            jump = "no"  # triggers an analysis of the candidates array
+            if ii != len(carrier_list) - 1:  # if the loop has not reached the end of the list
+                if carrier_list[ii][1] == carrier_list[ii + 1][1]:  # if the name current and next name are the same
+                    jump = "yes"  # bypasses an analysis of the candidates array
+            if jump == "no":  # review the list of candidates
+                winner = max(candidates, key=itemgetter(0))  # select the most recent
+                if winner[5] == g_station: daily_list.append(winner)  # add the record if it matches the station
+                del candidates[:]  # empty out the candidates array.
+    summary_i = 7
+    i = 9
+    for line in carrier_list:
+        # if there is a ring to match the carrier/ date then printe
+        carrier_rings = []
+        total = 0.0
+        totals_array = ["", "", "", "", "", "", ""]
+        leavetype_array = ["", "", "", "", "", "", ""]
+        leavetime_array = ["", "", "", "", "", "", ""]
+        c = 0
+        daily_violation = False
+        for day in dates:
+            for each in r_rings:
+                if each[0] == str(day) and each[1] == line[1]:  # find if there are rings for the carrier
+                    carrier_rings.append(each) # add any rings to an array
+                    if isfloat(each[2]):
+                        totals_array[c] = float(each[2])
+                        if float(each[2])> 12 and line[2] == "otdl":
+                            daily_violation = True
+                        if float(each[2]) > 11.5 and line[2] != "otdl":
+                            daily_violation = True
+                    else:
+                        totals_array[c] = each[2]
+                    if each[6]=="annual":
+                        leavetype_array[c] = "A"
+                    if each[6]=="sick":
+                        leavetype_array[c] = "S"
+                    if each[6] == "holiday":
+                        leavetype_array[c] = "H"
+                    if each[6] == "other":
+                        leavetype_array[c] = "O"
+                    if each[7] == "0.0" or each[7]=="0":
+                        leavetime_array[c] = ""
+                    elif isfloat(each[7]):
+                            leavetime_array[c] = float(each[7])
+                    else:
+                        leavetime_array[c] = each[7]
+            c += 1
+        for item in carrier_rings:
+            if item[2] == "": # convert empty 5200 strings to zero
+                t = 0.0
+            else: t = float(item[2])
+            total = total + t
+        if total > 60 or daily_violation == True:
+            # output to the gui
+            overmax.row_dimensions[i].height = 10# adjust all row height
+            overmax.row_dimensions[i+1].height = 10
+            overmax.merge_cells('A'+ str(i)+':A' + str(i+1))
+            overmax['A' + str(i)] = line[1]  # name
+            overmax['A' + str(i)].style = input_name
+            overmax.merge_cells('B' + str(i) + ':B' + str(i+1)) # merge box for list
+            overmax['B' + str(i)] = line[2]  # list
+            overmax['B' + str(i)].style = input_s
+            overmax.merge_cells('C' + str(i) + ':C' + str(i+1)) # merge box for weekly 5200
+            overmax['C' + str(i)] = float(total)  # total
+            overmax['C' + str(i)].style = input_s
+            overmax['C' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            #saturday
+            overmax.merge_cells('D' + str(i +1 ) + ':E' + str(i + 1))  # merge box for sat 5200
+            overmax['D' + str(i)] = leavetime_array[0] # leave time
+            overmax['D' + str(i)].style = input_s
+            overmax['D' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            overmax['E' + str(i)] = leavetype_array[0] # leave type
+            overmax['E' + str(i)].style = input_s
+            overmax['D' + str(i + 1)] = totals_array[0] # 5200 time
+            overmax['D' + str(i + 1)].style = input_s
+            overmax['D' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # sunday
+            overmax.merge_cells('F' + str(i + 1) + ':G' + str(i + 1))  # merge box for sun 5200
+            overmax['F' + str(i)] = leavetime_array[1]  # leave time
+            overmax['F' + str(i)].style = input_s
+            overmax['F' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            overmax['G' + str(i)] = leavetype_array[1]  # leave type
+            overmax['G' + str(i)].style = input_s
+            overmax['F' + str(i + 1)] = totals_array[1]  # 5200 time
+            overmax['F' + str(i + 1)].style = input_s
+            overmax['F' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # monday
+            overmax.merge_cells('H' + str(i + 1) + ':I' + str(i + 1))  # merge box for mon 5200
+            overmax['H' + str(i)] = leavetime_array[2]  # leave time
+            overmax['H' + str(i)].style = input_s
+            overmax['H' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            overmax['I' + str(i)] = leavetype_array[2]  # leave type
+            overmax['I' + str(i)].style = input_s
+            overmax['H' + str(i + 1)] = totals_array[2]  # 5200 time
+            overmax['H' + str(i + 1)].style = input_s
+            overmax['H' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # tuesday
+            overmax.merge_cells('J' + str(i + 1) + ':K' + str(i + 1))  # merge box for tue 5200
+            overmax['J' + str(i)] = leavetime_array[3]  # leave time
+            overmax['J' + str(i)].style = input_s
+            overmax['J' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            overmax['K' + str(i)] = leavetype_array[3]  # leave type
+            overmax['K' + str(i)].style = input_s
+            overmax['J' + str(i + 1)] = totals_array[3]  # 5200 time
+            overmax['J' + str(i + 1)].style = input_s
+            overmax['J' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # wednesday
+            overmax.merge_cells('L' + str(i + 1) + ':M' + str(i + 1))  # merge box for wed 5200
+            overmax['L' + str(i)] = leavetime_array[4]  # leave time
+            overmax['L' + str(i)].style = input_s
+            overmax['L' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            overmax['M' + str(i)] = leavetype_array[4]  # leave type
+            overmax['M' + str(i)].style = input_s
+            overmax['L' + str(i + 1)] = totals_array[4]  # 5200 time
+            overmax['L' + str(i + 1)].style = input_s
+            overmax['M' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # thursday
+            overmax.merge_cells('N' + str(i + 1) + ':O' + str(i + 1))  # merge box for thr 5200
+            overmax['N' + str(i)] = leavetime_array[5]  # leave time
+            overmax['N' + str(i)].style = input_s
+            overmax['N' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            overmax['O' + str(i)] = leavetype_array[5]  # leave type
+            overmax['O' + str(i)].style = input_s
+            overmax['N' + str(i + 1)] = totals_array[5]  # 5200 time
+            overmax['N' + str(i + 1)].style = input_s
+            overmax['N' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # friday
+            overmax.merge_cells('P' + str(i + 1) + ':Q' + str(i + 1))  # merge box for fri 5200
+            overmax['P' + str(i)] = leavetime_array[6]  # leave time
+            overmax['P' + str(i)].style = input_s
+            overmax['P' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            overmax['Q' + str(i)] = leavetype_array[6]  # leave type
+            overmax['Q' + str(i)].style = input_s
+            overmax['P' + str(i + 1)] = totals_array[6]  # 5200 time
+            overmax['P' + str(i + 1)].style = input_s
+            overmax['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # calculated fields
+            # hidden columns
+            formula = "=SUM(%s!D%s:%s!P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
+                      "%s!N%s + %s!P%s" % ("12_60_violations",str(i + 1),"12_60_violations",str(i + 1),
+                       "12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
+                       "12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i))
+            overmax['R' + str(i)]= formula
+            overmax['R' + str(i)].style = calcs
+            overmax['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            formula = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
+                      ("12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
+                       "12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
+                       "12_60_violations",str(i))
+            overmax['R' + str(i + 1)] = formula
+            overmax['R' + str(i + 1)].style = calcs
+            overmax['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            # weekly violation
+            overmax.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
+            formula = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % ("12_60_violations",str(i),
+                     "12_60_violations",str(i + 1),"12_60_violations",str(i),"12_60_violations",str(i + 1),)
+            overmax['S' + str(i)] = formula
+            overmax['S' + str(i)].style = calcs
+            overmax['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+            # daily violation
+            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                      "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
+                      "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
+                      "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
+                      "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
+                       % ("12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
+                          "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1))
+            overmax['T' + str(i)] = formula
+            overmax.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
+            overmax['T' + str(i)].style = calcs
+            overmax['T' + str(i)].number_format = "#,###.00"
+            # wed adjustment
+            overmax.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
+            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
+                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
+                "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
+                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))"\
+                % ("12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
+                   "12_60_violations", str(i),"12_60_violations",str(i + 1),"12_60_violations",str(i),
+                   "12_60_violations",str(i + 1),"12_60_violations",str(i),"12_60_violations",str(i + 1),
+                   "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations",str(i),
+                   "12_60_violations", str(i + 1), "12_60_violations", str(i), "12_60_violations",str(i + 1),
+                   "12_60_violations", str(i + 1), "12_60_violations", str(i), "12_60_violations",str(i + 1),
+                   "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations",str(i),
+                   "12_60_violations", str(i), "12_60_violations", str(i+1), "12_60_violations", str(i),
+                   "12_60_violations", str(i+1), "12_60_violations", str(i), "12_60_violations", str(i+1),
+                   "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations", str(i),
+                   "12_60_violations", str(i + 1), "12_60_violations", str(i), "12_60_violations",str(i + 1),
+                   "12_60_violations", str(i+1), "12_60_violations", str(i), "12_60_violations",str(i + 1),
+                   "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations", str(i))
+            overmax['U' + str(i)] = formula
+            overmax['U' + str(i)].style = vert_calcs
+            overmax['U' + str(i)].number_format = "#,###.00"
+            # thr adjustment
+            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                      "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
+                      "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
+                      "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
+                      "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
+                      % ("12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
+                         "12_60_violations",str(i),"12_60_violations",str(i+1),"12_60_violations",str(i),
+                         "12_60_violations",str(i+1),
+                         "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations", str(i),
+                         "12_60_violations", str(i + 1), "12_60_violations", str(i + 1), "12_60_violations", str(i),
+                         "12_60_violations", str(i + 1), "12_60_violations", str(i),
+                         "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations", str(i),
+                         "12_60_violations", str(i + 1),
+                         "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations", str(i),
+                         "12_60_violations", str(i + 1), "12_60_violations", str(i + 1), "12_60_violations", str(i),
+                         "12_60_violations", str(i + 1), "12_60_violations", str(i)
+                         )
+            overmax.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
+            overmax['V' + str(i)] = formula
+            overmax['V' + str(i)].style = vert_calcs
+            overmax['V' + str(i)].number_format = "#,###.00"
+            # fri adjustment
+            overmax.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
+            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                    "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
+                    "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
+                    "IF(AND(%s!S%s>0,%s!P%s>12)," \
+                    "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
+                    % ("12_60_violations", str(i),"12_60_violations", str(i),"12_60_violations", str(i),
+                    "12_60_violations", str(i),"12_60_violations", str(i+1),"12_60_violations", str(i),
+                    "12_60_violations", str(i+1),"12_60_violations", str(i+1),"12_60_violations", str(i),
+                    "12_60_violations", str(i),"12_60_violations", str(i+1),"12_60_violations", str(i),
+                    "12_60_violations", str(i+1),"12_60_violations", str(i+1),"12_60_violations", str(i))
+            overmax['W' + str(i)] = formula
+            overmax['W' + str(i)].style = vert_calcs
+            overmax['W' + str(i)].number_format = "#,###.00"
+            # total violation
+            overmax.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
+            formula = "=SUM(%s!S%s:%s!T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
+                      % ("12_60_violations", str(i),"12_60_violations", str(i),"12_60_violations", str(i),
+                         "12_60_violations", str(i),"12_60_violations", str(i))
+            overmax['X' + str(i)] = formula
+            overmax['X' + str(i)].style = calcs
+            overmax['X' + str(i)].number_format = "#,###.00"
+
+            formula = "=%s!A%s" % ("12_60_violations", str(i))
+            summary['A' + str(summary_i)] = formula
+            summary['A' + str(summary_i)].style = input_name
+            formula = "=%s!X%s" % ("12_60_violations", str(i))
+            summary['B' + str(summary_i)] = formula
+            summary['B' + str(summary_i)].style = input_s
+            summary['B' + str(summary_i)].number_format = "#,###.00"
+            i += 2
+            summary_i += 1
+    # display totals for all violations
+    overmax.merge_cells('P' + str(i + 1) + ':T' + str(i + 1))
+    overmax['P' + str(i + 1)] = "Total Violations"
+    overmax['P' + str(i + 1)].style = col_header
+    overmax.merge_cells('V' + str(i+1) + ':X' + str(i+1))
+    formula = "=SUM(%s!X%s:%s!X%s)" % ("12_60_violations", "9", "12_60_violations", str(i))
+    overmax['V' + str(i+1)] = formula
+    overmax['V' + str(i+1)].style = calcs
+    overmax['V' + str(i+1)].number_format = "#,###.00"
+
+    # enter filename and open
+    try:
+        xl_filename = filedialog.asksaveasfile(filetypes=[("Excel files", "*.xlsx")], title='Save File',
+                                           defaultextension=".xlsx")
+        if xl_filename.name is None:
+            return
+        else:
+            wb.save(xl_filename.name)
+            messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
+                                                         "File is named: {}".format(xl_filename.name))
+            if sys.platform == "win32":
+                os.startfile(xl_filename.name)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open"+ xl_filename.name])
+            if sys.platform == "darwin":
+                subprocess.call(["open", xl_filename.name])
+    except:
+        messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
+                                                      "Suggestion: "
+                                                      "Make sure that identically named spreadsheets are closed "
+                                                      "(the file can't be overwritten while open).")
+
 
 def ns_config_apply(frame, text_array, color_array):
     for t in text_array:
@@ -9797,15 +10259,16 @@ def main_frame():
     basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(F))
     basic_menu.add_command(label="Multiple Input", command=lambda dd="Sat", ss="name": mass_input(F, dd, ss))
     basic_menu.add_command(label="Report Summary", command=lambda: output_tab(F, carrier_list))
-    basic_menu.add_command(label="Create Spreadsheet", command=lambda r_rings="x": spreadsheet(carrier_list, r_rings))
+    basic_menu.add_command(label="Create Spreadsheet", command=lambda: spreadsheet(carrier_list, r_rings))
+    basic_menu.add_command(label="Over Max Spreadsheet", command=lambda r_rings="x": overmax_spreadsheet(carrier_list))
     if gs_day == "x":
         basic_menu.entryconfig(2, state=DISABLED)
         basic_menu.entryconfig(3, state=DISABLED)
         basic_menu.entryconfig(4, state=DISABLED)
         basic_menu.entryconfig(5, state=DISABLED)
+        basic_menu.entryconfig(6, state=DISABLED)
     basic_menu.add_separator()
     basic_menu.add_command(label="Informal C", command=lambda: informalc(F))
-    # basic_menu.add_command(label="Create Spreadsheet", command=lambda r_rings="x": spreadsheet(carrier_list, r_rings))
     basic_menu.add_separator()
     basic_menu.add_command(label="Quit", command=lambda: root.destroy())
     menubar.add_cascade(label="Basic", menu=basic_menu)
