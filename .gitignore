@@ -10,6 +10,11 @@
 /kb_sub/spreadsheets
 /kb_sub/weekly_availability
 
+# ignore license and readme files in kb_sub dir
+
+/kb_sub/LICENSE.txt
+/kb_sub/readme.txt
+
 # ignore the kb_install folder
 
 kb_install
