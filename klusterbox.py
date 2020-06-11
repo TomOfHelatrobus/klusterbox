@@ -153,56 +153,63 @@ def overmax_spreadsheet(carrier_list):
     date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                 alignment=Alignment(horizontal='right'))
     col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                            alignment=Alignment(horizontal='right'))
+                            border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                            alignment=Alignment(horizontal='left'))
     col_center_header = NamedStyle(name="col_center_header", font=Font(bold=True, name='Arial', size=8),
                             alignment=Alignment(horizontal='center'),
-                           border=Border(left=bd, top=bd, right=bd, bottom=bd))
+                           border=Border(left=bd, right=bd, top=bd, bottom=bd))
     vert_header = NamedStyle(name="vert_header", font=Font(bold=True, name='Arial', size=8),
+                             border=Border(left=bd, right=bd, top=bd, bottom=bd),
                             alignment=Alignment(horizontal='right',text_rotation=90))
     input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                            border=Border(left=bd, top=bd, right=bd, bottom=bd))
+                            border=Border(left=bd, right=bd, top=bd, bottom=bd))
     input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                         border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                         border=Border(left=bd, right=bd, top=bd, bottom=bd),
                          alignment=Alignment(horizontal='right'))
     calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
-                       border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                       border=Border(left=bd, right=bd, top=bd, bottom=bd),
                        fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
                        alignment=Alignment(horizontal='right'))
     vert_calcs = NamedStyle(name="vert_calcs", font=Font(name='Arial', size=8),
-                       border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                       border=Border(left=bd, right=bd, top=bd, bottom=bd),
                        fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
                        alignment=Alignment(horizontal='right',text_rotation=90))
+    instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=8),
+                    alignment=Alignment(horizontal='left',vertical ='top'))
     wb = Workbook()  # define the workbook
     overmax = wb.active  # create first worksheet
     summary = wb.create_sheet("summary")
+    instructions = wb.create_sheet("instructions")
     for x in range(2,8): overmax.row_dimensions[x].height = 10# adjust all row height
     overmax.title = "12_60_violations"  # title first worksheet
     overmax.oddFooter.center.text = "&A"
-    overmax.column_dimensions["A"].width = 13
-    overmax.column_dimensions["B"].width = 3
-    overmax.column_dimensions["C"].width = 5
-    overmax.column_dimensions["D"].width = 4
-    overmax.column_dimensions["E"].width = 2
-    overmax.column_dimensions["F"].width = 4
-    overmax.column_dimensions["G"].width = 2
-    overmax.column_dimensions["H"].width = 4
-    overmax.column_dimensions["I"].width = 2
-    overmax.column_dimensions["J"].width = 4
-    overmax.column_dimensions["K"].width = 2
-    overmax.column_dimensions["L"].width = 4
-    overmax.column_dimensions["M"].width = 2
-    overmax.column_dimensions["N"].width = 4
-    overmax.column_dimensions["O"].width = 2
-    overmax.column_dimensions["P"].width = 4
-    overmax.column_dimensions["Q"].width = 2
-    overmax.column_dimensions["R"].width = 4
-    overmax.column_dimensions['R'].hidden= True
-    overmax.column_dimensions["S"].width = 5
-    overmax.column_dimensions["T"].width = 5
-    overmax.column_dimensions["U"].width = 2
-    overmax.column_dimensions["V"].width = 2
-    overmax.column_dimensions["W"].width = 2
-    overmax.column_dimensions["X"].width = 5
+    sheets = (overmax, instructions)
+    for sheet in sheets:
+        sheet.column_dimensions["A"].width = 13
+        sheet.column_dimensions["B"].width = 3
+        sheet.column_dimensions["C"].width = 5
+        sheet.column_dimensions["D"].width = 4
+        sheet.column_dimensions["E"].width = 2
+        sheet.column_dimensions["F"].width = 4
+        sheet.column_dimensions["G"].width = 2
+        sheet.column_dimensions["H"].width = 4
+        sheet.column_dimensions["I"].width = 2
+        sheet.column_dimensions["J"].width = 4
+        sheet.column_dimensions["K"].width = 2
+        sheet.column_dimensions["L"].width = 4
+        sheet.column_dimensions["M"].width = 2
+        sheet.column_dimensions["N"].width = 4
+        sheet.column_dimensions["O"].width = 2
+        sheet.column_dimensions["P"].width = 4
+        sheet.column_dimensions["Q"].width = 2
+        sheet.column_dimensions["R"].width = 4
+        sheet.column_dimensions['R'].hidden= True
+        sheet.column_dimensions["S"].width = 5
+        sheet.column_dimensions["T"].width = 5
+        sheet.column_dimensions["U"].width = 2
+        sheet.column_dimensions["V"].width = 2
+        sheet.column_dimensions["W"].width = 2
+        sheet.column_dimensions["X"].width = 5
     # summary worksheet - format cells
     summary.oddFooter.center.text = "&A"
     summary.merge_cells('A1:R1')
@@ -250,6 +257,7 @@ def overmax_spreadsheet(carrier_list):
     overmax.merge_cells('B4:J4')# blank field for station
     overmax['B4'] = g_station
     overmax['B4'].style = date_dov
+
     overmax.merge_cells('D6:Q6')
     overmax['D6'] = "Daily Paid Leave times with type"
     overmax['D6'].style = col_center_header
@@ -302,6 +310,371 @@ def overmax_spreadsheet(carrier_list):
     overmax.merge_cells('X4:X8')
     overmax['X4'] = "Total\nViolation"
     overmax['X4'].style = vert_header
+
+    # format the instructions cells
+    instructions.merge_cells('A1:R1')
+    instructions['A1'] = "12 and 60 Hour Violations Instructions"
+    instructions['A1'].style = ws_header
+    instructions.row_dimensions[3].height = 165
+    instructions['A3'].style = instruct_text
+    instructions.merge_cells('A3:X3')
+    instructions['A3']="Instructions: \n1. Fill in the name \n" \
+    "2. Fill in the list. Enter either “otdl”,”wal”,”nl” or “aux” in list columns. Use only lowercase. \n" \
+    "   If you do not enter anything, the default is “otdl\n" \
+    "\totdl = overtime desired list\n" \
+    "\twal = work assignment list\n"  \
+    "\tnl = no list \n"  \
+    "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
+    "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours or if the sum of all daily non 5200 times (all fields D) plus \n" \
+    "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
+    "4. Fill in any daily non 5200 times and types in fields D and E. Enter only paid leave types such as sick leave, annual\n" \
+    "   leave and holiday leave. Do not enter unpaid leave types such as LWOP (leave without pay) or AWOL (absent \n" \
+    "   without leave).\n" \
+    "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers or 11.50 hours for any other carrier in fields F.\n" \
+    "   Failing to fill out the daily values for Wednesday, Thursday and Friday could cause errors in calculating the adjustments,\n" \
+    "   so fill those in.\n" \
+    "6. The gray fields will fill automatically. Do not enter an information in these fields as it will delete the formulas.\n" \
+    "7. Field O will show the violation in hours which you should seek a remedy for. \n"
+    for x in range(4,20): instructions.row_dimensions[x].height = 10  # adjust all row height
+    instructions.merge_cells('D6:Q6')
+    instructions['D6'] = "Daily Paid Leave times with type"
+    instructions['D6'].style = col_center_header
+    instructions.merge_cells('D7:Q7')
+    instructions['D7'] = "Daily 5200 times"
+    instructions['D7'].style = col_center_header
+    instructions['A8'] = "name"
+    instructions['A8'].style = col_header
+    instructions['B8'] = "list"
+    instructions['B8'].style = col_header
+    instructions.merge_cells('C5:C8')
+    instructions['C5'] = "Weekly\n5200"
+    instructions['C5'].style = vert_header
+    instructions.merge_cells('D8:E8')
+    instructions['D8'] = "sat"
+    instructions['D8'].style = col_center_header
+    instructions.merge_cells('F8:G8')
+    instructions['F8'] = "sun"
+    instructions['F8'].style = col_center_header
+    instructions.merge_cells('H8:I8')
+    instructions['H8'] = "mon"
+    instructions['H8'].style = col_center_header
+    instructions.merge_cells('J8:K8')
+    instructions['J8'] = "tue"
+    instructions['J8'].style = col_center_header
+    instructions.merge_cells('L8:M8')
+    instructions['L8'] = "wed"
+    instructions['L8'].style = col_center_header
+    instructions.merge_cells('N8:O8')
+    instructions['N8'] = "thr"
+    instructions['N8'].style = col_center_header
+    instructions.merge_cells('P8:Q8')
+    instructions['P8'] = "fri"
+    instructions['P8'].style = col_center_header
+    instructions.merge_cells('S4:S8')
+    instructions['S4'] = " Weekly\nViolation"
+    instructions['S4'].style = vert_header
+    instructions.merge_cells('T4:T8')
+    instructions['T4'] = "Daily\nViolation"
+    instructions['T4'].style = vert_header
+    instructions.merge_cells('U4:U8')
+    instructions['U4'] = "Wed Adj"
+    instructions['U4'].style = vert_header
+    instructions.merge_cells('V4:V8')
+    instructions['V4'] = "Thr Adj"
+    instructions['V4'].style = vert_header
+    instructions.merge_cells('W4:W8')
+    instructions['W4'] = "Fri Adj"
+    instructions['W4'].style = vert_header
+    instructions.merge_cells('X4:X8')
+    instructions['X4'] = "Total\nViolation"
+    instructions['X4'].style = vert_header
+    instructions['A9'] = "A"
+    instructions['A9'].style = col_center_header
+    instructions['B9'] = "B"
+    instructions['B9'].style = col_center_header
+    instructions['C9'] = "C"
+    instructions['C9'].style = col_center_header
+    instructions['D9'] = "D"
+    instructions['D9'].style = col_center_header
+    instructions['E9'] = "E"
+    instructions['E9'].style = col_center_header
+    instructions['F9'] = "G"
+    instructions['F9'].style = col_center_header
+    instructions.merge_cells('F9:G9')
+    instructions['H9'] = "D"
+    instructions['H9'].style = col_center_header
+    instructions['I9'] = "E"
+    instructions['I9'].style = col_center_header
+    instructions['J9'] = "D"
+    instructions['J9'].style = col_center_header
+    instructions['K9'] = "E"
+    instructions['K9'].style = col_center_header
+    instructions['L9'] = "D"
+    instructions['L9'].style = col_center_header
+    instructions['M9'] = "E"
+    instructions['M9'].style = col_center_header
+    instructions['N9'] = "D"
+    instructions['N9'].style = col_center_header
+    instructions['O9'] = "E"
+    instructions['O9'].style = col_center_header
+    instructions['P9'] = "D"
+    instructions['P9'].style = col_center_header
+    instructions['Q9'] = "E"
+    instructions['Q9'].style = col_center_header
+    instructions['S9'] = "J"
+    instructions['S9'].style = col_center_header
+    instructions['T9'] = "K"
+    instructions['T9'].style = col_center_header
+    instructions['U9'] = "L"
+    instructions['U9'].style = col_center_header
+    instructions['V9'] = "M"
+    instructions['V9'].style = col_center_header
+    instructions['W9'] = "N"
+    instructions['W9'].style = col_center_header
+    instructions['X9'] = "O"
+    instructions['X9'].style = col_center_header
+    i = 10
+    # instructions name
+    instructions.merge_cells('A' + str(i) + ':A' + str(i + 1))  # merge box for name
+    instructions['A10'] = "kubrick, s"
+    instructions['A10'].style = input_name
+    # instructions list
+    instructions.merge_cells('B' + str(i) + ':B' + str(i + 1))  # merge box for list type input
+    instructions['B10'] = "wal"
+    instructions['B10'].style = input_s
+    # instructions weekly
+    instructions.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly input
+    instructions['C10'] = 75.00
+    instructions['C10'].style = input_s
+    instructions['C10'].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions saturday
+    instructions.merge_cells('D' + str(i + 1) + ':E' + str(i + 1))  # merge box for sat 5200
+    instructions['D' + str(i)] = ""  # leave time
+    instructions['D' + str(i)].style = input_s
+    instructions['D' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    instructions['E' + str(i)] = ""  # leave type
+    instructions['E' + str(i)].style = input_s
+    instructions['D' + str(i + 1)] = 13.00  # 5200 time
+    instructions['D' + str(i + 1)].style = input_s
+    instructions['D' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions sunday
+    instructions.merge_cells('F' + str(i + 1) + ':G' + str(i + 1))  # merge box for sun 5200
+    instructions['F' + str(i)] = ""  # leave time
+    instructions['F' + str(i)].style = input_s
+    instructions['F' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    instructions['G' + str(i)] = ""  # leave type
+    instructions['G' + str(i)].style = input_s
+    instructions['F' + str(i + 1)] = ""  # 5200 time
+    instructions['F' + str(i + 1)].style = input_s
+    instructions['F' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions monday
+    instructions.merge_cells('H' + str(i + 1) + ':I' + str(i + 1))  # merge box for mon 5200
+    instructions['H' + str(i)] = 8  # leave time
+    instructions['H' + str(i)].style = input_s
+    instructions['H' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    instructions['I' + str(i)] = "h"  # leave type
+    instructions['I' + str(i)].style = input_s
+    instructions['H' + str(i + 1)] = ""  # 5200 time
+    instructions['H' + str(i + 1)].style = input_s
+    instructions['H' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions tuesday
+    instructions.merge_cells('J' + str(i + 1) + ':K' + str(i + 1))  # merge box for tue 5200
+    instructions['J' + str(i)] = ""  # leave time
+    instructions['J' + str(i)].style = input_s
+    instructions['J' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    instructions['K' + str(i)] = ""  # leave type
+    instructions['K' + str(i)].style = input_s
+    instructions['J' + str(i + 1)] = 14  # 5200 time
+    instructions['J' + str(i + 1)].style = input_s
+    instructions['J' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions wednesday
+    instructions.merge_cells('L' + str(i + 1) + ':M' + str(i + 1))  # merge box for wed 5200
+    instructions['L' + str(i)] = ""  # leave time
+    instructions['L' + str(i)].style = input_s
+    instructions['L' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    instructions['M' + str(i)] = ""  # leave type
+    instructions['M' + str(i)].style = input_s
+    instructions['L' + str(i + 1)] = 14  # 5200 time
+    instructions['L' + str(i + 1)].style = input_s
+    instructions['M' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions thursday
+    instructions.merge_cells('N' + str(i + 1) + ':O' + str(i + 1))  # merge box for thr 5200
+    instructions['N' + str(i)] = ""  # leave time
+    instructions['N' + str(i)].style = input_s
+    instructions['N' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    instructions['O' + str(i)] = ""  # leave type
+    instructions['O' + str(i)].style = input_s
+    instructions['N' + str(i + 1)] = 13  # 5200 time
+    instructions['N' + str(i + 1)].style = input_s
+    instructions['N' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions friday
+    instructions.merge_cells('P' + str(i + 1) + ':Q' + str(i + 1))  # merge box for fri 5200
+    instructions['P' + str(i)] = ""  # leave time
+    instructions['P' + str(i)].style = input_s
+    instructions['P' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    instructions['Q' + str(i)] = ""  # leave type
+    instructions['Q' + str(i)].style = input_s
+    instructions['P' + str(i + 1)] = 13  # 5200 time
+    instructions['P' + str(i + 1)].style = input_s
+    instructions['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions hidden columns
+    page = "instructions"
+
+    formula = "=SUM(%s!D%s:%s!P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
+                "%s!N%s + %s!P%s" % (page, str(i + 1), page, str(i + 1),
+                                     page, str(i), page, str(i), page, str(i),
+                                     page, str(i), page, str(i), page, str(i))
+    instructions['R' + str(i)] = formula
+    instructions['R' + str(i)].style = calcs
+    instructions['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+    formula = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
+                (page, str(i), page, str(i), page, str(i),
+                 page, str(i), page, str(i), page, str(i),
+                 page, str(i))
+    instructions['R' + str(i + 1)] = formula
+    instructions['R' + str(i + 1)].style = calcs
+    instructions['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions weekly violations
+    instructions.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
+    formula = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % (page, str(i),
+                                                                               page, str(i + 1),
+                                                                               page, str(i),
+                                                                               page, str(i + 1),)
+    instructions['S10'] = formula
+    instructions['S10'].style = calcs
+    instructions['S10'].number_format = "#,###.00;[RED]-#,###.00"
+    # instructions daily violations
+    formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
+                "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
+                "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
+                "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
+                % (page, str(i), page, str(i), page, str(i),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                   page, str(i + 1), page, str(i + 1), page, str(i + 1))
+    instructions['T' + str(i)] = formula_d
+    instructions.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
+    instructions['T' + str(i)].style = calcs
+    instructions['T' + str(i)].number_format = "#,###.00"
+    # instructions wed adjustment
+    instructions.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
+    formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
+                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
+                "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
+                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
+                % (page, str(i), page, str(i), page, str(i),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i), page, str(i + 1),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i), page, str(i + 1),
+                   page, str(i + 1), page, str(i), page, str(i + 1),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i), page, str(i + 1),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i), page, str(i + 1),
+                   page, str(i + 1), page, str(i), page, str(i + 1),
+                   page, str(i), page, str(i + 1), page, str(i))
+    instructions['U' + str(i)] = formula_e
+    instructions['U' + str(i)].style = vert_calcs
+    instructions['U' + str(i)].number_format = "#,###.00"
+    # instructions thr adjustment
+    formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
+                "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
+                "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
+                "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
+                % (page, str(i), page, str(i), page, str(i),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i)
+                   )
+    instructions.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
+    instructions['V' + str(i)] = formula_f
+    instructions['V' + str(i)].style = vert_calcs
+    instructions['V' + str(i)].number_format = "#,###.00"
+    # instructions fri adjustment
+    instructions.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
+    formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
+                "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
+                "IF(AND(%s!S%s>0,%s!P%s>12)," \
+                "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
+                % (page, str(i), page, str(i), page, str(i),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i + 1), page, str(i),
+                   page, str(i), page, str(i + 1), page, str(i),
+                   page, str(i + 1), page, str(i + 1), page, str(i))
+    instructions['W' + str(i)] = formula_g
+    instructions['W' + str(i)].style = vert_calcs
+    instructions['W' + str(i)].number_format = "#,###.00"
+    # instructions total violation
+    instructions.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
+    formula_h = "=SUM(%s!S%s:%s!T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
+                % (page, str(i), page, str(i), page, str(i),
+                   page, str(i), page, str(i))
+    instructions['X' + str(i)] = formula_h
+    instructions['X' + str(i)].style = calcs
+    instructions['X' + str(i)].number_format = "#,###.00"
+    instructions['D12'] = "F"
+    instructions['D12'].style = col_center_header
+    instructions.merge_cells('D12:E12')
+    instructions['F12'] = "F"
+    instructions['F12'].style = col_center_header
+    instructions.merge_cells('F12:G12')
+    instructions['H12'] = "F"
+    instructions['H12'].style = col_center_header
+    instructions.merge_cells('H12:I12')
+    instructions['J12'] = "F"
+    instructions['J12'].style = col_center_header
+    instructions.merge_cells('J12:K12')
+    instructions['L12'] = "F"
+    instructions['L12'].style = col_center_header
+    instructions.merge_cells('L12:M12')
+    instructions['N12'] = "F"
+    instructions['N12'].style = col_center_header
+    instructions.merge_cells('N12:O12')
+    instructions['P12'] = "F"
+    instructions['P12'].style = col_center_header
+    instructions.merge_cells('P12:Q12')
+    # legend section
+    instructions.row_dimensions[14].height = 180
+    instructions['A14'].style = instruct_text
+    instructions.merge_cells('A14:X14')
+    instructions['A14'] = "Legend: \n" \
+        "A.  Name \n" \
+        "B.  List: Either otdl, wal, nl or aux (always use lowercase to preserve operation of the formulas).\n" \
+        "C.  Weekly 5200 Time: Enter the 5200 time for the week. \n" \
+        "D.  Daily Non 5200 Time: Enter daily hours for either holiday, annual sick leave or other type of paid leave.\n" \
+        "E.  Daily Non 5200 Type: Enter “a” for annual, “s” for sick, “h” for holiday, etc. \n" \
+        "F.  Daily 5200 Hours: Enter 5200 hours or hours worked for the day. \n" \
+        "G.  No value allowed: No non 5200 times allowed for Sundays.\n" \
+        "J.   Weekly Violations: This is the total of violations over 60 hours in a week.\n" \
+        "K.  Daily Violations: This is the total of daily violations which have exceeded 11.50 (for wal, nl or aux)\n" \
+        "     or 12 hours in a day (for otdl).\n" \
+        "L.  Wednesday Adjustment: In cases were the 60 hour limit is reached and a daily violation happens (on Wednesday),\n" \
+        "     this column deducts one of the violations so to provide a correct remedy.\n" \
+        "M.  Thursday Adjustment: In cases were the 60 hour limit is reached and a daily violation happens (on Thursday), \n" \
+        "     this column deducts one of the violations so to provide a correct remedy.\n" \
+        "N.  Friday Adjustment: In cases were the 60 hour limit is reached and a daily violation happens (on Friday),\n" \
+        "     this column deducts one of the violations so to provide a correct remedy.\n" \
+        "O.  Total Violation: This field is the end result of the calculation. This is the addition of the total daily  " \
+                          "violations and the\n" \
+        "     weekly violation, it shows the sum of the two. This is the value which the steward should seek a remedy for."
     daily_list = []  # array
     candidates = []
     for day in dates:
@@ -447,29 +820,29 @@ def overmax_spreadsheet(carrier_list):
             overmax['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
             # calculated fields
             # hidden columns
-            formula = "=SUM(%s!D%s:%s!P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
+            formula_a = "=SUM(%s!D%s:%s!P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
                       "%s!N%s + %s!P%s" % ("12_60_violations",str(i + 1),"12_60_violations",str(i + 1),
                        "12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
                        "12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i))
-            overmax['R' + str(i)]= formula
+            overmax['R' + str(i)]= formula_a
             overmax['R' + str(i)].style = calcs
             overmax['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
+            formula_b = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
                       ("12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
                        "12_60_violations",str(i),"12_60_violations",str(i),"12_60_violations",str(i),
                        "12_60_violations",str(i))
-            overmax['R' + str(i + 1)] = formula
+            overmax['R' + str(i + 1)] = formula_b
             overmax['R' + str(i + 1)].style = calcs
             overmax['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
             # weekly violation
             overmax.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-            formula = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % ("12_60_violations",str(i),
+            formula_c = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % ("12_60_violations",str(i),
                      "12_60_violations",str(i + 1),"12_60_violations",str(i),"12_60_violations",str(i + 1),)
-            overmax['S' + str(i)] = formula
+            overmax['S' + str(i)] = formula_c
             overmax['S' + str(i)].style = calcs
             overmax['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # daily violation
-            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
                       "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
                       "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
                       "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
@@ -483,13 +856,13 @@ def overmax_spreadsheet(carrier_list):
                           "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
                           "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1),
                           "12_60_violations",str(i+1),"12_60_violations",str(i+1),"12_60_violations",str(i+1))
-            overmax['T' + str(i)] = formula
+            overmax['T' + str(i)] = formula_d
             overmax.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
             overmax['T' + str(i)].style = calcs
             overmax['T' + str(i)].number_format = "#,###.00"
             # wed adjustment
             overmax.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
                 "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
                 "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                 "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
@@ -507,11 +880,11 @@ def overmax_spreadsheet(carrier_list):
                    "12_60_violations", str(i + 1), "12_60_violations", str(i), "12_60_violations",str(i + 1),
                    "12_60_violations", str(i+1), "12_60_violations", str(i), "12_60_violations",str(i + 1),
                    "12_60_violations", str(i), "12_60_violations", str(i + 1), "12_60_violations", str(i))
-            overmax['U' + str(i)] = formula
+            overmax['U' + str(i)] = formula_e
             overmax['U' + str(i)].style = vert_calcs
             overmax['U' + str(i)].number_format = "#,###.00"
             # thr adjustment
-            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
                       "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
                       "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
                       "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
@@ -529,12 +902,12 @@ def overmax_spreadsheet(carrier_list):
                          "12_60_violations", str(i + 1), "12_60_violations", str(i)
                          )
             overmax.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
-            overmax['V' + str(i)] = formula
+            overmax['V' + str(i)] = formula_f
             overmax['V' + str(i)].style = vert_calcs
             overmax['V' + str(i)].number_format = "#,###.00"
             # fri adjustment
             overmax.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-            formula = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
                     "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
                     "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
                     "IF(AND(%s!S%s>0,%s!P%s>12)," \
@@ -544,25 +917,26 @@ def overmax_spreadsheet(carrier_list):
                     "12_60_violations", str(i+1),"12_60_violations", str(i+1),"12_60_violations", str(i),
                     "12_60_violations", str(i),"12_60_violations", str(i+1),"12_60_violations", str(i),
                     "12_60_violations", str(i+1),"12_60_violations", str(i+1),"12_60_violations", str(i))
-            overmax['W' + str(i)] = formula
+            overmax['W' + str(i)] = formula_g
             overmax['W' + str(i)].style = vert_calcs
             overmax['W' + str(i)].number_format = "#,###.00"
             # total violation
             overmax.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
-            formula = "=SUM(%s!S%s:%s!T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
+            formula_h = "=SUM(%s!S%s:%s!T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
                       % ("12_60_violations", str(i),"12_60_violations", str(i),"12_60_violations", str(i),
                          "12_60_violations", str(i),"12_60_violations", str(i))
-            overmax['X' + str(i)] = formula
+            overmax['X' + str(i)] = formula_h
             overmax['X' + str(i)].style = calcs
             overmax['X' + str(i)].number_format = "#,###.00"
 
-            formula = "=%s!A%s" % ("12_60_violations", str(i))
-            summary['A' + str(summary_i)] = formula
+            formula_i = "=%s!A%s" % ("12_60_violations", str(i))
+            summary['A' + str(summary_i)] = formula_i
             summary['A' + str(summary_i)].style = input_name
-            formula = "=%s!X%s" % ("12_60_violations", str(i))
-            summary['B' + str(summary_i)] = formula
+            formula_j = "=%s!X%s" % ("12_60_violations", str(i))
+            summary['B' + str(summary_i)] = formula_j
             summary['B' + str(summary_i)].style = input_s
             summary['B' + str(summary_i)].number_format = "#,###.00"
+            summary.row_dimensions[summary_i].height = 10  # adjust all row height
             i += 2
             summary_i += 1
     # display totals for all violations
@@ -570,10 +944,12 @@ def overmax_spreadsheet(carrier_list):
     overmax['P' + str(i + 1)] = "Total Violations"
     overmax['P' + str(i + 1)].style = col_header
     overmax.merge_cells('V' + str(i+1) + ':X' + str(i+1))
-    formula = "=SUM(%s!X%s:%s!X%s)" % ("12_60_violations", "9", "12_60_violations", str(i))
-    overmax['V' + str(i+1)] = formula
+    formula_k = "=SUM(%s!X%s:%s!X%s)" % ("12_60_violations", "9", "12_60_violations", str(i))
+    overmax['V' + str(i+1)] = formula_k
     overmax['V' + str(i+1)].style = calcs
     overmax['V' + str(i+1)].number_format = "#,###.00"
+    overmax.row_dimensions[i].height = 10  # adjust all row height
+    overmax.row_dimensions[i+1].height = 10  # adjust all row height
 
     # enter filename and open
     try:
