@@ -23,7 +23,19 @@ project folder. If not, then create it.
 		5. /kb_sub/spreadsheets
 		6. /kb_sub/weekly_availability
 		
-4. in terminal/ powershell, navigate to the kb_install folder. 
+4. in terminal/ powershell, navigate to the klusterbox folder.
+
+5. if the virtual environment is not installed, create it. 
+	a. enter: pip3 install pipenv. 
+
+6. activate the virtual environment by entering: pipenv shell
+
+7. check the installed modules by entering: pip list
+
+8. if the listed modules do not match those in the requirements list then install them. 
+	a. enter: pipenv install -r requirements.txt
+
+4. navigate to the kb_install folder
 
 5. enter the following in the command line: pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
 		
