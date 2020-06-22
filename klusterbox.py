@@ -33,8 +33,8 @@ For the newest version of Klusterbox, visit www.klusterbox.com/download. The sou
 Klusterbox version 3.002 is being released under the GNU General Public License version 3.
 """
 # version variables
-version = "3.003"
-release_date = "in development"
+version = "3.004"
+release_date = "July 20, 2020"
 
 # Standard Libraries
 from tkinter import *
