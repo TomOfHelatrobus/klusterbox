@@ -30,11 +30,11 @@ in the same folder.
 
 For the newest version of Klusterbox, visit www.klusterbox.com/download. The source code is also available there.
 
-Klusterbox version 3.002 is being released under the GNU General Public License version 3.
+This version of Klusterbox is being released under the GNU General Public License version 3.
 """
 # version variables
-version = "3.004"
-release_date = "July 20, 2020"
+version = "3.005"
+release_date = "November 1, 2020"
 
 # Standard Libraries
 from tkinter import *
@@ -135,6 +135,24 @@ def rear_window(wd):  # This closes the window created by front_window()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
 
+def clean_rings3_table():
+    sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
+    result = inquire(sql)
+    type = ""
+    time = float(0.0)
+    if result:
+        sql = "UPDATE rings3 SET leave_type='%s',leave_time='%s'" \
+        "WHERE leave_type IS NULL" \
+        % ( type, time)
+        commit(sql)
+        messagebox.showinfo("Clean Rings",
+                            "Rings table has been cleared of NULL values in leave type and leave time columns.")
+    else:
+        messagebox.showinfo("Clean Rings",
+                            "No NULL values in leave type and leave time columns were found in the Rings3 "
+                            "table of the database. No action taken.")
+    return
+
 def overmax_spreadsheet(carrier_list):
     date = g_date[0]
     dates = []  # array containing days.
@@ -203,7 +221,7 @@ def overmax_spreadsheet(carrier_list):
         sheet.column_dimensions["P"].width = 4
         sheet.column_dimensions["Q"].width = 2
         sheet.column_dimensions["R"].width = 4
-        sheet.column_dimensions['R'].hidden= True
+        sheet.column_dimensions['R'].hidden = True
         sheet.column_dimensions["S"].width = 5
         sheet.column_dimensions["T"].width = 5
         sheet.column_dimensions["U"].width = 2
@@ -697,6 +715,7 @@ def overmax_spreadsheet(carrier_list):
         # if there is a ring to match the carrier/ date then printe
         carrier_rings = []
         total = 0.0
+        grandtotal = 0.0
         totals_array = ["", "", "", "", "", "", ""]
         leavetype_array = ["", "", "", "", "", "", ""]
         leavetime_array = ["", "", "", "", "", "", ""]
@@ -733,8 +752,12 @@ def overmax_spreadsheet(carrier_list):
             if item[2] == "": # convert empty 5200 strings to zero
                 t = 0.0
             else: t = float(item[2])
+            if item[7] == "": # convert leave time strings to zero
+                l = 0.0
+            else: l = float(item[7])
             total = total + t
-        if total > 60 or daily_violation == True:
+            grandtotal = grandtotal + t + l
+        if grandtotal > 60 or daily_violation == True:
             # output to the gui
             overmax.row_dimensions[i].height = 10# adjust all row height
             overmax.row_dimensions[i+1].height = 10
@@ -951,27 +974,27 @@ def overmax_spreadsheet(carrier_list):
     overmax.row_dimensions[i].height = 10  # adjust all row height
     overmax.row_dimensions[i+1].height = 10  # adjust all row height
 
-    # enter filename and open
-    try:
-        xl_filename = filedialog.asksaveasfile(filetypes=[("Excel files", "*.xlsx")], title='Save File',
-                                           defaultextension=".xlsx")
-        if xl_filename.name is None:
-            return
-        else:
-            wb.save(xl_filename.name)
+    # name the excel file
+    xl_filename = "kb_om" + str(format(g_date[0], "_%y_%m_%d")) + ".xlsx"
+    ok = messagebox.askokcancel("Spreadsheet generator", "Do you want to generate a spreadsheet?")
+    if ok == True:
+        if os.path.isdir('kb_sub/over_max_spreadsheet') == False:
+            os.makedirs('kb_sub/over_max_spreadsheet')
+        try:
+            wb.save('kb_sub/over_max_spreadsheet/' + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
-                                                         "File is named: {}".format(xl_filename.name))
+                                                         "File is named: {}".format(xl_filename))
             if sys.platform == "win32":
-                os.startfile(xl_filename.name)
+                os.startfile('kb_sub\\over_max_spreadsheet\\' + xl_filename)
             if sys.platform == "linux":
-                subprocess.call(["xdg-open"+ xl_filename.name])
+                subprocess.call(["xdg-open", 'kb_sub/over_max_spreadsheet/' + xl_filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", xl_filename.name])
-    except:
-        messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
-                                                      "Suggestion: "
-                                                      "Make sure that identically named spreadsheets are closed "
-                                                      "(the file can't be overwritten while open).")
+                subprocess.call(["open", 'kb_sub/over_max_spreadsheet/' + xl_filename])
+        except:
+            messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
+                                                          "Suggestion: "
+                                                          "Make sure that identically named spreadsheets are closed "
+                                                          "(the file can't be overwritten while open).")
 
 
 def ns_config_apply(frame, text_array, color_array):
@@ -1264,50 +1287,81 @@ def pdf_converter_pagecount(filepath):  # gives a page count for pdf_to_text
 
 
 def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfminer
-    rsrcmgr = PDFResourceManager()
-    retstr = StringIO()
     codec = 'utf-8'
-    laparams = LAParams(
-        line_overlap=.1,
-        char_margin=2,
-        line_margin=.5,
-        word_margin=.5,
-        boxes_flow=0,
-        detect_vertical=True,
-        all_texts=True)
-    device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
-    page_count = pdf_converter_pagecount(filepath)  # get page count
-    with open(filepath, 'rb') as filein:
-        # create progressbar
-        pb_root = Tk()  # create a window for the progress bar
-        pb_root.geometry("%dx%d+%d+%d" % (450, 75, 200, 300))
-        pb_root.title("Klusterbox PDF Converter - reading pdf")
-        Label(pb_root, text="This process takes several minutes. Please wait for results.").pack(anchor="w", padx=20)
-        pb_label = Label(pb_root, text="Reading PDF: ")  # make label for progress bar
-        pb_label.pack(anchor="w", padx=20)
-        pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-        pb.pack(anchor="w", padx=20)
-        pb["maximum"] = page_count  # set length of progress bar
-        pb.start()
+    password = ""
+    maxpages = 0
+    caching = (True,True)
+    pagenos = set()
+    laparams = (
+        LAParams(
+            line_overlap=.1, #best results
+            char_margin=2,
+            line_margin=.5,
+            word_margin=.5,
+            boxes_flow=0,
+            detect_vertical=True,
+            all_texts=True),
+        LAParams(
+            line_overlap=.5, # default settings
+            char_margin=2,
+            line_margin=.5,
+            word_margin=.5,
+            boxes_flow=.5,
+            detect_vertical=False,
+            all_texts=False)
+        )
+    for i in range(2):
+        retstr = StringIO()
+        rsrcmgr = PDFResourceManager()
+        device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams[i])
         interpreter = PDFPageInterpreter(rsrcmgr, device)
-        password = ""
-        maxpages = 0
-        caching = True
-        pagenos = set()
-        count = 0
-        for page in PDFPage.get_pages(filein, pagenos, maxpages=maxpages, password=password, caching=caching,
-                                      check_extractable=True):
-            interpreter.process_page(page)
-            pb["value"] = count  # increment progress bar
-            pb_root.update()
-            count += 1
-        text = retstr.getvalue()
-        device.close()
-        retstr.close()
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    pb_root.destroy()
+        page_count = pdf_converter_pagecount(filepath)  # get page count
+        with open(filepath, 'rb') as filein:
+            # create progressbar
+            pb_root = Tk()  # create a window for the progress bar
+            pb_root.geometry("%dx%d+%d+%d" % (450, 75, 200, 300))
+            pb_root.title("Klusterbox PDF Converter - reading pdf")
+            Label(pb_root, text="This process takes several minutes. Please wait for results.").pack(anchor="w", padx=20)
+            pb_label = Label(pb_root, text="Reading PDF: ")  # make label for progress bar
+            pb_label.pack(anchor="w", padx=20)
+            pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+            pb.pack(anchor="w", padx=20)
+            pb["maximum"] = page_count  # set length of progress bar
+            pb.start()
+            count = 0
+            for page in PDFPage.get_pages(filein, pagenos, maxpages=maxpages, password=password, caching=caching[i],
+                                          check_extractable=True):
+                interpreter.process_page(page)
+                pb["value"] = count  # increment progress bar
+                pb_root.update()
+                count += 1
+            text = retstr.getvalue()
+            device.close()
+            retstr.close()
+        pb.stop()  # stop and destroy the progress bar
+        pb_label.destroy()  # destroy the label for the progress bar
+        pb.destroy()
+        pb_root.destroy()
+        # test the results
+        page = text.split("")  # split the document into pages
+        result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", page[0])
+        try:
+            station = result.group(1)
+            break
+        except:
+            if i<1:
+                result = messagebox.askokcancel("Klusterbox PDF Converter",
+                                     "PDF Conversion has failed and will not generate a file.  \n\n"
+                                     "We will try again.")
+                if result == False:
+                    return text
+            else:
+                messagebox.showerror("Klusterbox PDF Converter",
+                                     "PDF Conversion has failed and will not generate a file.  \n\n"
+                                     "You will either have to obtain the Employee Everything Report "
+                                     "in the csv format from management or manually enter in the "
+                                     "information")
+
     return text
 
 
@@ -1363,7 +1417,7 @@ def pdf_converter():
         # if the file path already exist - ask for confirmation
         if os.path.exists(new_file_path):
             proceed = messagebox.askokcancel("Possible File Name Discrepancy", "There is already a file named {}. "
-                                                                               "If you proceed, the file will be overwritten. Did you want to proceed?".format(
+               "If you proceed, the file will be overwritten. Did you want to proceed?".format(
                 short_file_name))
             if proceed == False:
                 return
@@ -1438,7 +1492,7 @@ def pdf_converter():
     page = text.split("")  # split the document into pages
     whole_line = []
     page_num = 1  # initialize var to count pages
-    eid_count = 0  # unitialize var to count underscore dash items
+    eid_count = 0  # initialize var to count underscore dash items
     underscore_slash = []  # arrays for building daily array
     daily_underscoreslash = []
     mv_holder = []
@@ -1488,6 +1542,7 @@ def pdf_converter():
     mcgrath_rpt = []
     unresolved = []
     basecounter_error = []
+    failed = []
     result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", page[0])
     try:
         station = result.group(1)
@@ -1570,9 +1625,6 @@ def pdf_converter():
         page_num += 1
         b = a.split("\n\n")
         for c in b:
-            # try and get the employee id early
-            # if re.match(r"[0-9]{3}.\\.[0-9]{4}\\n[0-9]{8}", c):
-            #     printe("hit: ", c)
             # find, categorize and record daily times
             if lookfortimes == True:
                 if re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}$", c):
@@ -1614,311 +1666,326 @@ def pdf_converter():
             underscore_slash = []
             d = c.split("\n")
             for e in d:
-                # build the daily array
-                if re.match(r"[0-9]{6}$", e) and len(movecode_holder) != 0:  # get the route following the chain
-                    movecode_holder.append(e)
-                    route_holder = movecode_holder
-                    if unprocessedrings == "":
-                        daily_array.append(route_holder)
-                    else:
-                        unprocessed_counter += 1  # handle carroll problem
-                        carroll_rpt.append(lastname)  # append carroll report
-                movecode_holder = []
-                if len(finance_holder) != 0:  # get the move code following the chain
-                    if re.match(r"[0-9]{4}\-[0-9]{2}$", e):
-                        finance_holder.append(e)
-                        movecode_holder = finance_holder
-                    # solve for robertson problem / "H/L" is in move code
-                    if re.match(r"H/L", e):  # if the move code is a higher level assignment
-                        finance_holder.append(e)
-                        finance_holder.append("000000")  # insert zeros for route number
+                try:
+                    # build the daily array
+                    if re.match(r"[0-9]{6}$", e) and len(movecode_holder) != 0:  # get the route following the chain
+                        movecode_holder.append(e)
+                        route_holder = movecode_holder
                         if unprocessedrings == "":
-                            daily_array.append(finance_holder)  # skip getting the route and create append daily array
+                            daily_array.append(route_holder)
                         else:
                             unprocessed_counter += 1  # handle carroll problem
                             carroll_rpt.append(lastname)  # append carroll report
-                finance_holder = []
-                if len(timezone_holder) != 0:  # get the finance number following the chain
-                    timezone_holder.append(e)
-                    finance_holder = timezone_holder
-                timezone_holder = []
-                if re.match(r"[A-Z]{2}T", e) and len(time_holder) != 0:  # look for the time zone following chain
-                    time_holder.append(e)
-                    timezone_holder = time_holder
-                elif len(
-                        time_holder) != 0 and unprocessedrings != "":  # solve for salih problem / missing time zone in ...
-                    unprocessed_counter += 1  # unprocessed rings
-                    salih_rpt.append(lastname)
-                time_holder = []
-                if re.match(r" [0-2][0-9]\.[0-9][0-9]$", e) and len(
-                        date_holder) != 0:  # look for time following date/mv desig
-                    date_holder.append(e)
-                    time_holder = date_holder
-                # look for items in franklin array to solve for franklin problem
-                if len(franklin_array) > 0 and re.match(r"[0-1][0-9]\/[0-3][0-9]$", e):  # if franklin array and date
-                    frank = franklin_array.pop(0)  # pop out the earliest mv desig
+                    movecode_holder = []
+                    if len(finance_holder) != 0:  # get the move code following the chain
+                        if re.match(r"[0-9]{4}\-[0-9]{2}$", e):
+                            finance_holder.append(e)
+                            movecode_holder = finance_holder
+                        # solve for robertson problem / "H/L" is in move code
+                        if re.match(r"H/L", e):  # if the move code is a higher level assignment
+                            finance_holder.append(e)
+                            finance_holder.append("000000")  # insert zeros for route number
+                            if unprocessedrings == "":
+                                daily_array.append(finance_holder)  # skip getting the route and create append daily array
+                            else:
+                                unprocessed_counter += 1  # handle carroll problem
+                                carroll_rpt.append(lastname)  # append carroll report
+                    finance_holder = []
+                    if len(timezone_holder) != 0:  # get the finance number following the chain
+                        timezone_holder.append(e)
+                        finance_holder = timezone_holder
+                    timezone_holder = []
+                    if re.match(r"[A-Z]{2}T", e) and len(time_holder) != 0:  # look for the time zone following chain
+                        time_holder.append(e)
+                        timezone_holder = time_holder
+                    elif len(
+                            time_holder) != 0 and unprocessedrings != "":  # solve for salih problem / missing time zone in ...
+                        unprocessed_counter += 1  # unprocessed rings
+                        salih_rpt.append(lastname)
+                    time_holder = []
+                    if re.match(r" [0-2][0-9]\.[0-9][0-9]$", e) and len(
+                            date_holder) != 0:  # look for time following date/mv desig
+                        date_holder.append(e)
+                        time_holder = date_holder
+                    # look for items in franklin array to solve for franklin problem
+                    if len(franklin_array) > 0 and re.match(r"[0-1][0-9]\/[0-3][0-9]$", e):  # if franklin array and date
+                        frank = franklin_array.pop(0)  # pop out the earliest mv desig
+                        mv_holder = []
+                        mv_holder.append(eid)  # rebuild the mv holder array
+                        mv_holder.append(frank)  # place in a holder and check the next line for a date
+                    # solve for rodriguez problem / multiple consecutive mv desigs
+                    if len(franklin_array) > 0:
+                        if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
+                                                                  e) or e in mv_desigs:  # look for move desig
+                            franklin_array.append(e)
+                            rod_rpt.append(lastname)
+                    date_holder = []
+                    if re.match(r"[0-1][0-9]\/[0-3][0-9]$", e) and len(
+                            mv_holder) != 0:  # look for date following move desig
+                        mv_holder.append(e)
+                        date_holder = mv_holder
+                    # solve for franklin problem: two mv desigs appear consecutively
+                    if len(mv_holder) > 0:
+                        if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
+                                                                  e) or e in mv_desigs:  # look for move desig
+                            franklin_array.append(mv_holder[1])
+                            franklin_array.append(e)
+                            frank_rpt.append(lastname)
                     mv_holder = []
-                    mv_holder.append(eid)  # rebuild the mv holder array
-                    mv_holder.append(frank)  # place in a holder and check the next line for a date
-                # solve for rodriguez problem / multiple consecutive mv desigs
-                if len(franklin_array) > 0:
-                    if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                              e) or e in mv_desigs:  # look for move desig
-                        franklin_array.append(e)
-                        rod_rpt.append(lastname)
-                date_holder = []
-                if re.match(r"[0-1][0-9]\/[0-3][0-9]$", e) and len(
-                        mv_holder) != 0:  # look for date following move desig
-                    mv_holder.append(e)
-                    date_holder = mv_holder
-                # solve for franklin problem: two mv desigs appear consecutively
-                if len(mv_holder) > 0:
-                    if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                              e) or e in mv_desigs:  # look for move desig
-                        franklin_array.append(mv_holder[1])
-                        franklin_array.append(e)
-                        frank_rpt.append(lastname)
-                mv_holder = []
-                if len(franklin_array) == 0:
-                    if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                              e) or e in mv_desigs:  # look for move desig
-                        mv_holder.append(eid)
-                        mv_holder.append(e)  # place in a holder and check the next line for a date
-                # solve for rose problem: mv desig and date appearing on same line
-                if re.match(r"0[0-9]{4}\s[0-2][0-9]\/[0-9][0-9]$", e):
-                    rose = e.split(" ")
-                    mv_holder.append(eid)  # add the emp id to the daily array
-                    mv_holder.append(rose[0])  # add the mv desig to the daily array
-                    mv_holder.append(rose[1])  # add the date to the mv desig array
-                    date_holder = mv_holder  # transfer array items to date holder
-                    rose_rpt.append(lastname)
-                if e in days:  # find and record all days on the report
-                    if eid_label == True:
-                        found_days.append(e)
-                    if eid_label == False:
-                        foundday_holder.append(e)
-                if e == "Processed Clock Rings":
-                    eid_count = 0
-                # if e =="Employee ID" and restrictedisfirst==False: # find the employee id label
-                if e == "Employee ID":
-                    eid_label = True
-                    if gen_error_report == "on":
-                        if len(jobs) > 0:
-                            input = "Jobs: {}\n".format(jobs)
-                            kbpc_rpt.write(input)
-                        if len(routes) > 0:
-                            input = "Routes: {}\n".format(routes)
-                            kbpc_rpt.write(input)
-                        if len(level) > 0:
-                            input = "Levels: {}\n".format(level)
-                            kbpc_rpt.write(input)
-                        if len(base_time) > 0:
-                            kbpc_rpt.write("Base / Times:")
-                            for bt in base_time:
-                                input = "{}\n".format(bt)
-                                kbpc_rpt.write(input)
-                    if len(daily_underscoreslash) > 0:  # bind all underscore slash items in one array
-                        underscore_slash_result = sum(daily_underscoreslash, [])
-                    # write to csv file
-                    prime_info = [yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
-                                  '"{}"'.format("0000"), '"{}"'.format(eid), '"{}"'.format(lastname),
-                                  '"{}"'.format(fi[:1]),
-                                  '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"',
-                                  '"0"']
-                    count = 0
-                    for array in daily_array:
-                        array.append(underscore_slash_result[count])
-                        array.append(underscore_slash_result[count + 1])
-                        count += 2
-                    if gen_error_report == "on":
-                        if len(daily_array) > 0:  # display daily array information
-                            kbpc_rpt.write("Daily Array:\n")
-                        for da in daily_array:
-                            input = "{}\n".format(da)
-                            kbpc_rpt.write(input)
-                    if base_chg + 1 != len(found_days):  # add to basecounter error array
-                        to_add = (lastname, base_chg, len(found_days))
-                        if len(found_days) > 0:
-                            basecounter_error.append(to_add)
-                    # set up array for each day in the week
-                    csv_sat = []
-                    csv_sun = []
-                    csv_mon = []
-                    csv_tue = []
-                    csv_wed = []
-                    csv_thr = []
-                    csv_fri = []
-                    csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
-                    # reorder the found days to ensure the correct order
-                    found_days = pdf_converter_reorder_founddays(found_days)
-                    # fix problem with miscounted base times
-                    high_array = []
-                    for bt in base_time:
-                        high_array.append(bt[0])
-                    if len(high_array) > 0:
-                        high_num = max(high_array)
-                        comp_array = []
-                        for i in range(high_num + 1):
-                            comp_array.append(i)
-                        del_array = []
-                        for num in comp_array:
-                            if num in high_array:
-                                del_array.append(num)
-                        error_array = comp_array
-                        error_array = [x for x in error_array if x not in del_array]
-                        error_array.reverse()
-                        if len(error_array) > 0:
-                            # printe("fort worth, we have a problem.")
-                            for error_num in error_array:
-                                for bt in base_time:
-                                    if bt[0] > error_num:
-                                        bt[0] = bt[0] - 1
-                    # load the multi array with array for each day
-                    # printe("base times: ", base_time)
-                    # printe("found_days: ", found_days)
-                    for i in range(7):
-                        for bt in base_time:
-                            if found_days[bt[0]] == days[i]:
-                                csv_output[i].append(bt)
-                        for da in daily_array:
-                            if da[2] == pp_days[i].strftime("%m/%d"):
-                                csv_output[i].append(da)
-                    for co in csv_output:  # for each time in the array, printe a line
-                        for array in co:
-                            if gen_error_report == "on":
-                                input = "{}\n".format(array)
-                                kbpc_rpt.write(input)
-                            # put the data into the csv file
-                            if len(array) == 2:  # if the line comes from base/time data
-                                add_this = [found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
-                                whole_line = prime_info + add_this
-                                with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
-                                    writer = csv.writer(writeFile, dialect='myDialect')
-                                    writer.writerow(whole_line)
-                            if len(array) == 10:  # if the line comes from daily array
-                                if array[9] != "__/__":
-                                    end_notes = "(W)Ring Deleted From PC"
-                                else:
-                                    end_notes = ""
-                                add_this = ["000-00", '"{}"'.format(array[1]),
-                                            '"{}"'.format(
-                                                pp_days[daily_array_days.index(array[2])].strftime("%d-%b-%y").upper()),
-                                            '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]),
-                                            '"{}"'.format(array[6]),
-                                            '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
-                                            '"{}"'.format(end_notes)]
-                                whole_line = prime_info + add_this
-                                with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
-                                    writer = csv.writer(writeFile, dialect='myDialect')
-                                    writer.writerow(whole_line)
-                    # define csv writer parameters
-                    csv.register_dialect('myDialect',
-                                         delimiter=',',
-                                         quotechar="'",
-                                         skipinitialspace=True,
-                                         lineterminator=",\r"
-                                         )
-                    if len(jobs) > 0:
-                        for i in range(len(jobs)):
-                            base_line = [base_temp[i], '"{}"'.format(jobs[i].replace("-", "").strip()),
-                                         '"0000"', '"7220-10"',
-                                         '"Q0"', '"{}"'.format(level[i]), '"N"', '"{}"'.format(routes[i]), '""',
-                                         '"0000000"',
-                                         '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
-                            whole_line = prime_info + base_line
-                            with open(new_file_path, 'a') as writeFile:
-                                writer = csv.writer(writeFile, dialect='myDialect')
-                                writer.writerow(whole_line)
-                    found_days = []  # initialized arrays
-                    lookfortimes = False
-                    base_time = []
-                    eid = ""
-                    base_chg = 0
-                    base_counter = 0
-                    daily_array = []
-                    daily_underscoreslash = []
-                    unprocessed_counter = 0
-                    jobs = []
-                    level = []
-                    if gen_error_report == "on":
-                        input = "{}\n".format(e)
-                        kbpc_rpt.write(input)
-                    eid_count = 0
-                if lookforfi == True:  # look for first initial
-                    if re.fullmatch("[A-Z]\s[A-Z]", e) or re.fullmatch("([A-Z])", e):
-                        if gen_error_report == "on":
-                            input = "FI: {}\n".format(e)
-                            kbpc_rpt.write(input)
-                        fi = e
-                        lookforfi = False
-                if lookforname == True:  # look for the name
-                    if re.fullmatch(r"([A-Z]+)", e) \
-                            or re.fullmatch(r"([A-Z]+.[A-Z]+)", e) \
-                            or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+)", e) \
-                            or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
-                            or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
-                        lastname = e
-                        if gen_error_report == "on":
-                            input = "Name: {}\n".format(e)
-                            kbpc_rpt.write(input)
-                        lookforname = False
-                        lookforfi = True
-                if re.match(r"\s[0-9]{2}\-[0-9]$", e):  # find the job or d/a code - there might be two
-                    jobs.append(e)
-                if lookfor2route == True:  # look for temp route
-                    if re.match(r"[0-9]{6}$", e):
-                        routes.append(e)  # add route to routes array
-                    lookfor2route = False
-                if lookforroute == True:  # look for main route
-                    if re.match(r"[0-9]{6}$", e):  #
-                        routes.append(e)  # add route to routes array
-                        lookfor2route = True
-                    lookforroute = False
-                if e == "Route #":  # set trap to catch route # on the next line
-                    lookforroute = True
-                if lookfor2level == True:  # intercept the second level
-                    if re.match(r"[0-9]{2}$", e):
-                        level.append(e)
-                    lookfor2level = False
-                if lookforlevel == True:  # intercept the level
-                    if re.match(r"[0-9]{2}$", e):
-                        level.append(e)
-                        lookfor2level = True  # set trap to catch the second level next line
-                    lookforlevel = False
-                if e == "Lvl":  # set trap to catch Lvl on the next line
-                    lookforlevel = True
-                if eid != "" and new_page == False:
-                    if re.match(r"[0-9]{8}", e):  # find the underscore dash string
-                        eid_count += 1
-                    if re.match(r"xxx\-xx\-[0-9]{4}", e):
-                        eid_count += 1
-                    if re.match(r"XXX\-XX\-[0-9]{4}", e):
-                        eid_count += 1
-                    if e == "___-___-____":
-                        eid_count += 1
-                    # solve for rose problem: time object is fused to emp id object - just increment the eid counter
-                    if re.match(r"\s[0-9]{2}\.[0-9]{10}", e) \
-                            or re.match(r"__.__[0-9]{8}", e) \
-                            or re.match(r"__._____-___-____", e):
-                        eid_count += 1
+                    if len(franklin_array) == 0:
+                        if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
+                                                                  e) or e in mv_desigs:  # look for move desig
+                            mv_holder.append(eid)
+                            mv_holder.append(e)  # place in a holder and check the next line for a date
+                    # solve for rose problem: mv desig and date appearing on same line
+                    if re.match(r"0[0-9]{4}\s[0-2][0-9]\/[0-9][0-9]$", e):
+                        rose = e.split(" ")
+                        mv_holder.append(eid)  # add the emp id to the daily array
+                        mv_holder.append(rose[0])  # add the mv desig to the daily array
+                        mv_holder.append(rose[1])  # add the date to the mv desig array
+                        date_holder = mv_holder  # transfer array items to date holder
                         rose_rpt.append(lastname)
-                # solve for carroll problem/ unprocessed rings do not have underscore slash counterparts
-                if e == "Un-Processed Rings":  # after unprocessed rings label, add no new rings to daily array
-                    unprocessedrings = eid
-                if re.match(r"[0-9]{8}", e):  # find the emp id / it is the first 8 digit number on the page
-                    if eid_count == 0:
-                        eid = e
+                    if e in days:  # find and record all days on the report
+                        if eid_label == True:
+                            found_days.append(e)
+                        if eid_label == False:
+                            foundday_holder.append(e)
+                    if e == "Processed Clock Rings":
+                        eid_count = 0
+                    # if e =="Employee ID" and restrictedisfirst==False: # find the employee id label
+                    if e == "Employee ID":
+                        eid_label = True
                         if gen_error_report == "on":
-                            input = "Employee ID: {}\n".format(e)
+                            if len(jobs) > 0:
+                                input = "Jobs: {}\n".format(jobs)
+                                kbpc_rpt.write(input)
+                            if len(routes) > 0:
+                                input = "Routes: {}\n".format(routes)
+                                kbpc_rpt.write(input)
+                            if len(level) > 0:
+                                input = "Levels: {}\n".format(level)
+                                kbpc_rpt.write(input)
+                            if len(base_time) > 0:
+                                kbpc_rpt.write("Base / Times:")
+                                for bt in base_time:
+                                    input = "{}\n".format(bt)
+                                    kbpc_rpt.write(input)
+                        if len(daily_underscoreslash) > 0:  # bind all underscore slash items in one array
+                            underscore_slash_result = sum(daily_underscoreslash, [])
+                        # write to csv file
+                        prime_info = [yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
+                                      '"{}"'.format("0000"), '"{}"'.format(eid), '"{}"'.format(lastname),
+                                      '"{}"'.format(fi[:1]),
+                                      '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"',
+                                      '"0"']
+                        count = 0
+                        for array in daily_array:
+                            array.append(underscore_slash_result[count])
+                            array.append(underscore_slash_result[count + 1])
+                            count += 2
+                        if base_chg + 1 != len(found_days):  # add to basecounter error array
+                            to_add = (lastname, base_chg, len(found_days))
+                            if len(found_days) > 0:
+                                basecounter_error.append(to_add)
+                        # set up array for each day in the week
+                        csv_sat = []
+                        csv_sun = []
+                        csv_mon = []
+                        csv_tue = []
+                        csv_wed = []
+                        csv_thr = []
+                        csv_fri = []
+                        csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
+                        # reorder the found days to ensure the correct order
+                        found_days = pdf_converter_reorder_founddays(found_days)
+                        # fix problem with miscounted base times
+                        high_array = []
+                        for bt in base_time:
+                            high_array.append(bt[0])
+                        if len(high_array) > 0:
+                            high_num = max(high_array)
+                            comp_array = []
+                            for i in range(high_num + 1):
+                                comp_array.append(i)
+                            del_array = []
+                            for num in comp_array:
+                                if num in high_array:
+                                    del_array.append(num)
+                            error_array = comp_array
+                            error_array = [x for x in error_array if x not in del_array]
+                            error_array.reverse()
+                            if len(error_array) > 0:
+                                for error_num in error_array:
+                                    for bt in base_time:
+                                        if bt[0] > error_num:
+                                            bt[0] = bt[0] - 1
+                        # load the multi array with array for each day
+                        if len(foundday_holder) > 0:
+                            # solve for nguyen problem / day of week occurs prior to "employee id" label
+                            found_days = found_days + foundday_holder
+                            ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+                            for day in days:  # re order days into correct order
+                                if day not in found_days:
+                                    ordered_days.remove(day)
+                            found_days = ordered_days
+                            # foundday_holder = []
+                            nguyen_rpt.append(lastname)
+                        if len(found_days) > 0:  # printe out found days
+                            # reorder the found days to ensure the correct order
+                            found_days = pdf_converter_reorder_founddays(found_days)
+                            if gen_error_report == "on":
+                                input = "Found days: {}\n".format(found_days)
+                                kbpc_rpt.write(input)
+                        if gen_error_report == "on":
+                            input = "proto emp id counter: {}\n".format(eid_count)
                             kbpc_rpt.write(input)
-                        lookforname = True
-                        if eid != unprocessedrings:  # set unprocessedrings and new_page variables
-                            unprocessedrings = ""
-                            new_page = False
-                        else:
-                            new_page = True
-                            eid_count += 1  # increment the eid counter to stop new eid from being set
-                            if gen_error_report == "on": kbpc_rpt.write("NEW PAGE!!!\n")
+                        for i in range(7):
+                            for bt in base_time:
+                                if found_days[bt[0]] == days[i]:
+                                    csv_output[i].append(bt)
+                            for da in daily_array:
+                                if da[2] == pp_days[i].strftime("%m/%d"):
+                                    csv_output[i].append(da)
+                        for co in csv_output:  # for each time in the array, printe a line
+                            for array in co:
+                                if gen_error_report == "on":
+                                    input = "{}\n".format(array)
+                                    kbpc_rpt.write(input)
+                                # put the data into the csv file
+                                if len(array) == 2:  # if the line comes from base/time data
+                                    add_this = [found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
+                                    whole_line = prime_info + add_this
+                                    with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
+                                        writer = csv.writer(writeFile, dialect='myDialect')
+                                        writer.writerow(whole_line)
+                                if len(array) == 10:  # if the line comes from daily array
+                                    if array[9] != "__/__":
+                                        end_notes = "(W)Ring Deleted From PC"
+                                    else:
+                                        end_notes = ""
+                                    add_this = ["000-00", '"{}"'.format(array[1]),
+                                                '"{}"'.format(
+                                                    pp_days[daily_array_days.index(array[2])].strftime("%d-%b-%y").upper()),
+                                                '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]),
+                                                '"{}"'.format(array[6]),
+                                                '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
+                                                '"{}"'.format(end_notes)]
+                                    whole_line = prime_info + add_this
+                                    with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
+                                        writer = csv.writer(writeFile, dialect='myDialect')
+                                        writer.writerow(whole_line)
+                        # define csv writer parameters
+                        csv.register_dialect('myDialect',
+                                             delimiter=',',
+                                             quotechar="'",
+                                             skipinitialspace=True,
+                                             lineterminator=",\r"
+                                             )
+                        if len(jobs) > 0:
+                            for i in range(len(jobs)):
+                                base_line = [base_temp[i], '"{}"'.format(jobs[i].replace("-", "").strip()),
+                                             '"0000"', '"7220-10"',
+                                             '"Q0"', '"{}"'.format(level[i]), '"N"', '"{}"'.format(routes[i]), '""',
+                                             '"0000000"',
+                                             '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
+                                whole_line = prime_info + base_line
+                                with open(new_file_path, 'a') as writeFile:
+                                    writer = csv.writer(writeFile, dialect='myDialect')
+                                    writer.writerow(whole_line)
+                        found_days = []  # initialized arrays
+                        lookfortimes = False
+                        base_time = []
+                        eid = ""
+                        base_chg = 0
+                        base_counter = 0
+                        daily_array = []
+                        daily_underscoreslash = []
+                        unprocessed_counter = 0
+                        jobs = []
+                        level = []
+                        if gen_error_report == "on":
+                            input = "{}\n".format(e)
+                            kbpc_rpt.write(input)
+                        eid_count = 0
+                    if lookforfi == True:  # look for first initial
+                        if re.fullmatch("[A-Z]\s[A-Z]", e) or re.fullmatch("([A-Z])", e):
+                            if gen_error_report == "on":
+                                input = "FI: {}\n".format(e)
+                                kbpc_rpt.write(input)
+                            fi = e
+                            lookforfi = False
+                    if lookforname == True:  # look for the name
+                        if re.fullmatch(r"([A-Z]+)", e) \
+                                or re.fullmatch(r"([A-Z]+.[A-Z]+)", e) \
+                                or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+)", e) \
+                                or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
+                                or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
+                            lastname = e
+                            if gen_error_report == "on":
+                                input = "Name: {}\n".format(e)
+                                kbpc_rpt.write(input)
+                            lookforname = False
+                            lookforfi = True
+                    if re.match(r"\s[0-9]{2}\-[0-9]$", e):  # find the job or d/a code - there might be two
+                        jobs.append(e)
+                    if lookfor2route == True:  # look for temp route
+                        if re.match(r"[0-9]{6}$", e):
+                            routes.append(e)  # add route to routes array
+                        lookfor2route = False
+                    if lookforroute == True:  # look for main route
+                        if re.match(r"[0-9]{6}$", e):  #
+                            routes.append(e)  # add route to routes array
+                            lookfor2route = True
+                        lookforroute = False
+                    if e == "Route #":  # set trap to catch route # on the next line
+                        lookforroute = True
+                    if lookfor2level == True:  # intercept the second level
+                        if re.match(r"[0-9]{2}$", e):
+                            level.append(e)
+                        lookfor2level = False
+                    if lookforlevel == True:  # intercept the level
+                        if re.match(r"[0-9]{2}$", e):
+                            level.append(e)
+                            lookfor2level = True  # set trap to catch the second level next line
+                        lookforlevel = False
+                    if e == "Lvl":  # set trap to catch Lvl on the next line
+                        lookforlevel = True
+                    if eid != "" and new_page == False:
+                        if re.match(r"[0-9]{8}", e):  # find the underscore dash string
+                            eid_count += 1
+                        if re.match(r"xxx\-xx\-[0-9]{4}", e):
+                            eid_count += 1
+                        if re.match(r"XXX\-XX\-[0-9]{4}", e):
+                            eid_count += 1
+                        if e == "___-___-____":
+                            eid_count += 1
+                        # solve for rose problem: time object is fused to emp id object - just increment the eid counter
+                        if re.match(r"\s[0-9]{2}\.[0-9]{10}", e) \
+                                or re.match(r"__.__[0-9]{8}", e) \
+                                or re.match(r"__._____-___-____", e):
+                            eid_count += 1
+                            rose_rpt.append(lastname)
+                    # solve for carroll problem/ unprocessed rings do not have underscore slash counterparts
+                    if e == "Un-Processed Rings":  # after unprocessed rings label, add no new rings to daily array
+                        unprocessedrings = eid
+                    if re.match(r"[0-9]{8}", e):  # find the emp id / it is the first 8 digit number on the page
+                        if eid_count == 0:
+                            eid = e
+                            if gen_error_report == "on":
+                                input = "Employee ID: {}\n".format(e)
+                                kbpc_rpt.write(input)
+                            lookforname = True
+                            if eid != unprocessedrings:  # set unprocessedrings and new_page variables
+                                unprocessedrings = ""
+                                new_page = False
+                            else:
+                                new_page = True
+                                eid_count += 1  # increment the eid counter to stop new eid from being set
+                                if gen_error_report == "on": kbpc_rpt.write("NEW PAGE!!!\n")
+                except:
+                    failed.append(lastname)
+                    input = "READING FAILURE: {}\n".format(e)
+                    kbpc_rpt.write(input)
         if gen_error_report == "on":  # write to error report
             input = "Station: {}\n".format(station)
             kbpc_rpt.write(input)
@@ -1972,7 +2039,6 @@ def pdf_converter():
         if gen_error_report == "on":
             input = "proto emp id counter: {}\n".format(eid_count)
             kbpc_rpt.write(input)
-
         if len(daily_underscoreslash) > 0:  # bind all underscore slash items in one array
             underscore_slash_result = sum(daily_underscoreslash, [])
         if mcgrath_indicator == True and len(underscore_slash_result) > 0:  # solve for mcgrath indicator
@@ -2028,14 +2094,11 @@ def pdf_converter():
             error_array = [x for x in error_array if x not in del_array]
             error_array.reverse()
             if len(error_array) > 0:
-                # printe("fort worth, we have a problem.")
                 for error_num in error_array:
                     for bt in base_time:
                         if bt[0] > error_num:
                             bt[0] = bt[0] - 1
         # load the multi array with array for each day
-        # printe("base time: ",base_time)
-        # printe("found days: ",found_days)
         for i in range(7):
             for bt in base_time:
                 if found_days[bt[0]] == days[i]:
@@ -2147,7 +2210,7 @@ def pdf_converter():
         kbpc_rpt.write("Franklin Problems: Consecutive MV Desigs \n")
         input = "\t>>> {}\n".format(frank_rpt)
         kbpc_rpt.write(input)
-        kbpc_rpt.write("Rodriguez Problem: This is the Franklin Prolblem X 4. \n")
+        kbpc_rpt.write("Rodriguez Problem: This is the Franklin Problem X 4. \n")
         input = "\t>>> {}\n".format(rod_rpt)
         kbpc_rpt.write(input)
         kbpc_rpt.write("Rose Problem: The MV Desig and date are on the same line.\n")
@@ -2182,6 +2245,12 @@ def pdf_converter():
         kbpc_rpt.write(input)
         input = "Base Counter Error: {}\n".format(basecounter_error)
         kbpc_rpt.write(input)
+    if len(failed)>0: # create messagebox to show any errors
+        failed_daily = ""
+        for f in failed:
+            failed_daily = failed_daily + " \n " + f
+        messagebox.showerror("Klusterbox PDF Converter", "Errors have occured for the following carriers {}."
+                             .format(failed_daily))
     # create messagebox for completion
     messagebox.showinfo("Klusterbox PDF Converter", "The PDF Convertion is complete. "
                                                     "The file name is {}. ".format(short_file_name))
@@ -2344,16 +2413,16 @@ def informalc_check_grv(grv_no, incident_start, incident_end, date_signed, stati
     if grv_no.get().strip() == "":
         messagebox.showerror("Invalid Data Entry", "You must enter a grievance number")
         return "fail"
-    if grv_no.get().isalnum() == False:
+    if re.search('[^1234567890abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ,]', grv_no.get()):
         messagebox.showerror("Invalid Data Entry",
-                             "The grievance number can only contain numbers and letters. No other "
-                             "characters are allowed")
+                                 "The grievance number can only contain numbers and letters. No other "
+                                 "characters are allowed")
         return "fail"
     if len(grv_no.get()) < 8:
         messagebox.showerror("Invalid Data Entry", "The grievance number must be at least eight characters long")
         return "fail"
-    if len(grv_no.get()) > 16:
-        messagebox.showerror("Invalid Data Entry", "The grievance number must not exceed 16 characters in lenght.")
+    if len(grv_no.get()) > 20:
+        messagebox.showerror("Invalid Data Entry", "The grievance number must not exceed 20 characters in length.")
         return "fail"
     check = informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number, description)
     return check
@@ -2383,8 +2452,8 @@ def informalc_check_grv_2(incident_start, incident_end,
             messagebox.showerror("Invalid Data Entry", "The day for the {} must be no more than two digits"
                                                        " long.".format(date_ids[i]))
             return "fail"
-        if len(d[2]) > 4:
-            messagebox.showerror("Invalid Data Entry", "The year for the {} must be no more than four digits long."
+        if len(d[2]) != 4:
+            messagebox.showerror("Invalid Data Entry", "The year for the {} must be four digits long."
                                  .format(date_ids[i]))
             return "fail"
         try:
@@ -3904,7 +3973,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
             c += 1
         if len(range_days) > 5:
             messagebox.showwarning("File Selection Error", "Employee Everything Reports that cover only one day /n"
-                                                           "are not supported in version 3.002 of Klusterbox.")
+                                                           "are not supported in version {} of Klusterbox.".format(version))
             return
         else:
             t_range = "week"
@@ -4004,7 +4073,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
             fri = 0
             day_run = [sat, sun, mon, tue, wed, thr, fri]
             for line in a_file:
-                if c != 0 and line[4] in otdl_list:  # if the emp_id matches ones we are looking for
+                if c != 0 and line[4].zfill(8) in otdl_list:  # if the emp_id matches ones we are looking for
                     if line[18] == "Base" and good_id != "no":
                         sql = "SELECT kb_name FROM name_index WHERE emp_id='%s'" % good_id
                         result = inquire(sql)  # get the kb name with the emp id
@@ -4017,10 +4086,9 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                             day_run[i] = 0  # empty each day in day run
                         day_over = "empty"  # reset
                         running_total = 0  # reset
-                    if line[18] == "Base" and line[19] == "844" or line[
-                        19] == "134":  # find first line of specific carrier
-                        good_id = line[4]  # remember id of carriers who are FT or aux carriers
-                    if good_id == line[4] and line[18] != "Base":
+                    if line[18] == "Base" and line[19] == "844" or line[19] == "134":  # find first line of specific carrier
+                        good_id = line[4].zfill(8)  # remember id of carriers who are FT or aux carriers
+                    if good_id == line[4].zfill(8) and line[18] != "Base":
                         if line[18] in days:  # get the hours for each day
                             spt_20 = line[20].split(':')  # split to get code and hours
                             hr_type = spt_20[0][1] + spt_20[0][2]  # parse hour code to 2 digits
@@ -4035,13 +4103,14 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                 day_over = line[18]
                 c += 1
         # add to the all_otdl for the final carrier after the last line of the file is read
-        sql = "SELECT kb_name FROM name_index WHERE emp_id='%s'" % good_id
-        result = inquire(sql)  # get the kb name with the emp id
-        all_day_run = []  # gets the total hours for each day
-        for i in range(7):
-            all_day_run.append(day_run[i])
-        to_add = ([result[0][0]] + all_day_run + [day_over])  # add name, daily totals, day over
-        all_otdl.append(to_add)
+        if good_id != "no":
+            sql = "SELECT kb_name FROM name_index WHERE emp_id='%s'" % good_id
+            result = inquire(sql)  # get the kb name with the emp id
+            all_day_run = []  # gets the total hours for each day
+            for i in range(7):
+                all_day_run.append(day_run[i])
+            to_add = ([result[0][0]] + all_day_run + [day_over])  # add name, daily totals, day over
+            all_otdl.append(to_add)
         all_otdl.sort(key=itemgetter(0))  # sort the all otdl array by carrier name
         # define spreadsheet cell formats
         bd = Side(style='thin', color="80808080")  # defines borders
@@ -5663,6 +5732,8 @@ def auto_skimmer(self, file_path):
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()
             pb_root.destroy()
+        messagebox.showinfo("Auto Rings",
+                            "The Employee Everything Report has been sucessfully inputed into the database")
         main_frame()
 
 
@@ -5712,6 +5783,8 @@ def auto_weekly_analysis(array):
                     if eff_date <= day_dict[line[0]]:
                         newest_carrier = array
                         break  # stop. we only need the most recent record
+                if not result:
+                    return
                 # find the code, if any
                 if newest_carrier[2] == "nl" or newest_carrier[2] == "wal":
                     if day_dict[line[0]].strftime("%a") == ns_code[newest_carrier[3]] and float(line[2]) > 0:
@@ -6605,7 +6678,7 @@ def start_up():  # the start up screen when no information has been entered
     FF = Frame(C)
     C.create_window((0, 0), window=FF, anchor=NW)
     Label(FF, text="Welcome to Klusterbox", font="bold").grid(row=0, columnspan=2, sticky="w")
-    Label(FF, text="version 3.002").grid(row=1, columnspan=2, sticky="w")
+    Label(FF, text="version: {}".format(version)).grid(row=1, columnspan=2, sticky="w")
     Label(FF, text="", pady=20).grid(row=2, column=0)
     # enter new stations
     new_station = StringVar(FF)
@@ -10661,14 +10734,16 @@ def main_frame():
     automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(F))
     menubar.add_cascade(label="Automated", menu=automated_menu)
     # library menu
-    library_menu = Menu(menubar, tearoff=0)
-    library_menu.add_command(label="Spreadsheet Library", command=lambda: file_dialogue('kb_sub/spreadsheets'))
-    library_menu.add_command(label="Over Max Library", command=lambda: file_dialogue('kb_sub/over_max'))
-    library_menu.add_command(label="Everything Report Library", command=lambda: file_dialogue('kb_sub/ee_reader'))
-    library_menu.add_command(label="Pay Period Guide Library", command=lambda: file_dialogue('kb_sub/pp_guide'))
-    library_menu.add_command(label="Weekly Availability Library",
+    reportsarchive_menu = Menu(menubar, tearoff=0)
+    reportsarchive_menu.add_command(label="Spreadsheet Archive", command=lambda: file_dialogue('kb_sub/spreadsheets'))
+    reportsarchive_menu.add_command(label="Over Max Finder Archive", command=lambda: file_dialogue('kb_sub/over_max'))
+    reportsarchive_menu.add_command(label="Over Max Spreadsheet Archive",
+                             command=lambda: file_dialogue('kb_sub/overmax_spreadsheet'))
+    reportsarchive_menu.add_command(label="Everything Report Archive", command=lambda: file_dialogue('kb_sub/ee_reader'))
+    reportsarchive_menu.add_command(label="Pay Period Guide Archive", command=lambda: file_dialogue('kb_sub/pp_guide'))
+    reportsarchive_menu.add_command(label="Weekly Availability Archive",
                              command=lambda: file_dialogue('kb_sub/weekly_availability'))
-    menubar.add_cascade(label="Libraries", menu=library_menu)
+    menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
     # management menu
     management_menu = Menu(menubar, tearoff=0)
     management_menu.add_command(label="List of Stations", command=lambda: station_list(F))
@@ -10676,6 +10751,7 @@ def main_frame():
     management_menu.add_command(label="Spreadsheet Settings", command=lambda: spreadsheet_settings(F))
     management_menu.add_command(label="Auto Data Entry Settings", command=lambda: auto_data_entry_settings(F))
     management_menu.add_command(label="Clean Carrier List", command=lambda: carrier_list_cleaning(F))
+    management_menu.add_command(label="Clean Rings", command=lambda: clean_rings3_table())
     management_menu.add_command(label="Name Index", command=lambda: (F.destroy(), name_index_screen()))
     management_menu.add_command(label="Station Index", command=lambda: station_index_mgmt(F))
     management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(F))
