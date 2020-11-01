@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 3.004
-released: July 21, 2020
+most recent version: 3.005
+released: November 1, 2020
 
 Caution: 
 
@@ -29,7 +29,9 @@ History:
 
 Klusterbox version 2.0 introduced the Auto Improper Mandate Finder, now called the Auto Data Entry. This feature reads a properly formatted employee everything report (the .csv file type) and will build a carrier list as well as input carrier clock rings with minimal input from a steward. The Auto Over Max Finder will also read a properly formatted employee everything report and generate a report showing violations of the 12/60 hour rule laid out in article 8 of the jcam. These features take task which once took hours and completes them in minutes. Version 2.3 introduced Informal C, a feature which helped users to track compliance for grievance settlements. 
 
-Klusterbox version 3.0 introduced the PDF converter which translates TACS Employee Everything Reports into a .csv format which can be read by Klusterbox. A PDF Splitter is also included for breaking Employee Everything Reports into managable weekly sections. In version 3.004 the Over Max spreadsheet was added. Users were allowed to enter leave types/times into the database. The Auto Data Entry program also automatically found and entered the leave type/times into the database. 
+Klusterbox version 3.0 introduced the PDF converter which translates TACS Employee Everything Reports into a .csv format which can be read by Klusterbox. A PDF Splitter is also included for breaking Employee Everything Reports into managable weekly sections. 
+In version 3.004 (July 21, 2020) the Over Max spreadsheet was added. Users were allowed to enter leave types/times into the database. The Auto Data Entry program also automatically found and entered the leave type/times into the database. 
+In version 3.005 (November 1, 2020) repairs were made to the pdf converter providing error warnings for troublesome input and reducing the risk of crashes. The pdf reader will make a second attempt with new parameters if the fist attempt fails. The overmax spreadsheet generator was updated to fix undercounting violations. Archives were renamed from "Libraries" on the menu. 
 
 Contact:
 
