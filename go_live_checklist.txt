@@ -39,3 +39,10 @@ Klusterbox new version go live checklist
 	d. source code link in the bottom text.
 
 
+16. open windows powershell and navigate to documents> klustebox.com
+
+17. update the git repo:
+	a. git add . 
+	b. git commit -m "update version"
+	c. git push origin master
+
