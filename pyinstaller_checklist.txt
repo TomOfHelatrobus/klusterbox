@@ -61,4 +61,3 @@ project folder. If not, then create it. If it does exist, empty any contents.
 16. select the new zip folder and rename in by right clicking and selecting rename. Use the nameing convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
 17. The compressed folder is ready for distribution. 
-
