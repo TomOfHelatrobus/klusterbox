@@ -31,7 +31,7 @@ Klusterbox version 2.0 introduced the Auto Improper Mandate Finder, now called t
 
 Klusterbox version 3.0 introduced the PDF converter which translates TACS Employee Everything Reports into a .csv format which can be read by Klusterbox. A PDF Splitter is also included for breaking Employee Everything Reports into managable weekly sections. 
 In version 3.004 (July 21, 2020) the Over Max spreadsheet was added. Users were allowed to enter leave types/times into the database. The Auto Data Entry program also automatically found and entered the leave type/times into the database. 
-In version 3.005 (November 1, 2020) repairs were made to the pdf converter providing error warnings for troublesome input and reducing the risk of crashes. The pdf reader will make a second attempt with new parameters if the fist attempt fails. The overmax spreadsheet generator was updated to fix undercounting violations. Archives were renamed from "Libraries" on the menu. 
+In version 3.005 (November 1, 2020) repairs were made to the pdf converter providing error warnings for troublesome input and reducing the risk of crashes. The pdf reader will make a second attempt with new parameters if the fist attempt fails. The overmax spreadsheet generator was updated to fix undercounting violations. Archives were renamed from "Libraries" on the menu. Formatting and option updates were made to informal c adding "verified" and "incomplete" as options for documentation status. 
 
 Contact:
 

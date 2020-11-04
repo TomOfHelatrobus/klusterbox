@@ -33,13 +33,13 @@ Klusterbox new version go live checklist
 14. using ftp, drag and drop the download.html page from the client side to the server side. If prompted, opt to overwrite the old file. 
 
 15. Open an internet browser and navigate to klusterbox.com/download.html to verify that the changes have been made to the:
-	 a. headline
+	a. headline
 	b. sub headline
 	c. download link
 	d. source code link in the bottom text.
 
 
-16. open windows powershell and navigate to documents> klustebox.com
+16. open windows powershell and navigate to documents> klusterbox.com
 
 17. update the git repo:
 	a. git add . 

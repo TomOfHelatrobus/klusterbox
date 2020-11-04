@@ -2339,44 +2339,45 @@ def informalc_delete(frame, grv_no):
 
 def informalc_edit(frame, result, grv_num, msg):
     wd = front_window(frame)
-    Label(wd[3], text="Informal C: Edit Grievance", font="bold").grid(row=0)
+    Label(wd[3], text="Informal C: Edit Grievance", font="bold").grid(row=0, columnspan=2, sticky="w")
     Label(wd[3], text="").grid(row=1)
     Label(wd[3], text="Grievance Number: ").grid(row=2, column=0, sticky="w")
     grv_no = StringVar(wd[0])
-    Entry(wd[3], textvariable=grv_no).grid(row=2, column=1, sticky="w")
-    Button(wd[3], width=7, text="update", command=lambda:
-    informalc_grvchange(wd[0], result, grv_num, grv_no)).grid(row=3, column=1, sticky=W)
+    Entry(wd[3], textvariable=grv_no, justify='right').grid(row=2, column=1, sticky="w")
+    Button(wd[3], width=9, text="update", command=lambda:
+    informalc_grvchange(wd[0], result, grv_num, grv_no)).grid(row=3, column=1, sticky="e")
     grv_no.set(grv_num)
     Label(wd[3], text="Incident Date").grid(row=4, column=0, sticky="w")
     Label(wd[3], text="  Start (mm/dd/yyyy): ").grid(row=5, column=0, sticky="w")
     incident_start = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_start).grid(row=5, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_start, justify='right').grid(row=5, column=1, sticky="w")
     Label(wd[3], text="  End (mm/dd/yyyy): ").grid(row=6, column=0, sticky="w")
     incident_end = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_end).grid(row=6, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_end, justify='right').grid(row=6, column=1, sticky="w")
     Label(wd[3], text="Date Signed (mm/dd/yyyy): ").grid(row=7, column=0, sticky="w")
     date_signed = StringVar(wd[0])
-    Entry(wd[3], textvariable=date_signed).grid(row=7, column=1, sticky="w")
+    Entry(wd[3], textvariable=date_signed, justify='right').grid(row=7, column=1, sticky="w")
     Label(wd[3], text="Station: ").grid(row=8, column=0, sticky="w")  # select a station
     station = StringVar(wd[0])
     station_options = list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
-    station_om.config(width=38)
-    station_om.grid(row=9, column=0, columnspan=2)
+    station_om.config(width=40)
+    station_om.grid(row=9, column=0, columnspan=2, sticky="e")
     Label(wd[3], text="GATS Number: ").grid(row=10, column=0, sticky="w")
     gats_number = StringVar(wd[0])
-    Entry(wd[3], textvariable=gats_number).grid(row=10, column=1, sticky="w")
+    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=10, column=1, sticky="w")
     Label(wd[3], text="Documentation: ").grid(row=11, column=0, sticky="w")
     docs = StringVar(wd[0])
-    Radiobutton(wd[3], text="No", variable=docs, value='no').grid(row=11, column=1, sticky="w")
-    Radiobutton(wd[3], text="Partial", variable=docs, value='partial').grid(row=12, column=1, sticky="w")
-    Radiobutton(wd[3], text="Yes", variable=docs, value='yes').grid(row=13, column=1, sticky="w")
-    Radiobutton(wd[3], text="Moot", variable=docs, value='moot').grid(row=14, column=1, sticky="w")
+    doc_options = ("moot","no","partial","yes","incomplete","verified")
+    docs_om = OptionMenu(wd[3], docs, *doc_options)
+    docs_om.config(width=13)
+    docs_om.grid(row=11, column=1)
     Label(wd[3], text="Description: ").grid(row=15, column=0, sticky="w")
     description = StringVar(wd[0])
-    Entry(wd[3], textvariable=description, width=48).grid(row=16, column=0, sticky="w", columnspan=2)
+    Entry(wd[3], textvariable=description, width=47, justify='right')\
+        .grid(row=16, column=0, sticky="e", columnspan=2)
     Label(wd[3], text="").grid(row=17, column=0)
     sql = "SELECT * FROM informalc_grv WHERE grv_no='%s'" % grv_num
     search = inquire(sql)
@@ -2915,12 +2916,12 @@ def informalc_bycarriers(result):
         report.write("Settlement Report By Carriers\n\n")
         for name in unique_carrier:
             report.write("{:<30}\n\n".format(name))
-            report.write("        Grievance Number     Hours    Rate    Adjusted      Amount\n")
-            report.write("    --------------------------------------------------------------\n")
+            report.write("        Grievance Number     Hours    Rate    Adjusted      Amount        docs\n")
+            report.write("    --------------------------------------------------------------------------\n")
             results = []
             for ug in unique_grv:  # do search for each grievance in list of unique grievances
                 sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount FROM informalc_awards, informalc_grv " \
+                      "informalc_awards.amount, informalc_grv.docs FROM informalc_awards, informalc_grv " \
                       "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s'" \
                       "and informalc_awards.grv_no = '%s' " \
                       "ORDER BY informalc_grv.date_signed" % (name, ug)
@@ -2952,9 +2953,10 @@ def informalc_bycarriers(result):
                     total_amt = total_amt + float(r[3])
                 else:
                     amt = "---"
-                report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}\n".format(str(i), r[0], hours, rate, adj, amt))
+                report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}{:>12}\n"
+                             .format(str(i), r[0], hours, rate, adj, amt, r[4]))
                 i += 1
-            report.write("    --------------------------------------------------------------\n")
+            report.write("    --------------------------------------------------------------------------\n")
             t_adj = "{0:.2f}".format(float(total_adj))
             t_amt = "{0:.2f}".format(float(total_amt))
             report.write("        {:<34}{:>12}\n".format("Total hours as straight time", t_adj))
@@ -2987,11 +2989,12 @@ def informalc_apply_bycarrier(result, names, cursor):
         report = open('kb_sub/infc_grv/' + filename, "w")
         report.write("Settlement Report By Carrier\n\n")
         report.write("{:<30}\n\n".format(name))
-        report.write("        Grievance Number     hours    rate    adjusted      amount\n")
-        report.write("    --------------------------------------------------------------\n")
+        report.write("        Grievance Number     hours    rate    adjusted      amount        docs\n")
+        report.write("    --------------------------------------------------------------------------\n")
         results = []
         for ug in unique_grv:  # do search for each grievance in list of unique grievances
-            sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, informalc_awards.amount " \
+            sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
+                  "informalc_awards.amount, informalc_grv.docs " \
                   "FROM informalc_awards, informalc_grv " \
                   "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
                   "and informalc_awards.grv_no = '%s'" \
@@ -3025,9 +3028,10 @@ def informalc_apply_bycarrier(result, names, cursor):
                 total_amt = total_amt + float(r[3])
             else:
                 amt = "---"
-            report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}\n".format(str(i), r[0], hours, rate, adj, amt))
+            report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}{:>12}\n"
+                         .format(str(i), r[0], hours, rate, adj, amt, r[4]))
             i += 1
-        report.write("    --------------------------------------------------------------\n")
+        report.write("    --------------------------------------------------------------------------\n")
         t_adj = "{0:.2f}".format(float(total_adj))
         t_amt = "{0:.2f}".format(float(total_amt))
         report.write("        {:<34}{:>12}\n".format("Total hours as straight time", t_adj))
@@ -3350,12 +3354,9 @@ def informalc_grvlist_apply(frame,
 
 def informalc_grvlist(frame):
     wd = front_window(frame)
-    Label(wd[3], text="Informal C: Settlement Search Criteria", font="bold").grid(row=0, columnspan=4, sticky="w")
-    Label(wd[3], text=" ").grid(row=1, columnspan=4)
-    Label(wd[3], text="Search For", fg="grey").grid(row=3, column=0, columnspan=2, sticky="w")
-    Label(wd[3], text="Category", fg="grey").grid(row=3, column=3)
-    Label(wd[3], text="Start", fg="grey").grid(row=3, column=4)
-    Label(wd[3], text="End", fg="grey").grid(row=3, column=5)
+    Label(wd[3], text="Informal C: Settlement Search Criteria", font="bold").grid(row=0, columnspan=6, sticky="w")
+    Label(wd[3], text=" ").grid(row=1, columnspan=6)
+    # initialize varibles
     incident_date = StringVar(wd[0])
     incident_start = StringVar(wd[0])
     incident_end = StringVar(wd[0])
@@ -3367,44 +3368,57 @@ def informalc_grvlist(frame):
     have_gats = StringVar(wd[0])
     docs = StringVar(wd[0])
     have_docs = StringVar(wd[0])
-    Radiobutton(wd[3], text="yes", variable=incident_date, value='yes').grid(row=4, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=incident_date, value='no').grid(row=4, column=1, sticky="w")
-    Label(wd[3], text="", width=2).grid(row=4, column=2)
-    Label(wd[3], text="Incident Dates").grid(row=4, column=3, sticky="w")
-    Entry(wd[3], textvariable=incident_start, width=12).grid(row=4, column=4)
-    Entry(wd[3], textvariable=incident_end, width=12).grid(row=4, column=5)
-    incident_date.set('no')
-    Radiobutton(wd[3], text="yes", variable=signing_date, value='yes').grid(row=5, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=signing_date, value='no').grid(row=5, column=1, sticky="w")
-    Label(wd[3], text="Signing Dates").grid(row=5, column=3, sticky="w")
-    Entry(wd[3], textvariable=signing_start, width=12).grid(row=5, column=4)
-    Entry(wd[3], textvariable=signing_end, width=12).grid(row=5, column=5)
-    signing_date.set('no')
-    Label(wd[3], text="Station ").grid(row=6, column=0, columnspan=3, sticky="w")
+    # select station
+    Label(wd[3], text="Station ").grid(row=2, column=0, columnspan=3, sticky="w")
     station_options = list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
     station_om.config(width=35)
-    station_om.grid(row=6, column=3, columnspan=3, sticky="e")
+    station_om.grid(row=2, column=3, columnspan=3, sticky="e")
     station.set("Select a Station")
+
+    Label(wd[3], text="Search For", fg="grey").grid(row=3, column=0, columnspan=2, sticky="w")
+    Label(wd[3], text="Category", fg="grey").grid(row=3, column=3)
+    Label(wd[3], text="Start", fg="grey").grid(row=3, column=4)
+    Label(wd[3], text="End", fg="grey").grid(row=3, column=5)
+    # select for starting date
+    Radiobutton(wd[3], text="yes", variable=incident_date, value='yes').grid(row=4, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=incident_date, value='no').grid(row=4, column=1, sticky="w")
+    Label(wd[3], text="", width=2).grid(row=4, column=2)
+    Label(wd[3], text="Incident Dates").grid(row=4, column=3, sticky="w")
+    Entry(wd[3], textvariable=incident_start, width=12, justify='right').grid(row=4, column=4)
+    Entry(wd[3], textvariable=incident_end, width=12, justify='right').grid(row=4, column=5)
+    incident_date.set('no')
+    # select for signing date
+    Radiobutton(wd[3], text="yes", variable=signing_date, value='yes').grid(row=5, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=signing_date, value='no').grid(row=5, column=1, sticky="w")
+    Label(wd[3], text="Signing Dates").grid(row=5, column=3, sticky="w")
+    Entry(wd[3], textvariable=signing_start, width=12, justify='right').grid(row=5, column=4)
+    Entry(wd[3], textvariable=signing_end, width=12, justify='right').grid(row=5, column=5)
+    signing_date.set('no')
+    #select for gats number
     Radiobutton(wd[3], text="yes", variable=gats, value='yes').grid(row=7, column=0, sticky="w")
     Radiobutton(wd[3], text="no", variable=gats, value='no').grid(row=7, column=1, sticky="w")
     Label(wd[3], text="GATS Number").grid(row=7, column=3, sticky="w")
-    Radiobutton(wd[3], text="no", variable=have_gats, value='no').grid(row=7, column=4, sticky="w")
-    Radiobutton(wd[3], text="yes", variable=have_gats, value='yes').grid(row=8, column=4, sticky="w")
+    gats_options =("no","yes")
+    gats_om = OptionMenu(wd[3],have_gats, *gats_options)
+    gats_om.config(width=10)
+    gats_om.grid(row=7, column=4, columnspan=3, sticky="e")
     have_gats.set('no')
     gats.set('no')
+    # select for documentation
     Radiobutton(wd[3], text="yes", variable=docs, value='yes').grid(row=9, column=0, sticky="w")
     Radiobutton(wd[3], text="no", variable=docs, value='no').grid(row=9, column=1, sticky="w")
     Label(wd[3], text="Documentation").grid(row=9, column=3, sticky="w")
-    Radiobutton(wd[3], text="no", variable=have_docs, value='no').grid(row=9, column=4, sticky="w")
-    Radiobutton(wd[3], text="partial", variable=have_docs, value='partial').grid(row=10, column=4, sticky="w")
-    Radiobutton(wd[3], text="yes", variable=have_docs, value='yes').grid(row=11, column=4, sticky="w")
-    Radiobutton(wd[3], text="moot", variable=have_docs, value='moot').grid(row=12, column=4, sticky="w")
+    doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
+    docs_om = OptionMenu(wd[3], have_docs, *doc_options)
+    docs_om.config(width=10)
+    docs_om.grid(row=9, column=4, columnspan=3, sticky="e")
     have_docs.set('no')
     docs.set("no")
     Label(wd[3], text="").grid(row=13)
+    # buttons
     Button(wd[4], text="Search", width=20,
            command=lambda: informalc_grvlist_apply(wd[0],
                                                    incident_date, incident_start, incident_end,
@@ -3423,17 +3437,17 @@ def informalc_new(frame, msg):
     Label(wd[3], text="").grid(row=1, column=0, sticky="w")
     Label(wd[3], text="Grievance Number: ").grid(row=2, column=0, sticky="w")
     grv_no = StringVar(wd[0])
-    Entry(wd[3], textvariable=grv_no).grid(row=2, column=1, sticky="w")
+    Entry(wd[3], textvariable=grv_no, justify='right').grid(row=2, column=1, sticky="w")
     Label(wd[3], text="Incident Date").grid(row=3, column=0, sticky="w")
     Label(wd[3], text="  Start (mm/dd/yyyy): ").grid(row=4, column=0, sticky="w")
     incident_start = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_start).grid(row=4, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_start, justify='right').grid(row=4, column=1, sticky="w")
     Label(wd[3], text="  End (mm/dd/yyyy): ").grid(row=5, column=0, sticky="w")
     incident_end = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_end).grid(row=5, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_end, justify='right').grid(row=5, column=1, sticky="w")
     Label(wd[3], text="Date Signed (mm/dd/yyyy): ").grid(row=6, column=0, sticky="w")
     date_signed = StringVar(wd[0])
-    Entry(wd[3], textvariable=date_signed).grid(row=6, column=1, sticky="w")
+    Entry(wd[3], textvariable=date_signed, justify='right').grid(row=6, column=1, sticky="w")
     Label(wd[3], text="Station: ").grid(row=7, column=0, sticky="w")  # select a station
     station = StringVar(wd[0])
     station.set("Select a Station")
@@ -3441,21 +3455,21 @@ def informalc_new(frame, msg):
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
-    station_om.config(width=38)
-    station_om.grid(row=8, column=0, columnspan=2)
+    station_om.config(width=40)
+    station_om.grid(row=8, column=0, columnspan=2, sticky="e")
     Label(wd[3], text="GATS Number: ").grid(row=9, column=0, sticky="w")
     gats_number = StringVar(wd[0])
-    Entry(wd[3], textvariable=gats_number).grid(row=9, column=1, sticky="w")
+    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=9, column=1, sticky="w")
     Label(wd[3], text="Documentation?: ").grid(row=10, column=0, sticky="w")
     docs = StringVar(wd[0])
-    Radiobutton(wd[3], text="No", variable=docs, value='no').grid(row=10, column=1, sticky="w")
-    Radiobutton(wd[3], text="Partial", variable=docs, value='partial').grid(row=11, column=1, sticky="w")
-    Radiobutton(wd[3], text="Yes", variable=docs, value='yes').grid(row=12, column=1, sticky="w")
-    Radiobutton(wd[3], text="Moot", variable=docs, value='moot').grid(row=13, column=1, sticky="w")
+    doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
+    docs_om = OptionMenu(wd[3],docs, *doc_options)
+    docs_om.config(width=13)
+    docs_om.grid(row=10, column=1)
     docs.set("no")
     Label(wd[3], text="Description: ").grid(row=14, column=0, sticky="w")
     description = StringVar(wd[0])
-    Entry(wd[3], textvariable=description, width=48).grid(row=15, column=0, sticky="w", columnspan=2)
+    Entry(wd[3], textvariable=description, width=48, justify='right').grid(row=15, column=0, sticky="w", columnspan=2)
     Label(wd[3], text="").grid(row=16, column=0)
     Label(wd[3], text=msg, fg="red").grid(row=17, column=0, columnspan=2, sticky="w")
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
