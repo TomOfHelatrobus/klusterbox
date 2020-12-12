@@ -10811,7 +10811,7 @@ def main_frame():
     reportsarchive_menu.add_command(label="Spreadsheet Archive", command=lambda: file_dialogue('kb_sub/spreadsheets'))
     reportsarchive_menu.add_command(label="Over Max Finder Archive", command=lambda: file_dialogue('kb_sub/over_max'))
     reportsarchive_menu.add_command(label="Over Max Spreadsheet Archive",
-                             command=lambda: file_dialogue('kb_sub/overmax_spreadsheet'))
+                             command=lambda: file_dialogue('kb_sub/over_max_spreadsheet'))
     reportsarchive_menu.add_command(label="Everything Report Archive", command=lambda: file_dialogue('kb_sub/ee_reader'))
     reportsarchive_menu.add_command(label="Pay Period Guide Archive", command=lambda: file_dialogue('kb_sub/pp_guide'))
     reportsarchive_menu.add_command(label="Weekly Availability Archive",
