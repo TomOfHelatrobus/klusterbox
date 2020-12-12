@@ -2294,8 +2294,8 @@ def informalc_grvchange(frame, passed_result, old_num, new_num):
         informalc_edit(frame, l_passed_result, new_num.get().lower(), msg)
 
 
-def informalc_edit_apply(frame, grv_no, incident_start, incident_end,
-                         date_signed, station, gats_number, docs, description):
+def informalc_edit_apply(frame, grv_no, incident_start, incident_end,date_signed, station, gats_number, docs,
+                         description, lvl):
     check = informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number, description)
     if check == "fail":
         return
@@ -2318,9 +2318,9 @@ def informalc_edit_apply(frame, grv_no, incident_start, incident_end,
         messagebox.showerror("Data Entry Error", "The Incident Start Date can not be later that the Date Signed.")
         return
     sql = "UPDATE informalc_grv SET indate_start='%s',indate_end='%s',date_signed='%s',station='%s',gats_number='%s'," \
-          "docs='%s',description='%s' WHERE grv_no='%s'" % (dt_dates[0], dt_dates[1], dt_dates[2], station.get(),
-                                                            gats_number.get().strip(), docs.get(), description.get(),
-                                                            grv_no.get())
+          "docs='%s',description='%s', level='%s' WHERE grv_no='%s'" \
+          % (dt_dates[0], dt_dates[1], dt_dates[2], station.get(),gats_number.get().strip(), docs.get(),
+             description.get(),lvl.get(),grv_no.get())
     commit(sql)
     messagebox.showerror("Sucessful Update", "Grievance number: {} succesfully updated.".format(grv_no.get()))
     informalc_grvlist(frame)
@@ -2357,28 +2357,36 @@ def informalc_edit(frame, result, grv_num, msg):
     Label(wd[3], text="Date Signed (mm/dd/yyyy): ").grid(row=7, column=0, sticky="w")
     date_signed = StringVar(wd[0])
     Entry(wd[3], textvariable=date_signed, justify='right').grid(row=7, column=1, sticky="w")
-    Label(wd[3], text="Station: ").grid(row=8, column=0, sticky="w")  # select a station
+
+    Label(wd[3], text="Settlement Level: ").grid(row=8, column=0, sticky="w")  # select settlement level
+    lvl = StringVar(wd[0])
+    lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+    lvl_om = OptionMenu(wd[3], lvl, *lvl_options)
+    lvl_om.config(width=13)
+    lvl_om.grid(row=8, column=1)
+
+    Label(wd[3], text="Station: ").grid(row=9, column=0, sticky="w")  # select a station
     station = StringVar(wd[0])
     station_options = list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
     station_om.config(width=40)
-    station_om.grid(row=9, column=0, columnspan=2, sticky="e")
-    Label(wd[3], text="GATS Number: ").grid(row=10, column=0, sticky="w")
+    station_om.grid(row=10, column=0, columnspan=2, sticky="e")
+    Label(wd[3], text="GATS Number: ").grid(row=11, column=0, sticky="w")
     gats_number = StringVar(wd[0])
-    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=10, column=1, sticky="w")
-    Label(wd[3], text="Documentation: ").grid(row=11, column=0, sticky="w")
+    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=11, column=1, sticky="w")
+    Label(wd[3], text="Documentation: ").grid(row=12, column=0, sticky="w")
     docs = StringVar(wd[0])
     doc_options = ("moot","no","partial","yes","incomplete","verified")
     docs_om = OptionMenu(wd[3], docs, *doc_options)
     docs_om.config(width=13)
-    docs_om.grid(row=11, column=1)
-    Label(wd[3], text="Description: ").grid(row=15, column=0, sticky="w")
+    docs_om.grid(row=12, column=1)
+    Label(wd[3], text="Description: ").grid(row=16, column=0, sticky="w")
     description = StringVar(wd[0])
     Entry(wd[3], textvariable=description, width=47, justify='right')\
-        .grid(row=16, column=0, sticky="e", columnspan=2)
-    Label(wd[3], text="").grid(row=17, column=0)
+        .grid(row=17, column=0, sticky="e", columnspan=2)
+    Label(wd[3], text="").grid(row=18, column=0)
     sql = "SELECT * FROM informalc_grv WHERE grv_no='%s'" % grv_num
     search = inquire(sql)
     if search:
@@ -2392,18 +2400,20 @@ def informalc_edit(frame, result, grv_num, msg):
         gats_number.set(search[0][5])
         docs.set(search[0][6])
         description.set(search[0][7])
-    Label(wd[3], text=" ").grid(row=19)
-    Label(wd[3], text="Delete Grievance").grid(row=20, column=0, sticky="w")
-    Button(wd[3], text="Delete", width=9, command=lambda: informalc_delete(wd[0], grv_no)).grid(row=20, column=1,
+        if search[0][8] == None:
+            lvl.set("unknown")
+        else:
+            lvl.set(search[0][8])
+    Label(wd[3], text=" ").grid(row=20)
+    Label(wd[3], text="Delete Grievance").grid(row=21, column=0, sticky="w")
+    Button(wd[3], text="Delete", width=9, command=lambda: informalc_delete(wd[0], grv_no)).grid(row=21, column=1,
                                                                                                 sticky="e")
-    Label(wd[3], text=" ").grid(row=21)
-    Label(wd[3], text=msg, fg="red", anchor="w").grid(row=22, column=0, columnspan=5, sticky="w")
+    Label(wd[3], text=" ").grid(row=22)
+    Label(wd[3], text=msg, fg="red", anchor="w").grid(row=23, column=0, columnspan=5, sticky="w")
     Button(wd[4], text="Go Back", width=20, command=lambda: informalc_grvlist_result(wd[0], result)).grid(row=0,
                                                                                                           column=0)
-    Button(wd[4], text="Enter", width=20, command=lambda: informalc_edit_apply(wd[0], grv_no, incident_start
-                                                                               , incident_end, date_signed, station,
-                                                                               gats_number, docs, description)).grid(
-        row=0, column=1)
+    Button(wd[4], text="Enter", width=20, command=lambda: informalc_edit_apply(wd[0], grv_no, incident_start,
+        incident_end, date_signed, station, gats_number, docs, description, lvl)).grid(row=0, column=1)
     rear_window(wd)
 
 
@@ -2487,7 +2497,7 @@ def informalc_check_grv_2(incident_start, incident_end,
 
 
 def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, docs,
-                        description):
+                        description, lvl):
     check = informalc_check_grv(grv_no, incident_start, incident_end, date_signed, station, gats_number, description)
     if check == "pass":
         dates = [incident_start, incident_end, date_signed]
@@ -2520,10 +2530,9 @@ def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed
                                  "create a duplicate.".format(grv_no.get()))
             return
         sql = "INSERT INTO informalc_grv (grv_no, indate_start, indate_end, date_signed, station, gats_number, docs," \
-              "description) VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % (grv_no.get().lower(), dt_dates[0],
-                                                                                dt_dates[1], dt_dates[2], station.get(),
-                                                                                gats_number.get().strip(), docs.get(),
-                                                                                description.get())
+              "description, level) VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s')" \
+              % (grv_no.get().lower(), dt_dates[0],dt_dates[1], dt_dates[2], station.get(),gats_number.get().strip(),
+                 docs.get(),description.get(), lvl.get())
         commit(sql)
         msg = "Grievance Settlement Added: #{}.".format(grv_no.get().lower())
         informalc_new(frame, msg)
@@ -2818,6 +2827,7 @@ def informalc_addaward(frame, passed_result, grv_no):
 
 def informalc_rptgrvsum(result):
     if len(result) > 0:
+        result = list(result)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
         if os.path.isdir('kb_sub/infc_grv') == False:
@@ -2827,6 +2837,9 @@ def informalc_rptgrvsum(result):
             report.write("Settlement List\n\n")
             i = 1
             for sett in result:
+                sett = list(sett)# correct for legacy problem of NULL Settlement Levels
+                if sett[8] == None:
+                    sett[8] = "unknown"
                 sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
                 query = inquire(sql)
                 num_space = 3 - (len(str(i)))  # number of spaces for number
@@ -2854,6 +2867,7 @@ def informalc_rptgrvsum(result):
                 sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
                 report.write("    Dates of Violation: " + start + " - " + end + "\n")
                 report.write("    Signing Date:       " + sign + "\n")
+                report.write("    Settlement Level    " + sett[8] + "\n")
                 report.write("    Station:            " + sett[4] + "\n")
                 report.write("    GATS Number:        " + sett[5] + "\n")
                 report.write("    Documentation:      " + sett[6] + "\n")
@@ -2916,18 +2930,19 @@ def informalc_bycarriers(result):
         report.write("Settlement Report By Carriers\n\n")
         for name in unique_carrier:
             report.write("{:<30}\n\n".format(name))
-            report.write("        Grievance Number     Hours    Rate    Adjusted      Amount        docs\n")
-            report.write("    --------------------------------------------------------------------------\n")
+            report.write("        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
+            report.write("    ------------------------------------------------------------------------------------\n")
             results = []
             for ug in unique_grv:  # do search for each grievance in list of unique grievances
                 sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount, informalc_grv.docs FROM informalc_awards, informalc_grv " \
+                      "informalc_awards.amount, informalc_grv.docs, informalc_grv.level FROM informalc_awards, informalc_grv " \
                       "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s'" \
                       "and informalc_awards.grv_no = '%s' " \
                       "ORDER BY informalc_grv.date_signed" % (name, ug)
                 query = inquire(sql)
                 if query:
                     for q in query:
+                        q = list(q)
                         results.append(q)
             if len(results) == 0:
                 report.write("    There are no awards on record for this carrier.\n")
@@ -2953,14 +2968,16 @@ def informalc_bycarriers(result):
                     total_amt = total_amt + float(r[3])
                 else:
                     amt = "---"
-                report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}{:>12}\n"
-                             .format(str(i), r[0], hours, rate, adj, amt, r[4]))
+                if r[5] == None or r[5] == "unknown":
+                    r[5] = "---"
+                report.write("    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+                             .format(str(i), r[0], hours, rate, adj, amt, r[4],r[5]))
                 i += 1
-            report.write("    --------------------------------------------------------------------------\n")
+            report.write("    ------------------------------------------------------------------------------------\n")
             t_adj = "{0:.2f}".format(float(total_adj))
             t_amt = "{0:.2f}".format(float(total_amt))
-            report.write("        {:<34}{:>12}\n".format("Total hours as straight time", t_adj))
-            report.write("        {:<34}{:>24}\n".format("Total as flat dollar amount", t_amt))
+            report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
+            report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
             report.write("\n\n\n")
         report.close()
         if sys.platform == "win32":
@@ -2989,12 +3006,12 @@ def informalc_apply_bycarrier(result, names, cursor):
         report = open('kb_sub/infc_grv/' + filename, "w")
         report.write("Settlement Report By Carrier\n\n")
         report.write("{:<30}\n\n".format(name))
-        report.write("        Grievance Number     hours    rate    adjusted      amount        docs\n")
-        report.write("    --------------------------------------------------------------------------\n")
+        report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
+        report.write("    ------------------------------------------------------------------------------------\n")
         results = []
         for ug in unique_grv:  # do search for each grievance in list of unique grievances
             sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                  "informalc_awards.amount, informalc_grv.docs " \
+                  "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
                   "FROM informalc_awards, informalc_grv " \
                   "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
                   "and informalc_awards.grv_no = '%s'" \
@@ -3002,6 +3019,7 @@ def informalc_apply_bycarrier(result, names, cursor):
             query = inquire(sql)
             if query:
                 for q in query:
+                    q = list(q)
                     results.append(q)
 
         if len(results) == 0:
@@ -3028,14 +3046,16 @@ def informalc_apply_bycarrier(result, names, cursor):
                 total_amt = total_amt + float(r[3])
             else:
                 amt = "---"
-            report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}{:>12}\n"
-                         .format(str(i), r[0], hours, rate, adj, amt, r[4]))
+            if r[5] == None or r[5] == "unknown":
+                r[5] = "---"
+            report.write("    {:<4}{:<18}{:>7}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+                         .format(str(i), r[0], hours, rate, adj, amt, r[4],r[5]))
             i += 1
-        report.write("    --------------------------------------------------------------------------\n")
+        report.write("    ------------------------------------------------------------------------------------\n")
         t_adj = "{0:.2f}".format(float(total_adj))
         t_amt = "{0:.2f}".format(float(total_amt))
-        report.write("        {:<34}{:>12}\n".format("Total hours as straight time", t_adj))
-        report.write("        {:<34}{:>24}\n".format("Total as flat dollar amount", t_amt))
+        report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
+        report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
         report.close()
         if sys.platform == "win32":
             os.startfile('kb_sub\\infc_grv\\' + filename)
@@ -3083,13 +3103,16 @@ def informalc_uniquecarrier(result):
 
 
 def informalc_rptbygrv(grv_info):
+    grv_info = list(grv_info) # correct for legacy problem of NULL Settlement Levels
+    if grv_info[8]==None:
+        grv_info[8] = "unknown"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
     if os.path.isdir('kb_sub/infc_grv') == False:
         os.makedirs('kb_sub/infc_grv')
     try:
         report = open('kb_sub/infc_grv/' + filename, "w")
-        report.write("Settlement List\n\n")
+        report.write("Settlement Summary\n\n")
         sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[0]
         query = inquire(sql)
         awardxhour = 0
@@ -3100,6 +3123,7 @@ def informalc_rptbygrv(grv_info):
         sign = dt_converter(grv_info[3]).strftime("%m/%d/%Y")
         report.write("    Dates of Violation: " + start + " - " + end + "\n")
         report.write("    Signing Date:       " + sign + "\n")
+        report.write("    Settlement Level    " + grv_info[8] + "\n")
         report.write("    Station:            " + grv_info[4] + "\n")
         report.write("    GATS Number:        " + grv_info[5] + "\n")
         report.write("    Documentation:      " + grv_info[6] + "\n")
@@ -3165,9 +3189,11 @@ def informalc_grvlist_setsum(result):
         report = open('kb_sub/infc_grv/' + filename, "w")
         report.write("   Settlement List Summary\n")
         report.write("   (ordered by date signed)\n\n")
-        report.write('  {:<18}{:<14}{:<12}{:>7}{:>12}{:>12}\n'
-                     .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Adj", "Flat"))
-        report.write("      -----------------------------------------------------------------------\n")
+        report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
+                     .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
+        report.write("      ----------------------------------------------------------------------------------\n")
+        total_hour = 0
+        total_amt = 0
         i = 1
         for sett in result:
             sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
@@ -3187,17 +3213,25 @@ def informalc_grvlist_setsum(result):
                     awardxamt = awardxamt + amt
             sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
             s_gats = sett[5].split(" ")
+            if sett[8]==None or sett[8]=="unknown":
+                lvl = "---"
+            else: lvl = sett[8]
             # for gats_no in s_gats:
             for gi in range(len(s_gats)):
                 if gi == 0:
-                    report.write('{:>4}  {:<14}{:<14}{:<12}{:>7}{:>12}{:>12}\n'
-                                 .format(str(i), sett[0], sign, s_gats[gi], sett[6]
+                    total_hour += awardxhour
+                    total_amt += awardxamt
+                    report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
+                                 .format(str(i), sett[0], sign, s_gats[gi], sett[6], lvl
                                          , "{0:.2f}".format(float(awardxhour)), "{0:.2f}".format(float(awardxamt))))
                 if gi != 0:
                     report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
             if i % 3 == 0:
-                report.write("      -----------------------------------------------------------------------\n")
+                report.write("      ----------------------------------------------------------------------------------\n")
             i += 1
+        report.write("      ----------------------------------------------------------------------------------\n")
+        report.write("{:<20}{:>58}\n".format("      Total Hours","{0:.2f}".format(total_hour)))
+        report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
         report.close()
         if sys.platform == "win32":
             os.startfile('kb_sub\\infc_grv\\' + filename)
@@ -3205,8 +3239,6 @@ def informalc_grvlist_setsum(result):
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
-        # except:
-        #     messagebox.showerror("Report Generator", "The report was not generated.")
 
 
 def informalc_grvlist_result(frame, result):
@@ -3289,7 +3321,7 @@ def informalc_date_checker(date, type):
 def informalc_grvlist_apply(frame,
                             incident_date, incident_start, incident_end,
                             signing_date, signing_start, signing_end,
-                            station,
+                            station, set_lvl, level,
                             gats, have_gats,
                             docs, have_docs):
     conditions = []
@@ -3332,6 +3364,11 @@ def informalc_grvlist_apply(frame,
         return
     to_add = "station = '{}'".format(station.get())
     conditions.append(to_add)
+
+    if set_lvl.get() == "yes":
+        to_add = "level = '{}'".format(level.get())
+        conditions.append(to_add)
+
     if gats.get() == "yes":
         if have_gats.get() == "yes":
             to_add = "gats_number IS NOT ''"
@@ -3357,13 +3394,15 @@ def informalc_grvlist(frame):
     Label(wd[3], text="Informal C: Settlement Search Criteria", font="bold").grid(row=0, columnspan=6, sticky="w")
     Label(wd[3], text=" ").grid(row=1, columnspan=6)
     # initialize varibles
+    station = StringVar(wd[0])
     incident_date = StringVar(wd[0])
     incident_start = StringVar(wd[0])
     incident_end = StringVar(wd[0])
     signing_date = StringVar(wd[0])
     signing_start = StringVar(wd[0])
     signing_end = StringVar(wd[0])
-    station = StringVar(wd[0])
+    set_lvl = StringVar(wd[0])
+    level = StringVar(wd[0])
     gats = StringVar(wd[0])
     have_gats = StringVar(wd[0])
     docs = StringVar(wd[0])
@@ -3397,6 +3436,18 @@ def informalc_grvlist(frame):
     Entry(wd[3], textvariable=signing_start, width=12, justify='right').grid(row=5, column=4)
     Entry(wd[3], textvariable=signing_end, width=12, justify='right').grid(row=5, column=5)
     signing_date.set('no')
+
+    # select for settlement level
+    Radiobutton(wd[3], text="yes", variable=set_lvl, value='yes').grid(row=6, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=set_lvl, value='no').grid(row=6, column=1, sticky="w")
+    set_lvl.set("no")
+    Label(wd[3], text="Settlement Level ").grid(row=6, column=3, sticky="w")
+    lvl_options = ("informal a","formal a", "step b", "pre-arb", "arbitration")
+    lvl_om = OptionMenu(wd[3], level, *lvl_options)
+    lvl_om.config(width=10)
+    lvl_om.grid(row=6, column=4, columnspan=3, sticky="e")
+    level.set("informal a")
+
     #select for gats number
     Radiobutton(wd[3], text="yes", variable=gats, value='yes').grid(row=7, column=0, sticky="w")
     Radiobutton(wd[3], text="no", variable=gats, value='no').grid(row=7, column=1, sticky="w")
@@ -3420,13 +3471,9 @@ def informalc_grvlist(frame):
     Label(wd[3], text="").grid(row=13)
     # buttons
     Button(wd[4], text="Search", width=20,
-           command=lambda: informalc_grvlist_apply(wd[0],
-                                                   incident_date, incident_start, incident_end,
-                                                   signing_date, signing_start, signing_end,
-                                                   station,
-                                                   gats, have_gats,
-                                                   docs, have_docs)
-           ).grid(row=0, column=1)
+           command=lambda: informalc_grvlist_apply(wd[0],incident_date, incident_start, incident_end,
+           signing_date, signing_start, signing_end, station, set_lvl, level, gats, have_gats,docs, have_docs))\
+            .grid(row=0, column=1)
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
     rear_window(wd)
 
@@ -3448,7 +3495,15 @@ def informalc_new(frame, msg):
     Label(wd[3], text="Date Signed (mm/dd/yyyy): ").grid(row=6, column=0, sticky="w")
     date_signed = StringVar(wd[0])
     Entry(wd[3], textvariable=date_signed, justify='right').grid(row=6, column=1, sticky="w")
-    Label(wd[3], text="Station: ").grid(row=7, column=0, sticky="w")  # select a station
+    #select level
+    Label(wd[3], text="Settlement Level: ").grid(row=7, column=0, sticky="w")  # select settlement level
+    lvl = StringVar(wd[0])
+    lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+    lvl_om = OptionMenu(wd[3], lvl, *lvl_options)
+    lvl_om.config(width=13)
+    lvl_om.grid(row=7, column=1)
+    lvl.set("informal a")
+    Label(wd[3], text="Station: ").grid(row=8, column=0, sticky="w")  # select a station
     station = StringVar(wd[0])
     station.set("Select a Station")
     station_options = list_of_stations
@@ -3456,27 +3511,25 @@ def informalc_new(frame, msg):
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
     station_om.config(width=40)
-    station_om.grid(row=8, column=0, columnspan=2, sticky="e")
-    Label(wd[3], text="GATS Number: ").grid(row=9, column=0, sticky="w")
+    station_om.grid(row=9, column=0, columnspan=2, sticky="e")
+    Label(wd[3], text="GATS Number: ").grid(row=10, column=0, sticky="w") # enter gats number
     gats_number = StringVar(wd[0])
-    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=9, column=1, sticky="w")
-    Label(wd[3], text="Documentation?: ").grid(row=10, column=0, sticky="w")
+    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=10, column=1, sticky="w")
+    Label(wd[3], text="Documentation?: ").grid(row=11, column=0, sticky="w") # select documentation
     docs = StringVar(wd[0])
     doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
     docs_om = OptionMenu(wd[3],docs, *doc_options)
     docs_om.config(width=13)
-    docs_om.grid(row=10, column=1)
+    docs_om.grid(row=11, column=1)
     docs.set("no")
-    Label(wd[3], text="Description: ").grid(row=14, column=0, sticky="w")
+    Label(wd[3], text="Description: ").grid(row=15, column=0, sticky="w")
     description = StringVar(wd[0])
-    Entry(wd[3], textvariable=description, width=48, justify='right').grid(row=15, column=0, sticky="w", columnspan=2)
-    Label(wd[3], text="").grid(row=16, column=0)
-    Label(wd[3], text=msg, fg="red").grid(row=17, column=0, columnspan=2, sticky="w")
+    Entry(wd[3], textvariable=description, width=48, justify='right').grid(row=16, column=0, sticky="w", columnspan=2)
+    Label(wd[3], text="").grid(row=17, column=0)
+    Label(wd[3], text=msg, fg="red").grid(row=18, column=0, columnspan=2, sticky="w")
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
-    Button(wd[4], text="Enter", width=18, command=lambda: informalc_new_apply(wd[0], grv_no, incident_start
-                                                                              , incident_end, date_signed, station,
-                                                                              gats_number, docs, description)).grid(
-        row=0, column=1)
+    Button(wd[4], text="Enter", width=18, command=lambda: informalc_new_apply(wd[0], grv_no, incident_start,
+          incident_end, date_signed, station, gats_number, docs, description, lvl)).grid(row=0, column=1)
     rear_window(wd)
 
 
@@ -3932,8 +3985,14 @@ def informalc(frame):
         shutil.rmtree('kb_sub/infc_grv')
 
     sql = 'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,' \
-          'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar)'
+          'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar, level varchar)'
     commit(sql)
+    # modify table for legacy version which did not have level column of informalc_grv table.
+    sql = 'PRAGMA table_info(informalc_grv)'  # get table info. returns an array of columns.
+    result = inquire(sql)
+    if len(result) <= 8:  # if there are not enough columns add the leave type and leave time columns
+        sql = 'ALTER table informalc_grv ADD COLUMN level varchar'
+        commit(sql)
     sql = 'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, ' \
           'rate varchar, amount varchar)'
     commit(sql)
