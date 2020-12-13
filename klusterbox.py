@@ -7890,9 +7890,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi),day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -7932,9 +7933,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -7971,9 +7973,10 @@ def spreadsheet(list_carrier, r_rings):
                 ws_list[i]['J' + str(oi)] = formula  # off route
                 ws_list[i]['J' + str(oi)].style = calcs
                 ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                           "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                           % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                             day_of_week[i], str(oi), day_of_week[i], str(oi),
                              day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                 ws_list[i]['K' + str(oi)] = formula  # OT off route
                 ws_list[i]['K' + str(oi)].style = calcs
@@ -8015,9 +8018,10 @@ def spreadsheet(list_carrier, r_rings):
             ws_list[i]['J' + str(oi)] = formula  # off route
             ws_list[i]['J' + str(oi)].style = calcs
             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
             ws_list[i]['K' + str(oi)] = formula  # OT off route
             ws_list[i]['K' + str(oi)].style = calcs
@@ -8189,9 +8193,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -8230,9 +8235,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -8268,9 +8274,10 @@ def spreadsheet(list_carrier, r_rings):
                 ws_list[i]['J' + str(oi)] = formula  # off route
                 ws_list[i]['J' + str(oi)].style = calcs
                 ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                           "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                           % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                             day_of_week[i], str(oi), day_of_week[i], str(oi),
                              day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                 ws_list[i]['K' + str(oi)] = formula  # OT off route
                 ws_list[i]['K' + str(oi)].style = calcs
@@ -8312,9 +8319,10 @@ def spreadsheet(list_carrier, r_rings):
             ws_list[i]['J' + str(oi)] = formula  # off route
             ws_list[i]['J' + str(oi)].style = calcs
             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
             ws_list[i]['K' + str(oi)] = formula  # OT off route
             ws_list[i]['K' + str(oi)].style = calcs

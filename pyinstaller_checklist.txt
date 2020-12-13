@@ -47,7 +47,7 @@ project folder. If not, then create it. If it does exist, empty any contents.
 
 11. enter the following in the command line: pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
 		
-12. in explorer, in the kb_install folder, drag and drop the klusterbox.py file from the dist folder and into the kb_sub folder. 
+12. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
 
 13. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
