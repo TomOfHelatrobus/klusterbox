@@ -103,7 +103,6 @@ def dt_converter(string):  # converts a string of a datetime to an actual dateti
     dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
     return dt
 
-
 def front_window(self):  # Sets up a tkinter page with buttons on the bottom
     if self != "none": self.destroy()  # close out the previous frame
     F = Frame(root)  # create new frame
@@ -134,6 +133,269 @@ def rear_window(wd):  # This closes the window created by front_window()
     root.update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
+
+def get_custom_nsday(): # get ns day color configurations from dbase and make dictionary
+    sql = "SELECT * FROM ns_configuration"
+    ns_results = inquire(sql)
+    ns_dict = {}  # build dictionary for ns days
+    days = ("sat", "mon", "tue", "wed", "thu", "fri")
+    for r in ns_results:  # build dictionary for rotating ns days
+        ns_dict[r[0]] = r[2]# build dictionary for ns fill colors
+    for d in days:  # expand dictionary for fixed days
+        ns_dict[d] = "fixed: " + d
+    ns_dict["none"] = "none"  # add "none" to dictionary
+    return ns_dict
+
+def rpt_impman(list_carrier):
+    date = g_date[0]
+    dates = []  # array containing days.
+    if g_range == "week":
+        for i in range(7):
+            dates.append(date)
+            date += timedelta(days=1)
+    if g_range == "day": dates.append(d_date)
+    if g_range == "week":
+        sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
+              % (g_date[0], g_date[6])
+    else:
+        sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
+              "carrier_name" \
+              % (d_date)
+    rings = inquire(sql)
+    daily_list = []  # array
+    candidates = []
+    dl_nl = []
+    dl_wal = []
+    dl_otdl = []
+    dl_aux = []
+    av_to_10_day = []  # arrays to hold totals for summary sheet.
+    av_to_10_row = []
+    av_to_12_day = []
+    av_to_12_row = []
+    man_ot_day = []
+    man_ot_row = []
+    nl_ot_day = []
+    nl_ot_row = []
+    day_finder = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+    day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
+    rec = ""
+    for day in dates:
+        del daily_list[:]
+        del dl_nl[:]
+        del dl_wal[:]
+        del dl_otdl[:]
+        del dl_aux[:]
+        # create a list of carriers for each day.
+        for ii in range(len(list_carrier)):
+            if list_carrier[ii][0] <= str(day):
+                candidates.append(list_carrier[ii])  # put name into candidates array
+            jump = "no"  # triggers an analysis of the candidates array
+            if ii != len(list_carrier) - 1:  # if the loop has not reached the end of the list
+                if list_carrier[ii][1] == list_carrier[ii + 1][1]:  # if the name current and next name are the same
+                    jump = "yes"  # bypasses an analysis of the candidates array
+            if jump == "no":  # review the list of candidates
+                winner = max(candidates, key=itemgetter(0))  # select the most recent
+                if winner[5] == g_station: daily_list.append(winner)  # add the record if it matches the station
+                del candidates[:]  # empty out the candidates array.
+        for item in daily_list:  # sort carriers in daily list by the list they are in
+            if item[2] == "nl":
+                dl_nl.append(item)
+            if item[2] == "wal":
+                dl_wal.append(item)
+            if item[2] == "otdl":
+                dl_otdl.append(item)
+            if item[2] == "aux":
+                dl_aux.append(item)
+        print("DAY: ", day, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+
+        print("No List -------------------------------------------------------------------")
+        for name in dl_nl:
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
+                if rec[5] != "":
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array)
+            else:
+                print(name[1])
+            rec = ""
+        print("Work Assignment -------------------------------------------------------------------")
+        for name in dl_wal:
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
+                if rec[5] != "":
+                    move_list = rec[5].split(",") # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0: # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array)
+            else:
+                print(name[1])
+            rec = ""
+        print("Overtime Desired -------------------------------------------------------------------")
+        for name in dl_otdl:
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            if rec != "":
+                print(name[1], "  ", rec[2], " ", rec[4], " ", rec[5])
+            else:
+                print(name[1])
+            rec = ""
+        print("Auxiliary -------------------------------------------------------------------")
+        for name in dl_aux:
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            if rec != "":
+                print(name[1], "  ", rec[2], " ", rec[4], " ", rec[5])
+            else:
+                print(name[1])
+            rec = ""
+
+
+def rpt_carrier(carrier_list): # Generate and display a report of carrier routes and nsday
+    ns_dict = get_custom_nsday() # get the ns day names from the dbase
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = "report_carrier_route" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False:
+        os.makedirs('kb_sub/report')
+    try:
+        report = open('kb_sub/report/' + filename, "w")
+        report.write("Carrier Route and NS Day Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date.strftime("%b %d, %Y")
+            report.write('      Date: {}\n'.format(f_date))
+        else:
+            f_date = g_date[0].strftime("%b %d, %Y")
+            end_f_date = g_date[6].strftime("%b %d, %Y")
+            report.write('      Dates: {} through {}\n'.format(f_date,end_f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<17}{:<24}\n'.format("", "Carrier Name", "N/S Day", "Route/s"))
+        report.write('      ----------------------------------------------------------------\n')
+        aforementioned = []
+        i = 1
+        for line in carrier_list:
+            if line[1] not in aforementioned:
+                report.write('{:>4}  {:<22} {:<5}{:<12}{:<24}\n'
+                             .format(i, line[1], ns_code[line[3]], ns_dict[line[3]], line[4]))
+                if i % 3 == 0:
+                    report.write('      ----------------------------------------------------------------\n')
+                aforementioned.append(line[1])
+                i += 1
+        report.close()
+        if sys.platform == "win32":
+            os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", 'kb_sub/report/' + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.")
+
+def rpt_carrier_route(carrier_list): # Generate and display a report of carrier routes
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = "report_carrier_route" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False:
+        os.makedirs('kb_sub/report')
+    try:
+        report = open('kb_sub/report/' + filename, "w")
+        report.write("Carrier Route Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date.strftime("%b %d, %Y")
+            report.write('      Date: {}\n'.format(f_date))
+        else:
+            f_date = g_date[0].strftime("%b %d, %Y")
+            end_f_date = g_date[6].strftime("%b %d, %Y")
+            report.write('      Dates: {} through {}\n'.format(f_date,end_f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<24}\n'.format("", "Carrier Name", "Route/s"))
+        report.write('      -----------------------------------------------\n')
+        aforementioned = []
+        i = 1
+        for line in carrier_list:
+            if line[1] not in aforementioned:
+                report.write('{:>4}  {:<22} {:<24}\n'.format(i, line[1], line[4]))
+                if i % 3 == 0:
+                    report.write('      -----------------------------------------------\n')
+                aforementioned.append(line[1])
+                i += 1
+        report.close()
+        if sys.platform == "win32":
+            os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", 'kb_sub/report/' + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.")
+
+def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier ns day
+    ns_dict = get_custom_nsday() # get the ns day names from the dbase
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = "report_carrier_route" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False:
+        os.makedirs('kb_sub/report')
+    try:
+        report = open('kb_sub/report/' + filename, "w")
+        report.write("Carrier Routes NS Day\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date.strftime("%b %d, %Y")
+            report.write('      Date: {}\n'.format(f_date))
+        else:
+            f_date = g_date[0].strftime("%b %d, %Y")
+            end_f_date = g_date[6].strftime("%b %d, %Y")
+            report.write('      Dates: {} through {}\n'.format(f_date,end_f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
+        report.write('      ----------------------------------------\n')
+        aforementioned = []
+        i = 1
+        for line in carrier_list:
+            if line[1] not in aforementioned:
+                report.write('{:>4}  {:<22} {:<5}{:<12}\n'
+                             .format(i, line[1], ns_code[line[3]], ns_dict[line[3]]))
+                if i % 3 == 0:
+                    report.write('      ----------------------------------------\n')
+                aforementioned.append(line[1])
+                i += 1
+        report.close()
+        if sys.platform == "win32":
+            os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", 'kb_sub/report/' + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.")
 
 def clean_rings3_table():
     sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
@@ -6661,6 +6923,24 @@ def file_dialogue(folder):  # opens file folders to access generated reports
         if sys.platform == "darwin":
             subprocess.call([opener, file_path])
 
+def remove_file(folder): # removes a file and all contents
+    if os.path.isdir(folder) == True:
+        shutil.rmtree(folder)
+
+def remove_file_var(folder): # removes a file and all contents
+    folder_name = folder.split("/")
+    folder_name = folder_name[1]
+    if os.path.isdir(folder) == True:
+        if messagebox.askokcancel("Delete Folder Contents",
+            "This will delete all the files in the {} archive. ".format(folder_name)):
+            shutil.rmtree(folder)
+        if os.path.isdir(folder) == False:
+            messagebox.showinfo("Delete Folder Contents",
+                "Success! All the files in the {} archive have been deleted.".format(folder_name))
+
+    else:
+        messagebox.showwarning("Delete Folder Contents", "The {} folder is already empty".format(folder_name))
+
 
 def location_klusterbox(self):  # provides the location of the program
     messagebox.showinfo("KLUSTERBOX ",
@@ -10814,6 +11094,19 @@ def main_frame():
     automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter())
     automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(F))
     menubar.add_cascade(label="Automated", menu=automated_menu)
+
+    # reports menu
+    reports_menu = Menu(menubar, tearoff=0)
+    reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(carrier_list))
+    reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(carrier_list))
+    reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(carrier_list))
+    reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(carrier_list))
+    if gs_day == "x":
+        reports_menu.entryconfig(0, state=DISABLED)
+        reports_menu.entryconfig(1, state=DISABLED)
+        reports_menu.entryconfig(2, state=DISABLED)
+        reports_menu.entryconfig(3, state=DISABLED)
+    menubar.add_cascade(label="Reports", menu=reports_menu)
     # library menu
     reportsarchive_menu = Menu(menubar, tearoff=0)
     reportsarchive_menu.add_command(label="Spreadsheet Archive", command=lambda: file_dialogue('kb_sub/spreadsheets'))
@@ -10824,6 +11117,19 @@ def main_frame():
     reportsarchive_menu.add_command(label="Pay Period Guide Archive", command=lambda: file_dialogue('kb_sub/pp_guide'))
     reportsarchive_menu.add_command(label="Weekly Availability Archive",
                              command=lambda: file_dialogue('kb_sub/weekly_availability'))
+    reportsarchive_menu.add_separator()
+    reportsarchive_menu.add_command(label="Empty Spreadsheet Archive",
+                                    command=lambda: remove_file_var('kb_sub/spreadsheets'))
+    reportsarchive_menu.add_command(label="Empty Over Max Finder Archive",
+                                    command=lambda: remove_file_var('kb_sub/over_max'))
+    reportsarchive_menu.add_command(label="Empty Over Max Spreadsheet Archive",
+                                    command=lambda: remove_file_var('kb_sub/over_max_spreadsheet'))
+    reportsarchive_menu.add_command(label="Empty Everything Report Archive",
+                                    command=lambda: remove_file_var('kb_sub/ee_reader'))
+    reportsarchive_menu.add_command(label="Empty Pay Period Guide Archive",
+                                    command=lambda: remove_file_var('kb_sub/pp_guide'))
+    reportsarchive_menu.add_command(label="Empty Weekly Availability Archive Archive",
+                                    command=lambda: remove_file_var('kb_sub/weekly_availability'))
     menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
     # management menu
     management_menu = Menu(menubar, tearoff=0)
@@ -11203,4 +11509,7 @@ if __name__ == "__main__":
     if len(list_of_stations) < 2:
         start_up()
     else:
+        remove_file('kb_sub/report') # empty out folders
+        remove_file('kb_sub/infc_grv')
         main_frame()
+
