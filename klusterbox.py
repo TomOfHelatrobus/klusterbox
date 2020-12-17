@@ -215,6 +215,111 @@ def rpt_impman(list_carrier):
                     rec = r
             moves_array = []
             if rec != "":
+                if rec[2] != "":
+                    if rec[4] == "ns day":
+                        ot = float(rec[2])
+                    else:
+                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
+                if rec[5] != "":  # if there is a moves in the record
+
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                    move_segment_total = 0
+                    for move_segment in moves_array:
+                        move_segment_total += (
+                                float(move_segment[1]) - float(move_segment[0]))  # calc off time off route
+                    if rec[4] == "ns day":
+                        ot_off_route = float(rec[2])
+                    else:
+                        ot_off_route = min(move_segment_total, ot)
+                    print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array[0][0]," ", moves_array[0][1]," ",
+                          moves_array[0][2], " ", ot, " ", move_segment_total," ", ot_off_route)
+                    if len(moves_array)>1:
+                        for i in range (len(moves_array)-1):
+                            print (moves_array[i+1][0]," ", moves_array[i+1][1]," ",moves_array[i+1][2])
+                else:
+                    print(name[1])
+            rec = ""
+        print("Work Assignment -------------------------------------------------------------------")
+        for name in dl_wal:
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
+                if rec[2] != "":
+                    if rec[4] == "ns day":
+                        ot = float(rec[2])
+                    else:
+                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
+                if rec[5] != "":  # if there is a moves in the record
+
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                    move_segment_total = 0
+                    for move_segment in moves_array:
+                        move_segment_total += (
+                                float(move_segment[1]) - float(move_segment[0]))  # calc off time off route
+                    if rec[4] == "ns day":
+                        ot_off_route = float(rec[2])
+                    else:
+                        ot_off_route = min(move_segment_total, ot)
+                    print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array[0][0], " ", moves_array[0][1], " ",
+                          moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route)
+                    if len(moves_array) > 1:
+                        for i in range(len(moves_array) - 1):
+                            print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
+                else:
+                    print(name[1])
+            rec = ""
+        print("Overtime Desired -------------------------------------------------------------------")
+        for name in dl_otdl:
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
+                if rec[5] != "":
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+
+                print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array)
+            else:
+                print(name[1])
+        print("Auxiliary -------------------------------------------------------------------")
+        for name in dl_aux:
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
                 if rec[5] != "":
                     move_list = rec[5].split(",")  # convert moves from string to an array
                     sub_array_counter = 0  # sort the moves into multidimentional array
@@ -230,50 +335,6 @@ def rpt_impman(list_carrier):
                 print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array)
             else:
                 print(name[1])
-            rec = ""
-        print("Work Assignment -------------------------------------------------------------------")
-        for name in dl_wal:
-            for r in rings:
-                if r[0] == str(day) and r[1] == name[1]:
-                    rec = r
-            moves_array = []
-            if rec != "":
-                if rec[5] != "":
-                    move_list = rec[5].split(",") # convert moves from string to an array
-                    sub_array_counter = 0  # sort the moves into multidimentional array
-                    i = 1
-                    for item in move_list:
-                        if (i + 2) % 3 == 0: # add an array to the array every third item
-                            moves_array.append([])
-                        moves_array[sub_array_counter].append(item)
-                        i += 1
-                        if (i - 1) % 3 == 0:
-                            sub_array_counter += 1
-                            i = 1
-                print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array)
-            else:
-                print(name[1])
-            rec = ""
-        print("Overtime Desired -------------------------------------------------------------------")
-        for name in dl_otdl:
-            for r in rings:
-                if r[0] == str(day) and r[1] == name[1]:
-                    rec = r
-            if rec != "":
-                print(name[1], "  ", rec[2], " ", rec[4], " ", rec[5])
-            else:
-                print(name[1])
-            rec = ""
-        print("Auxiliary -------------------------------------------------------------------")
-        for name in dl_aux:
-            for r in rings:
-                if r[0] == str(day) and r[1] == name[1]:
-                    rec = r
-            if rec != "":
-                print(name[1], "  ", rec[2], " ", rec[4], " ", rec[5])
-            else:
-                print(name[1])
-            rec = ""
 
 
 def rpt_carrier(carrier_list): # Generate and display a report of carrier routes and nsday
