@@ -33,8 +33,8 @@ For the newest version of Klusterbox, visit www.klusterbox.com/download. The sou
 This version of Klusterbox is being released under the GNU General Public License version 3.
 """
 # version variables
-version = "3.005"
-release_date = "November 1, 2020"
+version = "3.006"
+release_date = "December 21, 2020"
 
 # Standard Libraries
 from tkinter import *
@@ -162,24 +162,31 @@ def rpt_impman(list_carrier):
               "carrier_name" \
               % (d_date)
     rings = inquire(sql)
+    sql = "SELECT * FROM tolerances"  # get tolerances
+    tolerances = inquire(sql)
+    ot_own_rt = tolerances[0][2]
+    ot_tol = tolerances[1][2]
+    av_tol = tolerances[2][2]  # get tolerances
     daily_list = []  # array
     candidates = []
     dl_nl = []
     dl_wal = []
     dl_otdl = []
     dl_aux = []
-    av_to_10_day = []  # arrays to hold totals for summary sheet.
-    av_to_10_row = []
-    av_to_12_day = []
-    av_to_12_row = []
-    man_ot_day = []
-    man_ot_row = []
-    nl_ot_day = []
-    nl_ot_row = []
-    day_finder = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
-    day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
     rec = ""
+    weekly_summary = []
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+    filename = "report_improper_mandates" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False:  # create a directory if it does not exist
+        os.makedirs('kb_sub/report')
+    report = open('kb_sub/report/' + filename, "w")  # create text document
+    report.write("Improper Mandates Report\n")
     for day in dates:
+        report.write('\n\n   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        f_date = day.strftime("%A  %b %d, %Y")
+        report.write('      Date: {}\n'.format(f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
         del daily_list[:]
         del dl_nl[:]
         del dl_wal[:]
@@ -206,10 +213,16 @@ def rpt_impman(list_carrier):
                 dl_otdl.append(item)
             if item[2] == "aux":
                 dl_aux.append(item)
+        daily_summary = [] # initialize array for the daily summary
+        daily_summary.append(day)
         print("DAY: ", day, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 
         print("No List -------------------------------------------------------------------")
+        daily_ot = 0.0
+        daily_ot_off_route = 0.0
         for name in dl_nl:
+            ot = 0.0
+            ot_off_route = 0.0
             for r in rings:
                 if r[0] == str(day) and r[1] == name[1]:
                     rec = r
@@ -220,8 +233,9 @@ def rpt_impman(list_carrier):
                         ot = float(rec[2])
                     else:
                         ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
+                if ot <= float(ot_own_rt):
+                    ot = 0  # adjust sum for tolerance
                 if rec[5] != "":  # if there is a moves in the record
-
                     move_list = rec[5].split(",")  # convert moves from string to an array
                     sub_array_counter = 0  # sort the moves into multidimentional array
                     i = 1
@@ -248,21 +262,29 @@ def rpt_impman(list_carrier):
                             print (moves_array[i+1][0]," ", moves_array[i+1][1]," ",moves_array[i+1][2])
                 else:
                     print(name[1])
+            daily_ot += ot
+            daily_ot_off_route += ot_off_route
             rec = ""
+        daily_summary.append(daily_ot)
+        daily_summary.append(daily_ot_off_route)
+
         print("Work Assignment -------------------------------------------------------------------")
+        daily_ot = 0.0
+        daily_ot_off_route = 0.0
         for name in dl_wal:
+            ot = 0.0
+            ot_off_route = 0.0
             for r in rings:
                 if r[0] == str(day) and r[1] == name[1]:
                     rec = r
             moves_array = []
             if rec != "":
                 if rec[2] != "":
-                    if rec[4] == "ns day":
+                    if rec[4] == "ns day":  # calculate overtime
                         ot = float(rec[2])
                     else:
                         ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
                 if rec[5] != "":  # if there is a moves in the record
-
                     move_list = rec[5].split(",")  # convert moves from string to an array
                     sub_array_counter = 0  # sort the moves into multidimentional array
                     i = 1
@@ -281,7 +303,9 @@ def rpt_impman(list_carrier):
                     if rec[4] == "ns day":
                         ot_off_route = float(rec[2])
                     else:
-                        ot_off_route = min(move_segment_total, ot)
+                        ot_off_route = min(move_segment_total, ot)  # calc off time off route
+                    if ot_off_route <= float(ot_tol):
+                        ot_off_route = 0  # adjust sum for tolerance
                     print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array[0][0], " ", moves_array[0][1], " ",
                           moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route)
                     if len(moves_array) > 1:
@@ -289,15 +313,46 @@ def rpt_impman(list_carrier):
                             print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
                 else:
                     print(name[1])
+            daily_ot += ot
+            daily_ot_off_route += ot_off_route
             rec = ""
+        daily_summary.append(daily_ot)
+        daily_summary.append(daily_ot_off_route)
         print("Overtime Desired -------------------------------------------------------------------")
+        report.write('Overtime Desired List\n\n')
+        report.write ('{:>31}{:<22}{:<14}{:<20}\n'.format("","Moves off Route","Overtime","Availability"))
+        report.write('{:<15}{:>8}{:>6}{:<7}{:<7}{:<7}{:>7}{:>7}{:>7}{:>7}\n'
+                     .format("name","code","5200","  off","  on","   route","total","off rt","to 10","to 12"))
+        report.write("------------------------------------------------------------------------------\n")
+        daily_to_10 = 0.0
+        daily_to_12 = 0.0
         for name in dl_otdl:
-            for r in rings:
-                if r[0] == str(day) and r[1] == name[1]:
-                    rec = r
+            availability_to_10 = 0.0
+            availability_to_12 = 0.0
+            ot = 0.0
+            ot_off_route = 0.0
+            for r in rings: # cycle though clock rings and search for match
+                if r[0] == str(day) and r[1] == name[1]: # if there is a match
+                    rec = r # capture the record
             moves_array = []
-            if rec != "":
-                if rec[5] != "":
+            carrier = name[1][:15]
+            if rec != "": # if there is a result for the name
+                if rec[4] == "none": # if the code is "none", create empty string
+                    code = ""
+                else: code = rec[4]
+                if code == "no call": # if there is a no call, max out availability
+                    availability_to_12 = 12
+                    availability_to_10 = 10
+                if rec[2] != "": # calculate daily overtime if there is a 5200 time
+                    if code == "ns day":
+                        ot = float(rec[2])
+                    else:
+                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
+                    availability_to_10 = max(10 - float(rec[2]), 0) # calculate availability to 10 hours
+                    if availability_to_10 <= float(av_tol): availability_to_10 = 0  # adjust sum for tolerance
+                    availability_to_12 = max(12 - float(rec[2]), 0) # calculate availability to 12 hours
+                    if availability_to_12 <= float(av_tol): availability_to_12 = 0  # adjust sum for tolerance
+                if rec[5] != "":  # if there is a moves in the record
                     move_list = rec[5].split(",")  # convert moves from string to an array
                     sub_array_counter = 0  # sort the moves into multidimentional array
                     i = 1
@@ -309,12 +364,66 @@ def rpt_impman(list_carrier):
                         if (i - 1) % 3 == 0:
                             sub_array_counter += 1
                             i = 1
-
-                print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array)
-            else:
-                print(name[1])
+                    move_segment_total = 0  # calc off time off route
+                    for move_segment in moves_array:
+                        move_segment_total += (
+                                float(move_segment[1]) - float(move_segment[0]))
+                    if code == "ns day":
+                        ot_off_route = float(rec[2])
+                    else:
+                        ot_off_route = min(move_segment_total, ot) # calc off time off route
+                    # if there are moves
+                    print(name[1], "  ", rec[2], " ", code, " ", moves_array[0][0], " ", moves_array[0][1], " ",
+                          moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route, " ",
+                          availability_to_10, " ", availability_to_12)
+                    report.write('{:<15}{:>8}{:>6}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}\n'.format
+                            (carrier,
+                            code,
+                            "{0:.2f}".format(float(rec[2])),
+                            "{0:.2f}".format(float(moves_array[0][0])),
+                            "{0:.2f}".format(float(moves_array[0][1])),
+                            moves_array[0][2],
+                            "{0:.2f}".format(float(ot)),
+                            "{0:.2f}".format(float(ot_off_route)),
+                            "{0:.2f}".format(float(availability_to_10)),
+                            "{0:.2f}".format(float(availability_to_12))
+                            ))
+                    if len(moves_array) > 1:
+                        for i in range(len(moves_array) - 1):
+                            print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
+                            report.write('{:>29}{:>7}{:>7}{:>7}\n'.format
+                                    ("",
+                                    "{0:.2f}".format(float(moves_array[i + 1][0])),
+                                    "{0:.2f}".format(float(moves_array[i + 1][1])),
+                                    moves_array[i + 1][2],
+                                    ))
+                else: # if there are no moves
+                    print(name[1], "  ", rec[2], " ", code, " ", "", " ", "", " ",
+                          "", " ", ot, " ", "", " ", ot_off_route, " ",
+                          availability_to_10, " ", availability_to_12)
+                    report.write('{:<15}{:>8}{:>6}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}\n'.format
+                                 (carrier,
+                                  code,
+                                  rec[2],
+                                  "",
+                                  "",
+                                  "",
+                                  "{0:.2f}".format(float(ot)),
+                                  "{0:.2f}".format(float(ot_off_route)),
+                                  "{0:.2f}".format(float(availability_to_10)),
+                                  "{0:.2f}".format(float(availability_to_12))
+                                  ))
+            daily_to_10 += availability_to_10
+            daily_to_12 += availability_to_12
+            rec = ""
+        daily_summary.append(daily_to_10)
+        daily_summary.append(daily_to_12)
         print("Auxiliary -------------------------------------------------------------------")
+        daily_to_10 = 0.0
+        daily_to_12 = 0.0
         for name in dl_aux:
+            availability_to_10 = 0.0
+            availability_to_12 = 0.0
             for r in rings:
                 if r[0] == str(day) and r[1] == name[1]:
                     rec = r
@@ -332,16 +441,41 @@ def rpt_impman(list_carrier):
                         if (i - 1) % 3 == 0:
                             sub_array_counter += 1
                             i = 1
-                print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array)
+                if (rec[2])== "": # if the 5200 hours/ rec[2] is an empty string, make it a zero.
+                    dailyhours = float(0.0)
+                else:
+                    dailyhours = float(rec[2])# if the 5200 hours/ rec[2] is an empty string, make it a zero.
+                availability_to_10 = max(10 - dailyhours, 0)  # calculate availability to 10 hours
+                if availability_to_10 <= float(av_tol): availability_to_10 = 0  # adjust sum for tolerance
+                availability_to_12 = max(12 - dailyhours, 0)  # calculate availability to 12 hours
+                if availability_to_12 <= float(av_tol): availability_to_12 = 0  # adjust sum for tolerance
+                print(name[1], "  ", dailyhours, " ", rec[4], " ", availability_to_10, " ", availability_to_12)
             else:
                 print(name[1])
+            daily_to_10 += availability_to_10
+            daily_to_12 += availability_to_12
+            rec = ""
+        report.write("------------------------------------------------------------------------------\n")
+        daily_summary.append(daily_to_10)
+        daily_summary.append(daily_to_12)
+        weekly_summary.append(daily_summary)
+    report.close() # finish up text document
+    if sys.platform == "win32": # open the text document
+        os.startfile('kb_sub\\report\\' + filename)
+    if sys.platform == "linux":
+        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+    if sys.platform == "darwin":
+        subprocess.call(["open", 'kb_sub/report/' + filename])
+    print("weekly summary: ")
+    for line in weekly_summary:
+        print(line)
 
 
 def rpt_carrier(carrier_list): # Generate and display a report of carrier routes and nsday
     ns_dict = get_custom_nsday() # get the ns day names from the dbase
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S") # create a file name
     filename = "report_carrier_route" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/report') == False:
+    if os.path.isdir('kb_sub/report') == False: # create a directory if it does not exist
         os.makedirs('kb_sub/report')
     try:
         report = open('kb_sub/report/' + filename, "w")
@@ -1666,10 +1800,11 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
         pb.destroy()
         pb_root.destroy()
         # test the results
-        page = text.split("")  # split the document into pages
-        result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", page[0])
+        text = text.replace("","")
+        page = text.split("")  # split the document into page
+        result = re.search("Restricted USPS T&A Information(.*)Employee Everything Report", page[0], re.DOTALL)
         try:
-            station = result.group(1)
+            station = result.group(1).strip()
             break
         except:
             if i<1:
@@ -1684,7 +1819,6 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
                                      "You will either have to obtain the Employee Everything Report "
                                      "in the csv format from management or manually enter in the "
                                      "information")
-
     return text
 
 
@@ -1812,6 +1946,7 @@ def pdf_converter():
     with open(new_file_path, 'a') as writeFile:
         writer = csv.writer(writeFile, dialect='myDialect')
         writer.writerow(line)
+    text = text.replace("","")
     page = text.split("")  # split the document into pages
     whole_line = []
     page_num = 1  # initialize var to count pages
@@ -1866,9 +2001,10 @@ def pdf_converter():
     unresolved = []
     basecounter_error = []
     failed = []
-    result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", page[0])
+    # result = re.search("Restricted USPS T&A Information\n\n(.*)\n\nEmployee Everything Report", page[0]
+    result = re.search('Restricted USPS T&A Information(.*?)Employee Everything Report', page[0], re.DOTALL)
     try:
-        station = result.group(1)
+        station = result.group(1).strip()
     except:
         messagebox.showerror("Klusterbox PDF Converter",
                              "This file does not appear to be an Employee Everything Report. \n\n"
@@ -1906,8 +2042,8 @@ def pdf_converter():
             input = "Page: {}\n".format(page_num)
             kbpc_rpt.write(input)
         try:  # if the page has no station information, then break the loop.
-            result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", a)
-            station = result.group(1)
+            result = re.search("Restricted USPS T&A Information(.*)Employee Everything Report", a, re.DOTALL)
+            station = result.group(1).strip()
         except:
             break
         try:
@@ -11161,12 +11297,12 @@ def main_frame():
     reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(carrier_list))
     reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(carrier_list))
     reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(carrier_list))
-    reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(carrier_list))
+    # reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(carrier_list))
     if gs_day == "x":
         reports_menu.entryconfig(0, state=DISABLED)
         reports_menu.entryconfig(1, state=DISABLED)
         reports_menu.entryconfig(2, state=DISABLED)
-        reports_menu.entryconfig(3, state=DISABLED)
+        # reports_menu.entryconfig(3, state=DISABLED)
     menubar.add_cascade(label="Reports", menu=reports_menu)
     # library menu
     reportsarchive_menu = Menu(menubar, tearoff=0)
