@@ -10,7 +10,9 @@ Klusterbox new version go live checklist
 
 5. make sure the klusterbox zip file had the correct name convention e.g. klusterbox_v3.005_64bit.zip. That is "klusterbox_", version number and system type plus ".zip".
 
-6. using the ftp server, drag and drop the newest klusterbox version from the client side to the server side. 
+6. using the ftp server, drag and drop the newest klusterbox version from the client side to the server side.
+
+ Note: If going live for both 64 and 32 bit versions, repeat steps 1 through 6 on the other computer. 
 
 7. on the client side, navigate up and out of the kb_install folder. The klusterbox.py source code should be visible. 
 

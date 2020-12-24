@@ -2001,7 +2001,6 @@ def pdf_converter():
     unresolved = []
     basecounter_error = []
     failed = []
-    # result = re.search("Restricted USPS T&A Information\n\n(.*)\n\nEmployee Everything Report", page[0]
     result = re.search('Restricted USPS T&A Information(.*?)Employee Everything Report', page[0], re.DOTALL)
     try:
         station = result.group(1).strip()
@@ -2044,6 +2043,11 @@ def pdf_converter():
         try:  # if the page has no station information, then break the loop.
             result = re.search("Restricted USPS T&A Information(.*)Employee Everything Report", a, re.DOTALL)
             station = result.group(1).strip()
+            station = station.split('\n')[0]
+            if len(station) == 0:
+                result = re.search("Employee Everything Report(.*)Weekly", a, re.DOTALL)
+                station = result.group(1).strip()
+                station = station.split('\n')[0]
         except:
             break
         try:
@@ -2379,7 +2383,8 @@ def pdf_converter():
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+)", e) \
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
-                            lastname = e
+                            lastname = e.replace("'"," ")
+                            print(lastname)
                             if gen_error_report == "on":
                                 input = "Name: {}\n".format(e)
                                 kbpc_rpt.write(input)
@@ -5180,7 +5185,19 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
     FF = Frame(C)  # create the frame inside the canvas
     C.create_window((0, 0), window=FF, anchor=NW)
     possible_stations = []
-    for item in kb_stations: possible_stations.append(item)
+    for item in kb_stations:
+        possible_stations.append(item)
+    if len(tacs_station) == 0:
+        messagebox.showwarning("Auto Data Entry Error",
+                               "The Employee Everything Report is corrupt. Data Entry will stop.  \n"
+                               "The Employee Everything Report does not include "
+                               "information about the station. This could be caused by an error of the pdf "
+                               "converter. If you can obtain an Employee Everything Report from management in "
+                               "csv format, you should have better results.")
+        F.destroy()
+        main_frame()
+        return
+
     station_index.append("out of station")
     possible_stations = [x for x in possible_stations if x not in station_index]
     Label(FF, text="Station Pairing", font="bold", pady=10).grid(row=0, column=0, columnspan=4,
@@ -5192,14 +5209,25 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
     Label(FF, text=tacs_station, fg="blue").grid(row=3, column=0, columnspan=4)
     Label(FF, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky=W)
     station_sorter = StringVar(FF)
-    station_options = ["ADD STATION"] + possible_stations
+    station_options = ["select matching station"] + possible_stations +["ADD STATION"]
     station_sorter.set(station_options[0])
     option_menu = OptionMenu(FF, station_sorter, *station_options)
     option_menu.config(width=30)
     option_menu.grid(row=5, column=0, columnspan=2, sticky=W)
+    Label(FF, text=" ", justify=LEFT).grid(row=6, column=0, sticky=W)
+    Label(FF, text="If the station is not present in the drop down menu, select  \n "
+                   "ADD STATION from the menu and enter the new station name \n"
+                   "below to pair it with the station originating the report", justify=LEFT) \
+                    .grid(row=7, column=0, columnspan=4, sticky=W)
+    Label(FF, text=" ", justify=LEFT).grid(row=8, column=0, sticky=W)
+    Label(FF, text="Enter New Station Name: ", anchor="w").grid(row=9, column=0, columnspan=4, sticky=W)
+    # insert entry for station name
+    station_new = StringVar(FF)
+    Entry(FF, width=35, textvariable=station_new).grid(row=10, column=0, columnspan=4, sticky=W)
+    Label(FF, text=" ", justify=LEFT).grid(row=11, column=0, sticky=W)
     Button(FF, text="OK", width=8, command=lambda: apply_auto_indexer_1
-    (F, file_path, tacs_station, station_sorter.get(), t_date, t_range)).grid(row=5, column=2, sticky=W)
-    Button(FF, text="Cancel", width=8, command=lambda: (F.destroy(), main_frame())).grid(row=5, column=3, sticky=W)
+    (F, file_path, tacs_station, station_sorter.get(), station_new.get(), t_date, t_range)).grid(row=12, column=2, sticky=W)
+    Button(FF, text="Cancel", width=8, command=lambda: (F.destroy(), main_frame())).grid(row=12, column=3, sticky=W)
     if tacs_station in tacs_index:
         auto_indexer_2(F, file_path, t_date, tacs_station, t_range)
     else:
@@ -5208,23 +5236,36 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
         mainloop()
 
 
-def apply_auto_indexer_1(self, file_path, tacs_station, station_sorter, t_date, t_range):
+def apply_auto_indexer_1(self, file_path, tacs_station, station_sorter, station_new,  t_date, t_range):
+    sql = "SELECT kb_station FROM station_index"
+    result = inquire(sql)
+    station_index = []
+    for s in result:
+        station_index.append(s[0])
     global list_of_stations
-    # pair station from tacs to correct station in klusterbox/ apply part 1
-    if station_sorter == "":
+    station_new = station_new.strip()
+    if station_sorter == "select matching station":
         messagebox.showerror("Data Entry Error", "You must select a station or ADD STATION", parent=self)
         return
-    elif station_sorter == "ADD STATION":
-        sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
-              % (tacs_station, tacs_station, "")
+    elif station_sorter == "ADD STATION" and station_new == "":
+        messagebox.showerror("Data Entry Error", "You must provide a name for the new station.", parent=self)
+        return
+    elif station_sorter == "ADD STATION" and station_new != "":
+        if station_new not in list_of_stations:
+            sql = "INSERT INTO stations (station) VALUES('%s')" % (station_new)
         commit(sql)
-        if tacs_station not in list_of_stations:
-            sql = "INSERT INTO stations (station) VALUES('%s')" % (tacs_station)
-        commit(sql)
-        if tacs_station not in list_of_stations:
-            list_of_stations.append(tacs_station)
+        if station_new not in list_of_stations:
+            list_of_stations.append(station_new)
+        if len(tacs_station) != 0: # add to the station index to the dbase unless tacs_station is empty.
+            sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
+                  % (tacs_station, station_new, "")
+            commit(sql)
         messagebox.showinfo("Database Updated", "The {} station has been added to the list of stations automatically "
-                                                "recognized.".format(tacs_station))
+                                                "recognized.".format(station_new))
+    elif station_sorter != "ADD STATION" and station_new != "":
+        messagebox.showerror("Data Entry Error", "You can not select a station from the drop down menu AND enter "
+                                                 "a station in the text field.")
+        return
     else:
         sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
               % (tacs_station, station_sorter, "")
@@ -5272,7 +5313,8 @@ def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing s
                     assignment = "auxiliary"
                 else:
                     assignment = "undetected"
-                add_to_list = [line[4].zfill(8), line[5].lower(), line[6].lower(),
+                lastname = line[5].lower().replace("\'"," ")
+                add_to_list = [line[4].zfill(8), lastname, line[6].lower(),
                                assignment]  # create list to insert in list
                 tacs_list.append(add_to_list)
             c += 1
@@ -5701,8 +5743,23 @@ def auto_indexer_4(self, file_path, to_addname, check_these):  # add new carrier
     self.destroy()
     opt_nsday = []  # make an array of "day / color" options for option menu
     full_ns_dict = {}
-    for each in ns_code:  #
-        ns_option = ns_code[each] + " - " + each  # make a string for each day/color
+    # get ns structure preference from database
+    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
+    result = inquire(sql)
+    ns_toggle = result[0][0] # modify available ns days per ns_toggle
+    if ns_toggle == "rotation":
+        remove_array = ("sat", "mon", "tue", "wed", "thu", "fri")
+    else:
+        remove_array = ("green", "brown", "red", "black", "yellow", "blue")
+    ns_code_mod = dict() # copy the ns_code dict to ns_code_mod using dict()
+    for key in ns_code:
+        ns_code_mod[key]=ns_code[key]
+    for key in remove_array:
+        if key in ns_code_mod:
+            del ns_code_mod[key]  # modify available ns days per ns_toggle
+
+    for each in ns_code_mod:  #
+        ns_option = ns_code_mod[each] + " - " + each  # make a string for each day/color
         if each == "none": ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
         opt_nsday.append(ns_option)
     for each in opt_nsday:  # Make a dictionary to match full days and option menu options
@@ -7388,6 +7445,10 @@ def data_mods_codes_default(frame):
         commit(sql)
     auto_data_entry_settings(frame)
 
+def apply_auto_ns_structure(frame, ns_structure):
+    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
+    commit(sql)
+    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.")
 
 def data_entry_permit_zero(frame, top, bottom):
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (top.get(), "allow_zero_top")
@@ -7399,16 +7460,32 @@ def data_entry_permit_zero(frame, top, bottom):
 
 def auto_data_entry_settings(frame):
     wd = front_window(frame)  # F,S,C,FF,buttons
-    Label(wd[3], text="Auto Data Entry Settings", font="bold").grid(row=0, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text="").grid(row=1, column=1)
-    Label(wd[3], text="List of TACS MODS Codes", font="bold").grid(row=2, column=0, columnspan=4, sticky="w")
+    r = 0
+    Label(wd[3], text="Auto Data Entry Settings", font="bold").grid(row=r, column=0, sticky="w", columnspan=4)
+    r += 1
+    Label(wd[3], text="").grid(row=r, column=1)
+    r += 1
+    Label(wd[3], text="NS Day Structure", font="bold").grid(row=r, column=0, columnspan=4, sticky="w")
+    r += 1
+    ns_structure = StringVar(wd[3])
+    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
+    result = inquire(sql)
+    Radiobutton(wd[3], text="rotation", variable=ns_structure, value="rotation").grid(row=r, column=1, sticky="e")
+    Radiobutton(wd[3], text="fixed", variable=ns_structure, value="fixed").grid(row=r, column=2, sticky="w")
+    ns_structure.set(result[0][0])
+    r += 1
+    Button(wd[3], text="Set", width=5, command=lambda:apply_auto_ns_structure(wd[0],ns_structure)).grid(row=r, column=3)
+    r += 1
+    Label(wd[3], text="List of TACS MODS Codes", font="bold").grid(row=r, column=0, columnspan=4, sticky="w")
+    r += 1
     Label(wd[3], text="(to exclude from Auto Data Entry moves).") \
-        .grid(row=3, column=0, columnspan=4, sticky="w")
-    Label(wd[3], text="code", fg="grey", anchor="w").grid(row=4, column=0)
-    Label(wd[3], text="description", fg="grey", anchor="w").grid(row=4, column=1, columnspan=2)
+        .grid(row=r, column=0, columnspan=4, sticky="w")
+    r += 1
+    Label(wd[3], text="code", fg="grey", anchor="w").grid(row=r, column=0)
+    Label(wd[3], text="description", fg="grey", anchor="w").grid(row=r, column=1, columnspan=2)
     sql = "SELECT * FROM skippers"
     results = inquire(sql)
-    r = 5
+    r += 1
     if len(results) > 0:
         for i in range(len(results)):
             Button(wd[3], text=results[i][0], anchor="w", width=5).grid(row=i + r, column=0)  # display code
@@ -7471,6 +7548,7 @@ def auto_data_entry_settings(frame):
     r += 1
     Button(wd[3], text="Set", width=5, command=lambda: data_entry_permit_zero(wd[0], zero_top, zero_bottom)) \
         .grid(row=r, column=0, columnspan=4, sticky="e")
+
     Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), main_frame())).grid(row=0, column=0,
                                                                                                   sticky="w")
     rear_window(wd)
@@ -11637,6 +11715,8 @@ if __name__ == "__main__":
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(10,"pdf_raw_rpt","off")'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(11,"pdf_text_reader","off")'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(12,"ns_auto_pref","rotation")'
     commit(sql)
     sql = 'CREATE table IF NOT EXISTS carriers (effective_date date, carrier_name varchar, list_status varchar, ' \
           ' ns_day varchar, route_s varchar, station varchar)'
