@@ -7465,7 +7465,7 @@ def auto_data_entry_settings(frame):
     r += 1
     Label(wd[3], text="").grid(row=r, column=1)
     r += 1
-    Label(wd[3], text="NS Day Structure", font="bold").grid(row=r, column=0, columnspan=4, sticky="w")
+    Label(wd[3], text="NS Day Structure Preference", font="bold").grid(row=r, column=0, columnspan=4, sticky="w")
     r += 1
     ns_structure = StringVar(wd[3])
     sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
