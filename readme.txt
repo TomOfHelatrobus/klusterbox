@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 3.006
-released: December 21, 2020
+most recent version: 3.007
+released: December 24, 2020
 
 Caution: 
 
@@ -31,7 +31,7 @@ Klusterbox version 2.0 introduced the Auto Improper Mandate Finder, now called t
 
 Klusterbox version 3.0 introduced the PDF converter which translates TACS Employee Everything Reports into a .csv format which can be read by Klusterbox. A PDF Splitter is also included for breaking Employee Everything Reports into managable weekly sections. 
 In version 3.004 (7/21/20) the Over Max spreadsheet was added. Users were allowed to enter leave types/times into the database. The Auto Data Entry program also automatically found and entered the leave type/times into the database. 
-In version 3.005 (11/01/20) repairs were made to the pdf converter providing error warnings for troublesome input and reducing the risk of crashes. The pdf reader will make a second attempt with new parameters if the fist attempt fails. The overmax spreadsheet generator was updated to fix undercounting violations. Archives were renamed from "Libraries" on the menu. Formatting and option updates were made to informal c adding "verified" and "incomplete" as options for documentation status. In version 3.006 (12/21/20) more fixes were made to the pdf converter and reports were for carrier routes and ns days were added. 
+In version 3.005 (11/01/20) repairs were made to the pdf converter providing error warnings for troublesome input and reducing the risk of crashes. The pdf reader will make a second attempt with new parameters if the fist attempt fails. The overmax spreadsheet generator was updated to fix undercounting violations. Archives were renamed from "Libraries" on the menu. Formatting and option updates were made to informal c adding "verified" and "incomplete" as options for documentation status. In version 3.006 (12/21/20) more fixes were made to the pdf converter and reports were for carrier routes and ns days were added. Version 3.007 (12/24/20): fixes to pdf converter making the station more readable. the Auto Data Entry was modified to allow users to add a station which was matched to the TACS designation of a station. the NS Day Structure Preference was added and changes made to Auto Data Entry to respect that preference. 
 
 Contact:
 

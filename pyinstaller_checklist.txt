@@ -1,6 +1,26 @@
 Checklist for running pyinstaller for klusterbox
 
 1. in the source code, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
+
+#. navigate to the klusterbox project folder and open readme.txt.
+	a. update the "most recent version" and "released" near the top of the page. 
+	b. under the "History" subheader, add changes made for the lastest version. 
+	c. make any other changes to the readme.txt file that might be relevant. 
+	d. save the changes.
+
+# Getting most recent version to  github, upload the most recent version to git hub
+	a. open windows powershell
+	b. navigate to the project folder
+	c. type: git add .
+	d. type: git commit -m "your comments"
+	e. type: git push origin <branch>
+
+
+#. if the most recent version of klusterbox is not on the hard drive then go to github.com/TomOfHelatrobus/klusterbox.
+
+#. navigate to the branch which to which up uploaded the most recent version, either master or another.
+
+#. select Code >
  
 2. make sure the kb_install folder is inside the klusterbox 
 project folder. If not, then create it. If it does exist, empty any contents.
@@ -25,12 +45,7 @@ project folder. If not, then create it. If it does exist, empty any contents.
 		3. kb_icon2.ico
 		4. kb_icon2.jpg
 		5. kb_icon2.xpm
-
-5. navigate to the klusterbox project folder and open readme.txt.
-	a. update the "most recent version" and "released" near the top of the page. 
-	b. under the "History" subheader, add changes made for the lastest version. 
-	c. make any other changes to the readme.txt file that might be relevant. 
-	d. save the changes. 
+ 
 
 6. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
 	a. license.txt
