@@ -33,8 +33,8 @@ For the newest version of Klusterbox, visit www.klusterbox.com/download. The sou
 This version of Klusterbox is being released under the GNU General Public License version 3.
 """
 # version variables
-version = "3.005"
-release_date = "November 1, 2020"
+version = "3.006"
+release_date = "December 21, 2020"
 
 # Standard Libraries
 from tkinter import *
@@ -103,7 +103,6 @@ def dt_converter(string):  # converts a string of a datetime to an actual dateti
     dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
     return dt
 
-
 def front_window(self):  # Sets up a tkinter page with buttons on the bottom
     if self != "none": self.destroy()  # close out the previous frame
     F = Frame(root)  # create new frame
@@ -134,6 +133,464 @@ def rear_window(wd):  # This closes the window created by front_window()
     root.update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
+
+def get_custom_nsday(): # get ns day color configurations from dbase and make dictionary
+    sql = "SELECT * FROM ns_configuration"
+    ns_results = inquire(sql)
+    ns_dict = {}  # build dictionary for ns days
+    days = ("sat", "mon", "tue", "wed", "thu", "fri")
+    for r in ns_results:  # build dictionary for rotating ns days
+        ns_dict[r[0]] = r[2]# build dictionary for ns fill colors
+    for d in days:  # expand dictionary for fixed days
+        ns_dict[d] = "fixed: " + d
+    ns_dict["none"] = "none"  # add "none" to dictionary
+    return ns_dict
+
+def rpt_impman(list_carrier):
+    date = g_date[0]
+    dates = []  # array containing days.
+    if g_range == "week":
+        for i in range(7):
+            dates.append(date)
+            date += timedelta(days=1)
+    if g_range == "day": dates.append(d_date)
+    if g_range == "week":
+        sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
+              % (g_date[0], g_date[6])
+    else:
+        sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
+              "carrier_name" \
+              % (d_date)
+    rings = inquire(sql)
+    sql = "SELECT * FROM tolerances"  # get tolerances
+    tolerances = inquire(sql)
+    ot_own_rt = tolerances[0][2]
+    ot_tol = tolerances[1][2]
+    av_tol = tolerances[2][2]  # get tolerances
+    daily_list = []  # array
+    candidates = []
+    dl_nl = []
+    dl_wal = []
+    dl_otdl = []
+    dl_aux = []
+    rec = ""
+    weekly_summary = []
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+    filename = "report_improper_mandates" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False:  # create a directory if it does not exist
+        os.makedirs('kb_sub/report')
+    report = open('kb_sub/report/' + filename, "w")  # create text document
+    report.write("Improper Mandates Report\n")
+    for day in dates:
+        report.write('\n\n   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        f_date = day.strftime("%A  %b %d, %Y")
+        report.write('      Date: {}\n'.format(f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        del daily_list[:]
+        del dl_nl[:]
+        del dl_wal[:]
+        del dl_otdl[:]
+        del dl_aux[:]
+        # create a list of carriers for each day.
+        for ii in range(len(list_carrier)):
+            if list_carrier[ii][0] <= str(day):
+                candidates.append(list_carrier[ii])  # put name into candidates array
+            jump = "no"  # triggers an analysis of the candidates array
+            if ii != len(list_carrier) - 1:  # if the loop has not reached the end of the list
+                if list_carrier[ii][1] == list_carrier[ii + 1][1]:  # if the name current and next name are the same
+                    jump = "yes"  # bypasses an analysis of the candidates array
+            if jump == "no":  # review the list of candidates
+                winner = max(candidates, key=itemgetter(0))  # select the most recent
+                if winner[5] == g_station: daily_list.append(winner)  # add the record if it matches the station
+                del candidates[:]  # empty out the candidates array.
+        for item in daily_list:  # sort carriers in daily list by the list they are in
+            if item[2] == "nl":
+                dl_nl.append(item)
+            if item[2] == "wal":
+                dl_wal.append(item)
+            if item[2] == "otdl":
+                dl_otdl.append(item)
+            if item[2] == "aux":
+                dl_aux.append(item)
+        daily_summary = [] # initialize array for the daily summary
+        daily_summary.append(day)
+        print("DAY: ", day, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+
+        print("No List -------------------------------------------------------------------")
+        daily_ot = 0.0
+        daily_ot_off_route = 0.0
+        for name in dl_nl:
+            ot = 0.0
+            ot_off_route = 0.0
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
+                if rec[2] != "":
+                    if rec[4] == "ns day":
+                        ot = float(rec[2])
+                    else:
+                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
+                if ot <= float(ot_own_rt):
+                    ot = 0  # adjust sum for tolerance
+                if rec[5] != "":  # if there is a moves in the record
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                    move_segment_total = 0
+                    for move_segment in moves_array:
+                        move_segment_total += (
+                                float(move_segment[1]) - float(move_segment[0]))  # calc off time off route
+                    if rec[4] == "ns day":
+                        ot_off_route = float(rec[2])
+                    else:
+                        ot_off_route = min(move_segment_total, ot)
+                    print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array[0][0]," ", moves_array[0][1]," ",
+                          moves_array[0][2], " ", ot, " ", move_segment_total," ", ot_off_route)
+                    if len(moves_array)>1:
+                        for i in range (len(moves_array)-1):
+                            print (moves_array[i+1][0]," ", moves_array[i+1][1]," ",moves_array[i+1][2])
+                else:
+                    print(name[1])
+            daily_ot += ot
+            daily_ot_off_route += ot_off_route
+            rec = ""
+        daily_summary.append(daily_ot)
+        daily_summary.append(daily_ot_off_route)
+
+        print("Work Assignment -------------------------------------------------------------------")
+        daily_ot = 0.0
+        daily_ot_off_route = 0.0
+        for name in dl_wal:
+            ot = 0.0
+            ot_off_route = 0.0
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
+                if rec[2] != "":
+                    if rec[4] == "ns day":  # calculate overtime
+                        ot = float(rec[2])
+                    else:
+                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
+                if rec[5] != "":  # if there is a moves in the record
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                    move_segment_total = 0
+                    for move_segment in moves_array:
+                        move_segment_total += (
+                                float(move_segment[1]) - float(move_segment[0]))  # calc off time off route
+                    if rec[4] == "ns day":
+                        ot_off_route = float(rec[2])
+                    else:
+                        ot_off_route = min(move_segment_total, ot)  # calc off time off route
+                    if ot_off_route <= float(ot_tol):
+                        ot_off_route = 0  # adjust sum for tolerance
+                    print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array[0][0], " ", moves_array[0][1], " ",
+                          moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route)
+                    if len(moves_array) > 1:
+                        for i in range(len(moves_array) - 1):
+                            print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
+                else:
+                    print(name[1])
+            daily_ot += ot
+            daily_ot_off_route += ot_off_route
+            rec = ""
+        daily_summary.append(daily_ot)
+        daily_summary.append(daily_ot_off_route)
+        print("Overtime Desired -------------------------------------------------------------------")
+        report.write('Overtime Desired List\n\n')
+        report.write ('{:>31}{:<22}{:<14}{:<20}\n'.format("","Moves off Route","Overtime","Availability"))
+        report.write('{:<15}{:>8}{:>6}{:<7}{:<7}{:<7}{:>7}{:>7}{:>7}{:>7}\n'
+                     .format("name","code","5200","  off","  on","   route","total","off rt","to 10","to 12"))
+        report.write("------------------------------------------------------------------------------\n")
+        daily_to_10 = 0.0
+        daily_to_12 = 0.0
+        for name in dl_otdl:
+            availability_to_10 = 0.0
+            availability_to_12 = 0.0
+            ot = 0.0
+            ot_off_route = 0.0
+            for r in rings: # cycle though clock rings and search for match
+                if r[0] == str(day) and r[1] == name[1]: # if there is a match
+                    rec = r # capture the record
+            moves_array = []
+            carrier = name[1][:15]
+            if rec != "": # if there is a result for the name
+                if rec[4] == "none": # if the code is "none", create empty string
+                    code = ""
+                else: code = rec[4]
+                if code == "no call": # if there is a no call, max out availability
+                    availability_to_12 = 12
+                    availability_to_10 = 10
+                if rec[2] != "": # calculate daily overtime if there is a 5200 time
+                    if code == "ns day":
+                        ot = float(rec[2])
+                    else:
+                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
+                    availability_to_10 = max(10 - float(rec[2]), 0) # calculate availability to 10 hours
+                    if availability_to_10 <= float(av_tol): availability_to_10 = 0  # adjust sum for tolerance
+                    availability_to_12 = max(12 - float(rec[2]), 0) # calculate availability to 12 hours
+                    if availability_to_12 <= float(av_tol): availability_to_12 = 0  # adjust sum for tolerance
+                if rec[5] != "":  # if there is a moves in the record
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                    move_segment_total = 0  # calc off time off route
+                    for move_segment in moves_array:
+                        move_segment_total += (
+                                float(move_segment[1]) - float(move_segment[0]))
+                    if code == "ns day":
+                        ot_off_route = float(rec[2])
+                    else:
+                        ot_off_route = min(move_segment_total, ot) # calc off time off route
+                    # if there are moves
+                    print(name[1], "  ", rec[2], " ", code, " ", moves_array[0][0], " ", moves_array[0][1], " ",
+                          moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route, " ",
+                          availability_to_10, " ", availability_to_12)
+                    report.write('{:<15}{:>8}{:>6}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}\n'.format
+                            (carrier,
+                            code,
+                            "{0:.2f}".format(float(rec[2])),
+                            "{0:.2f}".format(float(moves_array[0][0])),
+                            "{0:.2f}".format(float(moves_array[0][1])),
+                            moves_array[0][2],
+                            "{0:.2f}".format(float(ot)),
+                            "{0:.2f}".format(float(ot_off_route)),
+                            "{0:.2f}".format(float(availability_to_10)),
+                            "{0:.2f}".format(float(availability_to_12))
+                            ))
+                    if len(moves_array) > 1:
+                        for i in range(len(moves_array) - 1):
+                            print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
+                            report.write('{:>29}{:>7}{:>7}{:>7}\n'.format
+                                    ("",
+                                    "{0:.2f}".format(float(moves_array[i + 1][0])),
+                                    "{0:.2f}".format(float(moves_array[i + 1][1])),
+                                    moves_array[i + 1][2],
+                                    ))
+                else: # if there are no moves
+                    print(name[1], "  ", rec[2], " ", code, " ", "", " ", "", " ",
+                          "", " ", ot, " ", "", " ", ot_off_route, " ",
+                          availability_to_10, " ", availability_to_12)
+                    report.write('{:<15}{:>8}{:>6}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}\n'.format
+                                 (carrier,
+                                  code,
+                                  rec[2],
+                                  "",
+                                  "",
+                                  "",
+                                  "{0:.2f}".format(float(ot)),
+                                  "{0:.2f}".format(float(ot_off_route)),
+                                  "{0:.2f}".format(float(availability_to_10)),
+                                  "{0:.2f}".format(float(availability_to_12))
+                                  ))
+            daily_to_10 += availability_to_10
+            daily_to_12 += availability_to_12
+            rec = ""
+        daily_summary.append(daily_to_10)
+        daily_summary.append(daily_to_12)
+        print("Auxiliary -------------------------------------------------------------------")
+        daily_to_10 = 0.0
+        daily_to_12 = 0.0
+        for name in dl_aux:
+            availability_to_10 = 0.0
+            availability_to_12 = 0.0
+            for r in rings:
+                if r[0] == str(day) and r[1] == name[1]:
+                    rec = r
+            moves_array = []
+            if rec != "":
+                if rec[5] != "":
+                    move_list = rec[5].split(",")  # convert moves from string to an array
+                    sub_array_counter = 0  # sort the moves into multidimentional array
+                    i = 1
+                    for item in move_list:
+                        if (i + 2) % 3 == 0:  # add an array to the array every third item
+                            moves_array.append([])
+                        moves_array[sub_array_counter].append(item)
+                        i += 1
+                        if (i - 1) % 3 == 0:
+                            sub_array_counter += 1
+                            i = 1
+                if (rec[2])== "": # if the 5200 hours/ rec[2] is an empty string, make it a zero.
+                    dailyhours = float(0.0)
+                else:
+                    dailyhours = float(rec[2])# if the 5200 hours/ rec[2] is an empty string, make it a zero.
+                availability_to_10 = max(10 - dailyhours, 0)  # calculate availability to 10 hours
+                if availability_to_10 <= float(av_tol): availability_to_10 = 0  # adjust sum for tolerance
+                availability_to_12 = max(12 - dailyhours, 0)  # calculate availability to 12 hours
+                if availability_to_12 <= float(av_tol): availability_to_12 = 0  # adjust sum for tolerance
+                print(name[1], "  ", dailyhours, " ", rec[4], " ", availability_to_10, " ", availability_to_12)
+            else:
+                print(name[1])
+            daily_to_10 += availability_to_10
+            daily_to_12 += availability_to_12
+            rec = ""
+        report.write("------------------------------------------------------------------------------\n")
+        daily_summary.append(daily_to_10)
+        daily_summary.append(daily_to_12)
+        weekly_summary.append(daily_summary)
+    report.close() # finish up text document
+    if sys.platform == "win32": # open the text document
+        os.startfile('kb_sub\\report\\' + filename)
+    if sys.platform == "linux":
+        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+    if sys.platform == "darwin":
+        subprocess.call(["open", 'kb_sub/report/' + filename])
+    print("weekly summary: ")
+    for line in weekly_summary:
+        print(line)
+
+
+def rpt_carrier(carrier_list): # Generate and display a report of carrier routes and nsday
+    ns_dict = get_custom_nsday() # get the ns day names from the dbase
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S") # create a file name
+    filename = "report_carrier_route" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False: # create a directory if it does not exist
+        os.makedirs('kb_sub/report')
+    try:
+        report = open('kb_sub/report/' + filename, "w")
+        report.write("Carrier Route and NS Day Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date.strftime("%b %d, %Y")
+            report.write('      Date: {}\n'.format(f_date))
+        else:
+            f_date = g_date[0].strftime("%b %d, %Y")
+            end_f_date = g_date[6].strftime("%b %d, %Y")
+            report.write('      Dates: {} through {}\n'.format(f_date,end_f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<17}{:<24}\n'.format("", "Carrier Name", "N/S Day", "Route/s"))
+        report.write('      ----------------------------------------------------------------\n')
+        aforementioned = []
+        i = 1
+        for line in carrier_list:
+            if line[1] not in aforementioned:
+                report.write('{:>4}  {:<22} {:<5}{:<12}{:<24}\n'
+                             .format(i, line[1], ns_code[line[3]], ns_dict[line[3]], line[4]))
+                if i % 3 == 0:
+                    report.write('      ----------------------------------------------------------------\n')
+                aforementioned.append(line[1])
+                i += 1
+        report.close()
+        if sys.platform == "win32":
+            os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", 'kb_sub/report/' + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.")
+
+def rpt_carrier_route(carrier_list): # Generate and display a report of carrier routes
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = "report_carrier_route" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False:
+        os.makedirs('kb_sub/report')
+    try:
+        report = open('kb_sub/report/' + filename, "w")
+        report.write("Carrier Route Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date.strftime("%b %d, %Y")
+            report.write('      Date: {}\n'.format(f_date))
+        else:
+            f_date = g_date[0].strftime("%b %d, %Y")
+            end_f_date = g_date[6].strftime("%b %d, %Y")
+            report.write('      Dates: {} through {}\n'.format(f_date,end_f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<24}\n'.format("", "Carrier Name", "Route/s"))
+        report.write('      -----------------------------------------------\n')
+        aforementioned = []
+        i = 1
+        for line in carrier_list:
+            if line[1] not in aforementioned:
+                report.write('{:>4}  {:<22} {:<24}\n'.format(i, line[1], line[4]))
+                if i % 3 == 0:
+                    report.write('      -----------------------------------------------\n')
+                aforementioned.append(line[1])
+                i += 1
+        report.close()
+        if sys.platform == "win32":
+            os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", 'kb_sub/report/' + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.")
+
+def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier ns day
+    ns_dict = get_custom_nsday() # get the ns day names from the dbase
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = "report_carrier_route" + "_" + stamp + ".txt"
+    if os.path.isdir('kb_sub/report') == False:
+        os.makedirs('kb_sub/report')
+    try:
+        report = open('kb_sub/report/' + filename, "w")
+        report.write("Carrier Routes NS Day\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date.strftime("%b %d, %Y")
+            report.write('      Date: {}\n'.format(f_date))
+        else:
+            f_date = g_date[0].strftime("%b %d, %Y")
+            end_f_date = g_date[6].strftime("%b %d, %Y")
+            report.write('      Dates: {} through {}\n'.format(f_date,end_f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
+        report.write('      ----------------------------------------\n')
+        aforementioned = []
+        i = 1
+        for line in carrier_list:
+            if line[1] not in aforementioned:
+                report.write('{:>4}  {:<22} {:<5}{:<12}\n'
+                             .format(i, line[1], ns_code[line[3]], ns_dict[line[3]]))
+                if i % 3 == 0:
+                    report.write('      ----------------------------------------\n')
+                aforementioned.append(line[1])
+                i += 1
+        report.close()
+        if sys.platform == "win32":
+            os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", 'kb_sub/report/' + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.")
 
 def clean_rings3_table():
     sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
@@ -1343,10 +1800,11 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
         pb.destroy()
         pb_root.destroy()
         # test the results
-        page = text.split("")  # split the document into pages
-        result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", page[0])
+        text = text.replace("","")
+        page = text.split("")  # split the document into page
+        result = re.search("Restricted USPS T&A Information(.*)Employee Everything Report", page[0], re.DOTALL)
         try:
-            station = result.group(1)
+            station = result.group(1).strip()
             break
         except:
             if i<1:
@@ -1361,7 +1819,6 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
                                      "You will either have to obtain the Employee Everything Report "
                                      "in the csv format from management or manually enter in the "
                                      "information")
-
     return text
 
 
@@ -1489,6 +1946,7 @@ def pdf_converter():
     with open(new_file_path, 'a') as writeFile:
         writer = csv.writer(writeFile, dialect='myDialect')
         writer.writerow(line)
+    text = text.replace("","")
     page = text.split("")  # split the document into pages
     whole_line = []
     page_num = 1  # initialize var to count pages
@@ -1543,9 +2001,9 @@ def pdf_converter():
     unresolved = []
     basecounter_error = []
     failed = []
-    result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", page[0])
+    result = re.search('Restricted USPS T&A Information(.*?)Employee Everything Report', page[0], re.DOTALL)
     try:
-        station = result.group(1)
+        station = result.group(1).strip()
     except:
         messagebox.showerror("Klusterbox PDF Converter",
                              "This file does not appear to be an Employee Everything Report. \n\n"
@@ -1583,8 +2041,13 @@ def pdf_converter():
             input = "Page: {}\n".format(page_num)
             kbpc_rpt.write(input)
         try:  # if the page has no station information, then break the loop.
-            result = re.search("Restricted USPS T&A Information\n\n(.*)\nEmployee Everything Report", a)
-            station = result.group(1)
+            result = re.search("Restricted USPS T&A Information(.*)Employee Everything Report", a, re.DOTALL)
+            station = result.group(1).strip()
+            station = station.split('\n')[0]
+            if len(station) == 0:
+                result = re.search("Employee Everything Report(.*)Weekly", a, re.DOTALL)
+                station = result.group(1).strip()
+                station = station.split('\n')[0]
         except:
             break
         try:
@@ -1920,7 +2383,8 @@ def pdf_converter():
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+)", e) \
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
-                            lastname = e
+                            lastname = e.replace("'"," ")
+                            print(lastname)
                             if gen_error_report == "on":
                                 input = "Name: {}\n".format(e)
                                 kbpc_rpt.write(input)
@@ -2294,8 +2758,8 @@ def informalc_grvchange(frame, passed_result, old_num, new_num):
         informalc_edit(frame, l_passed_result, new_num.get().lower(), msg)
 
 
-def informalc_edit_apply(frame, grv_no, incident_start, incident_end,
-                         date_signed, station, gats_number, docs, description):
+def informalc_edit_apply(frame, grv_no, incident_start, incident_end,date_signed, station, gats_number, docs,
+                         description, lvl):
     check = informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number, description)
     if check == "fail":
         return
@@ -2318,9 +2782,9 @@ def informalc_edit_apply(frame, grv_no, incident_start, incident_end,
         messagebox.showerror("Data Entry Error", "The Incident Start Date can not be later that the Date Signed.")
         return
     sql = "UPDATE informalc_grv SET indate_start='%s',indate_end='%s',date_signed='%s',station='%s',gats_number='%s'," \
-          "docs='%s',description='%s' WHERE grv_no='%s'" % (dt_dates[0], dt_dates[1], dt_dates[2], station.get(),
-                                                            gats_number.get().strip(), docs.get(), description.get(),
-                                                            grv_no.get())
+          "docs='%s',description='%s', level='%s' WHERE grv_no='%s'" \
+          % (dt_dates[0], dt_dates[1], dt_dates[2], station.get(),gats_number.get().strip(), docs.get(),
+             description.get(),lvl.get(),grv_no.get())
     commit(sql)
     messagebox.showerror("Sucessful Update", "Grievance number: {} succesfully updated.".format(grv_no.get()))
     informalc_grvlist(frame)
@@ -2339,45 +2803,54 @@ def informalc_delete(frame, grv_no):
 
 def informalc_edit(frame, result, grv_num, msg):
     wd = front_window(frame)
-    Label(wd[3], text="Informal C: Edit Grievance", font="bold").grid(row=0)
+    Label(wd[3], text="Informal C: Edit Grievance", font="bold").grid(row=0, columnspan=2, sticky="w")
     Label(wd[3], text="").grid(row=1)
     Label(wd[3], text="Grievance Number: ").grid(row=2, column=0, sticky="w")
     grv_no = StringVar(wd[0])
-    Entry(wd[3], textvariable=grv_no).grid(row=2, column=1, sticky="w")
-    Button(wd[3], width=7, text="update", command=lambda:
-    informalc_grvchange(wd[0], result, grv_num, grv_no)).grid(row=3, column=1, sticky=W)
+    Entry(wd[3], textvariable=grv_no, justify='right').grid(row=2, column=1, sticky="w")
+    Button(wd[3], width=9, text="update", command=lambda:
+    informalc_grvchange(wd[0], result, grv_num, grv_no)).grid(row=3, column=1, sticky="e")
     grv_no.set(grv_num)
     Label(wd[3], text="Incident Date").grid(row=4, column=0, sticky="w")
     Label(wd[3], text="  Start (mm/dd/yyyy): ").grid(row=5, column=0, sticky="w")
     incident_start = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_start).grid(row=5, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_start, justify='right').grid(row=5, column=1, sticky="w")
     Label(wd[3], text="  End (mm/dd/yyyy): ").grid(row=6, column=0, sticky="w")
     incident_end = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_end).grid(row=6, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_end, justify='right').grid(row=6, column=1, sticky="w")
     Label(wd[3], text="Date Signed (mm/dd/yyyy): ").grid(row=7, column=0, sticky="w")
     date_signed = StringVar(wd[0])
-    Entry(wd[3], textvariable=date_signed).grid(row=7, column=1, sticky="w")
-    Label(wd[3], text="Station: ").grid(row=8, column=0, sticky="w")  # select a station
+    Entry(wd[3], textvariable=date_signed, justify='right').grid(row=7, column=1, sticky="w")
+
+    Label(wd[3], text="Settlement Level: ").grid(row=8, column=0, sticky="w")  # select settlement level
+    lvl = StringVar(wd[0])
+    lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+    lvl_om = OptionMenu(wd[3], lvl, *lvl_options)
+    lvl_om.config(width=13)
+    lvl_om.grid(row=8, column=1)
+
+    Label(wd[3], text="Station: ").grid(row=9, column=0, sticky="w")  # select a station
     station = StringVar(wd[0])
     station_options = list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
-    station_om.config(width=38)
-    station_om.grid(row=9, column=0, columnspan=2)
-    Label(wd[3], text="GATS Number: ").grid(row=10, column=0, sticky="w")
+    station_om.config(width=40)
+    station_om.grid(row=10, column=0, columnspan=2, sticky="e")
+    Label(wd[3], text="GATS Number: ").grid(row=11, column=0, sticky="w")
     gats_number = StringVar(wd[0])
-    Entry(wd[3], textvariable=gats_number).grid(row=10, column=1, sticky="w")
-    Label(wd[3], text="Documentation: ").grid(row=11, column=0, sticky="w")
+    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=11, column=1, sticky="w")
+    Label(wd[3], text="Documentation: ").grid(row=12, column=0, sticky="w")
     docs = StringVar(wd[0])
-    Radiobutton(wd[3], text="No", variable=docs, value='no').grid(row=11, column=1, sticky="w")
-    Radiobutton(wd[3], text="Partial", variable=docs, value='partial').grid(row=12, column=1, sticky="w")
-    Radiobutton(wd[3], text="Yes", variable=docs, value='yes').grid(row=13, column=1, sticky="w")
-    Radiobutton(wd[3], text="Moot", variable=docs, value='moot').grid(row=14, column=1, sticky="w")
-    Label(wd[3], text="Description: ").grid(row=15, column=0, sticky="w")
+    doc_options = ("moot","no","partial","yes","incomplete","verified")
+    docs_om = OptionMenu(wd[3], docs, *doc_options)
+    docs_om.config(width=13)
+    docs_om.grid(row=12, column=1)
+    Label(wd[3], text="Description: ").grid(row=16, column=0, sticky="w")
     description = StringVar(wd[0])
-    Entry(wd[3], textvariable=description, width=48).grid(row=16, column=0, sticky="w", columnspan=2)
-    Label(wd[3], text="").grid(row=17, column=0)
+    Entry(wd[3], textvariable=description, width=47, justify='right')\
+        .grid(row=17, column=0, sticky="e", columnspan=2)
+    Label(wd[3], text="").grid(row=18, column=0)
     sql = "SELECT * FROM informalc_grv WHERE grv_no='%s'" % grv_num
     search = inquire(sql)
     if search:
@@ -2391,18 +2864,20 @@ def informalc_edit(frame, result, grv_num, msg):
         gats_number.set(search[0][5])
         docs.set(search[0][6])
         description.set(search[0][7])
-    Label(wd[3], text=" ").grid(row=19)
-    Label(wd[3], text="Delete Grievance").grid(row=20, column=0, sticky="w")
-    Button(wd[3], text="Delete", width=9, command=lambda: informalc_delete(wd[0], grv_no)).grid(row=20, column=1,
+        if search[0][8] == None:
+            lvl.set("unknown")
+        else:
+            lvl.set(search[0][8])
+    Label(wd[3], text=" ").grid(row=20)
+    Label(wd[3], text="Delete Grievance").grid(row=21, column=0, sticky="w")
+    Button(wd[3], text="Delete", width=9, command=lambda: informalc_delete(wd[0], grv_no)).grid(row=21, column=1,
                                                                                                 sticky="e")
-    Label(wd[3], text=" ").grid(row=21)
-    Label(wd[3], text=msg, fg="red", anchor="w").grid(row=22, column=0, columnspan=5, sticky="w")
+    Label(wd[3], text=" ").grid(row=22)
+    Label(wd[3], text=msg, fg="red", anchor="w").grid(row=23, column=0, columnspan=5, sticky="w")
     Button(wd[4], text="Go Back", width=20, command=lambda: informalc_grvlist_result(wd[0], result)).grid(row=0,
                                                                                                           column=0)
-    Button(wd[4], text="Enter", width=20, command=lambda: informalc_edit_apply(wd[0], grv_no, incident_start
-                                                                               , incident_end, date_signed, station,
-                                                                               gats_number, docs, description)).grid(
-        row=0, column=1)
+    Button(wd[4], text="Enter", width=20, command=lambda: informalc_edit_apply(wd[0], grv_no, incident_start,
+        incident_end, date_signed, station, gats_number, docs, description, lvl)).grid(row=0, column=1)
     rear_window(wd)
 
 
@@ -2486,7 +2961,7 @@ def informalc_check_grv_2(incident_start, incident_end,
 
 
 def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, docs,
-                        description):
+                        description, lvl):
     check = informalc_check_grv(grv_no, incident_start, incident_end, date_signed, station, gats_number, description)
     if check == "pass":
         dates = [incident_start, incident_end, date_signed]
@@ -2519,10 +2994,9 @@ def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed
                                  "create a duplicate.".format(grv_no.get()))
             return
         sql = "INSERT INTO informalc_grv (grv_no, indate_start, indate_end, date_signed, station, gats_number, docs," \
-              "description) VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % (grv_no.get().lower(), dt_dates[0],
-                                                                                dt_dates[1], dt_dates[2], station.get(),
-                                                                                gats_number.get().strip(), docs.get(),
-                                                                                description.get())
+              "description, level) VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s')" \
+              % (grv_no.get().lower(), dt_dates[0],dt_dates[1], dt_dates[2], station.get(),gats_number.get().strip(),
+                 docs.get(),description.get(), lvl.get())
         commit(sql)
         msg = "Grievance Settlement Added: #{}.".format(grv_no.get().lower())
         informalc_new(frame, msg)
@@ -2817,6 +3291,7 @@ def informalc_addaward(frame, passed_result, grv_no):
 
 def informalc_rptgrvsum(result):
     if len(result) > 0:
+        result = list(result)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
         if os.path.isdir('kb_sub/infc_grv') == False:
@@ -2826,6 +3301,9 @@ def informalc_rptgrvsum(result):
             report.write("Settlement List\n\n")
             i = 1
             for sett in result:
+                sett = list(sett)# correct for legacy problem of NULL Settlement Levels
+                if sett[8] == None:
+                    sett[8] = "unknown"
                 sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
                 query = inquire(sql)
                 num_space = 3 - (len(str(i)))  # number of spaces for number
@@ -2853,6 +3331,7 @@ def informalc_rptgrvsum(result):
                 sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
                 report.write("    Dates of Violation: " + start + " - " + end + "\n")
                 report.write("    Signing Date:       " + sign + "\n")
+                report.write("    Settlement Level    " + sett[8] + "\n")
                 report.write("    Station:            " + sett[4] + "\n")
                 report.write("    GATS Number:        " + sett[5] + "\n")
                 report.write("    Documentation:      " + sett[6] + "\n")
@@ -2915,18 +3394,19 @@ def informalc_bycarriers(result):
         report.write("Settlement Report By Carriers\n\n")
         for name in unique_carrier:
             report.write("{:<30}\n\n".format(name))
-            report.write("        Grievance Number     Hours    Rate    Adjusted      Amount\n")
-            report.write("    --------------------------------------------------------------\n")
+            report.write("        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
+            report.write("    ------------------------------------------------------------------------------------\n")
             results = []
             for ug in unique_grv:  # do search for each grievance in list of unique grievances
                 sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount FROM informalc_awards, informalc_grv " \
+                      "informalc_awards.amount, informalc_grv.docs, informalc_grv.level FROM informalc_awards, informalc_grv " \
                       "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s'" \
                       "and informalc_awards.grv_no = '%s' " \
                       "ORDER BY informalc_grv.date_signed" % (name, ug)
                 query = inquire(sql)
                 if query:
                     for q in query:
+                        q = list(q)
                         results.append(q)
             if len(results) == 0:
                 report.write("    There are no awards on record for this carrier.\n")
@@ -2952,13 +3432,16 @@ def informalc_bycarriers(result):
                     total_amt = total_amt + float(r[3])
                 else:
                     amt = "---"
-                report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}\n".format(str(i), r[0], hours, rate, adj, amt))
+                if r[5] == None or r[5] == "unknown":
+                    r[5] = "---"
+                report.write("    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+                             .format(str(i), r[0], hours, rate, adj, amt, r[4],r[5]))
                 i += 1
-            report.write("    --------------------------------------------------------------\n")
+            report.write("    ------------------------------------------------------------------------------------\n")
             t_adj = "{0:.2f}".format(float(total_adj))
             t_amt = "{0:.2f}".format(float(total_amt))
-            report.write("        {:<34}{:>12}\n".format("Total hours as straight time", t_adj))
-            report.write("        {:<34}{:>24}\n".format("Total as flat dollar amount", t_amt))
+            report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
+            report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
             report.write("\n\n\n")
         report.close()
         if sys.platform == "win32":
@@ -2987,11 +3470,12 @@ def informalc_apply_bycarrier(result, names, cursor):
         report = open('kb_sub/infc_grv/' + filename, "w")
         report.write("Settlement Report By Carrier\n\n")
         report.write("{:<30}\n\n".format(name))
-        report.write("        Grievance Number     hours    rate    adjusted      amount\n")
-        report.write("    --------------------------------------------------------------\n")
+        report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
+        report.write("    ------------------------------------------------------------------------------------\n")
         results = []
         for ug in unique_grv:  # do search for each grievance in list of unique grievances
-            sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, informalc_awards.amount " \
+            sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
+                  "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
                   "FROM informalc_awards, informalc_grv " \
                   "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
                   "and informalc_awards.grv_no = '%s'" \
@@ -2999,6 +3483,7 @@ def informalc_apply_bycarrier(result, names, cursor):
             query = inquire(sql)
             if query:
                 for q in query:
+                    q = list(q)
                     results.append(q)
 
         if len(results) == 0:
@@ -3025,13 +3510,16 @@ def informalc_apply_bycarrier(result, names, cursor):
                 total_amt = total_amt + float(r[3])
             else:
                 amt = "---"
-            report.write("    {:<4}{:<18}{:>8}{:>8}{:>12}{:>12}\n".format(str(i), r[0], hours, rate, adj, amt))
+            if r[5] == None or r[5] == "unknown":
+                r[5] = "---"
+            report.write("    {:<4}{:<18}{:>7}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+                         .format(str(i), r[0], hours, rate, adj, amt, r[4],r[5]))
             i += 1
-        report.write("    --------------------------------------------------------------\n")
+        report.write("    ------------------------------------------------------------------------------------\n")
         t_adj = "{0:.2f}".format(float(total_adj))
         t_amt = "{0:.2f}".format(float(total_amt))
-        report.write("        {:<34}{:>12}\n".format("Total hours as straight time", t_adj))
-        report.write("        {:<34}{:>24}\n".format("Total as flat dollar amount", t_amt))
+        report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
+        report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
         report.close()
         if sys.platform == "win32":
             os.startfile('kb_sub\\infc_grv\\' + filename)
@@ -3079,13 +3567,16 @@ def informalc_uniquecarrier(result):
 
 
 def informalc_rptbygrv(grv_info):
+    grv_info = list(grv_info) # correct for legacy problem of NULL Settlement Levels
+    if grv_info[8]==None:
+        grv_info[8] = "unknown"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
     if os.path.isdir('kb_sub/infc_grv') == False:
         os.makedirs('kb_sub/infc_grv')
     try:
         report = open('kb_sub/infc_grv/' + filename, "w")
-        report.write("Settlement List\n\n")
+        report.write("Settlement Summary\n\n")
         sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[0]
         query = inquire(sql)
         awardxhour = 0
@@ -3096,6 +3587,7 @@ def informalc_rptbygrv(grv_info):
         sign = dt_converter(grv_info[3]).strftime("%m/%d/%Y")
         report.write("    Dates of Violation: " + start + " - " + end + "\n")
         report.write("    Signing Date:       " + sign + "\n")
+        report.write("    Settlement Level    " + grv_info[8] + "\n")
         report.write("    Station:            " + grv_info[4] + "\n")
         report.write("    GATS Number:        " + grv_info[5] + "\n")
         report.write("    Documentation:      " + grv_info[6] + "\n")
@@ -3161,9 +3653,11 @@ def informalc_grvlist_setsum(result):
         report = open('kb_sub/infc_grv/' + filename, "w")
         report.write("   Settlement List Summary\n")
         report.write("   (ordered by date signed)\n\n")
-        report.write('  {:<18}{:<14}{:<12}{:>7}{:>12}{:>12}\n'
-                     .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Adj", "Flat"))
-        report.write("      -----------------------------------------------------------------------\n")
+        report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
+                     .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
+        report.write("      ----------------------------------------------------------------------------------\n")
+        total_hour = 0
+        total_amt = 0
         i = 1
         for sett in result:
             sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
@@ -3183,17 +3677,25 @@ def informalc_grvlist_setsum(result):
                     awardxamt = awardxamt + amt
             sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
             s_gats = sett[5].split(" ")
+            if sett[8]==None or sett[8]=="unknown":
+                lvl = "---"
+            else: lvl = sett[8]
             # for gats_no in s_gats:
             for gi in range(len(s_gats)):
                 if gi == 0:
-                    report.write('{:>4}  {:<14}{:<14}{:<12}{:>7}{:>12}{:>12}\n'
-                                 .format(str(i), sett[0], sign, s_gats[gi], sett[6]
+                    total_hour += awardxhour
+                    total_amt += awardxamt
+                    report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
+                                 .format(str(i), sett[0], sign, s_gats[gi], sett[6], lvl
                                          , "{0:.2f}".format(float(awardxhour)), "{0:.2f}".format(float(awardxamt))))
                 if gi != 0:
                     report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
             if i % 3 == 0:
-                report.write("      -----------------------------------------------------------------------\n")
+                report.write("      ----------------------------------------------------------------------------------\n")
             i += 1
+        report.write("      ----------------------------------------------------------------------------------\n")
+        report.write("{:<20}{:>58}\n".format("      Total Hours","{0:.2f}".format(total_hour)))
+        report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
         report.close()
         if sys.platform == "win32":
             os.startfile('kb_sub\\infc_grv\\' + filename)
@@ -3201,8 +3703,6 @@ def informalc_grvlist_setsum(result):
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
-        # except:
-        #     messagebox.showerror("Report Generator", "The report was not generated.")
 
 
 def informalc_grvlist_result(frame, result):
@@ -3285,7 +3785,7 @@ def informalc_date_checker(date, type):
 def informalc_grvlist_apply(frame,
                             incident_date, incident_start, incident_end,
                             signing_date, signing_start, signing_end,
-                            station,
+                            station, set_lvl, level,
                             gats, have_gats,
                             docs, have_docs):
     conditions = []
@@ -3328,6 +3828,11 @@ def informalc_grvlist_apply(frame,
         return
     to_add = "station = '{}'".format(station.get())
     conditions.append(to_add)
+
+    if set_lvl.get() == "yes":
+        to_add = "level = '{}'".format(level.get())
+        conditions.append(to_add)
+
     if gats.get() == "yes":
         if have_gats.get() == "yes":
             to_add = "gats_number IS NOT ''"
@@ -3350,69 +3855,89 @@ def informalc_grvlist_apply(frame,
 
 def informalc_grvlist(frame):
     wd = front_window(frame)
-    Label(wd[3], text="Informal C: Settlement Search Criteria", font="bold").grid(row=0, columnspan=4, sticky="w")
-    Label(wd[3], text=" ").grid(row=1, columnspan=4)
-    Label(wd[3], text="Search For", fg="grey").grid(row=3, column=0, columnspan=2, sticky="w")
-    Label(wd[3], text="Category", fg="grey").grid(row=3, column=3)
-    Label(wd[3], text="Start", fg="grey").grid(row=3, column=4)
-    Label(wd[3], text="End", fg="grey").grid(row=3, column=5)
+    Label(wd[3], text="Informal C: Settlement Search Criteria", font="bold").grid(row=0, columnspan=6, sticky="w")
+    Label(wd[3], text=" ").grid(row=1, columnspan=6)
+    # initialize varibles
+    station = StringVar(wd[0])
     incident_date = StringVar(wd[0])
     incident_start = StringVar(wd[0])
     incident_end = StringVar(wd[0])
     signing_date = StringVar(wd[0])
     signing_start = StringVar(wd[0])
     signing_end = StringVar(wd[0])
-    station = StringVar(wd[0])
+    set_lvl = StringVar(wd[0])
+    level = StringVar(wd[0])
     gats = StringVar(wd[0])
     have_gats = StringVar(wd[0])
     docs = StringVar(wd[0])
     have_docs = StringVar(wd[0])
-    Radiobutton(wd[3], text="yes", variable=incident_date, value='yes').grid(row=4, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=incident_date, value='no').grid(row=4, column=1, sticky="w")
-    Label(wd[3], text="", width=2).grid(row=4, column=2)
-    Label(wd[3], text="Incident Dates").grid(row=4, column=3, sticky="w")
-    Entry(wd[3], textvariable=incident_start, width=12).grid(row=4, column=4)
-    Entry(wd[3], textvariable=incident_end, width=12).grid(row=4, column=5)
-    incident_date.set('no')
-    Radiobutton(wd[3], text="yes", variable=signing_date, value='yes').grid(row=5, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=signing_date, value='no').grid(row=5, column=1, sticky="w")
-    Label(wd[3], text="Signing Dates").grid(row=5, column=3, sticky="w")
-    Entry(wd[3], textvariable=signing_start, width=12).grid(row=5, column=4)
-    Entry(wd[3], textvariable=signing_end, width=12).grid(row=5, column=5)
-    signing_date.set('no')
-    Label(wd[3], text="Station ").grid(row=6, column=0, columnspan=3, sticky="w")
+    # select station
+    Label(wd[3], text="Station ").grid(row=2, column=0, columnspan=3, sticky="w")
     station_options = list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
     station_om.config(width=35)
-    station_om.grid(row=6, column=3, columnspan=3, sticky="e")
+    station_om.grid(row=2, column=3, columnspan=3, sticky="e")
     station.set("Select a Station")
+
+    Label(wd[3], text="Search For", fg="grey").grid(row=3, column=0, columnspan=2, sticky="w")
+    Label(wd[3], text="Category", fg="grey").grid(row=3, column=3)
+    Label(wd[3], text="Start", fg="grey").grid(row=3, column=4)
+    Label(wd[3], text="End", fg="grey").grid(row=3, column=5)
+    # select for starting date
+    Radiobutton(wd[3], text="yes", variable=incident_date, value='yes').grid(row=4, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=incident_date, value='no').grid(row=4, column=1, sticky="w")
+    Label(wd[3], text="", width=2).grid(row=4, column=2)
+    Label(wd[3], text="Incident Dates").grid(row=4, column=3, sticky="w")
+    Entry(wd[3], textvariable=incident_start, width=12, justify='right').grid(row=4, column=4)
+    Entry(wd[3], textvariable=incident_end, width=12, justify='right').grid(row=4, column=5)
+    incident_date.set('no')
+    # select for signing date
+    Radiobutton(wd[3], text="yes", variable=signing_date, value='yes').grid(row=5, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=signing_date, value='no').grid(row=5, column=1, sticky="w")
+    Label(wd[3], text="Signing Dates").grid(row=5, column=3, sticky="w")
+    Entry(wd[3], textvariable=signing_start, width=12, justify='right').grid(row=5, column=4)
+    Entry(wd[3], textvariable=signing_end, width=12, justify='right').grid(row=5, column=5)
+    signing_date.set('no')
+
+    # select for settlement level
+    Radiobutton(wd[3], text="yes", variable=set_lvl, value='yes').grid(row=6, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=set_lvl, value='no').grid(row=6, column=1, sticky="w")
+    set_lvl.set("no")
+    Label(wd[3], text="Settlement Level ").grid(row=6, column=3, sticky="w")
+    lvl_options = ("informal a","formal a", "step b", "pre-arb", "arbitration")
+    lvl_om = OptionMenu(wd[3], level, *lvl_options)
+    lvl_om.config(width=10)
+    lvl_om.grid(row=6, column=4, columnspan=3, sticky="e")
+    level.set("informal a")
+
+    #select for gats number
     Radiobutton(wd[3], text="yes", variable=gats, value='yes').grid(row=7, column=0, sticky="w")
     Radiobutton(wd[3], text="no", variable=gats, value='no').grid(row=7, column=1, sticky="w")
     Label(wd[3], text="GATS Number").grid(row=7, column=3, sticky="w")
-    Radiobutton(wd[3], text="no", variable=have_gats, value='no').grid(row=7, column=4, sticky="w")
-    Radiobutton(wd[3], text="yes", variable=have_gats, value='yes').grid(row=8, column=4, sticky="w")
+    gats_options =("no","yes")
+    gats_om = OptionMenu(wd[3],have_gats, *gats_options)
+    gats_om.config(width=10)
+    gats_om.grid(row=7, column=4, columnspan=3, sticky="e")
     have_gats.set('no')
     gats.set('no')
+    # select for documentation
     Radiobutton(wd[3], text="yes", variable=docs, value='yes').grid(row=9, column=0, sticky="w")
     Radiobutton(wd[3], text="no", variable=docs, value='no').grid(row=9, column=1, sticky="w")
     Label(wd[3], text="Documentation").grid(row=9, column=3, sticky="w")
-    Radiobutton(wd[3], text="no", variable=have_docs, value='no').grid(row=9, column=4, sticky="w")
-    Radiobutton(wd[3], text="partial", variable=have_docs, value='partial').grid(row=10, column=4, sticky="w")
-    Radiobutton(wd[3], text="yes", variable=have_docs, value='yes').grid(row=11, column=4, sticky="w")
-    Radiobutton(wd[3], text="moot", variable=have_docs, value='moot').grid(row=12, column=4, sticky="w")
+    doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
+    docs_om = OptionMenu(wd[3], have_docs, *doc_options)
+    docs_om.config(width=10)
+    docs_om.grid(row=9, column=4, columnspan=3, sticky="e")
     have_docs.set('no')
     docs.set("no")
     Label(wd[3], text="").grid(row=13)
+    # buttons
     Button(wd[4], text="Search", width=20,
-           command=lambda: informalc_grvlist_apply(wd[0],
-                                                   incident_date, incident_start, incident_end,
-                                                   signing_date, signing_start, signing_end,
-                                                   station,
-                                                   gats, have_gats,
-                                                   docs, have_docs)
-           ).grid(row=0, column=1)
+           command=lambda: informalc_grvlist_apply(wd[0],incident_date, incident_start, incident_end,
+           signing_date, signing_start, signing_end, station, set_lvl, level, gats, have_gats,docs, have_docs))\
+            .grid(row=0, column=1)
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
     rear_window(wd)
 
@@ -3423,46 +3948,52 @@ def informalc_new(frame, msg):
     Label(wd[3], text="").grid(row=1, column=0, sticky="w")
     Label(wd[3], text="Grievance Number: ").grid(row=2, column=0, sticky="w")
     grv_no = StringVar(wd[0])
-    Entry(wd[3], textvariable=grv_no).grid(row=2, column=1, sticky="w")
+    Entry(wd[3], textvariable=grv_no, justify='right').grid(row=2, column=1, sticky="w")
     Label(wd[3], text="Incident Date").grid(row=3, column=0, sticky="w")
     Label(wd[3], text="  Start (mm/dd/yyyy): ").grid(row=4, column=0, sticky="w")
     incident_start = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_start).grid(row=4, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_start, justify='right').grid(row=4, column=1, sticky="w")
     Label(wd[3], text="  End (mm/dd/yyyy): ").grid(row=5, column=0, sticky="w")
     incident_end = StringVar(wd[0])
-    Entry(wd[3], textvariable=incident_end).grid(row=5, column=1, sticky="w")
+    Entry(wd[3], textvariable=incident_end, justify='right').grid(row=5, column=1, sticky="w")
     Label(wd[3], text="Date Signed (mm/dd/yyyy): ").grid(row=6, column=0, sticky="w")
     date_signed = StringVar(wd[0])
-    Entry(wd[3], textvariable=date_signed).grid(row=6, column=1, sticky="w")
-    Label(wd[3], text="Station: ").grid(row=7, column=0, sticky="w")  # select a station
+    Entry(wd[3], textvariable=date_signed, justify='right').grid(row=6, column=1, sticky="w")
+    #select level
+    Label(wd[3], text="Settlement Level: ").grid(row=7, column=0, sticky="w")  # select settlement level
+    lvl = StringVar(wd[0])
+    lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+    lvl_om = OptionMenu(wd[3], lvl, *lvl_options)
+    lvl_om.config(width=13)
+    lvl_om.grid(row=7, column=1)
+    lvl.set("informal a")
+    Label(wd[3], text="Station: ").grid(row=8, column=0, sticky="w")  # select a station
     station = StringVar(wd[0])
     station.set("Select a Station")
     station_options = list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
-    station_om.config(width=38)
-    station_om.grid(row=8, column=0, columnspan=2)
-    Label(wd[3], text="GATS Number: ").grid(row=9, column=0, sticky="w")
+    station_om.config(width=40)
+    station_om.grid(row=9, column=0, columnspan=2, sticky="e")
+    Label(wd[3], text="GATS Number: ").grid(row=10, column=0, sticky="w") # enter gats number
     gats_number = StringVar(wd[0])
-    Entry(wd[3], textvariable=gats_number).grid(row=9, column=1, sticky="w")
-    Label(wd[3], text="Documentation?: ").grid(row=10, column=0, sticky="w")
+    Entry(wd[3], textvariable=gats_number, justify='right').grid(row=10, column=1, sticky="w")
+    Label(wd[3], text="Documentation?: ").grid(row=11, column=0, sticky="w") # select documentation
     docs = StringVar(wd[0])
-    Radiobutton(wd[3], text="No", variable=docs, value='no').grid(row=10, column=1, sticky="w")
-    Radiobutton(wd[3], text="Partial", variable=docs, value='partial').grid(row=11, column=1, sticky="w")
-    Radiobutton(wd[3], text="Yes", variable=docs, value='yes').grid(row=12, column=1, sticky="w")
-    Radiobutton(wd[3], text="Moot", variable=docs, value='moot').grid(row=13, column=1, sticky="w")
+    doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
+    docs_om = OptionMenu(wd[3],docs, *doc_options)
+    docs_om.config(width=13)
+    docs_om.grid(row=11, column=1)
     docs.set("no")
-    Label(wd[3], text="Description: ").grid(row=14, column=0, sticky="w")
+    Label(wd[3], text="Description: ").grid(row=15, column=0, sticky="w")
     description = StringVar(wd[0])
-    Entry(wd[3], textvariable=description, width=48).grid(row=15, column=0, sticky="w", columnspan=2)
-    Label(wd[3], text="").grid(row=16, column=0)
-    Label(wd[3], text=msg, fg="red").grid(row=17, column=0, columnspan=2, sticky="w")
+    Entry(wd[3], textvariable=description, width=48, justify='right').grid(row=16, column=0, sticky="w", columnspan=2)
+    Label(wd[3], text="").grid(row=17, column=0)
+    Label(wd[3], text=msg, fg="red").grid(row=18, column=0, columnspan=2, sticky="w")
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
-    Button(wd[4], text="Enter", width=18, command=lambda: informalc_new_apply(wd[0], grv_no, incident_start
-                                                                              , incident_end, date_signed, station,
-                                                                              gats_number, docs, description)).grid(
-        row=0, column=1)
+    Button(wd[4], text="Enter", width=18, command=lambda: informalc_new_apply(wd[0], grv_no, incident_start,
+          incident_end, date_signed, station, gats_number, docs, description, lvl)).grid(row=0, column=1)
     rear_window(wd)
 
 
@@ -3918,8 +4449,14 @@ def informalc(frame):
         shutil.rmtree('kb_sub/infc_grv')
 
     sql = 'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,' \
-          'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar)'
+          'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar, level varchar)'
     commit(sql)
+    # modify table for legacy version which did not have level column of informalc_grv table.
+    sql = 'PRAGMA table_info(informalc_grv)'  # get table info. returns an array of columns.
+    result = inquire(sql)
+    if len(result) <= 8:  # if there are not enough columns add the leave type and leave time columns
+        sql = 'ALTER table informalc_grv ADD COLUMN level varchar'
+        commit(sql)
     sql = 'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, ' \
           'rate varchar, amount varchar)'
     commit(sql)
@@ -4648,7 +5185,19 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
     FF = Frame(C)  # create the frame inside the canvas
     C.create_window((0, 0), window=FF, anchor=NW)
     possible_stations = []
-    for item in kb_stations: possible_stations.append(item)
+    for item in kb_stations:
+        possible_stations.append(item)
+    if len(tacs_station) == 0:
+        messagebox.showwarning("Auto Data Entry Error",
+                               "The Employee Everything Report is corrupt. Data Entry will stop.  \n"
+                               "The Employee Everything Report does not include "
+                               "information about the station. This could be caused by an error of the pdf "
+                               "converter. If you can obtain an Employee Everything Report from management in "
+                               "csv format, you should have better results.")
+        F.destroy()
+        main_frame()
+        return
+
     station_index.append("out of station")
     possible_stations = [x for x in possible_stations if x not in station_index]
     Label(FF, text="Station Pairing", font="bold", pady=10).grid(row=0, column=0, columnspan=4,
@@ -4660,14 +5209,25 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
     Label(FF, text=tacs_station, fg="blue").grid(row=3, column=0, columnspan=4)
     Label(FF, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky=W)
     station_sorter = StringVar(FF)
-    station_options = ["ADD STATION"] + possible_stations
+    station_options = ["select matching station"] + possible_stations +["ADD STATION"]
     station_sorter.set(station_options[0])
     option_menu = OptionMenu(FF, station_sorter, *station_options)
     option_menu.config(width=30)
     option_menu.grid(row=5, column=0, columnspan=2, sticky=W)
+    Label(FF, text=" ", justify=LEFT).grid(row=6, column=0, sticky=W)
+    Label(FF, text="If the station is not present in the drop down menu, select  \n "
+                   "ADD STATION from the menu and enter the new station name \n"
+                   "below to pair it with the station originating the report", justify=LEFT) \
+                    .grid(row=7, column=0, columnspan=4, sticky=W)
+    Label(FF, text=" ", justify=LEFT).grid(row=8, column=0, sticky=W)
+    Label(FF, text="Enter New Station Name: ", anchor="w").grid(row=9, column=0, columnspan=4, sticky=W)
+    # insert entry for station name
+    station_new = StringVar(FF)
+    Entry(FF, width=35, textvariable=station_new).grid(row=10, column=0, columnspan=4, sticky=W)
+    Label(FF, text=" ", justify=LEFT).grid(row=11, column=0, sticky=W)
     Button(FF, text="OK", width=8, command=lambda: apply_auto_indexer_1
-    (F, file_path, tacs_station, station_sorter.get(), t_date, t_range)).grid(row=5, column=2, sticky=W)
-    Button(FF, text="Cancel", width=8, command=lambda: (F.destroy(), main_frame())).grid(row=5, column=3, sticky=W)
+    (F, file_path, tacs_station, station_sorter.get(), station_new.get(), t_date, t_range)).grid(row=12, column=2, sticky=W)
+    Button(FF, text="Cancel", width=8, command=lambda: (F.destroy(), main_frame())).grid(row=12, column=3, sticky=W)
     if tacs_station in tacs_index:
         auto_indexer_2(F, file_path, t_date, tacs_station, t_range)
     else:
@@ -4676,23 +5236,36 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
         mainloop()
 
 
-def apply_auto_indexer_1(self, file_path, tacs_station, station_sorter, t_date, t_range):
+def apply_auto_indexer_1(self, file_path, tacs_station, station_sorter, station_new,  t_date, t_range):
+    sql = "SELECT kb_station FROM station_index"
+    result = inquire(sql)
+    station_index = []
+    for s in result:
+        station_index.append(s[0])
     global list_of_stations
-    # pair station from tacs to correct station in klusterbox/ apply part 1
-    if station_sorter == "":
+    station_new = station_new.strip()
+    if station_sorter == "select matching station":
         messagebox.showerror("Data Entry Error", "You must select a station or ADD STATION", parent=self)
         return
-    elif station_sorter == "ADD STATION":
-        sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
-              % (tacs_station, tacs_station, "")
+    elif station_sorter == "ADD STATION" and station_new == "":
+        messagebox.showerror("Data Entry Error", "You must provide a name for the new station.", parent=self)
+        return
+    elif station_sorter == "ADD STATION" and station_new != "":
+        if station_new not in list_of_stations:
+            sql = "INSERT INTO stations (station) VALUES('%s')" % (station_new)
         commit(sql)
-        if tacs_station not in list_of_stations:
-            sql = "INSERT INTO stations (station) VALUES('%s')" % (tacs_station)
-        commit(sql)
-        if tacs_station not in list_of_stations:
-            list_of_stations.append(tacs_station)
+        if station_new not in list_of_stations:
+            list_of_stations.append(station_new)
+        if len(tacs_station) != 0: # add to the station index to the dbase unless tacs_station is empty.
+            sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
+                  % (tacs_station, station_new, "")
+            commit(sql)
         messagebox.showinfo("Database Updated", "The {} station has been added to the list of stations automatically "
-                                                "recognized.".format(tacs_station))
+                                                "recognized.".format(station_new))
+    elif station_sorter != "ADD STATION" and station_new != "":
+        messagebox.showerror("Data Entry Error", "You can not select a station from the drop down menu AND enter "
+                                                 "a station in the text field.")
+        return
     else:
         sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
               % (tacs_station, station_sorter, "")
@@ -4740,7 +5313,8 @@ def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing s
                     assignment = "auxiliary"
                 else:
                     assignment = "undetected"
-                add_to_list = [line[4].zfill(8), line[5].lower(), line[6].lower(),
+                lastname = line[5].lower().replace("\'"," ")
+                add_to_list = [line[4].zfill(8), lastname, line[6].lower(),
                                assignment]  # create list to insert in list
                 tacs_list.append(add_to_list)
             c += 1
@@ -5169,8 +5743,23 @@ def auto_indexer_4(self, file_path, to_addname, check_these):  # add new carrier
     self.destroy()
     opt_nsday = []  # make an array of "day / color" options for option menu
     full_ns_dict = {}
-    for each in ns_code:  #
-        ns_option = ns_code[each] + " - " + each  # make a string for each day/color
+    # get ns structure preference from database
+    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
+    result = inquire(sql)
+    ns_toggle = result[0][0] # modify available ns days per ns_toggle
+    if ns_toggle == "rotation":
+        remove_array = ("sat", "mon", "tue", "wed", "thu", "fri")
+    else:
+        remove_array = ("green", "brown", "red", "black", "yellow", "blue")
+    ns_code_mod = dict() # copy the ns_code dict to ns_code_mod using dict()
+    for key in ns_code:
+        ns_code_mod[key]=ns_code[key]
+    for key in remove_array:
+        if key in ns_code_mod:
+            del ns_code_mod[key]  # modify available ns days per ns_toggle
+
+    for each in ns_code_mod:  #
+        ns_option = ns_code_mod[each] + " - " + each  # make a string for each day/color
         if each == "none": ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
         opt_nsday.append(ns_option)
     for each in opt_nsday:  # Make a dictionary to match full days and option menu options
@@ -6588,6 +7177,24 @@ def file_dialogue(folder):  # opens file folders to access generated reports
         if sys.platform == "darwin":
             subprocess.call([opener, file_path])
 
+def remove_file(folder): # removes a file and all contents
+    if os.path.isdir(folder) == True:
+        shutil.rmtree(folder)
+
+def remove_file_var(folder): # removes a file and all contents
+    folder_name = folder.split("/")
+    folder_name = folder_name[1]
+    if os.path.isdir(folder) == True:
+        if messagebox.askokcancel("Delete Folder Contents",
+            "This will delete all the files in the {} archive. ".format(folder_name)):
+            shutil.rmtree(folder)
+        if os.path.isdir(folder) == False:
+            messagebox.showinfo("Delete Folder Contents",
+                "Success! All the files in the {} archive have been deleted.".format(folder_name))
+
+    else:
+        messagebox.showwarning("Delete Folder Contents", "The {} folder is already empty".format(folder_name))
+
 
 def location_klusterbox(self):  # provides the location of the program
     messagebox.showinfo("KLUSTERBOX ",
@@ -6838,6 +7445,10 @@ def data_mods_codes_default(frame):
         commit(sql)
     auto_data_entry_settings(frame)
 
+def apply_auto_ns_structure(frame, ns_structure):
+    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
+    commit(sql)
+    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.")
 
 def data_entry_permit_zero(frame, top, bottom):
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (top.get(), "allow_zero_top")
@@ -6849,16 +7460,32 @@ def data_entry_permit_zero(frame, top, bottom):
 
 def auto_data_entry_settings(frame):
     wd = front_window(frame)  # F,S,C,FF,buttons
-    Label(wd[3], text="Auto Data Entry Settings", font="bold").grid(row=0, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text="").grid(row=1, column=1)
-    Label(wd[3], text="List of TACS MODS Codes", font="bold").grid(row=2, column=0, columnspan=4, sticky="w")
+    r = 0
+    Label(wd[3], text="Auto Data Entry Settings", font="bold").grid(row=r, column=0, sticky="w", columnspan=4)
+    r += 1
+    Label(wd[3], text="").grid(row=r, column=1)
+    r += 1
+    Label(wd[3], text="NS Day Structure Preference", font="bold").grid(row=r, column=0, columnspan=4, sticky="w")
+    r += 1
+    ns_structure = StringVar(wd[3])
+    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
+    result = inquire(sql)
+    Radiobutton(wd[3], text="rotation", variable=ns_structure, value="rotation").grid(row=r, column=1, sticky="e")
+    Radiobutton(wd[3], text="fixed", variable=ns_structure, value="fixed").grid(row=r, column=2, sticky="w")
+    ns_structure.set(result[0][0])
+    r += 1
+    Button(wd[3], text="Set", width=5, command=lambda:apply_auto_ns_structure(wd[0],ns_structure)).grid(row=r, column=3)
+    r += 1
+    Label(wd[3], text="List of TACS MODS Codes", font="bold").grid(row=r, column=0, columnspan=4, sticky="w")
+    r += 1
     Label(wd[3], text="(to exclude from Auto Data Entry moves).") \
-        .grid(row=3, column=0, columnspan=4, sticky="w")
-    Label(wd[3], text="code", fg="grey", anchor="w").grid(row=4, column=0)
-    Label(wd[3], text="description", fg="grey", anchor="w").grid(row=4, column=1, columnspan=2)
+        .grid(row=r, column=0, columnspan=4, sticky="w")
+    r += 1
+    Label(wd[3], text="code", fg="grey", anchor="w").grid(row=r, column=0)
+    Label(wd[3], text="description", fg="grey", anchor="w").grid(row=r, column=1, columnspan=2)
     sql = "SELECT * FROM skippers"
     results = inquire(sql)
-    r = 5
+    r += 1
     if len(results) > 0:
         for i in range(len(results)):
             Button(wd[3], text=results[i][0], anchor="w", width=5).grid(row=i + r, column=0)  # display code
@@ -6921,6 +7548,7 @@ def auto_data_entry_settings(frame):
     r += 1
     Button(wd[3], text="Set", width=5, command=lambda: data_entry_permit_zero(wd[0], zero_top, zero_bottom)) \
         .grid(row=r, column=0, columnspan=4, sticky="e")
+
     Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), main_frame())).grid(row=0, column=0,
                                                                                                   sticky="w")
     rear_window(wd)
@@ -7817,9 +8445,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi),day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -7859,9 +8488,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -7898,9 +8528,10 @@ def spreadsheet(list_carrier, r_rings):
                 ws_list[i]['J' + str(oi)] = formula  # off route
                 ws_list[i]['J' + str(oi)].style = calcs
                 ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                           "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                           % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                             day_of_week[i], str(oi), day_of_week[i], str(oi),
                              day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                 ws_list[i]['K' + str(oi)] = formula  # OT off route
                 ws_list[i]['K' + str(oi)].style = calcs
@@ -7942,9 +8573,10 @@ def spreadsheet(list_carrier, r_rings):
             ws_list[i]['J' + str(oi)] = formula  # off route
             ws_list[i]['J' + str(oi)].style = calcs
             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
             ws_list[i]['K' + str(oi)] = formula  # OT off route
             ws_list[i]['K' + str(oi)].style = calcs
@@ -8116,9 +8748,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -8157,9 +8790,10 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                             ws_list[i]['K' + str(oi)] = formula  # OT off route
                             ws_list[i]['K' + str(oi)].style = calcs
@@ -8195,9 +8829,10 @@ def spreadsheet(list_carrier, r_rings):
                 ws_list[i]['J' + str(oi)] = formula  # off route
                 ws_list[i]['J' + str(oi)].style = calcs
                 ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                           "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                           % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                             day_of_week[i], str(oi), day_of_week[i], str(oi),
                              day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
                 ws_list[i]['K' + str(oi)] = formula  # OT off route
                 ws_list[i]['K' + str(oi)].style = calcs
@@ -8239,9 +8874,10 @@ def spreadsheet(list_carrier, r_rings):
             ws_list[i]['J' + str(oi)] = formula  # off route
             ws_list[i]['J' + str(oi)].style = calcs
             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!B%s=\"ns day\",%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
+                         day_of_week[i], str(oi), day_of_week[i], str(oi),
                          day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
             ws_list[i]['K' + str(oi)] = formula  # OT off route
             ws_list[i]['K' + str(oi)].style = calcs
@@ -10733,16 +11369,42 @@ def main_frame():
     automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter())
     automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(F))
     menubar.add_cascade(label="Automated", menu=automated_menu)
+
+    # reports menu
+    reports_menu = Menu(menubar, tearoff=0)
+    reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(carrier_list))
+    reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(carrier_list))
+    reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(carrier_list))
+    # reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(carrier_list))
+    if gs_day == "x":
+        reports_menu.entryconfig(0, state=DISABLED)
+        reports_menu.entryconfig(1, state=DISABLED)
+        reports_menu.entryconfig(2, state=DISABLED)
+        # reports_menu.entryconfig(3, state=DISABLED)
+    menubar.add_cascade(label="Reports", menu=reports_menu)
     # library menu
     reportsarchive_menu = Menu(menubar, tearoff=0)
     reportsarchive_menu.add_command(label="Spreadsheet Archive", command=lambda: file_dialogue('kb_sub/spreadsheets'))
     reportsarchive_menu.add_command(label="Over Max Finder Archive", command=lambda: file_dialogue('kb_sub/over_max'))
     reportsarchive_menu.add_command(label="Over Max Spreadsheet Archive",
-                             command=lambda: file_dialogue('kb_sub/overmax_spreadsheet'))
+                             command=lambda: file_dialogue('kb_sub/over_max_spreadsheet'))
     reportsarchive_menu.add_command(label="Everything Report Archive", command=lambda: file_dialogue('kb_sub/ee_reader'))
     reportsarchive_menu.add_command(label="Pay Period Guide Archive", command=lambda: file_dialogue('kb_sub/pp_guide'))
     reportsarchive_menu.add_command(label="Weekly Availability Archive",
                              command=lambda: file_dialogue('kb_sub/weekly_availability'))
+    reportsarchive_menu.add_separator()
+    reportsarchive_menu.add_command(label="Empty Spreadsheet Archive",
+                                    command=lambda: remove_file_var('kb_sub/spreadsheets'))
+    reportsarchive_menu.add_command(label="Empty Over Max Finder Archive",
+                                    command=lambda: remove_file_var('kb_sub/over_max'))
+    reportsarchive_menu.add_command(label="Empty Over Max Spreadsheet Archive",
+                                    command=lambda: remove_file_var('kb_sub/over_max_spreadsheet'))
+    reportsarchive_menu.add_command(label="Empty Everything Report Archive",
+                                    command=lambda: remove_file_var('kb_sub/ee_reader'))
+    reportsarchive_menu.add_command(label="Empty Pay Period Guide Archive",
+                                    command=lambda: remove_file_var('kb_sub/pp_guide'))
+    reportsarchive_menu.add_command(label="Empty Weekly Availability Archive Archive",
+                                    command=lambda: remove_file_var('kb_sub/weekly_availability'))
     menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
     # management menu
     management_menu = Menu(menubar, tearoff=0)
@@ -11054,6 +11716,8 @@ if __name__ == "__main__":
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(11,"pdf_text_reader","off")'
     commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(12,"ns_auto_pref","rotation")'
+    commit(sql)
     sql = 'CREATE table IF NOT EXISTS carriers (effective_date date, carrier_name varchar, list_status varchar, ' \
           ' ns_day varchar, route_s varchar, station varchar)'
     commit(sql)
@@ -11122,4 +11786,7 @@ if __name__ == "__main__":
     if len(list_of_stations) < 2:
         start_up()
     else:
+        remove_file('kb_sub/report') # empty out folders
+        remove_file('kb_sub/infc_grv')
         main_frame()
+

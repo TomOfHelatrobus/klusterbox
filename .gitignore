@@ -11,6 +11,7 @@
 /kb_sub/spreadsheets
 /kb_sub/weekly_availability
 /kb_sub/infc_grv
+/kb_sub/report
 
 # ignore license and readme files in kb_sub dir
 
@@ -20,3 +21,4 @@
 # ignore the kb_install folder
 
 kb_install
+env
