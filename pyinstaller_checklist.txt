@@ -8,19 +8,38 @@ Checklist for running pyinstaller for klusterbox
 	c. make any other changes to the readme.txt file that might be relevant. 
 	d. save the changes.
 
-# Getting most recent version to  github, upload the most recent version to git hub
+# upload the most recent version to git hub
 	a. open windows powershell
 	b. navigate to the project folder
 	c. type: git add .
 	d. type: git commit -m "your comments"
 	e. type: git push origin <branch>
 
+-------------------------------------------------------------------------------------------
+
+if the most recent version of klusterbox is not on the hard drive: 
 
 #. if the most recent version of klusterbox is not on the hard drive then go to github.com/TomOfHelatrobus/klusterbox.
 
 #. navigate to the branch which to which up uploaded the most recent version, either master or another.
 
-#. select Code >
+#. select Code > Download ZIP
+
+#. When the dialog box appears, select "Save File".
+
+# Open up the browser's Download file.
+
+#. Upzip the zip file
+
+#.  Click on the folder and move into the directory that has the klusterbox. py file inside it. 
+
+#. Open another window. Create or open a directory called klusterbox.
+
+# Drag and drop or copy/paste the klusterbox.py file from the unzipped folder to the klusterbox folder, over writing the older file, i.e. Move and Replace.
+
+# Drag and drop or copy/paste the kb_sub file from the unzipped folder to the klusterbox folder, over writing the older file, i.e. Move and Replace.
+
+-------------------------------------------------------------------------------------------
  
 2. make sure the kb_install folder is inside the klusterbox 
 project folder. If not, then create it. If it does exist, empty any contents.
@@ -63,6 +82,7 @@ project folder. If not, then create it. If it does exist, empty any contents.
 10. check the installed modules by entering: pip list
 
 11. if the listed modules do not match those in the requirements list then install them. 
+	a. copy/paste the requirements folder from the unzipped file.
 	a. enter: pipenv install -r requirements.txt
 
 12. navigate to the kb_install folder

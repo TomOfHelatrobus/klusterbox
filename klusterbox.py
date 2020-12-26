@@ -19,7 +19,7 @@ pycryptodome==3.9.7
 PyPDF2==1.26.0
 six==1.14.0
 sortedcontainers==2.1.0
-pillow==6.0.0
+pillow==8.0.1
 
 to package with pyinstaller:
 make sure that the kb_sub folder (with images) is in the same directory as the source file then input -
