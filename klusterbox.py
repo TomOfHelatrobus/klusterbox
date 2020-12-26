@@ -7297,7 +7297,7 @@ def start_up():  # the start up screen when no information has been entered
         grid(row=4, column=1, sticky="w")
     Label(FF, text="", pady=20).grid(row=5, columnspan=2, sticky="w")
     Label(FF, text="Or you can exit to the main screen and enter your\n"
-                   "station by going to Configuration > list of stations.").grid(row=6, columnspan=2, sticky="w")
+                   "station by going to Management > list of stations.").grid(row=6, columnspan=2, sticky="w")
     Button(FF, width=5, text="EXIT", command=lambda: [F.destroy(), main_frame()]). \
         grid(row=7, columnspan=2, sticky="e")
     root.update()
@@ -7895,31 +7895,32 @@ def station_list(self):
     Label(FF, text="____________________________________________________", pady=5). \
         grid(row=row, columnspan=2, sticky="w")
     row += 1
-    # change names of stations
-    Label(FF, text="Change Station Name", font="bold").grid(row=row, column=0, sticky="w")
-    row += 1
-    all_stations = []
-    for rec in results:
-        all_stations.append(rec[0])
-    if "out of station" in all_stations:
-        all_stations.remove("out of station")
-    old_station = StringVar(FF)
-    om = OptionMenu(FF, old_station, *all_stations)
-    om.config(width="35")
-    om.grid(row=row, column=0, sticky="w", columnspan=2)
-    row += 1
-    old_station.set("select a station")
-    Label(FF, text="enter a new name:").grid(row=row, column=0, sticky="w")
-    row += 1
-    new_station = StringVar(FF)
-    Entry(FF, textvariable=new_station, width="30").grid(row=row, column=0, sticky="w")
-    new_station.set("enter a new station name")
-    Button(FF, text="update", command=lambda: station_update_apply(F, old_station, new_station)) \
-        .grid(row=row, column=1, sticky="w")
-    row += 1
-    Label(FF, text="____________________________________________________", pady=5). \
-        grid(row=row, columnspan=2, sticky="w")
-    row += 1
+    if len(results)>1:
+        # change names of stations
+        Label(FF, text="Change Station Name", font="bold").grid(row=row, column=0, sticky="w")
+        row += 1
+        all_stations = []
+        for rec in results:
+            all_stations.append(rec[0])
+        if "out of station" in all_stations:
+            all_stations.remove("out of station")
+        old_station = StringVar(FF)
+        om = OptionMenu(FF, old_station, *all_stations)
+        om.config(width="35")
+        om.grid(row=row, column=0, sticky="w", columnspan=2)
+        row += 1
+        old_station.set("select a station")
+        Label(FF, text="enter a new name:").grid(row=row, column=0, sticky="w")
+        row += 1
+        new_station = StringVar(FF)
+        Entry(FF, textvariable=new_station, width="30").grid(row=row, column=0, sticky="w")
+        new_station.set("enter a new station name")
+        Button(FF, text="update", command=lambda: station_update_apply(F, old_station, new_station)) \
+            .grid(row=row, column=1, sticky="w")
+        row += 1
+        Label(FF, text="____________________________________________________", pady=5). \
+            grid(row=row, columnspan=2, sticky="w")
+        row += 1
     # find and display list of unique stations
     Label(FF, text="List Of Stations", pady=5, font="bold") \
         .grid(row=row, columnspan=3, sticky="w")
