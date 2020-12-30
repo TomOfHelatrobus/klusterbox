@@ -119,6 +119,8 @@ def front_window(self):  # Sets up a tkinter page with buttons on the bottom
     # link the mousewheel - implementation varies by platform
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -3050,6 +3052,11 @@ def informalc_root(passed_result, grv_no):
             new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
+    if sys.platform == "darwin":
+        try:
+            new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+        except:
+            pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
@@ -4245,6 +4252,11 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
             poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
+    if sys.platform == "darwin":
+        try:
+            poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+        except:
+            pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
@@ -5179,6 +5191,8 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -5434,6 +5448,8 @@ def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing s
         C.configure(yscrollcommand=S.set)
         if sys.platform == "win32":
             C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+        elif sys.platform == "darwin":
+            C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
         elif sys.platform == "linux":
             C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
             C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -5557,6 +5573,8 @@ def auto_indexer_3(self, file_path, tacs_list, name_sorter, tried_names, new_car
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -5788,6 +5806,8 @@ def auto_indexer_4(self, file_path, to_addname, check_these):  # add new carrier
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7220,6 +7240,8 @@ def about_klusterbox(self):  # gives information about the program
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7726,6 +7748,8 @@ def tolerances(self):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7856,6 +7880,8 @@ def station_list(self):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7986,6 +8012,8 @@ def mass_input(self, day, sort):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -9525,6 +9553,8 @@ def output_tab(self, list_carrier):
         if sys.platform == "win32":
             C[current_tab].bind_all('<MouseWheel>',
                                     lambda event: C[current_tab].yview_scroll(int(-1 * (event.delta / 120)), "units"))
+        elif sys.platform == "darwin":
+            C[current_tab].bind_all('<MouseWheel>', lambda event: C[current_tab].yview_scroll(int(event.delta), "units"))
         elif sys.platform == "linux":
             C[current_tab].bind_all('<Button-4>', lambda event: C[current_tab].yview('scroll', -1, 'units'))
             C[current_tab].bind_all('<Button-5>', lambda event: C[current_tab].yview('scroll', 1, 'units'))
@@ -10270,6 +10300,8 @@ def rings2(carrier, origin_frame):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -10673,6 +10705,8 @@ def update_carrier(a):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -10802,6 +10836,8 @@ def edit_carrier(e_name):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -11083,6 +11119,8 @@ def input_carriers(frame):  # window for inputting new carriers
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -11332,7 +11370,8 @@ def main_frame():
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta)))  # Maybe: this is a guess
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
+        # C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta)))  # Maybe: this is a guess
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -11773,6 +11812,12 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except:
+            pass
+    if sys.platform == "darwin":
+        try:
+            file = 'kb_sub/kb_images/kb_icon2.icns'
+            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
         except:
             pass
     if sys.platform == "linux":
