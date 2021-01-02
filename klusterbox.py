@@ -11464,8 +11464,8 @@ def main_frame():
         i_range.set("week")
     else:
         i_range.set(g_range)
-    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=6, anchor="w").grid(row=1, column=7)
-    Radiobutton(preF, text="daily", variable=i_range, value="day", width=5, anchor="w").grid(row=1, column=8)
+    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=7, anchor="w").grid(row=1, column=7)
+    Radiobutton(preF, text="daily", variable=i_range, value="day", width=6, anchor="w").grid(row=1, column=8)
     # set station option menu
     Label(preF, text="STATION", anchor="w").grid(row=2, column=1)
     station = StringVar(F)
@@ -11474,7 +11474,7 @@ def main_frame():
     else:
         station.set(g_station)
     om = OptionMenu(preF, station, *list_of_stations)
-    om.config(width="35")
+    om.config(width="30")
     om.grid(row=2, column=2, columnspan=5, sticky=W)
     # set and reset buttons for investigation range
     Button(preF, text="Set", anchor="w", width=8,

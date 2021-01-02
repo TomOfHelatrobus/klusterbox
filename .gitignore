@@ -1,6 +1,7 @@
 # ignore all sqlite files
 
 *.sqlite
+*.spec
 
 # ignore kb generated dirs and files from kb_sub dir
 
