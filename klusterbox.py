@@ -11101,7 +11101,9 @@ def input_carriers(frame):  # window for inputting new carriers
     month.set(gs_mo)  # set values for variables
     day.set(gs_day)
     year.set(gs_year)
-    Label(date_frame, text="date (month/day/year):").grid(row=0, column=0, sticky=W, columnspan=3)  # date label
+    Label(date_frame, text="date (month/day/year):", background="gray95", fg="black", width=30, anchor="w")\
+        .grid(row=0, column=0, sticky=W, columnspan=30)  # date label
+
     OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12") \
         .grid(row=1, column=0, sticky=W)
     OptionMenu(date_frame, day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
@@ -11111,8 +11113,10 @@ def input_carriers(frame):  # window for inputting new carriers
     date_frame.grid(row=1, sticky=W)  # put frame on grid
     # carrier name:
     name_frame = Frame(nc_F, pady=2)
-    Label(name_frame, text="last name: ", anchor="w").grid(row=0, column=0, sticky=W)
-    Label(name_frame, text="1st initial: ", anchor="w").grid(row=0, column=1, sticky=W)
+    Label(name_frame, text="last name: ", anchor="w",width=22, background="gray95",fg="black")\
+        .grid(row=0, column=0, sticky=W)
+    Label(name_frame, text="1st initial: ", anchor="w",width=22, background="gray95",fg="black")\
+        .grid(row=0, column=1, sticky=W)
     nc_name = StringVar(nc_F)
     nc_fname = StringVar(nc_F)
     Entry(name_frame, width=29, textvariable=nc_name).grid(row=1, column=0, sticky=W)
@@ -11120,7 +11124,8 @@ def input_carriers(frame):  # window for inputting new carriers
     name_frame.grid(row=2, sticky=W)
     # list status
     list_frame = Frame(nc_F, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame, width=15, text="list status", anchor="w").grid(row=0, column=0, sticky=W)
+    Label(list_frame,text="list status", anchor="w",width=30, background="gray95",fg="black")\
+        .grid(row=0, column=0, sticky=W, columnspan=2)
     nc_ls = StringVar(list_frame)
     nc_ls.set(value="nl")
     Radiobutton(list_frame, text="OTDL", variable=nc_ls, value='otdl', justify=LEFT).grid(row=1, column=0, sticky=W)
@@ -11131,7 +11136,8 @@ def input_carriers(frame):  # window for inputting new carriers
     list_frame.grid(row=3, sticky=W)
     # set non scheduled day
     ns_frame = Frame(nc_F, pady=2)
-    Label(ns_frame, width=15, text="non scheduled day", anchor="w").grid(row=0, column=0, sticky=W)
+    Label(ns_frame, width=30, text=" non scheduled day", anchor="w", background="gray95", fg="black")\
+        .grid(row=0, column=0, sticky=W, columnspan=2)
     nc_ns = StringVar(ns_frame)
     nc_ns.set("none")
     Radiobutton(ns_frame, text="{}:   yellow".format(ns_code['yellow']), variable=nc_ns, value="yellow", indicatoron=0,
@@ -11166,17 +11172,21 @@ def input_carriers(frame):  # window for inputting new carriers
     ns_frame.grid(row=4, sticky=W)
     # set route entry field
     route_frame = Frame(nc_F, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text="route/s", width=15, anchor="w").grid(row=0, column=0, sticky=W)
+    Label(route_frame, text="route/s", width=30, anchor="w",background="gray95",fg="black")\
+        .grid(row=0, column=0, sticky=W)
     nc_route = StringVar(route_frame)
     nc_route.set("")
     Entry(route_frame, width=37, textvariable=nc_route).grid(row=1, column=0, sticky=W)
     route_frame.grid(row=5, sticky=W)
     # set station option menu
     station_frame = Frame(nc_F, pady=2)
-    Label(station_frame, text="station", width=10, anchor="w").grid(row=0, column=0, sticky=W)
+    Label(station_frame, text="station", width=5, anchor="w",background="gray95",fg="black")\
+        .grid(row=0, column=0, sticky=W)
     nc_station = StringVar(station_frame)
     nc_station.set(g_station)  # default value
-    OptionMenu(station_frame, nc_station, *list_of_stations).grid(row=0, column=1, sticky=W)
+    om_stat = OptionMenu(station_frame, nc_station, *list_of_stations)
+    om_stat.config(width=24)
+    om_stat.grid(row=0, column=1, sticky=W)
     station_frame.grid(row=6, sticky=W)
     root.update()
     C.config(scrollregion=C.bbox("all"))
@@ -11464,8 +11474,8 @@ def main_frame():
         i_range.set("week")
     else:
         i_range.set(g_range)
-    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=7, anchor="w").grid(row=1, column=7)
-    Radiobutton(preF, text="daily", variable=i_range, value="day", width=6, anchor="w").grid(row=1, column=8)
+    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=6, anchor="w").grid(row=1, column=7)
+    Radiobutton(preF, text="daily", variable=i_range, value="day", width=5, anchor="w").grid(row=1, column=8)
     # set station option menu
     Label(preF, text="STATION", anchor="w").grid(row=2, column=1)
     station = StringVar(F)
@@ -11474,14 +11484,14 @@ def main_frame():
     else:
         station.set(g_station)
     om = OptionMenu(preF, station, *list_of_stations)
-    om.config(width="30")
+    om.config(width=36)
     om.grid(row=2, column=2, columnspan=5, sticky=W)
     # set and reset buttons for investigation range
-    Button(preF, text="Set", anchor="w", width=8,
+    Button(preF, text="Set", anchor="w", width=7,
            command=lambda: set_globals(start_year.get(), start_month.get(), start_day.get(), i_range.get(),
                                        station.get(), F)) \
         .grid(row=2, column=7)
-    Button(preF, text="Reset", anchor="w", width=8, command=lambda: reset(F)).grid(row=2, column=8)
+    Button(preF, text="Reset", anchor="w", width=7, command=lambda: reset(F)).grid(row=2, column=8)
     # Investigation date SET/NOT SET notification
     if g_range == "x":
         Label(preF, text="Investigation date/range not set", foreground="red") \
