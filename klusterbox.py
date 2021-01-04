@@ -103,34 +103,12 @@ def dt_converter(string):  # converts a string of a datetime to an actual dateti
     dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
     return dt
 
-def macsize(width, multiple): # resize widgets for mac os
+def macadj(win,mac):
     if sys.platform == "darwin":
-        size = int(width * (multiple/100))
+        arg = mac
     else:
-        size= width
-    return size
-
-def macrad(arg): # change radio button arguments for mac os
-    if sys.platform == "darwin":
-         if arg == "grey":
-             new = "white"
-         if arg == "white":
-             new = "black"
-         if arg == 0:
-            new = 1
-    else:
-        new = arg
-    return new
-
-def maclab(arg): # change label arguments for mac os
-    if sys.platform == "darwin":
-         if arg == "gray95":
-             new = "grey"
-         if arg == "black":
-             new = "white"
-    else:
-        new = arg
-    return new
+        arg = win
+    return arg
 
 def front_window(self):  # Sets up a tkinter page with buttons on the bottom
     if self != "none": self.destroy()  # close out the previous frame
@@ -10283,13 +10261,13 @@ def new_entry(self, day, moves):  # creates new entry fields for moves
     # what to do depending on the moves
     if moves == 0:  # if there are no moves sent to the function
         mm.append(StringVar(self))  # create first entry field for new entries
-        Entry(self, width=macsize(8,60), textvariable=mm[len(mm) - 1]) \
+        Entry(self, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # route
         mm.append(StringVar(self))  # create second entry field for new entries
-        Entry(self, width=macsize(8,60), textvariable=mm[len(mm) - 1]) \
+        Entry(self, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move off
         mm.append(StringVar(self))  # create second entry field for new entries
-        Entry(self, width=macsize(8,60), textvariable=mm[len(mm) - 1]) \
+        Entry(self, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move on
     else:  # if there are moves which need to be set
         moves = moves.split(",")
@@ -10297,7 +10275,7 @@ def new_entry(self, day, moves):  # creates new entry fields for moves
         for i in range(int(iterations)):
             mm.append(StringVar(self))  # create entry field for moves from database
             mm[i].set(moves[i])
-            Entry(self, width=macsize(8,60), textvariable=mm[i]) \
+            Entry(self, width=macadj(8,4), textvariable=mm[i]) \
                 .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
 
 
@@ -10497,11 +10475,11 @@ def rings2(carrier, origin_frame):
             grid_i += 1
             # Display the entry widgets
             total.append(StringVar(frame[i]))  # 5200 entry widget
-            total_widget[i] = Entry(frame[i], width=macsize(8,60), textvariable=total[i])
+            total_widget[i] = Entry(frame[i], width=macadj(8,4), textvariable=total[i])
             total_widget[i].grid(row=grid_i, column=0)
             total[i].set(now_total)  # set the starting value for total
             RS.append(StringVar(frame[i]))  # RS entry widget
-            Entry(frame[i], width=macsize(8,60), textvariable=RS[i]).grid(row=grid_i, column=1)
+            Entry(frame[i], width=macadj(8,4), textvariable=RS[i]).grid(row=grid_i, column=1)
             RS[i].set(now_rs)  # set the starting value for RS
             if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
                 if now_moves.strip() != "":
@@ -10516,10 +10494,10 @@ def rings2(carrier, origin_frame):
             else:
                 option_menu[i] = OptionMenu(frame[i], code[i], *ot_aux_codes)
             code[i].set(now_code)
-            option_menu[i].configure(width=macsize(7,90))
+            option_menu[i].configure(width=macadj(7,6))
             lv_type.append(StringVar(frame[i]))  # leave type entry widget
             lv_option_menu[i] = OptionMenu(frame[i],lv_type[i], *lv_options)
-            lv_option_menu[i].configure(width=macsize(7,90))
+            lv_option_menu[i].configure(width=macadj(7,6))
             lv_time.append(StringVar(frame[i]))  # leave time entry widget
             lv_type[i].set(now_lv_type)  # set the starting value for leave type
             lv_time[i].set(now_lv_time)  # set the starting value for leave type
@@ -10527,11 +10505,11 @@ def rings2(carrier, origin_frame):
             if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
                 option_menu[i].grid(row=grid_i, column=6) # code widget
                 lv_option_menu[i].grid(row=grid_i, column=7)  # leave type widget
-                Entry(frame[i], width=macsize(8,60), textvariable=lv_time[i]).grid(row=grid_i, column=8) # leave time widget
+                Entry(frame[i], width=macadj(8,4), textvariable=lv_time[i]).grid(row=grid_i, column=8) # leave time widget
             else:
                 option_menu[i].grid(row=grid_i, column=3) # code widget
                 lv_option_menu[i].grid(row=grid_i, column=4)  # leave type widget
-                Entry(frame[i], width=macsize(8,60), textvariable=lv_time[i]).grid(row=grid_i, column=5) # leave time widget
+                Entry(frame[i], width=macadj(8,4), textvariable=lv_time[i]).grid(row=grid_i, column=5) # leave time widget
 
         else:
             total.append(StringVar(frame[i]))  # 5200 entry widget
@@ -11178,7 +11156,8 @@ def input_carriers(frame):  # window for inputting new carriers
     month.set(gs_mo)  # set values for variables
     day.set(gs_day)
     year.set(gs_year)
-    Label(date_frame, text=" date (month/day/year):", background=maclab("gray95"), fg=maclab("black"),width=30,
+    Label(date_frame, text=" date (month/day/year):", background=macadj("gray95","grey"),
+          fg=macadj("black","white"),width=30,
           anchor="w").grid(row=0, column=0, sticky=W, columnspan=30)  # date label
     om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
     om_month.config(width=2)
@@ -11192,19 +11171,19 @@ def input_carriers(frame):  # window for inputting new carriers
     date_frame.grid(row=1, sticky=W)  # put frame on grid
     # carrier name:
     name_frame = Frame(nc_F, pady=2)
-    Label(name_frame, text=" last name: ",width=22, anchor="w",background=maclab("gray95"),fg=maclab("black"))\
-        .grid(row=0, column=0, sticky=W)
-    Label(name_frame, text=" 1st initial ",width=7, anchor="w",background=maclab("gray95"),fg=maclab("black"))\
-        .grid(row=0, column=1, sticky=W)
+    Label(name_frame, text=" last name: ",width=22, anchor="w",background=macadj("gray95","grey"),
+          fg=macadj("black","white")).grid(row=0, column=0, sticky=W)
+    Label(name_frame, text=" 1st initial ",width=7, anchor="w",background=macadj("gray95","grey"),
+          fg=macadj("black","white")).grid(row=0, column=1, sticky=W)
     nc_name = StringVar(nc_F)
     nc_fname = StringVar(nc_F)
-    Entry(name_frame, width=macsize(29,76), textvariable=nc_name).grid(row=1, column=0, sticky=W)
-    Entry(name_frame, width=macsize(8,76), textvariable=nc_fname).grid(row=1, column=1, sticky=W)
+    Entry(name_frame, width=macadj(29,22), textvariable=nc_name).grid(row=1, column=0, sticky=W)
+    Entry(name_frame, width=macadj(8,6), textvariable=nc_fname).grid(row=1, column=1, sticky=W)
     name_frame.grid(row=2, sticky=W)
     # list status
     list_frame = Frame(nc_F, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame, width=30, text=" list status", anchor="w", background =maclab("gray95"), fg = "white")\
-        .grid(row=0, column=0, sticky=W,columnspan=2)
+    Label(list_frame, width=30, text=" list status", anchor="w", background = macadj("gray95","grey"),
+          fg = macadj("black","white")).grid(row=0, column=0, sticky=W,columnspan=2)
     nc_ls = StringVar(list_frame)
     nc_ls.set(value="nl")
     Radiobutton(list_frame, text="OTDL", variable=nc_ls, value='otdl', justify=LEFT).grid(row=1, column=0, sticky=W)
@@ -11215,81 +11194,82 @@ def input_carriers(frame):  # window for inputting new carriers
     list_frame.grid(row=3, sticky=W)
     # set non scheduled day
     ns_frame = Frame(nc_F, pady=2)
-    Label(ns_frame, width=30, text=" non scheduled day", anchor="w", background=maclab("gray95"), fg=maclab("black"))\
-        .grid(row=0, column=0, sticky=W,columnspan=2)
+    Label(ns_frame, width=30, text=" non scheduled day", anchor="w", background=macadj("gray95","grey"),
+          fg=macadj("black","white")).grid(row=0, column=0, sticky=W,columnspan=2)
     nc_ns = StringVar(ns_frame)
     nc_ns.set("none")
     Radiobutton(ns_frame, text="{}:   yellow".format(ns_code['yellow']), variable=nc_ns, value="yellow",
-                indicatoron=macrad(0),width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                indicatoron=macadj(0,1),width=15, anchor="w", bg=macadj("grey","white"), fg=macadj("white","black"),
                 selectcolor=ns_color_dict["yellow"]).grid(row=1, column=0)
     Radiobutton(ns_frame, text="{}:   blue".format(ns_code['blue']), variable=nc_ns, value="blue",
-                indicatoron=macrad(0),width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                indicatoron=macadj(0,1),width=15, anchor="w", bg=macadj("grey","white"), fg=macadj("white","black"),
                 selectcolor=ns_color_dict["blue"]).grid(row=2, column=0)
     Radiobutton(ns_frame, text="{}:   green".format(ns_code['green']), variable=nc_ns, value="green",
-                indicatoron=macrad(0),
-                width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                indicatoron=macadj(0,1),
+                width=15, anchor="w", bg=macadj("grey","white"), fg=macadj("white","black"),
                 selectcolor=ns_color_dict["green"]).grid(row=3, column=0)
     Radiobutton(ns_frame, text="{}:   brown".format(ns_code['brown']), variable=nc_ns, value="brown",
-                indicatoron=macrad(0),
-                width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                indicatoron=macadj(0,1),
+                width=15, anchor="w", bg=macadj("grey","white"), fg=macadj("white","black"),
                 selectcolor=ns_color_dict["brown"]).grid(row=1, column=1)
     Radiobutton(ns_frame, text="{}:   red".format(ns_code['red']), variable=nc_ns, value="red",
-                indicatoron=macrad(0), width=15,
-                anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                indicatoron=macadj(0,1), width=15,
+                anchor="w", bg=macadj("grey","white"), fg=macadj("white","black"),
                 selectcolor=ns_color_dict["red"]).grid(row=2, column=1)
     Radiobutton(ns_frame, text="{}:   black".format(ns_code['black']), variable=nc_ns, value="black",
-                indicatoron=macrad(0),
-                width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                indicatoron=macadj(0,1),
+                width=15, anchor="w", bg=macadj("grey","white"), fg=macadj("white","black"),
                 selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
     Label(ns_frame, text=" Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
-    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=macrad(0),
+    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=macadj(0,1),
                 width=15, anchor="w")\
                 .grid(row=4,column=1)
 
     Radiobutton(ns_frame, text="none", variable=nc_ns, value="none",
-                indicatoron=macrad(0), width=15, bg=macrad("grey"), fg=macrad("white"),
+                indicatoron=macadj(0,1), width=15, bg=macadj("grey","white"), fg=macadj("white","black"),
                 selectcolor=ns_color_dict["none"], anchor="w").grid(row=4, column=1)
-    Radiobutton(ns_frame, text="Sat:   fixed", variable=nc_ns, value="sat",bg=macrad("grey"),
-                fg=macrad("white"),
-                selectcolor=ns_color_dict["sat"], indicatoron=macrad(0),
+    Radiobutton(ns_frame, text="Sat:   fixed", variable=nc_ns, value="sat",bg=macadj("grey","white"),
+                fg=macadj("white","black"),
+                selectcolor=ns_color_dict["sat"], indicatoron=macadj(0,1),
                 width=15, anchor="w").grid(row=5, column=0)
-    Radiobutton(ns_frame, text="Mon:   fixed", variable=nc_ns, value="mon", bg=macrad("grey"),
-                fg=macrad("white"),
-                selectcolor=ns_color_dict["mon"], indicatoron=macrad(0),
+    Radiobutton(ns_frame, text="Mon:   fixed", variable=nc_ns, value="mon", bg=macadj("grey","white"),
+                fg=macadj("white","black"),
+                selectcolor=ns_color_dict["mon"], indicatoron=macadj(0,1),
                 width=15, anchor="w").grid(row=5, column=1)
-    Radiobutton(ns_frame, text="Tue:   fixed", variable=nc_ns, value="tue", bg=macrad("grey"),
-                fg=macrad("white"),
-                selectcolor=ns_color_dict["tue"], indicatoron=macrad(0),
+    Radiobutton(ns_frame, text="Tue:   fixed", variable=nc_ns, value="tue", bg=macadj("grey","white"),
+                fg=macadj("white","black"),
+                selectcolor=ns_color_dict["tue"], indicatoron=macadj(0,1),
                 width=15, anchor="w").grid(row=6, column=0)
-    Radiobutton(ns_frame, text="Wed:   fixed", variable=nc_ns, value="wed", bg=macrad("grey"),
-                fg=macrad("white"),
-                selectcolor=ns_color_dict["wed"], indicatoron=macrad(0),
+    Radiobutton(ns_frame, text="Wed:   fixed", variable=nc_ns, value="wed", bg=macadj("grey","white"),
+                fg=macadj("white","black"),
+                selectcolor=ns_color_dict["wed"], indicatoron=macadj(0,1),
                 width=15, anchor="w").grid(row=6, column=1)
-    Radiobutton(ns_frame, text="Thu:   fixed", variable=nc_ns, value="thu", bg=macrad("grey"),
-                fg=macrad("white"),
-                selectcolor=ns_color_dict["thu"], indicatoron=macrad(0),
+    Radiobutton(ns_frame, text="Thu:   fixed", variable=nc_ns, value="thu", bg=macadj("grey","white"),
+                fg=macadj("white","black"),
+                selectcolor=ns_color_dict["thu"], indicatoron=macadj(0,1),
                 width=15, anchor="w").grid(row=7, column=0)
-    Radiobutton(ns_frame, text="Fri:   fixed", variable=nc_ns, value="fri", bg=macrad("grey"),
-                fg=macrad("white"),
-                selectcolor=ns_color_dict["fri"], indicatoron=macrad(0),
+    Radiobutton(ns_frame, text="Fri:   fixed", variable=nc_ns, value="fri", bg=macadj("grey","white"),
+                fg=macadj("white","black"),
+                selectcolor=ns_color_dict["fri"], indicatoron=macadj(0,1),
                 width=15, anchor="w").grid(row=7, column=1)
     ns_frame.grid(row=4, sticky=W)
     # set route entry field
     route_frame = Frame(nc_F, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text=" route/s", width=30, anchor="w", background=maclab("gray95"),fg=maclab("black"))\
-        .grid(row=0, column=0, sticky=W)
+    Label(route_frame, text=" route/s", width=30, anchor="w", background=macadj("gray95","grey"),
+          fg=macadj("black","white")).grid(row=0, column=0, sticky=W)
     nc_route = StringVar(route_frame)
     nc_route.set("")
-    Entry(route_frame, width=macsize(37,81), textvariable=nc_route).grid(row=1, column=0, sticky=W)
+    Entry(route_frame, width=macadj(37,29), textvariable=nc_route).grid(row=1, column=0, sticky=W)
     route_frame.grid(row=5, sticky=W)
     # set station option menu
     station_frame = Frame(nc_F, pady=2)
-    Label(station_frame, text=" station", width=5, anchor="w", background=maclab("gray95"),fg=maclab("black"))\
+    Label(station_frame, text=" station", width=5, anchor="w", background=macadj("gray95","grey"),
+          fg=macadj("black","white"))\
         .grid(row=0, column=0, sticky=W)
     nc_station = StringVar(station_frame)
     nc_station.set(g_station)  # default value
     om_stat = OptionMenu(station_frame, nc_station, *list_of_stations)
-    om_stat.config(width = macsize(24,94))
+    om_stat.config(width = macadj(24,22))
     om_stat.grid(row=0, column=1, sticky=W)
     station_frame.grid(row=6, sticky=W)
     root.update()
@@ -11427,15 +11407,15 @@ def main_frame():
     C1.pack(fill=BOTH, side=BOTTOM)
     if gs_day != "x":
         Button(C1, text="New Carrier", command=lambda: input_carriers(F),
-               width=macsize(12,90)).pack(side=LEFT)
+               width=macadj(12,10)).pack(side=LEFT)
         Button(C1, text="Multi Input", command=lambda dd="Sat", ss="name": mass_input(F, dd, ss),
-               width=macsize(12,90)).pack(side=LEFT)
+               width=macadj(12,10)).pack(side=LEFT)
         Button(C1, text="Report", command=lambda: output_tab(F, carrier_list),
-               width=macsize(12,90)).pack(side=LEFT)
+               width=macadj(12,10)).pack(side=LEFT)
         r_rings = "x"
-        Button(C1, text="Spreadsheet", width=macsize(12,90),
+        Button(C1, text="Spreadsheet", width=macadj(12,10),
                command=lambda: spreadsheet(carrier_list, r_rings)).pack(side=LEFT)
-        Button(C1, text="Quit", width=macsize(12,90), command=root.destroy).pack(side=LEFT)
+        Button(C1, text="Quit", width=macadj(12,10), command=root.destroy).pack(side=LEFT)
     # link up the canvas and scrollbar
     S = Scrollbar(F)
     C = Canvas(F, width=1600)
@@ -11578,9 +11558,9 @@ def main_frame():
         i_range.set("week")
     else:
         i_range.set(g_range)
-    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=macsize(6,120), anchor="w")\
+    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=macadj(6,7), anchor="w")\
         .grid(row=1, column=7)
-    Radiobutton(preF, text="daily", variable=i_range, value="day", width=macsize(5,120), anchor="w")\
+    Radiobutton(preF, text="daily", variable=i_range, value="day", width=macadj(5,6), anchor="w")\
         .grid(row=1, column=8)
     # set station option menu
     Label(preF, text="STATION", anchor="w").grid(row=2, column=1, sticky=W)
@@ -11590,14 +11570,14 @@ def main_frame():
     else:
         station.set(g_station)
     om = OptionMenu(preF, station, *list_of_stations)
-    om.config(width=macsize(30,100))
+    om.config(width=macadj(30,30))
     om.grid(row=2, column=2, columnspan=5, sticky=W)
     # set and reset buttons for investigation range
-    Button(preF, text="Set", anchor="w", width=macsize(7,120),
+    Button(preF, text="Set", anchor="w", width=macadj(7,8),
            command=lambda: set_globals(start_year.get(), start_month.get(), start_day.get(), i_range.get(),
                                        station.get(), F)) \
         .grid(row=2, column=7)
-    Button(preF, text="Reset", anchor="w", width=macsize(7,120), command=lambda: reset(F)).grid(row=2, column=8)
+    Button(preF, text="Reset", anchor="w", width=macadj(7,8), command=lambda: reset(F)).grid(row=2, column=8)
     # Investigation date SET/NOT SET notification
     if g_range == "x":
         Label(preF, text="Investigation date/range not set", foreground="red") \
