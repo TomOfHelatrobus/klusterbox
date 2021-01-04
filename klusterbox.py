@@ -103,6 +103,35 @@ def dt_converter(string):  # converts a string of a datetime to an actual dateti
     dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
     return dt
 
+def macsize(width, multiple): # resize widgets for mac os
+    if sys.platform == "darwin":
+        size = int(width * (multiple/100))
+    else:
+        size= width
+    return size
+
+def macrad(arg): # change radio button arguments for mac os
+    if sys.platform == "darwin":
+         if arg == "grey":
+             new = "white"
+         if arg == "white":
+             new = "black"
+         if arg == 0:
+            new = 1
+    else:
+        new = arg
+    return new
+
+def maclab(arg): # change label arguments for mac os
+    if sys.platform == "darwin":
+         if arg == "gray95":
+             new = "grey"
+         if arg == "black":
+             new = "white"
+    else:
+        new = arg
+    return new
+
 def front_window(self):  # Sets up a tkinter page with buttons on the bottom
     if self != "none": self.destroy()  # close out the previous frame
     F = Frame(root)  # create new frame
@@ -119,6 +148,8 @@ def front_window(self):  # Sets up a tkinter page with buttons on the bottom
     # link the mousewheel - implementation varies by platform
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -3050,6 +3081,11 @@ def informalc_root(passed_result, grv_no):
             new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
+    if sys.platform == "darwin":
+        try:
+            new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+        except:
+            pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
@@ -4245,6 +4281,11 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
             poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
+    if sys.platform == "darwin":
+        try:
+            poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+        except:
+            pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
@@ -5179,6 +5220,8 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -5434,6 +5477,8 @@ def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing s
         C.configure(yscrollcommand=S.set)
         if sys.platform == "win32":
             C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+        elif sys.platform == "darwin":
+            C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
         elif sys.platform == "linux":
             C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
             C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -5557,6 +5602,8 @@ def auto_indexer_3(self, file_path, tacs_list, name_sorter, tried_names, new_car
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -5788,6 +5835,8 @@ def auto_indexer_4(self, file_path, to_addname, check_these):  # add new carrier
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7220,6 +7269,8 @@ def about_klusterbox(self):  # gives information about the program
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7726,6 +7777,8 @@ def tolerances(self):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7856,6 +7909,8 @@ def station_list(self):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -7986,6 +8041,8 @@ def mass_input(self, day, sort):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -9525,6 +9582,8 @@ def output_tab(self, list_carrier):
         if sys.platform == "win32":
             C[current_tab].bind_all('<MouseWheel>',
                                     lambda event: C[current_tab].yview_scroll(int(-1 * (event.delta / 120)), "units"))
+        elif sys.platform == "darwin":
+            C[current_tab].bind_all('<MouseWheel>', lambda event: C[current_tab].yview_scroll(int(event.delta), "units"))
         elif sys.platform == "linux":
             C[current_tab].bind_all('<Button-4>', lambda event: C[current_tab].yview('scroll', -1, 'units'))
             C[current_tab].bind_all('<Button-5>', lambda event: C[current_tab].yview('scroll', 1, 'units'))
@@ -10224,13 +10283,13 @@ def new_entry(self, day, moves):  # creates new entry fields for moves
     # what to do depending on the moves
     if moves == 0:  # if there are no moves sent to the function
         mm.append(StringVar(self))  # create first entry field for new entries
-        Entry(self, width=8, textvariable=mm[len(mm) - 1]) \
+        Entry(self, width=macsize(8,60), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # route
         mm.append(StringVar(self))  # create second entry field for new entries
-        Entry(self, width=8, textvariable=mm[len(mm) - 1]) \
+        Entry(self, width=macsize(8,60), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move off
         mm.append(StringVar(self))  # create second entry field for new entries
-        Entry(self, width=8, textvariable=mm[len(mm) - 1]) \
+        Entry(self, width=macsize(8,60), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move on
     else:  # if there are moves which need to be set
         moves = moves.split(",")
@@ -10238,7 +10297,7 @@ def new_entry(self, day, moves):  # creates new entry fields for moves
         for i in range(int(iterations)):
             mm.append(StringVar(self))  # create entry field for moves from database
             mm[i].set(moves[i])
-            Entry(self, width=8, textvariable=mm[i]) \
+            Entry(self, width=macsize(8,60), textvariable=mm[i]) \
                 .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
 
 
@@ -10270,6 +10329,8 @@ def rings2(carrier, origin_frame):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -10433,15 +10494,14 @@ def rings2(carrier, origin_frame):
                 Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=3)
                 Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=4)
                 Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=5)
-
             grid_i += 1
             # Display the entry widgets
             total.append(StringVar(frame[i]))  # 5200 entry widget
-            total_widget[i] = Entry(frame[i], width=8, textvariable=total[i])
+            total_widget[i] = Entry(frame[i], width=macsize(8,60), textvariable=total[i])
             total_widget[i].grid(row=grid_i, column=0)
             total[i].set(now_total)  # set the starting value for total
             RS.append(StringVar(frame[i]))  # RS entry widget
-            Entry(frame[i], width=8, textvariable=RS[i]).grid(row=grid_i, column=1)
+            Entry(frame[i], width=macsize(8,60), textvariable=RS[i]).grid(row=grid_i, column=1)
             RS[i].set(now_rs)  # set the starting value for RS
             if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
                 if now_moves.strip() != "":
@@ -10456,10 +10516,10 @@ def rings2(carrier, origin_frame):
             else:
                 option_menu[i] = OptionMenu(frame[i], code[i], *ot_aux_codes)
             code[i].set(now_code)
-            option_menu[i].configure(width=7)
+            option_menu[i].configure(width=macsize(7,90))
             lv_type.append(StringVar(frame[i]))  # leave type entry widget
             lv_option_menu[i] = OptionMenu(frame[i],lv_type[i], *lv_options)
-            lv_option_menu[i].configure(width=7)
+            lv_option_menu[i].configure(width=macsize(7,90))
             lv_time.append(StringVar(frame[i]))  # leave time entry widget
             lv_type[i].set(now_lv_type)  # set the starting value for leave type
             lv_time[i].set(now_lv_time)  # set the starting value for leave type
@@ -10467,11 +10527,11 @@ def rings2(carrier, origin_frame):
             if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
                 option_menu[i].grid(row=grid_i, column=6) # code widget
                 lv_option_menu[i].grid(row=grid_i, column=7)  # leave type widget
-                Entry(frame[i], width=8, textvariable=lv_time[i]).grid(row=grid_i, column=8) # leave time widget
+                Entry(frame[i], width=macsize(8,60), textvariable=lv_time[i]).grid(row=grid_i, column=8) # leave time widget
             else:
                 option_menu[i].grid(row=grid_i, column=3) # code widget
                 lv_option_menu[i].grid(row=grid_i, column=4)  # leave type widget
-                Entry(frame[i], width=8, textvariable=lv_time[i]).grid(row=grid_i, column=5) # leave time widget
+                Entry(frame[i], width=macsize(8,60), textvariable=lv_time[i]).grid(row=grid_i, column=5) # leave time widget
 
         else:
             total.append(StringVar(frame[i]))  # 5200 entry widget
@@ -10486,7 +10546,6 @@ def rings2(carrier, origin_frame):
                       height=2, anchor="w") \
                     .grid(row=grid_i, column=0)
         frame_i += 1
-    # total_widget[0].focus_set() # set the focus for the first 5200 widget.
     F7 = Frame(F)
     F7.grid(row=frame_i)
     Label(F7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
@@ -10673,6 +10732,8 @@ def update_carrier(a):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -10802,6 +10863,8 @@ def edit_carrier(e_name):
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -10822,6 +10885,17 @@ def edit_carrier(e_name):
     year.set(gs_year)
     # define frame
     date_frame = Frame(F)
+    # adjust variables per system
+    if sys.platform == "darwin":
+        indica = 1 # radio button indicatoron
+        bg_color = "white" # radio button
+        fg_color = "black"
+        width_long = 29 # entry box width
+    else:
+        indica = 0
+        bg_color = "grey"
+        fg_color = "white"
+        width_long = 37
     Label(date_frame, text="date (month/day/year):") \
         .grid(row=0, column=0, sticky=W, columnspan=3)  # date label
     OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12") \
@@ -10838,7 +10912,7 @@ def edit_carrier(e_name):
     name = e_name  # name value if name is not changed
     c_name.set(e_name)  # name value for name changes
     Label(name_frame, text="carrier name: {}".format(e_name), anchor="w", width=37).grid(row=0, column=0, sticky=W)
-    Entry(name_frame, width=37, textvariable=c_name).grid(row=1, column=0, sticky=W)
+    Entry(name_frame, width=width_long, textvariable=c_name).grid(row=1, column=0, sticky=W)
     Button(name_frame, width=7, text="update", command=lambda: name_change(name, c_name, switchF3)) \
         .grid(row=2, column=0, sticky=W)
     name_frame.grid(row=2, sticky=W)
@@ -10861,54 +10935,55 @@ def edit_carrier(e_name):
     Label(ns_frame, width=15, text="non scheduled day", anchor="w").grid(row=0, column=0, sticky=W)
     ns = StringVar(ns_frame)
     ns.set(results[0][3])
+
     Radiobutton(ns_frame, text="{}:   {}".format(ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
-                indicatoron=0, width=15, anchor="w",
-                bg="grey", fg="white", selectcolor=ns_color_dict["yellow"]).grid(row=1, column=0)
+                indicatoron=indica, width=15, anchor="w",
+                bg=bg_color, fg=fg_color).grid(row=1, column=0)
     Radiobutton(ns_frame, text="{}:   {}".format(ns_code['blue'], ns_results[1][2]), variable=ns, value="blue",
-                indicatoron=0, width=15, anchor="w",
-                bg="grey", fg="white", selectcolor=ns_color_dict["blue"]).grid(row=1, column=1)
+                indicatoron=indica, width=15, anchor="w",
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["blue"]).grid(row=1, column=1)
     Radiobutton(ns_frame, text="{}:   {}".format(ns_code['green'], ns_results[2][2]), variable=ns, value="green",
-                indicatoron=0, width=15, anchor="w",
-                bg="grey", fg="white", selectcolor=ns_color_dict["green"]).grid(row=2, column=0)
+                indicatoron=indica, width=15, anchor="w",
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["green"]).grid(row=2, column=0)
     Radiobutton(ns_frame, text="{}:   {}".format(ns_code['brown'], ns_results[3][2]), variable=ns, value="brown",
-                indicatoron=0, width=15, anchor="w",
-                bg="grey", fg="white", selectcolor=ns_color_dict["brown"]).grid(row=2, column=1)
+                indicatoron=indica, width=15, anchor="w",
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["brown"]).grid(row=2, column=1)
     Radiobutton(ns_frame, text="{}:   {}".format(ns_code['red'], ns_results[4][2]), variable=ns, value="red",
-                indicatoron=0, width=15, anchor="w",
-                bg="grey", fg="white", selectcolor=ns_color_dict["red"]).grid(row=3, column=0)
+                indicatoron=indica, width=15, anchor="w",
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["red"]).grid(row=3, column=0)
     Radiobutton(ns_frame, text="{}:   {}".format(ns_code['black'], ns_results[5][2]), variable=ns, value="black",
-                indicatoron=0, width=15, anchor="w",
-                bg="grey", fg="white", selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
+                indicatoron=indica, width=15, anchor="w",
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
     Label(ns_frame, text="Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
-    Radiobutton(ns_frame, text="none", variable=ns, value="none", indicatoron=0, width=15,
-                bg="grey", fg="white", selectcolor=ns_color_dict["none"], anchor="w") \
+    Radiobutton(ns_frame, text="none", variable=ns, value="none", indicatoron=indica, width=15,
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["none"], anchor="w") \
         .grid(row=4, column=1)
     Radiobutton(ns_frame, text="Sat:   fixed", variable=ns, value="sat",
-                bg="grey", fg="white", selectcolor=ns_color_dict["sat"], indicatoron=0, width=15, anchor="w") \
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["sat"], indicatoron=indica, width=15, anchor="w") \
         .grid(row=5, column=0)
     Radiobutton(ns_frame, text="Mon:   fixed", variable=ns, value="mon",
-                bg="grey", fg="white", selectcolor=ns_color_dict["mon"], indicatoron=0, width=15, anchor="w") \
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["mon"], indicatoron=indica, width=15, anchor="w") \
         .grid(row=5, column=1)
     Radiobutton(ns_frame, text="Tue:   fixed", variable=ns, value="tue",
-                bg="grey", fg="white", selectcolor=ns_color_dict["tue"], indicatoron=0, width=15, anchor="w") \
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["tue"], indicatoron=indica, width=15, anchor="w") \
         .grid(row=6, column=0)
     Radiobutton(ns_frame, text="Wed:   fixed", variable=ns, value="wed",
-                bg="grey", fg="white", selectcolor=ns_color_dict["wed"], indicatoron=0, width=15, anchor="w") \
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["wed"], indicatoron=indica, width=15, anchor="w") \
         .grid(row=6, column=1)
     Radiobutton(ns_frame, text="Thu:   fixed", variable=ns, value="thu",
-                bg="grey", fg="white", selectcolor=ns_color_dict["thu"], indicatoron=0, width=15, anchor="w") \
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["thu"], indicatoron=indica, width=15, anchor="w") \
         .grid(row=7, column=0)
     Radiobutton(ns_frame, text="Fri:   fixed", variable=ns, value="fri",
-                bg="grey", fg="white", selectcolor=ns_color_dict["fri"], indicatoron=0, width=15, anchor="w") \
+                bg=bg_color, fg=fg_color, selectcolor=ns_color_dict["fri"], indicatoron=indica, width=15, anchor="w") \
         .grid(row=7, column=1)
 
     ns_frame.grid(row=4, sticky=W)
     # set route entry field
     route_frame = Frame(F, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text="route/s", width=15, anchor="w").grid(row=0, column=0, sticky=W)
+    Label(route_frame, text="route/s", width=30, anchor="w").grid(row=0, column=0, sticky=W)
     route = StringVar(route_frame)
     route.set(results[0][4])
-    Entry(route_frame, width=37, textvariable=route).grid(row=1, column=0, sticky=W)
+    Entry(route_frame, width=width_long, textvariable=route).grid(row=1, column=0, sticky=W)
     route_frame.grid(row=5, sticky=W)
     # set station option menu
     station_frame = Frame(F, pady=2)
@@ -11083,6 +11158,8 @@ def input_carriers(frame):  # window for inputting new carriers
     C.configure(yscrollcommand=S.set)
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+    elif sys.platform == "darwin":
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -11101,31 +11178,33 @@ def input_carriers(frame):  # window for inputting new carriers
     month.set(gs_mo)  # set values for variables
     day.set(gs_day)
     year.set(gs_year)
-    Label(date_frame, text="date (month/day/year):", background="gray95", fg="black", width=30, anchor="w")\
-        .grid(row=0, column=0, sticky=W, columnspan=30)  # date label
-
-    OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12") \
-        .grid(row=1, column=0, sticky=W)
-    OptionMenu(date_frame, day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
+    Label(date_frame, text=" date (month/day/year):", background=maclab("gray95"), fg=maclab("black"),width=30,
+          anchor="w").grid(row=0, column=0, sticky=W, columnspan=30)  # date label
+    om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
+    om_month.config(width=2)
+    om_month.grid(row=1, column=0, sticky=W)
+    om_day = OptionMenu(date_frame, day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
                "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29",
-               "30", "31").grid(row=1, column=1, sticky=W)
+               "30", "31")
+    om_day.config(width=2)
+    om_day.grid(row=1, column=1, sticky=W)
     Entry(date_frame, width=6, textvariable=year).grid(row=1, column=2, sticky=W)
     date_frame.grid(row=1, sticky=W)  # put frame on grid
     # carrier name:
     name_frame = Frame(nc_F, pady=2)
-    Label(name_frame, text="last name: ", anchor="w",width=22, background="gray95",fg="black")\
+    Label(name_frame, text=" last name: ",width=22, anchor="w",background=maclab("gray95"),fg=maclab("black"))\
         .grid(row=0, column=0, sticky=W)
-    Label(name_frame, text="1st initial: ", anchor="w",width=22, background="gray95",fg="black")\
+    Label(name_frame, text=" 1st initial ",width=7, anchor="w",background=maclab("gray95"),fg=maclab("black"))\
         .grid(row=0, column=1, sticky=W)
     nc_name = StringVar(nc_F)
     nc_fname = StringVar(nc_F)
-    Entry(name_frame, width=29, textvariable=nc_name).grid(row=1, column=0, sticky=W)
-    Entry(name_frame, width=8, textvariable=nc_fname).grid(row=1, column=1, sticky=W)
+    Entry(name_frame, width=macsize(29,76), textvariable=nc_name).grid(row=1, column=0, sticky=W)
+    Entry(name_frame, width=macsize(8,76), textvariable=nc_fname).grid(row=1, column=1, sticky=W)
     name_frame.grid(row=2, sticky=W)
     # list status
     list_frame = Frame(nc_F, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame,text="list status", anchor="w",width=30, background="gray95",fg="black")\
-        .grid(row=0, column=0, sticky=W, columnspan=2)
+    Label(list_frame, width=30, text=" list status", anchor="w", background =maclab("gray95"), fg = "white")\
+        .grid(row=0, column=0, sticky=W,columnspan=2)
     nc_ls = StringVar(list_frame)
     nc_ls.set(value="nl")
     Radiobutton(list_frame, text="OTDL", variable=nc_ls, value='otdl', justify=LEFT).grid(row=1, column=0, sticky=W)
@@ -11136,56 +11215,81 @@ def input_carriers(frame):  # window for inputting new carriers
     list_frame.grid(row=3, sticky=W)
     # set non scheduled day
     ns_frame = Frame(nc_F, pady=2)
-    Label(ns_frame, width=30, text=" non scheduled day", anchor="w", background="gray95", fg="black")\
-        .grid(row=0, column=0, sticky=W, columnspan=2)
+    Label(ns_frame, width=30, text=" non scheduled day", anchor="w", background=maclab("gray95"), fg=maclab("black"))\
+        .grid(row=0, column=0, sticky=W,columnspan=2)
     nc_ns = StringVar(ns_frame)
     nc_ns.set("none")
-    Radiobutton(ns_frame, text="{}:   yellow".format(ns_code['yellow']), variable=nc_ns, value="yellow", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["yellow"]).grid(row=1, column=0)
-    Radiobutton(ns_frame, text="{}:   blue".format(ns_code['blue']), variable=nc_ns, value="blue", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["blue"]).grid(row=2, column=0)
-    Radiobutton(ns_frame, text="{}:   green".format(ns_code['green']), variable=nc_ns, value="green", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["green"]).grid(row=3, column=0)
-    Radiobutton(ns_frame, text="{}:   brown".format(ns_code['brown']), variable=nc_ns, value="brown", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["brown"]).grid(row=1, column=1)
-    Radiobutton(ns_frame, text="{}:   red".format(ns_code['red']), variable=nc_ns, value="red", indicatoron=0, width=15,
-                anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["red"]).grid(row=2, column=1)
-    Radiobutton(ns_frame, text="{}:   black".format(ns_code['black']), variable=nc_ns, value="black", indicatoron=0,
-                width=15, anchor="w", bg="grey", fg="white", selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
-    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=0, width=15, anchor="w")\
+    Radiobutton(ns_frame, text="{}:   yellow".format(ns_code['yellow']), variable=nc_ns, value="yellow",
+                indicatoron=macrad(0),width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                selectcolor=ns_color_dict["yellow"]).grid(row=1, column=0)
+    Radiobutton(ns_frame, text="{}:   blue".format(ns_code['blue']), variable=nc_ns, value="blue",
+                indicatoron=macrad(0),width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                selectcolor=ns_color_dict["blue"]).grid(row=2, column=0)
+    Radiobutton(ns_frame, text="{}:   green".format(ns_code['green']), variable=nc_ns, value="green",
+                indicatoron=macrad(0),
+                width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                selectcolor=ns_color_dict["green"]).grid(row=3, column=0)
+    Radiobutton(ns_frame, text="{}:   brown".format(ns_code['brown']), variable=nc_ns, value="brown",
+                indicatoron=macrad(0),
+                width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                selectcolor=ns_color_dict["brown"]).grid(row=1, column=1)
+    Radiobutton(ns_frame, text="{}:   red".format(ns_code['red']), variable=nc_ns, value="red",
+                indicatoron=macrad(0), width=15,
+                anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                selectcolor=ns_color_dict["red"]).grid(row=2, column=1)
+    Radiobutton(ns_frame, text="{}:   black".format(ns_code['black']), variable=nc_ns, value="black",
+                indicatoron=macrad(0),
+                width=15, anchor="w", bg=macrad("grey"), fg=macrad("white"),
+                selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
+    Label(ns_frame, text=" Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
+    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=macrad(0),
+                width=15, anchor="w")\
                 .grid(row=4,column=1)
-    Label(ns_frame, text="Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
-    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=0, width=15, bg="grey", fg="white",
+
+    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none",
+                indicatoron=macrad(0), width=15, bg=macrad("grey"), fg=macrad("white"),
                 selectcolor=ns_color_dict["none"], anchor="w").grid(row=4, column=1)
-    Radiobutton(ns_frame, text="Sat:   fixed", variable=nc_ns, value="sat", bg="grey", fg="white",
-                selectcolor=ns_color_dict["sat"], indicatoron=0, width=15, anchor="w").grid(row=5, column=0)
-    Radiobutton(ns_frame, text="Mon:   fixed", variable=nc_ns, value="mon", bg="grey", fg="white",
-                selectcolor=ns_color_dict["mon"], indicatoron=0, width=15, anchor="w").grid(row=5, column=1)
-    Radiobutton(ns_frame, text="Tue:   fixed", variable=nc_ns, value="tue", bg="grey", fg="white",
-                selectcolor=ns_color_dict["tue"], indicatoron=0, width=15, anchor="w").grid(row=6, column=0)
-    Radiobutton(ns_frame, text="Wed:   fixed", variable=nc_ns, value="wed", bg="grey", fg="white",
-                selectcolor=ns_color_dict["wed"], indicatoron=0, width=15, anchor="w").grid(row=6, column=1)
-    Radiobutton(ns_frame, text="Thu:   fixed", variable=nc_ns, value="thu", bg="grey", fg="white",
-                selectcolor=ns_color_dict["thu"], indicatoron=0, width=15, anchor="w").grid(row=7, column=0)
-    Radiobutton(ns_frame, text="Fri:   fixed", variable=nc_ns, value="fri", bg="grey", fg="white",
-                selectcolor=ns_color_dict["fri"], indicatoron=0, width=15, anchor="w").grid(row=7, column=1)
+    Radiobutton(ns_frame, text="Sat:   fixed", variable=nc_ns, value="sat",bg=macrad("grey"),
+                fg=macrad("white"),
+                selectcolor=ns_color_dict["sat"], indicatoron=macrad(0),
+                width=15, anchor="w").grid(row=5, column=0)
+    Radiobutton(ns_frame, text="Mon:   fixed", variable=nc_ns, value="mon", bg=macrad("grey"),
+                fg=macrad("white"),
+                selectcolor=ns_color_dict["mon"], indicatoron=macrad(0),
+                width=15, anchor="w").grid(row=5, column=1)
+    Radiobutton(ns_frame, text="Tue:   fixed", variable=nc_ns, value="tue", bg=macrad("grey"),
+                fg=macrad("white"),
+                selectcolor=ns_color_dict["tue"], indicatoron=macrad(0),
+                width=15, anchor="w").grid(row=6, column=0)
+    Radiobutton(ns_frame, text="Wed:   fixed", variable=nc_ns, value="wed", bg=macrad("grey"),
+                fg=macrad("white"),
+                selectcolor=ns_color_dict["wed"], indicatoron=macrad(0),
+                width=15, anchor="w").grid(row=6, column=1)
+    Radiobutton(ns_frame, text="Thu:   fixed", variable=nc_ns, value="thu", bg=macrad("grey"),
+                fg=macrad("white"),
+                selectcolor=ns_color_dict["thu"], indicatoron=macrad(0),
+                width=15, anchor="w").grid(row=7, column=0)
+    Radiobutton(ns_frame, text="Fri:   fixed", variable=nc_ns, value="fri", bg=macrad("grey"),
+                fg=macrad("white"),
+                selectcolor=ns_color_dict["fri"], indicatoron=macrad(0),
+                width=15, anchor="w").grid(row=7, column=1)
     ns_frame.grid(row=4, sticky=W)
     # set route entry field
     route_frame = Frame(nc_F, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text="route/s", width=30, anchor="w",background="gray95",fg="black")\
+    Label(route_frame, text=" route/s", width=30, anchor="w", background=maclab("gray95"),fg=maclab("black"))\
         .grid(row=0, column=0, sticky=W)
     nc_route = StringVar(route_frame)
     nc_route.set("")
-    Entry(route_frame, width=37, textvariable=nc_route).grid(row=1, column=0, sticky=W)
+    Entry(route_frame, width=macsize(37,81), textvariable=nc_route).grid(row=1, column=0, sticky=W)
     route_frame.grid(row=5, sticky=W)
     # set station option menu
     station_frame = Frame(nc_F, pady=2)
-    Label(station_frame, text="station", width=5, anchor="w",background="gray95",fg="black")\
+    Label(station_frame, text=" station", width=5, anchor="w", background=maclab("gray95"),fg=maclab("black"))\
         .grid(row=0, column=0, sticky=W)
     nc_station = StringVar(station_frame)
     nc_station.set(g_station)  # default value
     om_stat = OptionMenu(station_frame, nc_station, *list_of_stations)
-    om_stat.config(width=24)
+    om_stat.config(width = macsize(24,94))
     om_stat.grid(row=0, column=1, sticky=W)
     station_frame.grid(row=6, sticky=W)
     root.update()
@@ -11323,15 +11427,15 @@ def main_frame():
     C1.pack(fill=BOTH, side=BOTTOM)
     if gs_day != "x":
         Button(C1, text="New Carrier", command=lambda: input_carriers(F),
-               width=12).pack(side=LEFT)
+               width=macsize(12,90)).pack(side=LEFT)
         Button(C1, text="Multi Input", command=lambda dd="Sat", ss="name": mass_input(F, dd, ss),
-               width=12).pack(side=LEFT)
+               width=macsize(12,90)).pack(side=LEFT)
         Button(C1, text="Report", command=lambda: output_tab(F, carrier_list),
-               width=12).pack(side=LEFT)
+               width=macsize(12,90)).pack(side=LEFT)
         r_rings = "x"
-        Button(C1, text="Spreadsheet", width=12,
+        Button(C1, text="Spreadsheet", width=macsize(12,90),
                command=lambda: spreadsheet(carrier_list, r_rings)).pack(side=LEFT)
-        Button(C1, text="Quit", width=12, command=root.destroy).pack(side=LEFT)
+        Button(C1, text="Quit", width=macsize(12,90), command=root.destroy).pack(side=LEFT)
     # link up the canvas and scrollbar
     S = Scrollbar(F)
     C = Canvas(F, width=1600)
@@ -11342,7 +11446,7 @@ def main_frame():
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta)))  # Maybe: this is a guess
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -11474,24 +11578,26 @@ def main_frame():
         i_range.set("week")
     else:
         i_range.set(g_range)
-    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=6, anchor="w").grid(row=1, column=7)
-    Radiobutton(preF, text="daily", variable=i_range, value="day", width=5, anchor="w").grid(row=1, column=8)
+    Radiobutton(preF, text="weekly", variable=i_range, value="week", width=macsize(6,120), anchor="w")\
+        .grid(row=1, column=7)
+    Radiobutton(preF, text="daily", variable=i_range, value="day", width=macsize(5,120), anchor="w")\
+        .grid(row=1, column=8)
     # set station option menu
-    Label(preF, text="STATION", anchor="w").grid(row=2, column=1)
+    Label(preF, text="STATION", anchor="w").grid(row=2, column=1, sticky=W)
     station = StringVar(F)
     if g_station == "x":
         station.set("undefined")  # default value
     else:
         station.set(g_station)
     om = OptionMenu(preF, station, *list_of_stations)
-    om.config(width=36)
+    om.config(width=macsize(30,100))
     om.grid(row=2, column=2, columnspan=5, sticky=W)
     # set and reset buttons for investigation range
-    Button(preF, text="Set", anchor="w", width=7,
+    Button(preF, text="Set", anchor="w", width=macsize(7,120),
            command=lambda: set_globals(start_year.get(), start_month.get(), start_day.get(), i_range.get(),
                                        station.get(), F)) \
         .grid(row=2, column=7)
-    Button(preF, text="Reset", anchor="w", width=7, command=lambda: reset(F)).grid(row=2, column=8)
+    Button(preF, text="Reset", anchor="w", width=macsize(7,120), command=lambda: reset(F)).grid(row=2, column=8)
     # Investigation date SET/NOT SET notification
     if g_range == "x":
         Label(preF, text="Investigation date/range not set", foreground="red") \
@@ -11637,10 +11743,11 @@ def main_frame():
             i += 1
             r += 1
     if g_station == "x":
-        Button(FF, text="Automatic Data Entry", width=30, command=lambda: call_indexers(F)).grid(row=0, pady=5)
+        Button(FF, text="Automatic Data Entry", width = 30, command=lambda: call_indexers(F)).\
+            grid(row=0, pady=5)
         Button(FF, text="Auto Over Max Finder", width=30, command=lambda: max_hr()).grid(row=1, pady=5)
         Button(FF, text="Informal C", width=30, command=lambda: informalc(F)).grid(row=2, pady=5)
-        Label(FF, text="", width=70).grid(row=3)
+        Label(FF, text="", width=7).grid(row=3)
     root.update()
     C.config(scrollregion=C.bbox("all"))
     mainloop()
@@ -11783,6 +11890,12 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except:
+            pass
+    if sys.platform == "darwin":
+        try:
+            file = 'kb_sub/kb_images/kb_icon2.icns'
+            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
         except:
             pass
     if sys.platform == "linux":
