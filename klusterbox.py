@@ -34,7 +34,7 @@ This version of Klusterbox is being released under the GNU General Public Licens
 """
 # version variables
 version = "3.008"
-release_date = "December 24, 2020"
+release_date = "January 11, 2021"
 
 # Standard Libraries
 from tkinter import *
@@ -103,7 +103,7 @@ def dt_converter(string):  # converts a string of a datetime to an actual dateti
     dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
     return dt
 
-def macadj(win,mac):
+def macadj(win,mac): # switch between variables depending on platform
     if sys.platform == "darwin":
         arg = mac
     else:
@@ -225,7 +225,6 @@ def rpt_impman(list_carrier):
         daily_summary = [] # initialize array for the daily summary
         daily_summary.append(day)
         print("DAY: ", day, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-
         print("No List -------------------------------------------------------------------")
         daily_ot = 0.0
         daily_ot_off_route = 0.0

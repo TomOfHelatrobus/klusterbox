@@ -1,14 +1,17 @@
 Checklist for running pyinstaller for klusterbox
 
-1. in the source code, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
+1. in the source code - klusterbox.py, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
 
 2. navigate to the klusterbox project folder and open readme.txt.
 	a. update the "most recent version" and "released" near the top of the page. 
-	b. under the "History" subheader, add changes made for the lastest version. 
-	c. make any other changes to the readme.txt file that might be relevant. 
-	d. save the changes.
+	b. make any other changes to the readme.txt file that might be relevant.
+	c. save the changes.
 
-3. upload the most recent version to git hub
+3. navigate to and open history.txt 
+	a. update the history, add changes made for the lastest version. 
+	b. save the changes. 
+
+4. upload the most recent version to git hub
 	a. open windows powershell
 	b. navigate to the project folder
 	c. type: git add .
@@ -41,12 +44,12 @@ if you are running pyinstaller on a computer other than the computer used for de
 
 -------------------------------------------------------------------------------------------
  
-4. make sure the kb_install folder is inside the klusterbox 
+5. make sure the kb_install folder is inside the klusterbox 
 project folder. If not, then create it. If it does exist, empty any contents.
 
-5. copy and paste the most resent version of klusterbox.py into the kb_install folder.
+6. copy and paste the most resent version of klusterbox.py into the kb_install folder.
 
-6. copy and paste the kb_sub folder into the kb_install folder. If not, create it. 
+7. copy and paste the kb_sub folder into the kb_install folder. If not, create it. 
 
 	
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
@@ -66,60 +69,60 @@ project folder. If not, then create it. If it does exist, empty any contents.
 		4. kb_icon2.jpg
 		5. kb_icon2.xpm
 
-7. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
+8. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
 	a. license.txt
 	b. readme.txt
 		
-8. in terminal/ powershell, navigate to the klusterbox folder.
+9. in terminal/ powershell, navigate to the klusterbox folder.
 
-9. verify that the virtual environment is installed by entering "pipenv shell". if the virtual environment is not installed, create it. 
+10. verify that the virtual environment is installed by entering "pipenv shell". if the virtual environment is not installed, create it. 
 	a. delete Pipfile if it exist in the directory
 	b. delete Pipfile.lock if it exist in the directory
 	c. enter: pip3 install pipenv or pip install --user pipenv
 
-10. activate the virtual environment by entering: pipenv shell
+11. activate the virtual environment by entering: pipenv shell
 
-11. check the installed modules by entering: pip list
+12. check the installed modules by entering: pip list
 
-12. if the listed modules do not match those in the requirements list then install them. 
+13. if the listed modules do not match those in the requirements list then install them. 
 	a. copy/paste the requirements folder from the unzipped file.
 	a. enter: pipenv install -r requirements.txt
 
-13. navigate to the kb_install folder
+14. navigate to the kb_install folder
 
-14. enter the following in the command line: pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
+15. enter the following in the command line: pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
 	a. wait while the pyinstaller runs until the process ends. 
 		
-15. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
+16. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
 
-16. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
+17. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
-17. delete the following folders/files from the kb_install folder:
+18. delete the following folders/files from the kb_install folder:
 	a. build
 	b. dist
 	c. klusterbox.spec
 
-18. Optional - rename the klusterbox.exe file to show the current version number. e.g. klusterbox_v3.006.exe. 
+19. Optional - rename the klusterbox.exe file to show the current version number. e.g. klusterbox_v3.006.exe. 
 
-19. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
+20. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
-20. select the new zip folder and rename in by right clicking and selecting rename. Use the nameing convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
+21. select the new zip folder and rename in by right clicking and selecting rename. Use the nameing convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
-21. The compressed folder is ready for distribution. 
+22. The compressed folder is ready for distribution. 
 
-22. update changes to the directory in git. 
+23. update changes to the directory in git. 
 	a. navigate up to the klusterbox project folder
 	b. git add . 
 	c. git commit -m "I made some changes"
 	d. git push origin master or git push origin dev. 
 
-23. start up the 32 bit computer and open a web browser. 
+24. start up the 32 bit computer and open a web browser. 
 
-24. navigate to github.com/TomOfHelatrobus and which ever branch you used for the update. 
+25. navigate to github.com/TomOfHelatrobus and which ever branch you used for the update. 
 
-25. select the "code" pulldown menu and select "download zip"
+26. select the "code" pulldown menu and select "download zip"
 
-26. after the download is complete, open the download folder. 
+27. after the download is complete, open the download folder. 
 	a. rename the zip file "klusterbox-from-git"
 	b. drag and drop or copy and paste the zip file into the klusterbox project folder. 
 	c. unzip the klusterbox-from-git zip file and open it in a new window. 
@@ -128,4 +131,4 @@ project folder. If not, then create it. If it does exist, empty any contents.
 	f. drag and drop any other changed files. 
 	g. delete both "klusterbox-from-git" files - the folder and zip file. 
 
-27. repeat steps 2 through 20 to create the 32 bit version on the 32 bit system. Skip step 5. 
+28. repeat steps 2 through 20 to create the 32 bit version on the 32 bit system. Skip step 5. 
