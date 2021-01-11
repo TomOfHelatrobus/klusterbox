@@ -28,7 +28,3 @@ kb_install
 Pipfile
 Pipfile.lock
 
-# ignore Mac specific files
-
-.DS_Store
-.idea
