@@ -3733,8 +3733,8 @@ def informalc_grvlist_result(frame, result):
     row = 3
     ii = 1
     for r in result:
-        Label(wd[3], text=str(ii), anchor="w").grid(row=row, column=0)
-        Button(wd[3], text=" " + r[0], anchor="w", width=14, relief=RIDGE).grid(row=row, column=1)
+        Label(wd[3], text=str(ii), anchor="w",width=4).grid(row=row, column=0)
+        Button(wd[3], text=" " + r[0], anchor="w", relief=RIDGE).grid(row=row, column=1)
         in_start = datetime.strptime(r[1], '%Y-%m-%d %H:%M:%S')
         in_end = datetime.strptime(r[2], '%Y-%m-%d %H:%M:%S')
         sign_date = datetime.strptime(r[3], '%Y-%m-%d %H:%M:%S')
@@ -3885,13 +3885,14 @@ def informalc_grvlist(frame):
     have_gats = StringVar(wd[0])
     docs = StringVar(wd[0])
     have_docs = StringVar(wd[0])
+
     # select station
-    Label(wd[3], text="Station ").grid(row=2, column=0, columnspan=3, sticky="w")
+    Label(wd[3], text="Station ", background="pink", fg="black", anchor="w", width=14).grid(row=2, column=0, columnspan=3, sticky="w")
     station_options = list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
-    station_om.config(width=35)
+    station_om.config(width=38)
     station_om.grid(row=2, column=3, columnspan=3, sticky="e")
     station.set("Select a Station")
 
@@ -3899,36 +3900,38 @@ def informalc_grvlist(frame):
     Label(wd[3], text="Category", fg="grey").grid(row=3, column=3)
     Label(wd[3], text="Start", fg="grey").grid(row=3, column=4)
     Label(wd[3], text="End", fg="grey").grid(row=3, column=5)
+
     # select for starting date
-    Radiobutton(wd[3], text="yes", variable=incident_date, value='yes').grid(row=4, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=incident_date, value='no').grid(row=4, column=1, sticky="w")
+    Radiobutton(wd[3], text="yes", variable=incident_date, value='yes',width=2).grid(row=4, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=incident_date, value='no',width=2).grid(row=4, column=1, sticky="w")
     Label(wd[3], text="", width=2).grid(row=4, column=2)
-    Label(wd[3], text="Incident Dates").grid(row=4, column=3, sticky="w")
+    Label(wd[3], text="Incident Dates", background="pink", fg="black", anchor="w", width=16).grid(row=4, column=3, sticky="w")
     Entry(wd[3], textvariable=incident_start, width=12, justify='right').grid(row=4, column=4)
     Entry(wd[3], textvariable=incident_end, width=12, justify='right').grid(row=4, column=5)
     incident_date.set('no')
+
     # select for signing date
-    Radiobutton(wd[3], text="yes", variable=signing_date, value='yes').grid(row=5, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=signing_date, value='no').grid(row=5, column=1, sticky="w")
+    Radiobutton(wd[3], text="yes", variable=signing_date, value='yes',width=2).grid(row=5, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=signing_date, value='no',width=2).grid(row=5, column=1, sticky="w")
     Label(wd[3], text="Signing Dates").grid(row=5, column=3, sticky="w")
     Entry(wd[3], textvariable=signing_start, width=12, justify='right').grid(row=5, column=4)
     Entry(wd[3], textvariable=signing_end, width=12, justify='right').grid(row=5, column=5)
     signing_date.set('no')
 
     # select for settlement level
-    Radiobutton(wd[3], text="yes", variable=set_lvl, value='yes').grid(row=6, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=set_lvl, value='no').grid(row=6, column=1, sticky="w")
+    Radiobutton(wd[3], text="yes", variable=set_lvl, value='yes',width=2).grid(row=6, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=set_lvl, value='no',width=2).grid(row=6, column=1, sticky="w")
     set_lvl.set("no")
     Label(wd[3], text="Settlement Level ").grid(row=6, column=3, sticky="w")
     lvl_options = ("informal a","formal a", "step b", "pre-arb", "arbitration")
     lvl_om = OptionMenu(wd[3], level, *lvl_options)
-    lvl_om.config(width=10)
+    lvl_om.config(width=20)
     lvl_om.grid(row=6, column=4, columnspan=3, sticky="e")
     level.set("informal a")
 
     #select for gats number
-    Radiobutton(wd[3], text="yes", variable=gats, value='yes').grid(row=7, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=gats, value='no').grid(row=7, column=1, sticky="w")
+    Radiobutton(wd[3], text="yes", variable=gats, value='yes',width=2).grid(row=7, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=gats, value='no',width=2).grid(row=7, column=1, sticky="w")
     Label(wd[3], text="GATS Number").grid(row=7, column=3, sticky="w")
     gats_options =("no","yes")
     gats_om = OptionMenu(wd[3],have_gats, *gats_options)
@@ -3936,9 +3939,10 @@ def informalc_grvlist(frame):
     gats_om.grid(row=7, column=4, columnspan=3, sticky="e")
     have_gats.set('no')
     gats.set('no')
+
     # select for documentation
-    Radiobutton(wd[3], text="yes", variable=docs, value='yes').grid(row=9, column=0, sticky="w")
-    Radiobutton(wd[3], text="no", variable=docs, value='no').grid(row=9, column=1, sticky="w")
+    Radiobutton(wd[3], text="yes", variable=docs, value='yes',width=2).grid(row=9, column=0, sticky="w")
+    Radiobutton(wd[3], text="no", variable=docs, value='no',width=2).grid(row=9, column=1, sticky="w")
     Label(wd[3], text="Documentation").grid(row=9, column=3, sticky="w")
     doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
     docs_om = OptionMenu(wd[3], have_docs, *doc_options)
@@ -3960,9 +3964,10 @@ def informalc_new(frame, msg):
     wd = front_window(frame)  # F,S,C,FF,buttons
     Label(wd[3], text="New Settlement", font="bold").grid(row=0, column=0, sticky="w")
     Label(wd[3], text="").grid(row=1, column=0, sticky="w")
-    Label(wd[3], text="Grievance Number: ").grid(row=2, column=0, sticky="w")
+    Label(wd[3], text="Grievance Number: ",
+          anchor="w").grid(row=2, column=0, sticky="w")
     grv_no = StringVar(wd[0])
-    Entry(wd[3], textvariable=grv_no, justify='right').grid(row=2, column=1, sticky="w")
+    Entry(wd[3], textvariable=grv_no, justify='right',width=20).grid(row=2, column=1, sticky="w")
     Label(wd[3], text="Incident Date").grid(row=3, column=0, sticky="w")
     Label(wd[3], text="  Start (mm/dd/yyyy): ").grid(row=4, column=0, sticky="w")
     incident_start = StringVar(wd[0])
@@ -4005,8 +4010,8 @@ def informalc_new(frame, msg):
     Entry(wd[3], textvariable=description, width=48, justify='right').grid(row=16, column=0, sticky="w", columnspan=2)
     Label(wd[3], text="").grid(row=17, column=0)
     Label(wd[3], text=msg, fg="red").grid(row=18, column=0, columnspan=2, sticky="w")
-    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
-    Button(wd[4], text="Enter", width=18, command=lambda: informalc_new_apply(wd[0], grv_no, incident_start,
+    Button(wd[4], text="Go Back", width=19, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
+    Button(wd[4], text="Enter", width=19, command=lambda: informalc_new_apply(wd[0], grv_no, incident_start,
           incident_end, date_signed, station, gats_number, docs, description, lvl)).grid(row=0, column=1)
     rear_window(wd)
 
@@ -9484,8 +9489,6 @@ def output_tab(self, list_carrier):
     switchF5.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(switchF5)
     C1.pack(fill=BOTH, side=BOTTOM)
-    # Button(C1, text="new carrier", command=lambda: input_carriers(switchF5),
-    #        width=15).pack(side=LEFT)
     Button(C1, text="spreadsheet", width=15, anchor="w",
            command=lambda: [spreadsheet(list_carrier, r_rings)]).pack(side=LEFT)
     Button(C1, text="Go Back", width=15, anchor="w",
@@ -10851,7 +10854,8 @@ def edit_carrier(e_name):
     C.create_window((0, 0), window=F, anchor=NW)
     # page title
     title_F = Frame(F)
-    Label(title_F, text="Edit Carrier Information", font="bold").grid(row=0, column=0, columnspan=4)
+    Label(title_F, text="Edit Carrier Information", font=
+    "bold").grid(row=0, column=0, columnspan=4)
     title_F.grid(row=0, sticky=W)  # put frame on grid
     # current date
     year = IntVar(F)
@@ -11177,7 +11181,7 @@ def input_carriers(frame):  # window for inputting new carriers
           fg=macadj("black","white")).grid(row=0, column=1, sticky=W)
     nc_name = StringVar(nc_F)
     nc_fname = StringVar(nc_F)
-    Entry(name_frame, width=macadj(29,22), textvariable=nc_name).grid(row=1, column=0, sticky=W)
+    Entry(name_frame, width=macadj(27,22), textvariable=nc_name).grid(row=1, column=0, sticky=W)
     Entry(name_frame, width=macadj(8,6), textvariable=nc_fname).grid(row=1, column=1, sticky=W)
     name_frame.grid(row=2, sticky=W)
     # list status
@@ -11553,7 +11557,7 @@ def main_frame():
     else:
         start_year.set(gs_year)
     date_year.grid(row=1, column=5)
-    Label(preF, text="RANGE").grid(row=1, column=6)
+    Label(preF, text="RANGE", width=6).grid(row=1, column=6)
     if g_range == "x":
         i_range.set("week")
     else:
@@ -11570,7 +11574,7 @@ def main_frame():
     else:
         station.set(g_station)
     om = OptionMenu(preF, station, *list_of_stations)
-    om.config(width=macadj(30,30))
+    om.config(width=macadj(35,30))
     om.grid(row=2, column=2, columnspan=5, sticky=W)
     # set and reset buttons for investigation range
     Button(preF, text="Set", anchor="w", width=macadj(7,8),
