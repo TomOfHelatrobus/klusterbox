@@ -12076,4 +12076,3 @@ if __name__ == "__main__":
         remove_file('kb_sub/report') # empty out folders
         remove_file('kb_sub/infc_grv')
         main_frame()
-
