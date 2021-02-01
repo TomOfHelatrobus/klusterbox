@@ -26,6 +26,6 @@ tom_install
 
 # ignore pip files
 
-# Pipfile
+Pipfile
 # Pipfile.lock
 
