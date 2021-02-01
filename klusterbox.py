@@ -72,9 +72,12 @@ from pdfminer.pdfpage import PDFPage
 from PyPDF2 import PdfFileReader, PdfFileWriter
 
 def inquire(sql):
-    db = sqlite3.connect("kb_sub/mandates.sqlite")
+    if platform == "macapp":
+        path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
+    if platform == "py":
+        path = "kb_sub/mandates.sqlite"
+    db = sqlite3.connect(path)
     cursor = db.cursor()
-
     try:
         cursor.execute(sql)
         results = cursor.fetchall()
@@ -87,7 +90,11 @@ def inquire(sql):
 
 
 def commit(sql):
-    db = sqlite3.connect("kb_sub/mandates.sqlite")
+    if platform == "macapp":
+        path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
+    if platform == "py":
+        path = "kb_sub/mandates.sqlite"
+    db = sqlite3.connect(path)
     cursor = db.cursor()
     try:
         cursor.execute(sql)
@@ -137,11 +144,33 @@ def front_window(self):  # Sets up a tkinter page with buttons on the bottom
     return F, S, C, FF, buttons
     # page contents - then call rear_window(wd)
 
-
 def rear_window(wd):  # This closes the window created by front_window()
     root.update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
+
+def dir_path(dir):
+    # create needed directories if they don't exist and return the appropiate path
+    if platform == "macapp":
+        if os.path.isdir(os.path.expanduser("~") + '/Documents') == False:
+            os.makedirs(os.path.expanduser("~") + '/Documents')
+        if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox') == False:
+            os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox')
+        if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dir) == False:
+            os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dir)
+        path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir + '/'
+    else:
+        if os.path.isdir('kb_sub/' + dir) == False:
+            os.makedirs(('kb_sub/' + dir))
+        path = 'kb_sub/' + dir + '/'
+    return path
+
+def dir_path_check(dir): # return appropiate path
+    if platform == "macapp":
+        path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir
+    else:
+        path = 'kb_sub/' + dir
+    return path
 
 def get_custom_nsday(): # get ns day color configurations from dbase and make dictionary
     sql = "SELECT * FROM ns_configuration"
@@ -186,9 +215,7 @@ def rpt_impman(list_carrier):
     weekly_summary = []
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
     filename = "report_improper_mandates" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/report') == False:  # create a directory if it does not exist
-        os.makedirs('kb_sub/report')
-    report = open('kb_sub/report/' + filename, "w")  # create text document
+    report = open(dir_path('report') + filename, "w")  # create text document
     report.write("Improper Mandates Report\n")
     for day in dates:
         report.write('\n\n   Showing results for:\n')
@@ -473,7 +500,7 @@ def rpt_impman(list_carrier):
     if sys.platform == "linux":
         subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
     if sys.platform == "darwin":
-        subprocess.call(["open", 'kb_sub/report/' + filename])
+        subprocess.call(["open", dir_path('report') + filename])
     print("weekly summary: ")
     for line in weekly_summary:
         print(line)
@@ -483,10 +510,8 @@ def rpt_carrier(carrier_list): # Generate and display a report of carrier routes
     ns_dict = get_custom_nsday() # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S") # create a file name
     filename = "report_carrier_route" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/report') == False: # create a directory if it does not exist
-        os.makedirs('kb_sub/report')
     try:
-        report = open('kb_sub/report/' + filename, "w")
+        report = open(dir_path('report') + filename, "w")
         report.write("Carrier Route and NS Day Report\n\n\n")
         report.write('   Showing results for:\n')
         report.write('      Station: {}\n'.format(g_station))
@@ -516,17 +541,15 @@ def rpt_carrier(carrier_list): # Generate and display a report of carrier routes
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", 'kb_sub/report/' + filename])
+            subprocess.call(["open", dir_path('report') + filename])
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
 def rpt_carrier_route(carrier_list): # Generate and display a report of carrier routes
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "report_carrier_route" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/report') == False:
-        os.makedirs('kb_sub/report')
     try:
-        report = open('kb_sub/report/' + filename, "w")
+        report = open(dir_path('report') + filename, "w")
         report.write("Carrier Route Report\n\n\n")
         report.write('   Showing results for:\n')
         report.write('      Station: {}\n'.format(g_station))
@@ -555,7 +578,7 @@ def rpt_carrier_route(carrier_list): # Generate and display a report of carrier 
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", 'kb_sub/report/' + filename])
+            subprocess.call(["open", dir_path('report') + filename])
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -563,10 +586,8 @@ def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier 
     ns_dict = get_custom_nsday() # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "report_carrier_route" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/report') == False:
-        os.makedirs('kb_sub/report')
     try:
-        report = open('kb_sub/report/' + filename, "w")
+        report = open(dir_path('report') + filename, "w")
         report.write("Carrier Routes NS Day\n\n\n")
         report.write('   Showing results for:\n')
         report.write('      Station: {}\n'.format(g_station))
@@ -596,7 +617,7 @@ def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier 
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", 'kb_sub/report/' + filename])
+            subprocess.call(["open", dir_path('report') + filename])
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -1436,10 +1457,8 @@ def overmax_spreadsheet(carrier_list):
     xl_filename = "kb_om" + str(format(g_date[0], "_%y_%m_%d")) + ".xlsx"
     ok = messagebox.askokcancel("Spreadsheet generator", "Do you want to generate a spreadsheet?")
     if ok == True:
-        if os.path.isdir('kb_sub/over_max_spreadsheet') == False:
-            os.makedirs('kb_sub/over_max_spreadsheet')
         try:
-            wb.save('kb_sub/over_max_spreadsheet/' + xl_filename)
+            wb.save(dir_path('over_max_spreadsheet') + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                          "File is named: {}".format(xl_filename))
             if sys.platform == "win32":
@@ -1447,7 +1466,7 @@ def overmax_spreadsheet(carrier_list):
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/over_max_spreadsheet/' + xl_filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", 'kb_sub/over_max_spreadsheet/' + xl_filename])
+                subprocess.call(["open", dir_path('over_max_spreadsheet') + xl_filename])
         except:
             messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
                                                           "Suggestion: "
@@ -3082,9 +3101,10 @@ def informalc_root(passed_result, grv_no):
             new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
-    if sys.platform == "darwin":
+    if sys.platform == "darwin" and platform == "py":
         try:
-            new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+            # new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+            new_root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
         except:
             pass
     if sys.platform == "linux":
@@ -3331,10 +3351,8 @@ def informalc_rptgrvsum(result):
         result = list(result)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
-        if os.path.isdir('kb_sub/infc_grv') == False:
-            os.makedirs('kb_sub/infc_grv')
         try:
-            report = open('kb_sub/infc_grv/' + filename, "w")
+            report = open(dir_path('infc_grv') + filename, "w")
             report.write("Settlement List\n\n")
             i = 1
             for sett in result:
@@ -3411,7 +3429,7 @@ def informalc_rptgrvsum(result):
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
+                subprocess.call(["open", dir_path('infc_grv') + filename])
         except:
             messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -3424,10 +3442,8 @@ def informalc_bycarriers(result):
             unique_grv.append(grv[0])  # put these in "unique_grv"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/infc_grv') == False:
-        os.makedirs('kb_sub/infc_grv')
     try:
-        report = open('kb_sub/infc_grv/' + filename, "w")
+        report = open(dir_path('infc_grv') + filename, "w")
         report.write("Settlement Report By Carriers\n\n")
         for name in unique_carrier:
             report.write("{:<30}\n\n".format(name))
@@ -3486,7 +3502,7 @@ def informalc_bycarriers(result):
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
+            subprocess.call(["open", dir_path('infc_grv') + filename])
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -3501,10 +3517,8 @@ def informalc_apply_bycarrier(result, names, cursor):
     name = names[cursor[0]]
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/infc_grv') == False:
-        os.makedirs('kb_sub/infc_grv')
     try:
-        report = open('kb_sub/infc_grv/' + filename, "w")
+        report = open(dir_path('infc_grv') + filename, "w")
         report.write("Settlement Report By Carrier\n\n")
         report.write("{:<30}\n\n".format(name))
         report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
@@ -3563,7 +3577,7 @@ def informalc_apply_bycarrier(result, names, cursor):
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
+            subprocess.call(["open", dir_path('infc_grv') + filename])
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -3609,10 +3623,8 @@ def informalc_rptbygrv(grv_info):
         grv_info[8] = "unknown"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/infc_grv') == False:
-        os.makedirs('kb_sub/infc_grv')
     try:
-        report = open('kb_sub/infc_grv/' + filename, "w")
+        report = open(dir_path('infc_grv') + filename, "w")
         report.write("Settlement Summary\n\n")
         sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[0]
         query = inquire(sql)
@@ -3675,7 +3687,7 @@ def informalc_rptbygrv(grv_info):
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
+            subprocess.call(["open", dir_path('infc_grv') + filename])
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -3684,10 +3696,8 @@ def informalc_grvlist_setsum(result):
     if len(result) > 0:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
-        if os.path.isdir('kb_sub/infc_grv') == False:
-            os.makedirs('kb_sub/infc_grv')
         # try:
-        report = open('kb_sub/infc_grv/' + filename, "w")
+        report = open(dir_path('infc_grv') + filename, "w")
         report.write("   Settlement List Summary\n")
         report.write("   (ordered by date signed)\n\n")
         report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
@@ -3739,7 +3749,7 @@ def informalc_grvlist_setsum(result):
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
+            subprocess.call(["open", dir_path('infc_grv') + filename])
 
 
 def informalc_grvlist_result(frame, result):
@@ -4334,9 +4344,10 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
             poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
-    if sys.platform == "darwin":
+    if sys.platform == "darwin" and platform == "py":
         try:
-            poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+            # poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
+            poe_root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
         except:
             pass
     if sys.platform == "linux":
@@ -4435,10 +4446,7 @@ def informalc_por_all(afterdate, beforedate, station, backdate):
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
-    if os.path.isdir('kb_sub/infc_grv') == False:
-        os.makedirs('kb_sub/infc_grv')
-
-    report = open('kb_sub/infc_grv/' + filename, "w")
+    report = open(dir_path('infc_grv') + filename, "w")
     report.write("  Payouts Report\n\n")
     report.write("  Range of Dates: " + start.strftime("%b %d, %Y") + " - " + end.strftime("%b %d, %Y") + "\n\n")
 
@@ -4496,7 +4504,7 @@ def informalc_por_all(afterdate, beforedate, station, backdate):
     if sys.platform == "linux":
         subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
     if sys.platform == "darwin":
-        subprocess.call(["open", 'kb_sub/infc_grv/' + filename])
+        subprocess.call(["open", dir_path('infc_grv') + filename])
 
 
 def informalc_por(frame):
@@ -4539,9 +4547,8 @@ def informalc_por(frame):
     rear_window(wd)
 
 def informalc(frame):
-    if os.path.isdir('kb_sub/infc_grv') == True:  # clear contents of temp folder
-        shutil.rmtree('kb_sub/infc_grv')
-
+    if os.path.isdir(dir_path_check('infc_grv')) == True:  # clear contents of temp folder
+        shutil.rmtree(dir_path_check('infc_grv'))
     sql = 'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,' \
           'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar, level varchar)'
     commit(sql)
@@ -4911,10 +4918,8 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
         xl_filename = "kb_wa" + str(format(g_date[0], "_%y_%m_%d")) + ".xlsx"
         ok = messagebox.askokcancel("Spreadsheet generator", "Do you want to generate a spreadsheet?")
         if ok == True:
-            if os.path.isdir('kb_sub/weekly_availability') == False:
-                os.makedirs('kb_sub/weekly_availability')
             try:
-                wb.save('kb_sub/weekly_availability/' + xl_filename)
+                wb.save(dir_path('weekly_availability') + xl_filename)
                 messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                              "File is named: {}".format(xl_filename))
                 if sys.platform == "win32":
@@ -4922,7 +4927,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                 if sys.platform == "linux":
                     subprocess.call(["xdg-open", 'kb_sub/weekly_availability/' + xl_filename])
                 if sys.platform == "darwin":
-                    subprocess.call(["open", 'kb_sub/weekly_availability/' + xl_filename])
+                    subprocess.call(["open", dir_path('weekly_availability') + xl_filename])
             except:
                 messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
                                                               "Suggestion: "
@@ -6781,10 +6786,8 @@ def ee_skimmer():
                 if c == 2:
                     pp = line[0]  # find the pay period
                     filename = "ee_reader" + "_" + pp + ".txt"
-                    if os.path.isdir('kb_sub/ee_reader') == False:
-                        os.makedirs('kb_sub/ee_reader')
                     try:
-                        report = open('kb_sub/ee_reader/' + filename, "w")
+                        report = open(dir_path('ee_reader') + filename, "w")
                     except:
                         messagebox.showwarning("Report Generator", "The Employee Everything Report Reader "
                                                                    "was not generated.")
@@ -6815,7 +6818,7 @@ def ee_skimmer():
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/ee_reader/' + filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", 'kb_sub/ee_reader/' + filename])
+                subprocess.call(["open", dir_path('ee_reader') + filename])
     else:
         messagebox.showerror("Report Generator", "The file you have selected is not a .csv or .xls file.\n"
                                                  "You must select a file with a .csv or .xls extension.")
@@ -6832,10 +6835,8 @@ def pay_period_guide(self):
             if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
                 firstday += timedelta(weeks=2)
         filename = "pp_guide" + "_" + str(year) + ".txt"  # create the filename for the text doc
-        if os.path.isdir('kb_sub/pp_guide') == False:  # check to see if the folder exist
-            os.makedirs('kb_sub/pp_guide')  # if not, then create the folder
         try:
-            report = open('kb_sub/pp_guide/' + filename, "w")  # create the document
+            report = open(dir_path('pp_guide') + filename, "w")  # create the document
             report.write("\nPay Period Guide\n")
             report.write("Year: " + str(year) + "\n")
             report.write("---------------------------------------------\n\n")
@@ -6871,7 +6872,7 @@ def pay_period_guide(self):
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/pp_guide/' + filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", 'kb_sub/pp_guide/' + filename])
+                subprocess.call(["open", dir_path('pp_guide') + filename])
         except:
             messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -7071,10 +7072,8 @@ def max_hr():  # generates a report for 12/60 hour violations
     if len(max_hr) > 0 or len(max_ft_day) > 0 or len(max_aux_day) > 0:
         pp_str = pp[:-3] + "_" + pp[4] + pp[5] + "_" + pp[6]
         filename = "max" + "_" + pp_str + ".txt"
-        if os.path.isdir('kb_sub/over_max') == False:
-            os.makedirs('kb_sub/over_max')
         try:
-            report = open('kb_sub/over_max/' + filename, "w")
+            report = open(dir_path('over_max') + filename, "w")
             report.write("12 and 60 Hour Violations Report\n\n")
             report.write("pay period: " + pp[:-3] + " " + pp[4] + pp[5] + "-" + pp[6] + "\n")  # printe pay period
             pp_date = find_pp(int(pp[:-3]), pp[-3:])  # send year and pp to get the date
@@ -7265,7 +7264,7 @@ def max_hr():  # generates a report for 12/60 hour violations
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/over_max/' + filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", 'kb_sub/over_max/' + filename])
+                subprocess.call(["open", dir_path('over_max') + filename])
         except:
             messagebox.showerror("Report Generator", "The report was not generated.")
 
@@ -7280,7 +7279,7 @@ def file_dialogue(folder):  # opens file folders to access generated reports
         if sys.platform == "linux":
             subprocess.call(["xdg-open", file_path])
         if sys.platform == "darwin":
-            subprocess.call([opener, file_path])
+            subprocess.call(["open",file_path])
 
 def remove_file(folder): # removes a file and all contents
     if os.path.isdir(folder) == True:
@@ -7302,9 +7301,13 @@ def remove_file_var(folder): # removes a file and all contents
 
 
 def location_klusterbox(self):  # provides the location of the program
+    if platform == "macapp":
+        path = "Applications"
+    else:
+        path = os.getcwd()
     messagebox.showinfo("KLUSTERBOX ",
                         "On this computer Klusterbox is located at:\n"
-                        "{}".format(os.getcwd()), parent=self)
+                        "{}".format(path), parent=self)
 
 
 def about_klusterbox(self):  # gives information about the program
@@ -7335,7 +7338,11 @@ def about_klusterbox(self):  # gives information about the program
     C.create_window((0, 0), window=FF, anchor=NW)
     # page contents
     try:
-        photo = ImageTk.PhotoImage(Image.open("kb_sub/kb_images/kb_about.jpg"))
+        if platform == "macapp":
+            path = 'Applications/klusterbox.app/Contents/Resources/kb_about.jpg'
+        else:
+            path = 'kb_sub/kb_images/kb_about.jpg'
+        photo = ImageTk.PhotoImage(Image.open(path))
         Label(FF, image=photo).pack(fill=X)
     except:
         pass
@@ -9554,18 +9561,16 @@ def spreadsheet(list_carrier, r_rings):
     xl_filename = "kb" + str(format(dates[0], "_%y_%m_%d")) + r + ".xlsx"
     ok = messagebox.askokcancel("Spreadsheet generator", "Do you want to generate a spreadsheet?")
     if ok == True:
-        if os.path.isdir('kb_sub/spreadsheets') == False:
-            os.makedirs('kb_sub/spreadsheets')
         try:
-            wb.save('kb_sub/spreadsheets/' + xl_filename)
+            wb.save(dir_path('spreadsheets') + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
-                                                         "File is named: {}".format(xl_filename))
+                                                         "File is named: {}".format(xl_filename), parent = root)
             if sys.platform == "win32":
                 os.startfile('kb_sub\\spreadsheets\\' + xl_filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/spreadsheets/' + xl_filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", 'kb_sub/spreadsheets/' + xl_filename])
+                subprocess.call(["open", dir_path('spreadsheets') + xl_filename])
         except:
             messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
                                                           "Suggestion: "
@@ -11663,27 +11668,31 @@ def main_frame():
     menubar.add_cascade(label="Reports", menu=reports_menu)
     # library menu
     reportsarchive_menu = Menu(menubar, tearoff=0)
-    reportsarchive_menu.add_command(label="Spreadsheet Archive", command=lambda: file_dialogue('kb_sub/spreadsheets'))
-    reportsarchive_menu.add_command(label="Over Max Finder Archive", command=lambda: file_dialogue('kb_sub/over_max'))
+    reportsarchive_menu.add_command(label="Spreadsheet Archive",
+                                    command=lambda: file_dialogue(dir_path('spreadsheets')))
+    reportsarchive_menu.add_command(label="Over Max Finder Archive",
+                                    command=lambda: file_dialogue(dir_path('over_max')))
     reportsarchive_menu.add_command(label="Over Max Spreadsheet Archive",
-                             command=lambda: file_dialogue('kb_sub/over_max_spreadsheet'))
-    reportsarchive_menu.add_command(label="Everything Report Archive", command=lambda: file_dialogue('kb_sub/ee_reader'))
-    reportsarchive_menu.add_command(label="Pay Period Guide Archive", command=lambda: file_dialogue('kb_sub/pp_guide'))
+                             command=lambda: file_dialogue(dir_path('over_max_spreadsheet')))
+    reportsarchive_menu.add_command(label="Everything Report Archive",
+                                    command=lambda: file_dialogue(dir_path('ee_reader')))
+    reportsarchive_menu.add_command(label="Pay Period Guide Archive",
+                                    command=lambda: file_dialogue(dir_path('pp_guide')))
     reportsarchive_menu.add_command(label="Weekly Availability Archive",
-                             command=lambda: file_dialogue('kb_sub/weekly_availability'))
+                             command=lambda: file_dialogue(dir_path('weekly_availability')))
     reportsarchive_menu.add_separator()
     reportsarchive_menu.add_command(label="Empty Spreadsheet Archive",
-                                    command=lambda: remove_file_var('kb_sub/spreadsheets'))
+                                    command=lambda: remove_file_var(dir_path('spreadsheets')))
     reportsarchive_menu.add_command(label="Empty Over Max Finder Archive",
-                                    command=lambda: remove_file_var('kb_sub/over_max'))
+                                    command=lambda: remove_file_var(dir_path('over_max')))
     reportsarchive_menu.add_command(label="Empty Over Max Spreadsheet Archive",
-                                    command=lambda: remove_file_var('kb_sub/over_max_spreadsheet'))
+                                    command=lambda: remove_file_var(dir_path('over_max_spreadsheet')))
     reportsarchive_menu.add_command(label="Empty Everything Report Archive",
-                                    command=lambda: remove_file_var('kb_sub/ee_reader'))
+                                    command=lambda: remove_file_var(dir_path('ee_reader')))
     reportsarchive_menu.add_command(label="Empty Pay Period Guide Archive",
-                                    command=lambda: remove_file_var('kb_sub/pp_guide'))
+                                    command=lambda: remove_file_var(dir_path('pp_guide')))
     reportsarchive_menu.add_command(label="Empty Weekly Availability Archive Archive",
-                                    command=lambda: remove_file_var('kb_sub/weekly_availability'))
+                                    command=lambda: remove_file_var(dir_path('weekly_availability')))
     menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
     # management menu
     management_menu = Menu(menubar, tearoff=0)
@@ -11937,6 +11946,7 @@ if __name__ == "__main__":
     global g_station
     global list_of_stations
     global pay_period
+    global platform
     # set initial value of globals
     gs_year = "x"
     gs_mo = "x"
@@ -11957,11 +11967,22 @@ if __name__ == "__main__":
     position_y = 50
     size_x = 625
     size_y = 600
+    # set up platform variable
+    if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/":
+        platform = "macapp"
+    else:
+        platform = "py"
     pb["value"] = 1  # increment progress bar
     pb_root.update()
-    # create kb_sub folder if it does not exist
-    if os.path.isdir('kb_sub') == False:
-        os.makedirs('kb_sub')
+    # create directories if they don't exist
+    if platform == "macapp":
+        if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')) == False:
+            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents'))
+        if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox')) == False:
+            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox'))
+    if platform == "py":
+        if os.path.isdir('kb_sub') == False:
+            os.makedirs('kb_sub')
     # set up database if it does not exist
     sql = 'CREATE table IF NOT EXISTS stations (station varchar primary key)'
     commit(sql)
@@ -12055,7 +12076,7 @@ if __name__ == "__main__":
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
-    if sys.platform == "darwin":
+    if sys.platform == "darwin" and platform == "py":
         try:
             root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
             root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
@@ -12073,7 +12094,6 @@ if __name__ == "__main__":
     if len(list_of_stations) < 2:
         start_up()
     else:
-        remove_file('kb_sub/report') # empty out folders
-        remove_file('kb_sub/infc_grv')
+        remove_file(dir_path_check('report')) # empty out folders
+        remove_file(dir_path_check('infc_grv'))
         main_frame()
-

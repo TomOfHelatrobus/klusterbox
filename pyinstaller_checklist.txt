@@ -34,6 +34,26 @@ Checklist for running pyinstaller for klusterbox
 	10. type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive.
 
 -------------------------------------------------------------------------------------------
+If you need to merge a branch to master: 
+
+1. On the computer used for the development of the branch go to powershell/terminal. 
+
+2. Navigate to the project folder.
+
+3. Switch to the master branch. 
+	a. Type: git checkout master
+	b. Type: git merge <branch>
+	c. Type: git push origin master
+
+4. (Optional) Delete the branch:
+	type: git branch --delete <branch>
+	or: git branch -d <branch>
+	or: git branch -D <branch> # force delete un merged branches
+
+
+
+
+-------------------------------------------------------------------------------------------
 
 if you are running pyinstaller on a computer other than the computer used for development and the most recent version of klusterbox is not on the hard drive follow steps 4 -8, otherwise skip to 9: 
 
@@ -119,7 +139,14 @@ project folder. If not, then create it. If it does exist, empty any contents.
 
 14. navigate to the kb_install folder
 
-15. enter the following in the command line: pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
+15. enter the following in the command line: 
+
+	(windows) pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
+
+	(Mac OS)  pyinstaller -w -D --icon kb_sub/kb_images/kb_icon1.icns klusterbox.py
+	or pyinstaller klusterbox.spec ( to run pyinstaller as configured by the spec file)
+	
+
 	a. wait while the pyinstaller runs until the process ends. 
 		
 16. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
@@ -135,7 +162,7 @@ project folder. If not, then create it. If it does exist, empty any contents.
 
 20. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
-21. select the new zip folder and rename in by right clicking and selecting rename. Use the nameing convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
+21. select the new zip folder and rename in by right clicking and selecting rename. Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
 22. The compressed folder is ready for distribution. 
 

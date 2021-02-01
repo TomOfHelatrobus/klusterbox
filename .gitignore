@@ -1,7 +1,6 @@
 # ignore all sqlite files
 
 *.sqlite
-*.spec
 
 # ignore kb generated dirs and files from kb_sub dir
 
@@ -22,6 +21,8 @@
 # ignore the kb_install folder
 
 kb_install
+py_specs
+tom_install
 
 # ignore pip files
 
