@@ -18,6 +18,21 @@ Checklist for running pyinstaller for klusterbox
 	d. type: git commit -m "your comments"
 	e. type: git push origin <branch>
 
+(optional) merge any branches that need to be merged with the following commands:
+	1. type: git remote <branch> eg git remote update
+	2. type: git merge <branch> eg git merge origin/mac
+	3. open docs where there is a conflict and resolve.
+	4. save resolved docs.
+	5. use add/commit/push to push resolved version to git master branch.
+
+(optional)
+ to delete the branch 
+	6. go to computer with the non-master branch
+`	7. type git checkout master
+	8. type: git branch -D <branch>
+	9. type: git push origin --delete <branch>
+	10. type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive.
+
 -------------------------------------------------------------------------------------------
 
 if you are running pyinstaller on a computer other than the computer used for development and the most recent version of klusterbox is not on the hard drive follow steps 4 -8, otherwise skip to 9: 
@@ -42,6 +57,13 @@ if you are running pyinstaller on a computer other than the computer used for de
 
 10. Drag and drop or copy/paste the kb_sub file from the unzipped folder to the klusterbox folder, over writing the older file, i.e. Move and Replace.
 
+use these alternate commands in git if the klusterbox project folder is already on the hard drive 
+
+1. open windows power shell or terminal.
+
+2. navigate to the klusterbox project folder.
+
+3. use type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive. 
 -------------------------------------------------------------------------------------------
  
 5. make sure the kb_install folder is inside the klusterbox 
@@ -49,8 +71,7 @@ project folder. If not, then create it. If it does exist, empty any contents.
 
 6. copy and paste the most resent version of klusterbox.py into the kb_install folder.
 
-7. copy and paste the kb_sub folder into the kb_install folder. If not, create it. 
-
+7. copy and paste the kb_sub folder into the kb_install folder.
 	
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
 		1. /kb_sub/mandates.sqlite
@@ -64,16 +85,24 @@ project folder. If not, then create it. If it does exist, empty any contents.
 		
 	b. make sure the kb_images folder is present and contains the following files:
 		1. kb_about.jpg
-		2. kb_icon2.gif
-		3. kb_icon2.ico
-		4. kb_icon2.jpg
-		5. kb_icon2.xpm
+		2. kb_icon1.icns
+		3. kb_icon2.gif
+		4. kb_icon2.ico
+		5. kb_icon2.jpg
+		6. kb_icon2.xpm 
 
 8. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
 	a. license.txt
 	b. readme.txt
+	c. history.txt
 		
 9. in terminal/ powershell, navigate to the klusterbox folder.
+
+#. make sure that pyinstaller is installed
+	a type: pyinstaller --version
+	b. if pyinstaller is not installed use:
+		type: pip install pyinstaller 
+		or type pip3 install pyinstaller. 
 
 10. verify that the virtual environment is installed by entering "pipenv shell". if the virtual environment is not installed, create it. 
 	a. delete Pipfile if it exist in the directory

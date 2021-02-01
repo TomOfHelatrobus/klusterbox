@@ -1825,6 +1825,7 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
                                      "You will either have to obtain the Employee Everything Report "
                                      "in the csv format from management or manually enter in the "
                                      "information")
+    
     return text
 
 
@@ -2390,7 +2391,6 @@ def pdf_converter():
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
                             lastname = e.replace("'"," ")
-                            print(lastname)
                             if gen_error_report == "on":
                                 input = "Name: {}\n".format(e)
                                 kbpc_rpt.write(input)
