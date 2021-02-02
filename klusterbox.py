@@ -73,7 +73,8 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 
 def inquire(sql):
     if platform == "macapp":
-        path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
+        # path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
+        path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
     if platform == "py":
         path = "kb_sub/mandates.sqlite"
     db = sqlite3.connect(path)
@@ -91,7 +92,8 @@ def inquire(sql):
 
 def commit(sql):
     if platform == "macapp":
-        path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
+        # path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
+        path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
     if platform == "py":
         path = "kb_sub/mandates.sqlite"
     db = sqlite3.connect(path)
@@ -11980,6 +11982,8 @@ if __name__ == "__main__":
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents'))
         if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox')) == False:
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox'))
+        if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox')) == False:
+            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox'))
     if platform == "py":
         if os.path.isdir('kb_sub') == False:
             os.makedirs('kb_sub')
