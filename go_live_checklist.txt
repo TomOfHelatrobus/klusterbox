@@ -18,7 +18,7 @@ Klusterbox new version go live checklist
 
 8. using ftp drag and drop the klusterbox.py source code into the downloads folder on the server side. 
 
-9. on the server side navigate out of the downlaods folder and into the www folder. The old download.html file should be visible.
+9. on the server side navigate out of the downloads folder and into the www folder. The old download.html file should be visible.
 
 10. on the client side navigate out of the klusterbox folder to the download.html page. the path is documents> klusterbox.com. The old download.html file should be visible. 
 
