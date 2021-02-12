@@ -73,7 +73,6 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 
 def inquire(sql):
     if platform == "macapp":
-        # path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
     if platform == "py":
         path = "kb_sub/mandates.sqlite"
@@ -92,7 +91,6 @@ def inquire(sql):
 
 def commit(sql):
     if platform == "macapp":
-        # path = 'Applications/klusterbox.app/Contents/mandates.sqlite'
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
     if platform == "py":
         path = "kb_sub/mandates.sqlite"
