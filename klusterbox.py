@@ -21,10 +21,6 @@ six==1.14.0
 sortedcontainers==2.1.0
 pillow==8.0.1
 
-to package with pyinstaller:
-make sure that the kb_sub folder (with images) is in the same directory as the source file then input -
-pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox_v3-002.py
-
 Caution: To ensure proper operation of Klusterbox, make sure to keep the Klusterbox application and the kb_sub folder
 in the same folder.
 
@@ -33,8 +29,8 @@ For the newest version of Klusterbox, visit www.klusterbox.com/download. The sou
 This version of Klusterbox is being released under the GNU General Public License version 3.
 """
 # version variables
-version = "3.008"
-release_date = "January 11, 2021"
+version = "4.0"
+release_date = "February 11, 2021"
 
 # Standard Libraries
 from tkinter import *
@@ -7325,7 +7321,10 @@ def max_hr():  # generates a report for 12/60 hour violations
 def file_dialogue(folder):  # opens file folders to access generated reports
     if os.path.isdir(folder) == False:
         os.makedirs(folder)
-    file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
+    if platform == "py":
+        file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
+    else:
+        file_path = filedialog.askopenfilename(initialdir=folder)
     if file_path:
         if sys.platform == "win32":
             os.startfile(file_path)
@@ -7354,13 +7353,30 @@ def remove_file_var(folder): # removes a file and all contents
 
 
 def location_klusterbox(self):  # provides the location of the program
-    if platform == "macapp":
-        path = "Applications"
+    if sys.platform == "darwin":
+        if platform == "macapp":
+            path = "Applications"
+            dbase = os.path.expanduser("~") + '/Documents/.klusterbox/' + 'mandates.sqlite'
+            archive = os.path.expanduser("~") + '/Documents/klusterbox'
+        if platform == "py":
+            path = os.getcwd()
+            dbase = os.getcwd() + '/kb_sub/mandates.sqlite'
+            archive = os.getcwd() + '/kb_sub'
     else:
-        path = os.getcwd()
+        if platform == "winapp":
+            path = os.getcwd()
+            dbase = os.path.expanduser("~") + '\Documents\.klusterbox\\' + 'mandates.sqlite'
+            archive = os.path.expanduser("~") + '\Documents\klusterbox'
+        else:
+            path = os.getcwd()
+            dbase = os.getcwd() + '\kb_sub\mandates.sqlite'
+            archive = os.getcwd() + '\kb_sub'
+
     messagebox.showinfo("KLUSTERBOX ",
                         "On this computer Klusterbox is located at:\n"
-                        "{}".format(path), parent=self)
+                        "{}\n\nThe Klusterbox database is located at \n"
+                        "{}\n\nThe Klusterbox archive is located at \n"
+                        "{}".format(path,dbase,archive), parent=self)
 
 
 def about_klusterbox(self):  # gives information about the program
@@ -7415,13 +7431,6 @@ def about_klusterbox(self):  # gives information about the program
     Label(FF, text="tomandsusan4ever@msn.com", anchor=W).pack(fill=X)
     Label(FF, text="(please put \"klusterbox\" in the subject line", anchor=W).pack(fill=X)
     Label(FF, text="720.280.0415", anchor=W).pack(fill=X)
-    if platform == "winapp":
-        Label(FF, text="", anchor=W).pack(fill=X)
-        Label(FF, text="hello there", anchor=W).pack(fill=X)
-    Label(FF, text="", anchor=W).pack(fill=X)
-    Label(FF, text=platform, anchor=W).pack(fill=X)
-
-
     root.update()
     C.config(scrollregion=C.bbox("all"))
     FF.mainloop()
