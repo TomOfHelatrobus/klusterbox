@@ -21,10 +21,6 @@ six==1.14.0
 sortedcontainers==2.1.0
 pillow==8.0.1
 
-to package with pyinstaller:
-make sure that the kb_sub folder (with images) is in the same directory as the source file then input -
-pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox_v3-002.py
-
 Caution: To ensure proper operation of Klusterbox, make sure to keep the Klusterbox application and the kb_sub folder
 in the same folder.
 
@@ -33,8 +29,8 @@ For the newest version of Klusterbox, visit www.klusterbox.com/download. The sou
 This version of Klusterbox is being released under the GNU General Public License version 3.
 """
 # version variables
-version = "3.008"
-release_date = "January 11, 2021"
+version = "4.0"
+release_date = "February 11, 2021"
 
 # Standard Libraries
 from tkinter import *
@@ -74,6 +70,8 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 def inquire(sql):
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
+    if platform == "winapp":
+        path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
     if platform == "py":
         path = "kb_sub/mandates.sqlite"
     db = sqlite3.connect(path)
@@ -92,6 +90,8 @@ def inquire(sql):
 def commit(sql):
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
+    if platform == "winapp":
+        path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
     if platform == "py":
         path = "kb_sub/mandates.sqlite"
     db = sqlite3.connect(path)
@@ -159,6 +159,14 @@ def dir_path(dir):
         if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dir) == False:
             os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dir)
         path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir + '/'
+    if platform == "winapp":
+        if os.path.isdir(os.path.expanduser("~") + '\\Documents') == False:
+            os.makedirs(os.path.expanduser("~") + '\\Documents')
+        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox') == False:
+            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
+        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir) == False:
+            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir)
+        path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir + '\\'
     else:
         if os.path.isdir('kb_sub/' + dir) == False:
             os.makedirs(('kb_sub/' + dir))
@@ -168,6 +176,8 @@ def dir_path(dir):
 def dir_path_check(dir): # return appropiate path
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir
+    if platform == "winapp":
+        path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir
     else:
         path = 'kb_sub/' + dir
     return path
@@ -535,8 +545,10 @@ def rpt_impman(list_carrier):
         daily_summary.append(daily_to_12)
         weekly_summary.append(daily_summary)
     report.close() # finish up text document
-    if sys.platform == "win32": # open the text document
+    if sys.platform == "win32" and platform == "py": # open the text document
         os.startfile('kb_sub\\report\\' + filename)
+    if sys.platform == "win32" and platform == "winapp": # open the text document
+        os.startfile(dir_path('report') + filename)
     if sys.platform == "linux":
         subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
     if sys.platform == "darwin":
@@ -576,8 +588,10 @@ def rpt_carrier(carrier_list): # Generate and display a report of carrier routes
                 aforementioned.append(line[1])
                 i += 1
         report.close()
-        if sys.platform == "win32":
+        if sys.platform == "win32" and platform == "py":
             os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "win32" and platform == "winapp":  # open the text document
+            os.startfile(dir_path('report') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
@@ -613,8 +627,10 @@ def rpt_carrier_route(carrier_list): # Generate and display a report of carrier 
                 aforementioned.append(line[1])
                 i += 1
         report.close()
-        if sys.platform == "win32":
+        if sys.platform == "win32" and platform == "py":
             os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "win32" and platform == "winapp":  # open the text document
+            os.startfile(dir_path('report') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
@@ -652,8 +668,10 @@ def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier 
                 aforementioned.append(line[1])
                 i += 1
         report.close()
-        if sys.platform == "win32":
+        if sys.platform == "win32" and platform == "py":
             os.startfile('kb_sub\\report\\' + filename)
+        if sys.platform == "win32" and platform == "winapp":  # open the text document
+            os.startfile(dir_path('report') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
@@ -1501,8 +1519,10 @@ def overmax_spreadsheet(carrier_list):
             wb.save(dir_path('over_max_spreadsheet') + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                          "File is named: {}".format(xl_filename))
-            if sys.platform == "win32":
+            if sys.platform == "win32" and platform == "py":
                 os.startfile('kb_sub\\over_max_spreadsheet\\' + xl_filename)
+            if sys.platform == "win32" and platform == "winapp":  # open the text document
+                os.startfile(dir_path('over_max_spreadsheet') + xl_filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/over_max_spreadsheet/' + xl_filename])
             if sys.platform == "darwin":
@@ -1884,6 +1904,7 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
                                      "You will either have to obtain the Employee Everything Report "
                                      "in the csv format from management or manually enter in the "
                                      "information")
+    
     return text
 
 
@@ -2449,7 +2470,6 @@ def pdf_converter():
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
                                 or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
                             lastname = e.replace("'"," ")
-                            print(lastname)
                             if gen_error_report == "on":
                                 input = "Name: {}\n".format(e)
                                 kbpc_rpt.write(input)
@@ -3136,14 +3156,18 @@ def informalc_root(passed_result, grv_no):
     global informalc_newroot  # initialize the global
     new_root = Tk()
     informalc_newroot = new_root  # set the global
-    if sys.platform == "win32":
+    if sys.platform == "win32" and platform == "py":
         try:
             new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except:
             pass
+    if sys.platform == "win32" and platform == "winapp":
+        try:
+            new_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+        except:
+            pass
     if sys.platform == "darwin" and platform == "py":
         try:
-            # new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
             new_root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
         except:
             pass
@@ -3464,8 +3488,10 @@ def informalc_rptgrvsum(result):
                 report.write("\n\n\n")
                 i += 1
             report.close()
-            if sys.platform == "win32":
+            if sys.platform == "win32" and platform == "py":
                 os.startfile('kb_sub\\infc_grv\\' + filename)
+            if sys.platform == "win32" and platform == "winapp":
+                subprocess.call([dir_path('infc_grv') + filename])
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
             if sys.platform == "darwin":
@@ -3537,8 +3563,10 @@ def informalc_bycarriers(result):
             report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
             report.write("\n\n\n")
         report.close()
-        if sys.platform == "win32":
+        if sys.platform == "win32" and platform == "py":
             os.startfile('kb_sub\\infc_grv\\' + filename)
+        if sys.platform == "win32" and platform == "winapp":
+            subprocess.call([dir_path('infc_grv') + filename])
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
@@ -3612,8 +3640,10 @@ def informalc_apply_bycarrier(result, names, cursor):
         report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
         report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
         report.close()
-        if sys.platform == "win32":
+        if sys.platform == "win32" and platform == "py":
             os.startfile('kb_sub\\infc_grv\\' + filename)
+        if sys.platform == "win32" and platform == "winapp":
+            os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
@@ -3722,8 +3752,10 @@ def informalc_rptbygrv(grv_info):
                                                       .format(float(awardxamt))))
         report.write("\n\n\n")
         report.close()
-        if sys.platform == "win32":
+        if sys.platform == "win32" and platform == "py":
             os.startfile('kb_sub\\infc_grv\\' + filename)
+        if sys.platform == "win32" and platform == "winapp":
+            os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
@@ -3784,8 +3816,10 @@ def informalc_grvlist_setsum(result):
         report.write("{:<20}{:>58}\n".format("      Total Hours","{0:.2f}".format(total_hour)))
         report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
         report.close()
-        if sys.platform == "win32":
+        if sys.platform == "win32" and platform == "py":
             os.startfile('kb_sub\\infc_grv\\' + filename)
+        if sys.platform == "win32" and platform == "winapp":
+            os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
@@ -4379,9 +4413,14 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
     global informalc_poe_lbox  # initialize the global
     poe_root = Tk()
     informalc_poe_lbox = poe_root  # set the global
-    if sys.platform == "win32":
+    if sys.platform == "win32" and platform == "py":
         try:
             poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except:
+            pass
+    if sys.platform == "win32" and platform == "winapp":
+        try:
+            poe_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
         except:
             pass
     if sys.platform == "darwin" and platform == "py":
@@ -4539,8 +4578,10 @@ def informalc_por_all(afterdate, beforedate, station, backdate):
             report.write("\n\n\n")
 
     report.close()
-    if sys.platform == "win32":
+    if sys.platform == "win32" and platform == "py":
         os.startfile('kb_sub\\infc_grv\\' + filename)
+    if sys.platform == "win32" and platform == "winapp":
+        os.startfile(dir_path('infc_grv') + filename)
     if sys.platform == "linux":
         subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
     if sys.platform == "darwin":
@@ -4962,8 +5003,10 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                 wb.save(dir_path('weekly_availability') + xl_filename)
                 messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                              "File is named: {}".format(xl_filename))
-                if sys.platform == "win32":
+                if sys.platform == "win32" and platform == "py":
                     os.startfile('kb_sub\\weekly_availability\\' + xl_filename)
+                if sys.platform == "win32" and platform == "winapp":
+                    os.startfile(dir_path('weekly_availability') + xl_filename)
                 if sys.platform == "linux":
                     subprocess.call(["xdg-open", 'kb_sub/weekly_availability/' + xl_filename])
                 if sys.platform == "darwin":
@@ -6853,8 +6896,10 @@ def ee_skimmer():
             ee_analysis(carrier, report)  # when loop ends, run final analysis
             del carrier[:]  # empty array
             report.close()
-            if sys.platform == "win32":
+            if sys.platform == "win32" and platform == "py":
                 os.startfile('kb_sub\\ee_reader\\' + filename)
+            if sys.platform == "win32" and platform == "winapp":
+                os.startfile(dir_path('ee_reader') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/ee_reader/' + filename])
             if sys.platform == "darwin":
@@ -6907,8 +6952,10 @@ def pay_period_guide(self):
                 report.write(
                     "\t week 2: " + wk2_start.strftime("%b %d, %Y") + " - " + wk2_end.strftime("%b %d, %Y") + "\n")
             report.close()
-            if sys.platform == "win32":
+            if sys.platform == "win32" and platform == "py":
                 os.startfile('kb_sub\\pp_guide\\' + filename)
+            if sys.platform == "win32" and platform == "winapp":
+                os.startfile(dir_path('pp_guide') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/pp_guide/' + filename])
             if sys.platform == "darwin":
@@ -7299,8 +7346,10 @@ def max_hr():  # generates a report for 12/60 hour violations
             report.write(
                 "\n" + "                           total:  " + "{0:.2f}".format(float(great_total)) + "\n")
             report.close()
-            if sys.platform == "win32":
+            if sys.platform == "win32" and platform == "py":
                 os.startfile('kb_sub\\over_max\\' + filename)
+            if sys.platform == "win32" and platform == "winapp":
+                os.startfile(dir_path('over_max') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/over_max/' + filename])
             if sys.platform == "darwin":
@@ -7312,7 +7361,10 @@ def max_hr():  # generates a report for 12/60 hour violations
 def file_dialogue(folder):  # opens file folders to access generated reports
     if os.path.isdir(folder) == False:
         os.makedirs(folder)
-    file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
+    if platform == "py":
+        file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
+    else:
+        file_path = filedialog.askopenfilename(initialdir=folder)
     if file_path:
         if sys.platform == "win32":
             os.startfile(file_path)
@@ -7341,13 +7393,30 @@ def remove_file_var(folder): # removes a file and all contents
 
 
 def location_klusterbox(self):  # provides the location of the program
-    if platform == "macapp":
-        path = "Applications"
+    if sys.platform == "darwin":
+        if platform == "macapp":
+            path = "Applications"
+            dbase = os.path.expanduser("~") + '/Documents/.klusterbox/' + 'mandates.sqlite'
+            archive = os.path.expanduser("~") + '/Documents/klusterbox'
+        if platform == "py":
+            path = os.getcwd()
+            dbase = os.getcwd() + '/kb_sub/mandates.sqlite'
+            archive = os.getcwd() + '/kb_sub'
     else:
-        path = os.getcwd()
+        if platform == "winapp":
+            path = os.getcwd()
+            dbase = os.path.expanduser("~") + '\Documents\.klusterbox\\' + 'mandates.sqlite'
+            archive = os.path.expanduser("~") + '\Documents\klusterbox'
+        else:
+            path = os.getcwd()
+            dbase = os.getcwd() + '\kb_sub\mandates.sqlite'
+            archive = os.getcwd() + '\kb_sub'
+
     messagebox.showinfo("KLUSTERBOX ",
                         "On this computer Klusterbox is located at:\n"
-                        "{}".format(path), parent=self)
+                        "{}\n\nThe Klusterbox database is located at \n"
+                        "{}\n\nThe Klusterbox archive is located at \n"
+                        "{}".format(path,dbase,archive), parent=self)
 
 
 def about_klusterbox(self):  # gives information about the program
@@ -7380,6 +7449,8 @@ def about_klusterbox(self):  # gives information about the program
     try:
         if platform == "macapp":
             path = 'Applications/klusterbox.app/Contents/Resources/kb_about.jpg'
+        if platform == "winapp":
+            path = 'C:\\Program Files (x86)\\klusterbox\\kb_about.jpg'
         else:
             path = 'kb_sub/kb_images/kb_about.jpg'
         photo = ImageTk.PhotoImage(Image.open(path))
@@ -9605,8 +9676,10 @@ def spreadsheet(list_carrier, r_rings):
             wb.save(dir_path('spreadsheets') + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                          "File is named: {}".format(xl_filename), parent = root)
-            if sys.platform == "win32":
+            if sys.platform == "win32" and platform == "py":
                 os.startfile('kb_sub\\spreadsheets\\' + xl_filename)
+            if sys.platform == "win32" and platform == "winapp":
+                os.startfile(dir_path('spreadsheets') + xl_filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/spreadsheets/' + xl_filename])
             if sys.platform == "darwin":
@@ -12010,10 +12083,13 @@ if __name__ == "__main__":
     size_x = 625
     size_y = 600
     # set up platform variable
-    if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/":
+    platform = "py" # initialize platform variable
+    if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/": # if it is a mac app
         platform = "macapp"
+    elif os.getcwd() == 'C:\\Program Files (x86)\\klusterbox': # if it is a windows app
+        platform = "winapp"
     else:
-        platform = "py"
+        platform = "py" # if it is running as a .py or .exe outside program files/applications
     pb["value"] = 1  # increment progress bar
     pb_root.update()
     # create directories if they don't exist
@@ -12024,6 +12100,13 @@ if __name__ == "__main__":
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox'))
         if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox')) == False:
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox'))
+    if platform == "winapp":
+        if os.path.isdir(os.path.expanduser("~") + '\\Documents') == False:
+            os.makedirs(os.path.expanduser("~") + '\\Documents')
+        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox') == False:
+            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
+        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\.klusterbox') == False:
+            os.makedirs(os.path.expanduser("~") + '\\Documents\\.klusterbox')
     if platform == "py":
         if os.path.isdir('kb_sub') == False:
             os.makedirs('kb_sub')
@@ -12121,9 +12204,14 @@ if __name__ == "__main__":
     pb.destroy()
     pb_root.destroy()
     root = Tk()
-    if sys.platform == "win32":
+    if sys.platform == "win32" and platform == "py":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except:
+            pass
+    if sys.platform == "win32" and platform == "winapp":
+        try:
+            root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
         except:
             pass
     if sys.platform == "darwin" and platform == "py":
