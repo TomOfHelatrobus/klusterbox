@@ -1,6 +1,7 @@
 # ignore all sqlite files
 
 *.sqlite
+*.exe
 
 # ignore kb generated dirs and files from kb_sub dir
 
@@ -17,15 +18,14 @@
 
 /kb_sub/LICENSE.txt
 /kb_sub/readme.txt
+/kb_sub/history.txt
 
 # ignore the kb_install folder
 
 kb_install
-py_specs
-tom_install
 
 # ignore pip files
 
 Pipfile
-# Pipfile.lock
+Pipfile.lock
 
