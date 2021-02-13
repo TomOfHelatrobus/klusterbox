@@ -13,7 +13,7 @@ a = Analysis(['klusterbox.py'],
 		('/Users/toman/klusterbox/kb_install/kb_sub/kb_images/kb_icon2.jpg','.'),
 		('/Users/toman/klusterbox/history.txt','.'),
 		('/Users/toman/klusterbox/readme.txt','.'),
-		('/Users/toman/klusterbox/LICENCE.txt','.')
+		('/Users/toman/klusterbox/LICENSE.txt','.'),
 		('/Users/toman/klusterbox/klusterbox.py','.'),
 		('/Users/toman/klusterbox/requirements.txt','.')],
              hiddenimports=[],
