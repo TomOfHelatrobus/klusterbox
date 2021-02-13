@@ -545,9 +545,7 @@ def rpt_impman(list_carrier):
         daily_summary.append(daily_to_12)
         weekly_summary.append(daily_summary)
     report.close() # finish up text document
-    if sys.platform == "win32" and platform == "py": # open the text document
-        os.startfile('kb_sub\\report\\' + filename)
-    if sys.platform == "win32" and platform == "winapp": # open the text document
+    if sys.platform == "win32": # open the text document
         os.startfile(dir_path('report') + filename)
     if sys.platform == "linux":
         subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
@@ -588,9 +586,7 @@ def rpt_carrier(carrier_list): # Generate and display a report of carrier routes
                 aforementioned.append(line[1])
                 i += 1
         report.close()
-        if sys.platform == "win32" and platform == "py":
-            os.startfile('kb_sub\\report\\' + filename)
-        if sys.platform == "win32" and platform == "winapp":  # open the text document
+        if sys.platform == "win32":  # open the text document
             os.startfile(dir_path('report') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
@@ -627,9 +623,7 @@ def rpt_carrier_route(carrier_list): # Generate and display a report of carrier 
                 aforementioned.append(line[1])
                 i += 1
         report.close()
-        if sys.platform == "win32" and platform == "py":
-            os.startfile('kb_sub\\report\\' + filename)
-        if sys.platform == "win32" and platform == "winapp":  # open the text document
+        if sys.platform == "win32":  # open the text document
             os.startfile(dir_path('report') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
@@ -668,9 +662,7 @@ def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier 
                 aforementioned.append(line[1])
                 i += 1
         report.close()
-        if sys.platform == "win32" and platform == "py":
-            os.startfile('kb_sub\\report\\' + filename)
-        if sys.platform == "win32" and platform == "winapp":  # open the text document
+        if sys.platform == "win32":  # open the text document
             os.startfile(dir_path('report') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
@@ -1519,9 +1511,7 @@ def overmax_spreadsheet(carrier_list):
             wb.save(dir_path('over_max_spreadsheet') + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                          "File is named: {}".format(xl_filename))
-            if sys.platform == "win32" and platform == "py":
-                os.startfile('kb_sub\\over_max_spreadsheet\\' + xl_filename)
-            if sys.platform == "win32" and platform == "winapp":  # open the text document
+            if sys.platform == "win32":  # open the text document
                 os.startfile(dir_path('over_max_spreadsheet') + xl_filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/over_max_spreadsheet/' + xl_filename])
@@ -3488,10 +3478,8 @@ def informalc_rptgrvsum(result):
                 report.write("\n\n\n")
                 i += 1
             report.close()
-            if sys.platform == "win32" and platform == "py":
-                os.startfile('kb_sub\\infc_grv\\' + filename)
-            if sys.platform == "win32" and platform == "winapp":
-                subprocess.call([dir_path('infc_grv') + filename])
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
             if sys.platform == "darwin":
@@ -3563,10 +3551,8 @@ def informalc_bycarriers(result):
             report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
             report.write("\n\n\n")
         report.close()
-        if sys.platform == "win32" and platform == "py":
-            os.startfile('kb_sub\\infc_grv\\' + filename)
-        if sys.platform == "win32" and platform == "winapp":
-            subprocess.call([dir_path('infc_grv') + filename])
+        if sys.platform == "win32":
+            os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
@@ -3640,9 +3626,7 @@ def informalc_apply_bycarrier(result, names, cursor):
         report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
         report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
         report.close()
-        if sys.platform == "win32" and platform == "py":
-            os.startfile('kb_sub\\infc_grv\\' + filename)
-        if sys.platform == "win32" and platform == "winapp":
+        if sys.platform == "win32":
             os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
@@ -3752,9 +3736,7 @@ def informalc_rptbygrv(grv_info):
                                                       .format(float(awardxamt))))
         report.write("\n\n\n")
         report.close()
-        if sys.platform == "win32" and platform == "py":
-            os.startfile('kb_sub\\infc_grv\\' + filename)
-        if sys.platform == "win32" and platform == "winapp":
+        if sys.platform == "win32":
             os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
@@ -3816,9 +3798,7 @@ def informalc_grvlist_setsum(result):
         report.write("{:<20}{:>58}\n".format("      Total Hours","{0:.2f}".format(total_hour)))
         report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
         report.close()
-        if sys.platform == "win32" and platform == "py":
-            os.startfile('kb_sub\\infc_grv\\' + filename)
-        if sys.platform == "win32" and platform == "winapp":
+        if sys.platform == "win32":
             os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
@@ -4578,9 +4558,7 @@ def informalc_por_all(afterdate, beforedate, station, backdate):
             report.write("\n\n\n")
 
     report.close()
-    if sys.platform == "win32" and platform == "py":
-        os.startfile('kb_sub\\infc_grv\\' + filename)
-    if sys.platform == "win32" and platform == "winapp":
+    if sys.platform == "win32":
         os.startfile(dir_path('infc_grv') + filename)
     if sys.platform == "linux":
         subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
@@ -5003,9 +4981,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                 wb.save(dir_path('weekly_availability') + xl_filename)
                 messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                              "File is named: {}".format(xl_filename))
-                if sys.platform == "win32" and platform == "py":
-                    os.startfile('kb_sub\\weekly_availability\\' + xl_filename)
-                if sys.platform == "win32" and platform == "winapp":
+                if sys.platform == "win32":
                     os.startfile(dir_path('weekly_availability') + xl_filename)
                 if sys.platform == "linux":
                     subprocess.call(["xdg-open", 'kb_sub/weekly_availability/' + xl_filename])
@@ -5620,9 +5596,9 @@ def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing s
         S.configure(command=C.yview, orient="vertical")
         C.configure(yscrollcommand=S.set)
         if sys.platform == "win32":
-            C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+            C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
         elif sys.platform == "darwin":
-            C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(event.delta), "units"))
+            C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta)), "units"))
         elif sys.platform == "linux":
             C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
             C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -6896,9 +6872,7 @@ def ee_skimmer():
             ee_analysis(carrier, report)  # when loop ends, run final analysis
             del carrier[:]  # empty array
             report.close()
-            if sys.platform == "win32" and platform == "py":
-                os.startfile('kb_sub\\ee_reader\\' + filename)
-            if sys.platform == "win32" and platform == "winapp":
+            if sys.platform == "win32":
                 os.startfile(dir_path('ee_reader') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/ee_reader/' + filename])
@@ -6952,9 +6926,7 @@ def pay_period_guide(self):
                 report.write(
                     "\t week 2: " + wk2_start.strftime("%b %d, %Y") + " - " + wk2_end.strftime("%b %d, %Y") + "\n")
             report.close()
-            if sys.platform == "win32" and platform == "py":
-                os.startfile('kb_sub\\pp_guide\\' + filename)
-            if sys.platform == "win32" and platform == "winapp":
+            if sys.platform == "win32":
                 os.startfile(dir_path('pp_guide') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/pp_guide/' + filename])
@@ -7346,9 +7318,7 @@ def max_hr():  # generates a report for 12/60 hour violations
             report.write(
                 "\n" + "                           total:  " + "{0:.2f}".format(float(great_total)) + "\n")
             report.close()
-            if sys.platform == "win32" and platform == "py":
-                os.startfile('kb_sub\\over_max\\' + filename)
-            if sys.platform == "win32" and platform == "winapp":
+            if sys.platform == "win32":
                 os.startfile(dir_path('over_max') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/over_max/' + filename])
@@ -7378,7 +7348,10 @@ def remove_file(folder): # removes a file and all contents
         shutil.rmtree(folder)
 
 def remove_file_var(folder): # removes a file and all contents
-    folder_name = folder.split("/")
+    if platform == "winapp":
+        folder_name = folder.split("\\")
+    else:
+        folder_name = folder.split("/")
     folder_name = folder_name[1]
     if os.path.isdir(folder) == True:
         if messagebox.askokcancel("Delete Folder Contents",
@@ -9676,9 +9649,7 @@ def spreadsheet(list_carrier, r_rings):
             wb.save(dir_path('spreadsheets') + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                          "File is named: {}".format(xl_filename), parent = root)
-            if sys.platform == "win32" and platform == "py":
-                os.startfile('kb_sub\\spreadsheets\\' + xl_filename)
-            if sys.platform == "win32" and platform == "winapp":
+            if sys.platform == "win32":
                 os.startfile(dir_path('spreadsheets') + xl_filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/spreadsheets/' + xl_filename])

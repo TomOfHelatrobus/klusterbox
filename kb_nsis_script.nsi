@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "klusterbox"
-!define PRODUCT_VERSION "3.008"
+!define PRODUCT_VERSION "4.0"
 !define PRODUCT_PUBLISHER "Thomas Weeks"
 !define PRODUCT_WEB_SITE "www.klusterbox.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\klusterbox.exe"
