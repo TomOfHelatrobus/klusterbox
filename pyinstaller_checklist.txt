@@ -146,7 +146,15 @@ if you are creating an app bundle to be installed by a NSIS installer for window
 
 	pyinstaller klusterwin.spec
 
-2. Make sure NSIS is installed on your computer. 
+2. Make sure NSIS and NISedit is installed on your computer. 
+
+3. Open NIS edit. 
+
+4. Load the kb_nsis_script.nsi file.
+
+5. Change the value of the PRODUCT_VERSION variable to the current version.
+
+3. Open the NSIS program.
 
 3. Under "Compiler" select "Compile NSI scripts".
 
