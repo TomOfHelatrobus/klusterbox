@@ -151,35 +151,45 @@ def rear_window(wd):  # This closes the window created by front_window()
 
 def dir_path(dir):
     # create needed directories if they don't exist and return the appropiate path
-    if platform == "macapp":
-        if os.path.isdir(os.path.expanduser("~") + '/Documents') == False:
-            os.makedirs(os.path.expanduser("~") + '/Documents')
-        if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox') == False:
-            os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox')
-        if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dir) == False:
-            os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dir)
-        path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir + '/'
-    if platform == "winapp":
-        if os.path.isdir(os.path.expanduser("~") + '\\Documents') == False:
-            os.makedirs(os.path.expanduser("~") + '\\Documents')
-        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox') == False:
-            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
-        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir) == False:
-            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir)
-        path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir + '\\'
-    else:
-        if os.path.isdir('kb_sub\\' + dir) == False:
-            os.makedirs(('kb_sub\\' + dir))
-        path = 'kb_sub\\' + dir + '\\'
+    if sys.platform == "darwin":
+        if platform == "macapp":
+            if os.path.isdir(os.path.expanduser("~") + '/Documents') == False:
+                os.makedirs(os.path.expanduser("~") + '/Documents')
+            if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox') == False:
+                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox')
+            if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dir) == False:
+                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dir)
+            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir + '/'
+        else:
+            if os.path.isdir('kb_sub/' + dir) == False:
+                os.makedirs(('kb_sub/' + dir))
+            path = 'kb_sub/' + dir + '/'
+    if sys.platform == "win32":
+        if platform == "winapp":
+            if os.path.isdir(os.path.expanduser("~") + '\\Documents') == False:
+                os.makedirs(os.path.expanduser("~") + '\\Documents')
+            if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox') == False:
+                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
+            if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir) == False:
+                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir)
+            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir + '\\'
+        else :
+            if os.path.isdir('kb_sub\\' + dir) == False:
+                os.makedirs(('kb_sub\\' + dir))
+            path = 'kb_sub\\' + dir + '\\'
     return path
 
 def dir_path_check(dir): # return appropiate path
-    if platform == "macapp":
-        path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir
-    if platform == "winapp":
-        path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir
-    else:
-        path = 'kb_sub\\' + dir
+    if sys.platform == "darwin":
+        if platform == "macapp":
+            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir
+        else:
+            path = 'kb_sub/' + dir
+    if sys.platform == "win32":
+        if platform == "winapp":
+            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir
+        else:
+            path = 'kb_sub\\' + dir
     return path
 
 def get_custom_nsday(): # get ns day color configurations from dbase and make dictionary
