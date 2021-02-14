@@ -168,9 +168,9 @@ def dir_path(dir):
             os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir)
         path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir + '\\'
     else:
-        if os.path.isdir('kb_sub/' + dir) == False:
-            os.makedirs(('kb_sub/' + dir))
-        path = 'kb_sub/' + dir + '/'
+        if os.path.isdir('kb_sub\\' + dir) == False:
+            os.makedirs(('kb_sub\\' + dir))
+        path = 'kb_sub\\' + dir + '\\'
     return path
 
 def dir_path_check(dir): # return appropiate path
@@ -179,7 +179,7 @@ def dir_path_check(dir): # return appropiate path
     if platform == "winapp":
         path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir
     else:
-        path = 'kb_sub/' + dir
+        path = 'kb_sub\\' + dir
     return path
 
 def get_custom_nsday(): # get ns day color configurations from dbase and make dictionary
@@ -9649,6 +9649,14 @@ def spreadsheet(list_carrier, r_rings):
             wb.save(dir_path('spreadsheets') + xl_filename)
             messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
                                                          "File is named: {}".format(xl_filename), parent = root)
+        except:
+            ok = False
+            messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
+                                                      "Suggestion: "
+                                                      "Make sure that identically named spreadsheets are closed "
+                                                      "(the file can't be overwritten while open).")
+    if ok == True:
+        try:
             if sys.platform == "win32":
                 os.startfile(dir_path('spreadsheets') + xl_filename)
             if sys.platform == "linux":
@@ -9656,7 +9664,7 @@ def spreadsheet(list_carrier, r_rings):
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('spreadsheets') + xl_filename])
         except:
-            messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
+            messagebox.showerror("Spreadsheet generator", "The spreadsheet was not opened. \n"
                                                           "Suggestion: "
                                                           "Make sure that identically named spreadsheets are closed "
                                                           "(the file can't be overwritten while open).")
