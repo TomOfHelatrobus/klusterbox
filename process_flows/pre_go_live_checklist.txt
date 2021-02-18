@@ -1,0 +1,130 @@
+PRE GO LIVE CHECKLIST
+
+************************************  General Check  *************************************
+
+good  fail  
+____  ____  Before starting the program, make sure the KB icon appears in the start menu 
+		or for the .exe file (if appropriate).
+	    Start Klusterbox.
+____  ____  from the IDE or Start Menu/Launch Pad
+____  ____  from the Applications folder (mac) or Explorer (win) for legacy version,
+		skip this for installed windows version.
+____  ____  Make sure the KB icon appears on the title bar
+____  ____  Make sure the KB icon appears on the task bar, skip if running from Windows IDE.
+____  ____  Make sure the correct version number appears in the title bar
+
+	    Navigate to the About Page: 
+
+____  ____  make sure the version number, release date and contact 
+		information is correct.
+____  ____  make sure the image appears.
+____  ____  make sure the hyper links work
+____  ____  make sure the buttons under Project Documentation work. 
+
+	    Navigate to the Location Function: 
+
+____  ____  confirm the program, database and archive are in the correct locations. 
+
+**************************************  Database  **************************************
+
+If the database contains information you want to keep and/or if you don't want the 
+database altered, then rename it so as to preserve it. Then restart klusterbox. 
+
+good  fail
+____  ____  make sure a database is generated when Klusterbox starts. 
+
+
+********************************** Core Functionality  *********************************
+
+good  fail
+____  ____  create a new station
+____  ____  set the investigation range
+____  ____  create four new carriers, one of each NL,WAL, OTDL and AUX. 
+____  ____  edit the new carrier
+____  ____  change the carrier attributes though Status Change History
+
+Enter the following information for the carriers:
+	NL 5200: 14.00, RS 20.00, mv off 11.50, mv on 12.50, rte 1111
+	WAL 5200: 15.00, RS 21.00, mv off 13.50, mv on 14.00, rte 1122
+				   mv off 14.50, mv on 15.00, rte 1133
+	OTDL 5200: 8.00, RS 16.00
+	AUX 5200: lv type annual, lv time 8.00
+
+____  ____  make sure the multi input function works
+____  ____  make sure the reports function works
+
+            Spreadsheet
+
+____  ____  make sure the run the spreadsheet to make sure it generates
+____  ____  check to see if that there are no errors with the formulas
+____  ____  check that the station, date and pay period are correct
+
+            Over Max Spreadsheet
+
+____  ____  make sure the run the over max preadsheet to make sure it generates
+____  ____  check to see if that there are no errors with the formulas
+____  ____  check that the station, date and pay period are correct
+
+
+******************************  Additional Functionality  ******************************
+
+Reports
+
+good  fail
+____  ____ generate Carrier Route and NS Day
+____  ____ generate Carrier Route
+____  ____ generate Carrier NS Day
+
+           Pay Period Generator
+
+____  ____ generate a guide for a random year
+
+
+
+************************************  PDF Converter  ***********************************
+
+good  fail
+____  ____  Navigate to PDF Converter Settings and set "Error Report" an "Raw Output 
+		Report" to "on".
+____  ____  Run "PDF Converter" 
+____  ____  make sure the PDF Converter completes successfully and gives the "The PDF 
+		Convertion is complete" message when finished.
+____  ____  using Explorer/Finder, make sure that a csv file with "..._kbpc" at the 
+		end of the file name exist next to the converted pdf.
+____  ____  review the Raw Output Report for any obvious errors.
+____  ____  compare the Error Report with the Employee Everything Report to make sure 
+		all carriers were included. 
+____  ____  compare the Error Report with the Employee Everything Report to make sure
+		that the station was properly recorded. 
+____  ____  open and check the end of the csv file and compare it with the Employee 
+		Everything Report to ensure all carriers are accounted for. 
+
+
+*************************************  CSV Readers  ************************************
+
+good  fail
+____  ____  Run the Over Max Finder
+____  ____  Run Everything Report Reader
+____  ____  Run Weekly Availablity
+____  ____  Run the Automatic Data Entry
+
+
+***************************************  Archives  *************************************
+
+
+good  fail
+____  ____  open each archive to make sure it opens the correct file dialog. 
+
+
+************************************  Management Menu  **********************************
+
+good  fail
+____  ____  open each of the functions in the management menu and check on them.  
+
+
+*****************************************  Revert  **************************************
+
+If you changed the name of the database, then delete the test database and rename the 
+actual database to mandates.sqlite 
+
+ 

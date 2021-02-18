@@ -4,7 +4,7 @@
 !define PRODUCT_NAME "klusterbox"
 !define PRODUCT_VERSION "4.0"
 !define PRODUCT_PUBLISHER "Thomas Weeks"
-!define PRODUCT_WEB_SITE "www.klusterbox.com"
+!define PRODUCT_WEB_SITE "klusterbox.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\klusterbox.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
@@ -21,6 +21,8 @@
 !insertmacro MUI_PAGE_WELCOME
 ; License page
 !insertmacro MUI_PAGE_LICENSE "C:\Users\toman\klusterbox\LICENSE.txt"
+; Directory page
+!insertmacro MUI_PAGE_DIRECTORY
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
@@ -89,6 +91,8 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR\Crypto\Util"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Util\_cpuid_c.cp37-win_amd64.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Util\_strxor.cp37-win_amd64.pyd"
+  SetOutPath "$INSTDIR"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\history.txt"
   SetOutPath "$INSTDIR\Include"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Include\pyconfig.h"
   SetOutPath "$INSTDIR"
@@ -101,8 +105,10 @@ Section "MainSection" SEC01
   CreateShortCut "$SMPROGRAMS\klusterbox\klusterbox.lnk" "$INSTDIR\klusterbox.exe"
   CreateShortCut "$DESKTOP\klusterbox.lnk" "$INSTDIR\klusterbox.exe"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\klusterbox.exe.manifest"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\klusterbox.py"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\libcrypto-1_1.dll"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\libssl-1_1.dll"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\LICENSE.txt"
   SetOutPath "$INSTDIR\PIL"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\PIL\_imaging.cp37-win_amd64.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\PIL\_imagingtk.cp37-win_amd64.pyd"
@@ -110,6 +116,8 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\pyexpat.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\python37.dll"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\readme.txt"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\requirements.txt"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\select.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\sqlite3.dll"
   SetOutPath "$INSTDIR\tcl"
@@ -1101,8 +1109,6 @@ Section "MainSection" SEC01
 SectionEnd
 
 Section -AdditionalIcons
-  WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
-  CreateShortCut "$SMPROGRAMS\klusterbox\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
   CreateShortCut "$SMPROGRAMS\klusterbox\Uninstall.lnk" "$INSTDIR\uninst.exe"
 SectionEnd
 
@@ -1129,7 +1135,6 @@ Function un.onInit
 FunctionEnd
 
 Section Uninstall
-  Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\_tkinter.pyd"
   Delete "$INSTDIR\_ssl.pyd"
@@ -2064,13 +2069,17 @@ Section Uninstall
   Delete "$INSTDIR\tcl\auto.tcl"
   Delete "$INSTDIR\sqlite3.dll"
   Delete "$INSTDIR\select.pyd"
+  Delete "$INSTDIR\requirements.txt"
+  Delete "$INSTDIR\readme.txt"
   Delete "$INSTDIR\python37.dll"
   Delete "$INSTDIR\pyexpat.pyd"
   Delete "$INSTDIR\PIL\_webp.cp37-win_amd64.pyd"
   Delete "$INSTDIR\PIL\_imagingtk.cp37-win_amd64.pyd"
   Delete "$INSTDIR\PIL\_imaging.cp37-win_amd64.pyd"
+  Delete "$INSTDIR\LICENSE.txt"
   Delete "$INSTDIR\libssl-1_1.dll"
   Delete "$INSTDIR\libcrypto-1_1.dll"
+  Delete "$INSTDIR\klusterbox.py"
   Delete "$INSTDIR\klusterbox.exe.manifest"
   Delete "$INSTDIR\klusterbox.exe"
   Delete "$INSTDIR\kb_icon2.jpg"
@@ -2078,6 +2087,7 @@ Section Uninstall
   Delete "$INSTDIR\kb_icon2.gif"
   Delete "$INSTDIR\kb_about.jpg"
   Delete "$INSTDIR\Include\pyconfig.h"
+  Delete "$INSTDIR\history.txt"
   Delete "$INSTDIR\Crypto\Util\_strxor.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Util\_cpuid_c.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\PublicKey\_ec_ws.cp37-win_amd64.pyd"
@@ -2116,11 +2126,6 @@ Section Uninstall
   Delete "$INSTDIR\Crypto\Cipher\_chacha20.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_ARC4.cp37-win_amd64.pyd"
   Delete "$INSTDIR\base_library.zip"
-
-  Delete "$SMPROGRAMS\klusterbox\Uninstall.lnk"
-  Delete "$SMPROGRAMS\klusterbox\Website.lnk"
-  Delete "$DESKTOP\klusterbox.lnk"
-  Delete "$SMPROGRAMS\klusterbox\klusterbox.lnk"
 
   RMDir "$SMPROGRAMS\klusterbox"
   RMDir "$INSTDIR\tk\ttk"
@@ -2166,8 +2171,14 @@ Section Uninstall
   RMDir "$INSTDIR\Crypto\Math"
   RMDir "$INSTDIR\Crypto\Hash"
   RMDir "$INSTDIR\Crypto\Cipher"
+  RMDir "$INSTDIR\Crypto"
+  RMDir "$INSTDIR\tcl8"
   RMDir "$INSTDIR"
-
+  
+  Delete "$SMPROGRAMS\klusterbox\Uninstall.lnk"
+  Delete "$DESKTOP\klusterbox.lnk"
+  Delete "$SMPROGRAMS\klusterbox\klusterbox.lnk"
+  
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   DeleteRegKey HKLM "${PRODUCT_DIR_REGKEY}"
   SetAutoClose true

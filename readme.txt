@@ -13,7 +13,7 @@ released: January 11, 2021
 
 Caution: 
 
-To ensure proper operation of Klusterbox, make sure to keep the Klusterbox application and the kb_sub folder in the same folder.  
+To ensure proper operation of Klusterbox in Windows Legacy versions, make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.  
 
 Overview:
 
