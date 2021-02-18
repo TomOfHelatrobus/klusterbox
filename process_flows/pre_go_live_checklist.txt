@@ -42,6 +42,12 @@ good  fail
 ____  ____  create a new station
 ____  ____  set the investigation range
 ____  ____  create four new carriers, one of each NL,WAL, OTDL and AUX. 
+
+	aaa, a NL, yellow, rte 1101
+	bbb, b, WAL, blue, rte 1102
+	ccc, c OTDL, green, rte 1103
+	ddd, d AUX, - , - 
+
 ____  ____  edit the new carrier
 ____  ____  change the carrier attributes though Status Change History
 
@@ -63,7 +69,7 @@ ____  ____  check that the station, date and pay period are correct
 
             Over Max Spreadsheet
 
-____  ____  make sure the run the over max preadsheet to make sure it generates
+____  ____  make sure the run the over max spreadsheet to make sure it generates
 ____  ____  check to see if that there are no errors with the formulas
 ____  ____  check that the station, date and pay period are correct
 
@@ -90,7 +96,7 @@ ____  ____  Navigate to PDF Converter Settings and set "Error Report" an "Raw Ou
 		Report" to "on".
 ____  ____  Run "PDF Converter" 
 ____  ____  make sure the PDF Converter completes successfully and gives the "The PDF 
-		Convertion is complete" message when finished.
+		Conversion is complete" message when finished.
 ____  ____  using Explorer/Finder, make sure that a csv file with "..._kbpc" at the 
 		end of the file name exist next to the converted pdf.
 ____  ____  review the Raw Output Report for any obvious errors.
@@ -107,8 +113,9 @@ ____  ____  open and check the end of the csv file and compare it with the Emplo
 good  fail
 ____  ____  Run the Auto Over Max Finder
 ____  ____  Run Everything Report Reader
-____  ____  Run Weekly Availablity
 ____  ____  Run the Automatic Data Entry
+____  ____  Run Weekly Availability
+
 
 
 ***************************************  Archives  *************************************
