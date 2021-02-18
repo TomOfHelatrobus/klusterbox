@@ -18,7 +18,7 @@ Visit https://github.com/TomOfHelatrobus/klusterbox for the most recent source c
 This version of Klusterbox is being released under the GNU General Public License version 3.
 """
 # version variables
-version = "4.0"
+version = "4.001"
 release_date = "February 11, 2021"
 
 # Standard Libraries
@@ -7357,7 +7357,7 @@ def remove_file(folder): # removes a file and all contents
         shutil.rmtree(folder)
 
 def remove_file_var(folder): # removes a file and all contents
-    if platform == "winapp":
+    if sys.platform == "win32":
         folder_name = folder.split("\\")
     else:
         folder_name = folder.split("/")
