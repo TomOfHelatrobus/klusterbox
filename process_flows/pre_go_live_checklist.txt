@@ -5,10 +5,12 @@ PRE GO LIVE CHECKLIST
 good  fail  
 ____  ____  Before starting the program, make sure the KB icon appears in the start menu 
 		or for the .exe file (if appropriate).
+
 	    Start Klusterbox.
+
 ____  ____  from the IDE or Start Menu/Launch Pad
 ____  ____  from the Applications folder (mac) or Explorer (win) for legacy version,
-		skip this for installed windows version.
+		skip this for installed or python windows version.
 ____  ____  Make sure the KB icon appears on the title bar
 ____  ____  Make sure the KB icon appears on the task bar, skip if running from Windows IDE.
 ____  ____  Make sure the correct version number appears in the title bar
@@ -103,7 +105,7 @@ ____  ____  open and check the end of the csv file and compare it with the Emplo
 *************************************  CSV Readers  ************************************
 
 good  fail
-____  ____  Run the Over Max Finder
+____  ____  Run the Auto Over Max Finder
 ____  ____  Run Everything Report Reader
 ____  ____  Run Weekly Availablity
 ____  ____  Run the Automatic Data Entry
