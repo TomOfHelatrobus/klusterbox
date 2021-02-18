@@ -9,22 +9,11 @@
 Klusterbox
 Copyright 2019 Thomas Weeks
 
-Non-standard libraries: (located in requirements.txt file)
-chardet==3.0.4
-et-xmlfile==1.0.1
-jdcal==1.4.1
-openpyxl==3.0.3
-pdfminer.six==20181108
-pycryptodome==3.9.7
-PyPDF2==1.26.0
-six==1.14.0
-sortedcontainers==2.1.0
-pillow==8.0.1
+Caution: To ensure proper operation of Klusterbox outside Program Files (Windows) or Applications (mac OS),
+make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.
 
-Caution: To ensure proper operation of Klusterbox, make sure to keep the Klusterbox application and the kb_sub folder
-in the same folder.
-
-For the newest version of Klusterbox, visit www.klusterbox.com/download. The source code is also available there.
+For the newest version of Klusterbox, visit www.klusterbox.com/download.
+Visit https://github.com/TomOfHelatrobus/klusterbox for the most recent source code.
 
 This version of Klusterbox is being released under the GNU General Public License version 3.
 """
@@ -50,6 +39,7 @@ import subprocess
 import io
 from io import StringIO  # change from cStringIO to io for py 3x
 import time
+import webbrowser # for hyper link at about_klusterbox()
 # Pillow Library
 from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
@@ -67,6 +57,7 @@ from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 
+# query the database
 def inquire(sql):
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
@@ -86,7 +77,7 @@ def inquire(sql):
                              "\n Attempted Query: {}".format(sql))
     db.close()
 
-
+# write to the database
 def commit(sql):
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
@@ -110,6 +101,7 @@ def dt_converter(string):  # converts a string of a datetime to an actual dateti
     dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
     return dt
 
+
 def macadj(win,mac): # switch between variables depending on platform
     if sys.platform == "darwin":
         arg = mac
@@ -117,8 +109,9 @@ def macadj(win,mac): # switch between variables depending on platform
         arg = win
     return arg
 
-def front_window(self):  # Sets up a tkinter page with buttons on the bottom
-    if self != "none": self.destroy()  # close out the previous frame
+
+def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
+    if frame != "none": frame.destroy()  # close out the previous frame
     F = Frame(root)  # create new frame
     F.pack(fill=BOTH, side=LEFT)
     buttons = Canvas(F)  # button bar
@@ -149,8 +142,7 @@ def rear_window(wd):  # This closes the window created by front_window()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
 
-def dir_path(dir):
-    # create needed directories if they don't exist and return the appropiate path
+def dir_path(dir): # create needed directories if they don't exist and return the appropriate path
     if sys.platform == "darwin":
         if platform == "macapp":
             if os.path.isdir(os.path.expanduser("~") + '/Documents') == False:
@@ -179,7 +171,7 @@ def dir_path(dir):
             path = 'kb_sub\\' + dir + '\\'
     return path
 
-def dir_path_check(dir): # return appropiate path
+def dir_path_check(dir): # return appropriate path depending on platorm
     if sys.platform == "darwin":
         if platform == "macapp":
             path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir
@@ -204,7 +196,7 @@ def get_custom_nsday(): # get ns day color configurations from dbase and make di
     ns_dict["none"] = "none"  # add "none" to dictionary
     return ns_dict
 
-def gui_config_apply(frame, wheel_selection):
+def gui_config_apply(frame, wheel_selection): # set mousewheel orientation
     global mousewheel
     if wheel_selection.get()=="natural":
         wheel_multiple = int(1)
@@ -216,7 +208,8 @@ def gui_config_apply(frame, wheel_selection):
     commit(sql)
     gui_config(frame)
 
-def gui_config(frame):
+
+def gui_config(frame): # generate page to adjust gui configurations
     # retrieve mousewheel info- mouse wheel scroll direction
     sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % ("mousewheel")
     results = inquire(sql)
@@ -244,7 +237,8 @@ def gui_config(frame):
            command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
     rear_window(wd)
 
-def rpt_impman(list_carrier):
+
+def rpt_impman(list_carrier): # generate report for improper mandates
     date = g_date[0]
     dates = []  # array containing days.
     if g_range == "week":
@@ -642,6 +636,7 @@ def rpt_carrier_route(carrier_list): # Generate and display a report of carrier 
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
+
 def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier ns day
     ns_dict = get_custom_nsday() # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -681,7 +676,8 @@ def rpt_carrier_nsday(carrier_list): # Generate and display a report of carrier 
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
 
-def clean_rings3_table():
+
+def clean_rings3_table(): # database maintenance
     sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
     result = inquire(sql)
     type = ""
@@ -699,7 +695,8 @@ def clean_rings3_table():
                             "table of the database. No action taken.")
     return
 
-def overmax_spreadsheet(carrier_list):
+
+def overmax_spreadsheet(carrier_list): # generate the overmax spreadsheet
     date = g_date[0]
     dates = []  # array containing days.
     if g_range == "week":
@@ -1534,7 +1531,7 @@ def overmax_spreadsheet(carrier_list):
                                                           "(the file can't be overwritten while open).")
 
 
-def ns_config_apply(frame, text_array, color_array):
+def ns_config_apply(frame, text_array, color_array): # set ns configurations from Non-Scheduled Day Configurations page
     for t in text_array:
         if len(t.get()) > 6:
             messagebox.showerror("Non_Scheduled Day Configuration",
@@ -1553,7 +1550,7 @@ def ns_config_apply(frame, text_array, color_array):
     ns_config(frame)
 
 
-def ns_config_reset(frame):
+def ns_config_reset(frame): # reset ns day configurations from Non-Scheduled Day Configurations page
     fill = ("gold", "navy", "forest green", "saddle brown", "red3", "gray10")
     colors = ("yellow", "blue", "green", "brown", "red", "black")
     for i in range(6):
@@ -1564,7 +1561,7 @@ def ns_config_reset(frame):
     ns_config(frame)
 
 
-def ns_config(frame):
+def ns_config(frame): # generate Non-Scheduled Day Configurations page to configure ns day settings
     if gs_day == "x":
         messagebox.showerror("Non-Scheduled Day Configurations",
                              "You must set the Investigation Range before changing the NS Day Configurations.")
@@ -1675,8 +1672,8 @@ def get_new_path(new_path):  # Created for pdf splitter - creates/overwrites a p
     new_path.set(save_filename)
 
 
+# check for empty fields / return if there are any errors
 def pdf_splitter_apply(subject_path, firstpage, lastpage, new_path):
-    # check for empty fields / return if there are any errors
     if subject_path == "":
         messagebox.showerror("Klusterbox PDF Splitter", "You must select a pdf file to split.")
         return
@@ -1904,7 +1901,7 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
                                      "You will either have to obtain the Employee Everything Report "
                                      "in the csv format from management or manually enter in the "
                                      "information")
-    
+
     return text
 
 
@@ -2808,8 +2805,7 @@ def pdf_converter():
 def informalc_grvchange(frame, passed_result, old_num, new_num):
     l_passed_result = [list(x) for x in passed_result]  # chg tuple of tuples to list of lists
     ok = messagebox.askokcancel("Grievance Number Change", "This will change the grievance number from {} to {} in all "
-                                                           "records. Are you sure you want to proceed?".format(old_num,
-                                                                                                               new_num.get()))
+                               "records. Are you sure you want to proceed?".format(old_num,new_num.get()))
     if ok == True:
         if new_num.get().strip() == "":
             messagebox.showerror("Invalid Data Entry", "You must enter a grievance number")
@@ -3014,8 +3010,7 @@ def informalc_check_grv(grv_no, incident_start, incident_end, date_signed, stati
     return check
 
 
-def informalc_check_grv_2(incident_start, incident_end,
-                          date_signed, gats_number, description):
+def informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number, description):
     dates = [incident_start, incident_end, date_signed]
     date_ids = ("starting incident date", "ending incident date", "date signed")
     i = 0
@@ -3163,7 +3158,8 @@ def informalc_root(passed_result, grv_no):
             pass
     if sys.platform == "win32" and platform == "winapp":
         try:
-            new_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+            # new_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+            new_root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
         except:
             pass
     if sys.platform == "darwin" and platform == "py":
@@ -3278,15 +3274,15 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                 return
         if rate and amount:
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both rate and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+                             "amount. You can only enter one or another, but not both. Awards can be in the form of "
+                             "hours at a given rate OR an amount.".format(name, str(i + 1)))
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if rate and amount:
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both rate and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+                             "amount. You can only enter one or another, but not both. Awards can be in the form of "
+                             "hours at a given rate OR an amount.".format(name, str(i + 1)))
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -3345,10 +3341,11 @@ def informalc_addaward2(frame, passed_result, grv_no):
     global informalc_addframe
     wd = front_window(frame)
     informalc_addframe = wd[0]
-    Label(wd[3], text="Add/Update Settlement Awards", font=macadj("bold","Helvetica 18")).grid(row=0, column=0, sticky="w", columnspan=4)
+    Label(wd[3], text="Add/Update Settlement Awards", font=macadj("bold","Helvetica 18"))\
+        .grid(row=0, column=0, sticky="w", columnspan=4)
     Label(wd[3], text=" ".format(informalc_addframe)).grid(row=1, column=0)
-    Label(wd[3], text="   Grievance Number: {}".format(grv_no), fg="blue").grid(row=2, column=0, sticky="w",
-                                                                                columnspan=4)
+    Label(wd[3], text="   Grievance Number: {}".format(grv_no), fg="blue")\
+        .grid(row=2, column=0, sticky="w",columnspan=4)
     sql = "SELECT grv_no,rowid,carrier_name,hours,rate,amount FROM informalc_awards WHERE grv_no ='%s' " \
           "ORDER BY carrier_name" % grv_no
     result = inquire(sql)
@@ -4410,7 +4407,8 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
             pass
     if sys.platform == "win32" and platform == "winapp":
         try:
-            poe_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+            # poe_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+            poe_root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
         except:
             pass
     if sys.platform == "darwin" and platform == "py":
@@ -4649,6 +4647,7 @@ def informalc(frame):
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: (wd[0].destroy(), main_frame())).grid(row=0,
                                                                                                               column=0)
     rear_window(wd)
+
 
 def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availability
     file_path = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=[("Excel files", "*.csv *.xls")])
@@ -5006,17 +5005,17 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
         main_frame()
 
 
-def station_rec_del(self, tacs, kb):
+def station_rec_del(frame, tacs, kb):
     sql = "DELETE FROM station_index WHERE tacs_station = '%s' and kb_station='%s'" % (tacs, kb)
     commit(sql)
-    self.destroy()
+    frame.destroy()
     station_index_mgmt("none")
 
 
-def station_index_rename_apply(self, tacs, newname):
+def station_index_rename_apply(frame, tacs, newname):
     sql = "UPDATE station_index SET kb_station='%s' WHERE tacs_station='%s'" % (newname.get(), tacs)
     commit(sql)
-    station_index_mgmt(self)
+    station_index_mgmt(frame)
 
 
 def station_index_rename(self, frame, tacs, kb, newname, button, all_stations):
@@ -5029,20 +5028,20 @@ def station_index_rename(self, frame, tacs, kb, newname, button, all_stations):
         om_station.config(width=28, anchor="w")
         om_station.grid(row=1, column=1)
         newname.set(kb)
-        Button(frame, text="rename", command=lambda: station_index_rename_apply(self, tacs, newname)).grid(row=1,
-                                                                                                           column=2)
+        Button(frame, text="rename", command=lambda: station_index_rename_apply(self, tacs, newname))\
+            .grid(row=1,column=2)
     else:
         Label(frame, text="No Unassigned Stations Available").grid(row=1, column=0, columnspan=2, sticky="e")
 
 
-def stationindexer_del_all(self):
+def stationindexer_del_all():
     sql = "DELETE FROM station_index"
     commit(sql)
     station_index_mgmt("none")
 
 
-def station_index_mgmt(self):
-    wd = front_window(self)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
+def station_index_mgmt(frame):
+    wd = front_window(frame)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     g = 0
     Label(wd[3], text="Station Index Management", font=macadj("bold","Helvetica 18")).grid(row=g, column=0, sticky="w")
     Label(wd[3], text="").grid(row=g + 1, column=0)
@@ -5093,24 +5092,24 @@ def station_index_mgmt(self):
             f += 1
             g += 1
         Label(wd[3], text="", height=1).grid(row=g)
-        Button(wd[3], text="Delete All", width="15", command=lambda: (wd[0].destroy(), stationindexer_del_all(wd[0]))) \
+        Button(wd[3], text="Delete All", width="15", command=lambda: (wd[0].destroy(), stationindexer_del_all())) \
             .grid(row=g+1, column=0, columnspan=3, sticky="e")
     Button(wd[4], text="Go Back", width=20, anchor="w",
            command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
     rear_window(wd)
 
 
-def apply_nameindexer_list(self, x):
+def apply_nameindexer_list(frame, x):
     sql = "DELETE FROM name_index WHERE emp_id = '%s'" % x
     commit(sql)
-    self.destroy()
+    frame.destroy()
     name_index_screen()
 
 
-def del_all_nameindexer(self):
+def del_all_nameindexer(frame):
     sql = "DELETE FROM name_index"
     commit(sql)
-    self.destroy()
+    frame.destroy()
     name_index_screen()
 
 
@@ -5295,7 +5294,7 @@ def gen_nameindex_dict():
     return n_dict
 
 
-def auto_indexer_1(self, file_path):  # pair station from tacs to correct station in klusterbox/ part 1
+def auto_indexer_1(frame, file_path):  # pair station from tacs to correct station in klusterbox/ part 1
     auto_precheck()
     with open(file_path, newline="") as file:
         a_file = csv.reader(file)
@@ -5339,7 +5338,7 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
     kb_stations = []
     for record in results:
         kb_stations.append(record[0])
-    self.destroy()
+    frame.destroy()
     F = Frame(root)
     F.pack(fill=BOTH, side=LEFT)
     S = Scrollbar(F)  # link up the canvas and scrollbar
@@ -5409,7 +5408,7 @@ def auto_indexer_1(self, file_path):  # pair station from tacs to correct statio
         mainloop()
 
 
-def apply_auto_indexer_1(self, file_path, tacs_station, station_sorter, station_new,  t_date, t_range):
+def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station_new,  t_date, t_range):
     sql = "SELECT kb_station FROM station_index"
     result = inquire(sql)
     station_index = []
@@ -5418,10 +5417,10 @@ def apply_auto_indexer_1(self, file_path, tacs_station, station_sorter, station_
     global list_of_stations
     station_new = station_new.strip()
     if station_sorter == "select matching station":
-        messagebox.showerror("Data Entry Error", "You must select a station or ADD STATION", parent=self)
+        messagebox.showerror("Data Entry Error", "You must select a station or ADD STATION", parent=frame)
         return
     elif station_sorter == "ADD STATION" and station_new == "":
-        messagebox.showerror("Data Entry Error", "You must provide a name for the new station.", parent=self)
+        messagebox.showerror("Data Entry Error", "You must provide a name for the new station.", parent=frame)
         return
     elif station_sorter == "ADD STATION" and station_new != "":
         if station_new not in list_of_stations:
@@ -5446,10 +5445,10 @@ def apply_auto_indexer_1(self, file_path, tacs_station, station_sorter, station_
         messagebox.showinfo("Database Updated",
                             "The {} station has been paired to the {} station. In the future, this association "
                             "will be automatically recognized.".format(tacs_station, station_sorter))
-    auto_indexer_2(self, file_path, t_date, tacs_station, t_range)
+    auto_indexer_2(frame, file_path, t_date, tacs_station, t_range)
 
 
-def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing screen #1
+def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing screen #1
     s_year = t_date.strftime("%Y")
     s_mo = t_date.strftime("%m")
     s_day = t_date.strftime("%d")
@@ -5584,14 +5583,14 @@ def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing s
         name_index.append(line[1])
     # route to appropriate function based on array contents
     if len(tacs_list) < 1 and len(new_carrier) < 1 and len(check_these) < 1:  # all tacs list resolved/ nothing to check
-        auto_indexer_6(self, file_path)  # to straight to entering rings
+        auto_indexer_6(frame, file_path)  # to straight to entering rings
     elif len(tacs_list) < 1 and len(new_carrier) > 0:  # all tacs list resolved/ new names unresolved
-        auto_indexer_4(self, file_path, new_carrier, check_these)  # add new carriers in AI6
+        auto_indexer_4(frame, file_path, new_carrier, check_these)  # add new carriers in AI6
     elif len(tacs_list) < 1 and len(new_carrier) < 1 and len(
             check_these) > 0:  # tacs and new carriers resolved/ carriers to check
-        auto_indexer_5(self, file_path, check_these)  # step to AI  to check discrepancies
+        auto_indexer_5(frame, file_path, check_these)  # step to AI  to check discrepancies
     else:  # If there are candidates sort, generate PAIRING SCREEN 1
-        self.destroy()
+        frame.destroy()
         F = Frame(root)
         F.pack(fill=BOTH, side=LEFT)
         C1 = Canvas(F)
@@ -5667,7 +5666,7 @@ def auto_indexer_2(self, file_path, t_date, tacs_station, t_range):  # Pairing s
         mainloop()
 
 
-def auto_indexer_3(self, file_path, tacs_list, name_sorter, tried_names, new_carrier, check_these):
+def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_carrier, check_these):
     # apply pairing screen #1 and create pairing screen #2
     i = 0  # count iterations of loops
     dis = 0  # count of discarded items
@@ -5716,7 +5715,7 @@ def auto_indexer_3(self, file_path, tacs_list, name_sorter, tried_names, new_car
         if item[0] not in c_list and item[0] not in tried_names and item[0] not in name_index:
             c_list.append(item[0])
     name_sorter = []  # page contents
-    self.destroy()  # destroy old frame and build new frame
+    frame.destroy()  # destroy old frame and build new frame
     F = Frame(root)
     F.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(F)
@@ -5801,7 +5800,7 @@ def indexer_default(widget, count, options, choice):  # changes the default for 
         widget[i].set(options[choice])
 
 
-def apply_auto_indexer_3(self, buttons, file_path, tacs_list, name_sorter, new_carrier, c_list,
+def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_carrier, c_list,
                          check_these):  # apply pairing screen 2
     # process incoming data
     i = 0  # count iterations of the loops.
@@ -5908,16 +5907,16 @@ def apply_auto_indexer_3(self, buttons, file_path, tacs_list, name_sorter, new_c
         count += 1
 
     if len(to_addname) > 0:
-        auto_indexer_4(self, file_path, to_addname, check_these)
+        auto_indexer_4(frame, file_path, to_addname, check_these)
     elif len(check_these) > 0:
-        auto_indexer_5(self, file_path, check_these)
+        auto_indexer_5(frame, file_path, check_these)
     else:
-        auto_indexer_6(self, file_path)
+        auto_indexer_6(frame, file_path)
 
 
-def auto_indexer_4(self, file_path, to_addname, check_these):  # add new carriers to carrier table / pairing screen #3
+def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carriers to carrier table / pairing screen #3
     days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    self.destroy()
+    frame.destroy()
     opt_nsday = []  # make an array of "day / color" options for option menu
     full_ns_dict = {}
     # get ns structure preference from database
@@ -6036,11 +6035,11 @@ def auto_indexer_4(self, file_path, to_addname, check_these):  # add new carrier
     mainloop()
 
 
-def apply_auto_indexer_4(self, buttons, file_path, carrier_name, l_s, l_ns, route,
+def apply_auto_indexer_4(frame, buttons, file_path, carrier_name, l_s, l_ns, route,
                          check_these):  # adds new carriers to the carriers table
     if g_range == "week": eff_date = g_date[0]
     if g_range == "day": eff_date = d_date
-    station = StringVar(self)  # put station var in a StringVar object
+    station = StringVar(frame)  # put station var in a StringVar object
     station.set(g_station)
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.pack(side=LEFT)
@@ -6051,9 +6050,9 @@ def apply_auto_indexer_4(self, buttons, file_path, carrier_name, l_s, l_ns, rout
     for i in range(len(carrier_name)):
         pb["value"] = i  # increment progress bar
         passed_ns = l_ns[i].get().split(" - ")  # clean the passed ns day data
-        clean_ns = StringVar(self)  # put ns day var in StringVar object
+        clean_ns = StringVar(frame)  # put ns day var in StringVar object
         clean_ns.set(passed_ns[1])
-        apply_2(eff_date, carrier_name[i], l_s[i], clean_ns, route[i], station, self)
+        apply_2(eff_date, carrier_name[i], l_s[i], clean_ns, route[i], station, frame)
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
@@ -6064,9 +6063,9 @@ def apply_auto_indexer_4(self, buttons, file_path, carrier_name, l_s, l_ns, rout
         result = inquire(sql)
         if result: results.append(result)
     if len(results) >= len(carrier_name) and len(check_these) > 0:
-        auto_indexer_5(self, file_path, check_these)
+        auto_indexer_5(frame, file_path, check_these)
     elif len(results) >= len(carrier_name):
-        auto_indexer_6(self, file_path)
+        auto_indexer_6(frame, file_path)
     else:
         return
 
@@ -6083,10 +6082,10 @@ def gen_rev_ns_dict():  # creates full day/color ns day dictionary
     return code_ns
 
 
-def auto_indexer_5(self, file_path, check_these):  # correct discrepancies
-    if len(check_these) == 0: auto_indexer_6(self, file_path)
+def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
+    if len(check_these) == 0: auto_indexer_6(frame, file_path)
     check_these.sort(key=itemgetter(1))  # sort the incoming tacs information
-    self.destroy()
+    frame.destroy()
     opt_nsday = []  # make an array of "day / color" options for option menu
     ns_opt_dict = {}  # creates a dictionary of ns colors/ options for menu
     for each in ns_code:  # creates the option menu options for ns day menu
@@ -6235,7 +6234,7 @@ def auto_indexer_5(self, file_path, check_these):  # correct discrepancies
         rear_window(wd)  # get rear window objects
 
 
-def apply_auto_indexer_5(self, buttons, file_path, carrier_name, l_s, l_ns, e_route, l_station, check_these):
+def apply_auto_indexer_5(frame, buttons, file_path, carrier_name, l_s, l_ns, e_route, l_station, check_these):
     # adds new carriers to the carriers table
     if g_range == "week": eff_date = g_date[0]
     if g_range == "day": eff_date = d_date
@@ -6248,28 +6247,28 @@ def apply_auto_indexer_5(self, buttons, file_path, carrier_name, l_s, l_ns, e_ro
     for i in range(len(carrier_name)):
         pb["value"] = i  # increment progress bar
         passed_ns = l_ns[i].get().split(" - ")  # clean the passed ns day data
-        clean_ns = StringVar(self)  # put ns day var in StringVar object
+        clean_ns = StringVar(frame)  # put ns day var in StringVar object
         clean_ns.set(passed_ns[1])
-        check = apply_2_auto_indexer_5(eff_date, carrier_name[i], l_s[i], clean_ns, e_route[i], l_station[i], self)
+        check = apply_2_auto_indexer_5(eff_date, carrier_name[i], l_s[i], clean_ns, e_route[i], l_station[i], frame)
         if check == "error":
-            self.destroy()
-            auto_indexer_5(self, file_path, check_these)
+            frame.destroy()
+            auto_indexer_5(frame, file_path, check_these)
             break
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
     pb.destroy()
-    auto_indexer_6(self, file_path)
+    auto_indexer_6(frame, file_path)
 
 
-def apply_2_auto_indexer_5(date, carrier, ls, ns, route, station, self):
+def apply_2_auto_indexer_5(date, carrier, ls, ns, route, station, frame):
     route_list = route.get().split("/")
     if len(route.get()) > 24:
         messagebox.showerror("Route number input error", "There can be no more than five routes per carrier "
                                                          "(for T6 carriers).\n Routes numbers can be no more than four digits long.\n"
                                                          "If there are multiple routes, route numbers must be separated by "
                                                          "the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use "
-                                                         "commas or empty spaces", parent=self)
+                                                         "commas or empty spaces", parent=frame)
         return "error"
     for item in route_list:
         item = item.strip()
@@ -6278,11 +6277,11 @@ def apply_2_auto_indexer_5(date, carrier, ls, ns, route, station, self):
                 messagebox.showerror("Route number input error", 'Routes numbers must be four digits long.\n'
                                                                  'If there are multiple routes, route numbers must be separated by '
                                                                  'the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use '
-                                                                 'commas or empty spaces', parent=self)
+                                                                 'commas or empty spaces', parent=frame)
                 return "error"
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error", "Route numbers must be numbers and can not contain "
-                                                             "letters", parent=self)
+                                                             "letters", parent=frame)
             return "error"
     route_input = route.get()
     if route_input == "0000":
@@ -6309,7 +6308,7 @@ def apply_2_auto_indexer_5(date, carrier, ls, ns, route, station, self):
         commit(sql)
 
 
-def auto_indexer_6(self,file_path):  # identify and remove any carriers in the carrier
+def auto_indexer_6(frame,file_path):  # identify and remove any carriers in the carrier
                                     # list who are not in the TACS list
     carrier_list = gen_carrier_list()  # create names_list array
     names_list = []
@@ -6346,7 +6345,7 @@ def auto_indexer_6(self,file_path):  # identify and remove any carriers in the c
     for name in names_list:  # for each name in carrier list
         if name not in t_names:  # if they are not also in the tacs data
             ex_carrier.append(name)  # then add them to the array
-    wd = front_window(self)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
+    wd = front_window(frame)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     header = Frame(wd[3])
     header.grid(row=0, columnspan=5, sticky="w")
     Label(header, text="Carriers No Longer At Station", font="bold,", pady=10) \
@@ -6407,7 +6406,7 @@ def auto_indexer_6(self,file_path):  # identify and remove any carriers in the c
         rear_window(wd)
 
 
-def apply_auto_indexer_6(self, buttons, file_path, carrier_name, list_status, ns_day, route, station, new_station):
+def apply_auto_indexer_6(frame, buttons, file_path, carrier_name, list_status, ns_day, route, station, new_station):
     date = g_date[0]
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.pack(side=LEFT)
@@ -6419,16 +6418,16 @@ def apply_auto_indexer_6(self, buttons, file_path, carrier_name, list_status, ns
         pb["value"] = i  # increment progress bar
         if station[i].get() != new_station[i].get():
             apply_2_auto_indexer_5(date, carrier_name[i].get(), list_status[i], ns_day[i], route[i], new_station[i],
-                                   self)
+                                   frame)
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
     pb.destroy()
-    auto_skimmer(self, file_path)
+    auto_skimmer(frame, file_path)
 
 
-def auto_skimmer(self, file_path):
-    self.destroy()
+def auto_skimmer(frame, file_path):
+    frame.destroy()
     global allow_zero_top
     global allow_zero_bottom
     global skippers
@@ -6716,21 +6715,21 @@ def auto_daily_analysis(rings):
         return (proto_array)  # send it back to auto weekly analysis()
 
 
-def call_indexers(self):
+def call_indexers(frame):
     file_path = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=[("Excel files", "*.csv *.xls")])
     if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
-        auto_indexer_1(self, file_path)
+        auto_indexer_1(frame, file_path)
     else:
         messagebox.showerror("Report Generator", "The file you have selected is not a .csv or .xls file. "
                                                  "You must select a file with a .csv or .xls extension.")
 
 
-def save_all(self):
+def save_all(frame):
     messagebox.showinfo("For Your Information ",
                         "All data has already been saved. Data is saved to the\n"
                         "database whenever an apply or submit button is pressed.\n"
                         "This button does nothing. :)",
-                        parent=self)
+                        parent=frame)
 
 
 def find_move_sets(moves):
@@ -6894,8 +6893,8 @@ def ee_skimmer():
         return
 
 
-def pay_period_guide(self):
-    year = simpledialog.askinteger("Pay Period Guide", "Enter the year you want generated.", parent=self,
+def pay_period_guide(frame):
+    year = simpledialog.askinteger("Pay Period Guide", "Enter the year you want generated.", parent=frame,
                                    minvalue=2, maxvalue=9999)
     if year != None:
         firstday = datetime(1, 12, 22, 0, 0, 0)
@@ -7375,7 +7374,7 @@ def remove_file_var(folder): # removes a file and all contents
         messagebox.showwarning("Delete Folder Contents", "The {} folder is already empty".format(folder_name))
 
 
-def location_klusterbox(self):  # provides the location of the program
+def location_klusterbox(frame):  # provides the location of the program
     if sys.platform == "darwin":
         if platform == "macapp":
             path = "Applications"
@@ -7399,11 +7398,32 @@ def location_klusterbox(self):  # provides the location of the program
                         "On this computer Klusterbox is located at:\n"
                         "{}\n\nThe Klusterbox database is located at \n"
                         "{}\n\nThe Klusterbox archive is located at \n"
-                        "{}".format(path,dbase,archive), parent=self)
+                        "{}".format(path,dbase,archive), parent=frame)
+
+def open_docs(doc): # opens docs in the about_klusterbox() function
+    try:
+        if sys.platform == "win32":
+            if platform == "py":
+                os.startfile(doc)
+            if platform == "winapp":
+                os.startfile(os.getcwd() + "\\" + doc)
+        if sys.platform == "linux":
+            subprocess.call(doc)
+        if sys.platform == "darwin":
+            if platform == "macapp":
+                subprocess.call(["open",'Applications/klusterbox.app/Contents/Resources/' + doc])
+            if platform == "py":
+                subprocess.call(["open", doc])
+    except:
+        messagebox.showerror("Project Documents", "The document was not opened or found.")
 
 
-def about_klusterbox(self):  # gives information about the program
-    self.destroy()
+def callback(url): # open hyperlinks at about_klusterbox()
+    webbrowser.open_new(url)
+
+
+def about_klusterbox(frame):  # gives information about the program
+    frame.destroy()
     F = Frame(root)
     F.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(F)
@@ -7428,43 +7448,120 @@ def about_klusterbox(self):  # gives information about the program
     # create the frame inside the canvas
     FF = Frame(C)
     C.create_window((0, 0), window=FF, anchor=NW)
+    r = 0 # set row counter
     # page contents
     try:
         if platform == "macapp":
             path = 'Applications/klusterbox.app/Contents/Resources/kb_about.jpg'
         if platform == "winapp":
-            path = 'C:\\Program Files (x86)\\klusterbox\\kb_about.jpg'
+            path = os.getcwd() + "\\" + "kb_about.jpg"
         else:
             path = 'kb_sub/kb_images/kb_about.jpg'
         photo = ImageTk.PhotoImage(Image.open(path))
-        Label(FF, image=photo).pack(fill=X)
+        Label(FF, image=photo).grid(row=r,column=0, columnspan=10, sticky="w" )
     except:
         pass
-    Label(FF, text="Klusterbox", font=macadj("bold","Helvetica 18"), fg="red", anchor=W).pack(fill=X)
-    Label(FF, text="version: {}".format(version), anchor=W).pack(fill=X)
-    Label(FF, text="release date: {}".format(release_date), anchor=W).pack(fill=X)
-    Label(FF, text="created by Thomas Weeks", anchor=W).pack(fill=X)
-    Label(FF, text="Original release: October 2018", anchor=W).pack(fill=X)
-    Label(FF, text=" ", anchor=W).pack(fill=X)
-    Label(FF, text="comments and criticisms are welcome", anchor=W, fg="blue").pack(fill=X)
-    Label(FF, text=" ", anchor=W).pack(fill=X)
-    Label(FF, text="contact information: ", anchor=W).pack(fill=X)
-    Label(FF, text="", anchor=W).pack(fill=X)
-    Label(FF, text="Thomas Weeks", anchor=W).pack(fill=X)
-    Label(FF, text="tomandsusan4ever@msn.com", anchor=W).pack(fill=X)
-    Label(FF, text="(please put \"klusterbox\" in the subject line", anchor=W).pack(fill=X)
-    Label(FF, text="720.280.0415", anchor=W).pack(fill=X)
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Label(FF, text="Klusterbox", font=macadj("bold","Helvetica 18"), fg="red", anchor=W)\
+        .grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Label(FF, text="version: {}".format(version), anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="release date: {}".format(release_date), anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="created by Thomas Weeks", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="Original release: October 2018", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text=" ", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="comments and criticisms are welcome", anchor=W, fg="red")\
+        .grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text=" ", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="contact information: ", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="    Thomas Weeks", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="    tomandsusan4ever@msn.com", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="    (please put \"klusterbox\" in the subject line", anchor=W)\
+        .grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="    720.280.0415", anchor=W).grid(row=r ,column=0, sticky="w", columnspan=6  )
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Label(FF, text="For the lastest updates on Klusterbox check out the official Klusterbox")\
+        .grid(row=r, columnspan=6, sticky="w")
+    r += 1
+    Label(FF, text="website at:").grid(row=r, columnspan=6, sticky="w")
+    r += 1
+    kb_link = Label(FF, text="    www.klusterbox.com", fg="blue", cursor="hand2")
+    kb_link.grid(row=r, columnspan=6, sticky="w")
+    kb_link.bind("<Button-1>", lambda e: callback("http://klusterbox.com"))
+    r += 1
+    Label(FF, text="Also look on Facebook for Klusterbox - Software for NALC Stewards at:")\
+        .grid(row=r, columnspan=6, sticky="w")
+    r += 1
+    fb_link = Label(FF, text="    www.facebook.com/klusterbox", fg="blue", cursor="hand2")
+    fb_link.grid(row=r, columnspan=6, sticky="w")
+    fb_link.bind("<Button-1>", lambda e: callback("http://www.facebook.com/klusterbox"))
+    r += 1
+    Label(FF, text="Like, Follow and Share!").grid(row=r, columnspan=6, sticky="w")
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Label(FF, text="Project Documentation", font=macadj("bold", "Helvetica 16"), anchor=W)\
+        .grid(row=r ,column=0, sticky="w", columnspan=3 )
+    Label(FF, text="                                             ").grid(row=r, column=3)
+    Label(FF, text="                                             ").grid(row=r, column=4)
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Button(FF, text = "read", width=macadj(7,7) ,command=lambda: open_docs("readme.txt"))\
+        .grid(row=r ,column=0, sticky="w" )
+    Label(FF, text="Read Me", anchor=E).grid(row=r ,column=1, sticky="w" )
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Button(FF, text = "read", width=macadj(7, 7), command=lambda: open_docs("history.txt"))\
+        .grid(row=r ,column=0, sticky="w" )
+    Label(FF, text="History", anchor=E).grid(row=r ,column=1, sticky="w" )
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Button(FF, text = "read", width=macadj(7, 7), command=lambda: open_docs("LICENSE.txt"))\
+        .grid(row=r ,column=0, sticky="w" )
+    Label(FF, text="License", anchor=E).grid(row=r ,column=1, sticky="w" )
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Button(FF, text = "read", width=macadj(7, 7), command=lambda: open_docs("klusterbox.py"))\
+        .grid(row=r ,column=0, sticky="w" )
+    Label(FF, text="Source Code", anchor=E).grid(row=r ,column=1, sticky="w" )
+    r += 1
+    Label(FF, text="").grid(row=r)
+    r += 1
+    Button(FF, text = "read", width=macadj(7, 7), command=lambda: open_docs("requirements.txt"))\
+        .grid(row=r, column=0,sticky="w")
+    Label(FF, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
     root.update()
     C.config(scrollregion=C.bbox("all"))
     FF.mainloop()
 
 
-def apply_startup(switch, station, self):
+def apply_startup(switch, station, frame):
     global list_of_stations
     if switch == "enter":
         if station.get().strip() == "":
             messagebox.showerror("Prohibited Action",
-                                 "You can not enter a blank entry for a station.", parent=self)
+                                 "You can not enter a blank entry for a station.", parent=frame)
             return
         sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
         commit(sql)
@@ -7476,7 +7573,7 @@ def apply_startup(switch, station, self):
     del list_of_stations[:]
     for stat in results:
         list_of_stations.append(stat[0])
-    self.destroy()  # destroy old frame
+    frame.destroy()  # destroy old frame
     main_frame()  # load new frame
 
 
@@ -7549,7 +7646,7 @@ def carrier_list_cleaning_for_auto_skimmer():  # cleans the database of duplicat
     del duplicates[:]
 
 
-def carrier_list_cleaning(self):  # cleans the database of duplicate records
+def carrier_list_cleaning(frame):  # cleans the database of duplicate records
     sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
     results = inquire(sql)
     duplicates = []
@@ -7588,7 +7685,7 @@ def carrier_list_cleaning(self):  # cleans the database of duplicate records
         pb.destroy()
         pb_root.destroy()
         messagebox.showinfo("Database Maintenance", "All redundancies have been eliminated from the carrier list.")
-        self.destroy()
+        frame.destroy()
         main_frame()
     if ok == False: messagebox.showinfo("Database Maintenance", "No redundancies have been found in the carrier list.")
     del duplicates[:]
@@ -7653,10 +7750,12 @@ def data_mods_codes_default(frame):
         commit(sql)
     auto_data_entry_settings(frame)
 
+
 def apply_auto_ns_structure(frame, ns_structure):
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
     commit(sql)
     messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.")
+
 
 def data_entry_permit_zero(frame, top, bottom):
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (top.get(), "allow_zero_top")
@@ -7841,7 +7940,7 @@ def spreadsheet_settings(frame):
     rear_window(wd)
 
 
-def tolerance_info(self, switch):
+def tolerance_info(frame, switch):
     if switch == "OT_own_route":
         text = "Sets the tolerance for no list carrier overtime\n" \
                "\n" \
@@ -7871,53 +7970,53 @@ def tolerance_info(self, switch):
         text = "Sets the minimum number of rows for the Auxiliary " \
                "section of the spreadsheet. \n\n" \
                "Enter a value between 0 and 100"
-    messagebox.showinfo("About Tolerances", text, parent=self)
+    messagebox.showinfo("About Tolerances", text, parent=frame)
 
 
-def apply_tolerance(self, tolerance, type):
+def apply_tolerance(frame, tolerance, type):
     if isfloat(tolerance) == False:
         text = "You must enter a number."
-        messagebox.showerror("Tolerance value entry error", text, parent=self)
+        messagebox.showerror("Tolerance value entry error", text, parent=frame)
         return
     if tolerance.strip() == "":
         text = "You must enter a numeric value for tolerances"
-        messagebox.showerror("Tolerance value entry error", text, parent=self)
+        messagebox.showerror("Tolerance value entry error", text, parent=frame)
         return
     if float(tolerance) < 0:
         text = "Values must be equal to or greater than zero."
-        messagebox.showerror("Tolerance value entry error", text, parent=self)
+        messagebox.showerror("Tolerance value entry error", text, parent=frame)
         return
     if float(tolerance) > 1:
         text = "You must enter a value less than one."
-        messagebox.showerror("Tolerance value entry error", text, parent=self)
+        messagebox.showerror("Tolerance value entry error", text, parent=frame)
         return
     if float(tolerance) < 1:
         number = tolerance.split('.')
         if len(number) == 2:
             if len(number[1]) > 2:
                 text = "Value cannot exceed two decimal places."
-                messagebox.showerror("Tolerance value entry error", text, parent=self)
+                messagebox.showerror("Tolerance value entry error", text, parent=frame)
         else:
             if len(number[0]) > 2:
                 text = "Value cannot exceed two decimal places."
-                messagebox.showerror("Tolerance value entry error", text, parent=self)
+                messagebox.showerror("Tolerance value entry error", text, parent=frame)
     sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (tolerance, type)
     commit(sql)
-    tolerances(self)
+    tolerances(frame)
 
 
-def tolerance_presets(self, order):
+def tolerance_presets(frame, order):
     if order == "default": num = ".25"
     if order == "zero": num = "0"
     types = ("ot_own_rt", "ot_tol", "av_tol")
     for t in types:
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num, t)
         commit(sql)
-    tolerances(self)
+    tolerances(frame)
 
 
-def tolerances(self):
-    self.destroy()
+def tolerances(frame):
+    frame.destroy()
     F = Frame(root)
     F.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(F)
@@ -7977,16 +8076,16 @@ def tolerances(self):
     C.config(scrollregion=C.bbox("all"))
 
 
-def apply_station(switch, station, self):
+def apply_station(switch, station, frame):
     global list_of_stations
     if switch == "enter":
         if station.get().strip() == "":
             messagebox.showerror("Prohibited Action",
-                                 "You can not enter a blank entry for a station.", parent=self)
+                                 "You can not enter a blank entry for a station.", parent=frame)
             return
         if station.get() in list_of_stations:
             messagebox.showerror("Prohibited Action",
-                                 "That station is already in the list of stations.", parent=self)
+                                 "That station is already in the list of stations.", parent=frame)
             return
     if switch == "enter":
         sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
@@ -7995,7 +8094,7 @@ def apply_station(switch, station, self):
     if switch == "delete":
         if station == "out of station":
             text = "You can not delete the \"out of station\" listing."
-            messagebox.showerror("Action not allowed", text, parent=self)
+            messagebox.showerror("Action not allowed", text, parent=frame)
             return
         sql = "DELETE FROM stations WHERE station='%s'" % (station)
         commit(sql)
@@ -8008,18 +8107,18 @@ def apply_station(switch, station, self):
     del list_of_stations[:]
     for stat in results:
         list_of_stations.append(stat[0])
-    station_list(self)
+    station_list(frame)
 
 
-def station_update_apply(self, old_station, new_station):
+def station_update_apply(frame, old_station, new_station):
     global list_of_stations
     if old_station.get() == "select a station":
         messagebox.showerror("Prohibited Action",
-                             "Please select a station.", parent=self)
+                             "Please select a station.", parent=frame)
         return
     if new_station.get().strip() == "" or new_station.get() == "enter a new station name":
         messagebox.showerror("Prohibited Action",
-                             "You can not enter a blank entry for a station.", parent=self)
+                             "You can not enter a blank entry for a station.", parent=frame)
         return
     if g_station == old_station.get():
         reset("none")
@@ -8044,13 +8143,13 @@ def station_update_apply(self, old_station, new_station):
         commit(sql)
         list_of_stations.append(new_station.get())
         list_of_stations.remove(old_station.get())
-        station_list(self)
+        station_list(frame)
     if go_ahead == False:
         return
 
 
-def station_list(self):
-    self.destroy()
+def station_list(frame):
+    frame.destroy()
     F = Frame(root)
     F.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(F)
@@ -8156,7 +8255,7 @@ def station_list(self):
     C.config(scrollregion=C.bbox("all"))
 
 
-def apply_mi(self, array_var, ls, ns, station, route, date):  # enter changes from multiple input into database
+def apply_mi(frame, array_var, ls, ns, station, route, date):  # enter changes from multiple input into database
     x = date.get()
     year = IntVar()
     month = IntVar()
@@ -8181,10 +8280,10 @@ def apply_mi(self, array_var, ls, ns, station, route, date):  # enter changes fr
         ns[i].set(ns_dict[passed_ns[1]]) # match color_code to proper color_code in dict and set
         # if there is a differance, then put the new record in the database
         if array_var[i][2] != ls[i].get() or array_var[i][3] != ns[i].get() or array_var[i][5] != station[i].get():
-            apply(year, month, day, array_var[i][1], ls[i], ns[i], route[i], station[i], self)
+            apply(year, month, day, array_var[i][1], ls[i], ns[i], route[i], station[i], frame)
 
-def mass_input(self, day, sort):
-    self.destroy()
+def mass_input(frame, day, sort):
+    frame.destroy()
     switchF7 = Frame(root)
     switchF7.pack()
     C1 = Canvas(switchF7)
@@ -9685,8 +9784,8 @@ def tab_selected(t):  # attach notebook tab for
     current_tab = t
 
 
-def output_tab(self, list_carrier):
-    self.destroy()
+def output_tab(frame, list_carrier):
+    frame.destroy()
     switchF5 = Frame(root, bg="white")
     switchF5.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(switchF5)
@@ -10464,7 +10563,7 @@ def rings_triad_placement(iteration):
     return place
 
 
-def new_entry(self, day, moves):  # creates new entry fields for moves
+def new_entry(frame, day, moves):  # creates new entry fields for moves
     if day == "sat":
         mm = sat_mm  # find the day in question and use the correlating  array
     elif day == "sun":
@@ -10481,30 +10580,52 @@ def new_entry(self, day, moves):  # creates new entry fields for moves
         mm = fri_mm
     # what to do depending on the moves
     if moves == 0:  # if there are no moves sent to the function
-        mm.append(StringVar(self))  # create first entry field for new entries
-        Entry(self, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
+        mm.append(StringVar(frame))  # create first entry field for new entries
+        Entry(frame, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # route
-        mm.append(StringVar(self))  # create second entry field for new entries
-        Entry(self, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
+        mm.append(StringVar(frame))  # create second entry field for new entries
+        Entry(frame, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move off
-        mm.append(StringVar(self))  # create second entry field for new entries
-        Entry(self, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
+        mm.append(StringVar(frame))  # create second entry field for new entries
+        Entry(frame, width=macadj(8,4), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move on
     else:  # if there are moves which need to be set
         moves = moves.split(",")
         iterations = len(moves)
         for i in range(int(iterations)):
-            mm.append(StringVar(self))  # create entry field for moves from database
+            mm.append(StringVar(frame))  # create entry field for moves from database
             mm[i].set(moves[i])
-            Entry(self, width=macadj(8,4), textvariable=mm[i]) \
+            Entry(frame, width=macadj(8,4), textvariable=mm[i]) \
                 .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
 
 
 def rings2(carrier, origin_frame):
     root = Tk()
-    root.title("KLUSTERBOX")
+    root.title("KLUSTERBOX - Carrier Rings")
     root.geometry("%dx%d+%d+%d" % (origin_frame.winfo_width(), origin_frame.winfo_height(),
                                    origin_frame.winfo_rootx(), origin_frame.winfo_rooty() - 30))
+    if sys.platform == "win32" and platform == "py":
+        try:
+            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except:
+            pass
+    if sys.platform == "win32" and platform == "winapp":
+        try:
+            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
+        except:
+            pass
+    if sys.platform == "darwin" and platform == "py":
+        try:
+            root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
+            root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
+        except:
+            pass
+    if sys.platform == "linux":
+        try:
+            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
+            root.tk.call('wm', 'iconphoto', root._w, img)
+        except:
+            pass
     switchF2 = Frame(root)
     switchF2.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(switchF2)
@@ -10753,17 +10874,17 @@ def rings2(carrier, origin_frame):
     mainloop()
 
 
-def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, self):
+def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, frame):
     if year.get() > 9999:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=self)
+        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
     if year.get() < 1:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=self)
+        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
     try:
         date = datetime(year.get(), month.get(), day.get())
     except:
-        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=self)
+        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
         return
     route_list = []
     route_list = route.get().split("/")
@@ -10772,7 +10893,7 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
                                                          "(for T6 carriers).\n Routes numbers can be no more than four digits long.\n"
                                                          "If there are multiple routes, route numbers must be separated by "
                                                          "the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use "
-                                                         "commas or empty spaces", parent=self)
+                                                         "commas or empty spaces", parent=frame)
         return
     for item in route_list:
         item = item.strip()
@@ -10782,11 +10903,11 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
                                      'Routes numbers must be four digits long.\n'
                                      'If there are multiple routes, route numbers must be separated by '
                                      'the \'/\' character. For example: 1001/1015/1024/1036/0972. Do not use '
-                                     'commas or empty spaces', parent=self)
+                                     'commas or empty spaces', parent=frame)
                 return
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error", "Route numbers must be numbers and can not contain "
-                                                             "letters", parent=self)
+                                                             "letters", parent=frame)
             return
     route_input = route.get()
     if route_input == "0000":
@@ -10795,7 +10916,7 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
           "WHERE rowid = '%s'" % \
           (date, ls.get(), ns.get(), route_input, station.get(), rowid)
     commit(sql)
-    self.destroy()
+    frame.destroy()
     edit_carrier(name)
 
 
@@ -10810,37 +10931,37 @@ def delete_carrier(name):
         main_frame()
 
 
-def apply(year, month, day, c_name, ls, ns, route, station, self):
+def apply(year, month, day, c_name, ls, ns, route, station, frame):
     if year.get() > 9999:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=self)
+        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
     if year.get() < 1:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=self)
+        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
 
     try:
         date = datetime(year.get(), month.get(), day.get())
     except:
-        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=self)
+        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
         return
     carrier = c_name.strip().lower()
     if len(carrier) > 30:
-        messagebox.showerror("Name input error", "Names must not exceed 30 characters.", parent=self)
+        messagebox.showerror("Name input error", "Names must not exceed 30 characters.", parent=frame)
         return
     if len(carrier) < 1:
-        messagebox.showerror("Name input error", "You must enter a name.", parent=self)
+        messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
         return
-    apply_2(date, carrier, ls, ns, route, station, self)
+    apply_2(date, carrier, ls, ns, route, station, frame)
 
 
-def apply_2(date, carrier, ls, ns, route, station, self):
+def apply_2(date, carrier, ls, ns, route, station, frame):
     route_list = route.get().split("/")
     if len(route.get()) > 24:
         messagebox.showerror("Route number input error", "There can be no more than five routes per carrier "
                                                          "(for T6 carriers).\n Routes numbers can be no more than four digits long.\n"
                                                          "If there are multiple routes, route numbers must be separated by "
                                                          "the \'/\' character. For example: 1001/1015/1024/1036/0972. Do not use "
-                                                         "commas or empty spaces", parent=self)
+                                                         "commas or empty spaces", parent=frame)
         return
     for item in route_list:
         item = item.strip()
@@ -10849,11 +10970,11 @@ def apply_2(date, carrier, ls, ns, route, station, self):
                 messagebox.showerror("Route number input error", 'Routes numbers must be four digits long.\n'
                                                                  'If there are multiple routes, route numbers must be separated by '
                                                                  'the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use '
-                                                                 'commas or empty spaces', parent=self)
+                                                                 'commas or empty spaces', parent=frame)
                 return
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error", "Route numbers must be numbers and can not contain "
-                                                             "letters", parent=self)
+                                                             "letters", parent=frame)
             return
     # find all matches for date and name
     route_input = route.get()
@@ -10881,27 +11002,27 @@ def apply_2(date, carrier, ls, ns, route, station, self):
         commit(sql)
 
 
-def name_change(name, c_name, self):
+def name_change(name, c_name, frame):
     c_name = c_name.get().strip().lower()
     if messagebox.askokcancel("Name Change", "This will change the name {} to {} in all records. "
                                              "Are you sure?".format(name, c_name)):
         if len(c_name) > 42:
-            messagebox.showerror("Name input error", "Names must not exceed 42 characters.", parent=self)
+            messagebox.showerror("Name input error", "Names must not exceed 42 characters.", parent=frame)
             return
         if len(c_name) < 1:
-            messagebox.showerror("Name input error", "You must enter a name.", parent=self)
+            messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
             return
         sql = "SELECT kb_name FROM name_index WHERE kb_name = '%s'" % c_name
         result = inquire(sql)
         if result:
             messagebox.showerror("Name input error", "This name is already being used for another carrier.",
-                                 parent=self)
+                                 parent=frame)
             return
         sql = "SELECT carrier_name FROM carriers WHERE carrier_name = '%s'" % c_name
         result = inquire(sql)
         if result:
             messagebox.showerror("Name input error", "This name is already being used for another carrier.",
-                                 parent=self)
+                                 parent=frame)
             return
         sql = "UPDATE carriers SET carrier_name = '%s' WHERE carrier_name = '%s'" % (c_name, name)
         commit(sql)
@@ -10912,7 +11033,7 @@ def name_change(name, c_name, self):
         if result:
             sql = "UPDATE name_index SET kb_name = '%s' WHERE kb_name = '%s'" % (c_name, name)
             commit(sql)
-        self.destroy()
+        frame.destroy()
         main_frame()
 
 
@@ -11306,34 +11427,34 @@ def edit_carrier(e_name):
            command=lambda: [switchF3.destroy(), main_frame()]).pack(side=LEFT)
 
 
-def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, self):
+def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, frame):
     if year.get() > 9999:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=self)
+        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
     if year.get() < 1:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=self)
+        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
     try:
         date = datetime(year.get(), month.get(), day.get())
     except:
-        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=self)
+        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
         return
     carrier = nc_name.get().strip().lower() + ", " + nc_fname.get().strip().lower()
     if len(nc_name.get()) > 30 or len(nc_fname.get()) > 12:
         messagebox.showerror("Name input error", "Names must not exceed 30 characters."
-                                                 "First names must not exceed 12 characters", parent=self)
+                                                 "First names must not exceed 12 characters", parent=frame)
         return
     if len(nc_name.get()) < 1:
-        messagebox.showerror("Name input error", "You must enter a name.", parent=self)
+        messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
         return
     if len(nc_fname.get()) < 1:
-        messagebox.showerror("Name input error", "You must enter a first initial or name.", parent=self)
+        messagebox.showerror("Name input error", "You must enter a first initial or name.", parent=frame)
         return
     if len(nc_fname.get()) > 1:
         answer = messagebox.askyesno("Caution", "It is recommended that you use only the first initial of the first"
                                                 "name unless it is necessary to create a unique identifier, such as"
                                                 "when you have two identical names that must be distinquished."
-                                                "Do you want to proceed?", parent=self)
+                                                "Do you want to proceed?", parent=frame)
         if answer == False: return
     nc_route_list = nc_route.get().split("/")
     if len(nc_route.get()) > 24:
@@ -11342,7 +11463,7 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
                                                          "If there are multiple routes, route numbers must be separated by "
                                                          "the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use "
                                                          "commas or empty spaces"
-                             , parent=self)
+                             , parent=frame)
         return
     for item in nc_route_list:
         item = item.strip()
@@ -11352,11 +11473,11 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
                                                                  'If there are multiple routes, route numbers must be separated by '
                                                                  'the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use '
                                                                  'commas or empty spaces'
-                                     , parent=self)
+                                     , parent=frame)
                 return
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error", "Route numbers must be numbers and can not contain "
-                                                             "letters", parent=self)
+                                                             "letters", parent=frame)
             return
     route_input = nc_route.get()
     if route_input == "0000":
@@ -11373,7 +11494,7 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
           % (date, carrier, nc_ls.get(), nc_ns.get(), route_input, nc_station.get())
     if carrier in name_set:
         ok = messagebox.askokcancel("New Carrier Input Warning", "This carrier name is already in the database.\n"
-                                                                 "Did you want to proceed?", parent=self)
+                                                                 "Did you want to proceed?", parent=frame)
         if ok == True:
             for pair in results:
                 if pair[0] == carrier and pair[1] == str(datetime(year.get(), month.get(), day.get(), 00, 00, 00)):
@@ -11382,13 +11503,13 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
                                            "You can not update that record using this window.\n"
                                            "To edit/ delete this record, return to the main page and press\n"
                                            "\"edit\" to the right of the carrier's name. ",
-                                           parent=self)
+                                           parent=frame)
                     match = True
         if ok == False:
             match = True
     if match == False: commit(sql)
 
-    self.destroy()
+    frame.destroy()
     main_frame()
 
 
@@ -11731,7 +11852,7 @@ def main_frame():
     basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(F))
     basic_menu.add_command(label="Multiple Input", command=lambda dd="Sat", ss="name": mass_input(F, dd, ss))
     basic_menu.add_command(label="Report Summary", command=lambda: output_tab(F, carrier_list))
-    basic_menu.add_command(label="Create Spreadsheet", command=lambda: spreadsheet(carrier_list, r_rings))
+    basic_menu.add_command(label="Mandates Spreadsheet", command=lambda: spreadsheet(carrier_list, r_rings))
     basic_menu.add_command(label="Over Max Spreadsheet", command=lambda r_rings="x": overmax_spreadsheet(carrier_list))
     if gs_day == "x":
         basic_menu.entryconfig(2, state=DISABLED)
@@ -11742,26 +11863,30 @@ def main_frame():
     basic_menu.add_separator()
     basic_menu.add_command(label="Informal C", command=lambda: informalc(F))
     basic_menu.add_separator()
+    basic_menu.add_command(label="Location", command=lambda: location_klusterbox(F))
+    basic_menu.add_command(label="About Klusterbox", command=lambda: about_klusterbox(F))
+    basic_menu.add_separator()
     basic_menu.add_command(label="Quit", command=lambda: root.destroy())
     menubar.add_cascade(label="Basic", menu=basic_menu)
     # automated menu
     automated_menu = Menu(menubar, tearoff=0)
     automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(F))
-    automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr())
     automated_menu.add_separator()
+    automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr())
     automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer())
-    automated_menu.add_command(label="Pay Period Guide Generator", command=lambda: pay_period_guide(F))
     automated_menu.add_command(label="Weekly Availability", command=lambda: wkly_avail(F))
     automated_menu.add_separator()
     automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter())
     automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(F))
-    menubar.add_cascade(label="Automated", menu=automated_menu)
+    menubar.add_cascade(label="Readers", menu=automated_menu)
     # reports menu
     reports_menu = Menu(menubar, tearoff=0)
     reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(carrier_list))
     reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(carrier_list))
     reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(carrier_list))
     # reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(carrier_list))
+    reports_menu.add_separator()
+    reports_menu.add_command(label="Pay Period Guide Generator", command=lambda: pay_period_guide(F))
     if gs_day == "x":
         reports_menu.entryconfig(0, state=DISABLED)
         reports_menu.entryconfig(1, state=DISABLED)
@@ -11770,48 +11895,53 @@ def main_frame():
     menubar.add_cascade(label="Reports", menu=reports_menu)
     # library menu
     reportsarchive_menu = Menu(menubar, tearoff=0)
-    reportsarchive_menu.add_command(label="Spreadsheet Archive",
+    reportsarchive_menu.add_command(label="Mandates Spreadsheet",
                                     command=lambda: file_dialogue(dir_path('spreadsheets')))
-    reportsarchive_menu.add_command(label="Over Max Finder Archive",
+    reportsarchive_menu.add_command(label="Over Max Spreadsheet",
+                                    command=lambda: file_dialogue(dir_path('over_max_spreadsheet')))
+    reportsarchive_menu.add_command(label="Over Max Finder",
                                     command=lambda: file_dialogue(dir_path('over_max')))
-    reportsarchive_menu.add_command(label="Over Max Spreadsheet Archive",
-                             command=lambda: file_dialogue(dir_path('over_max_spreadsheet')))
-    reportsarchive_menu.add_command(label="Everything Report Archive",
+    reportsarchive_menu.add_command(label="Everything Report",
                                     command=lambda: file_dialogue(dir_path('ee_reader')))
-    reportsarchive_menu.add_command(label="Pay Period Guide Archive",
+    reportsarchive_menu.add_command(label="Weekly Availability",
+                                    command=lambda: file_dialogue(dir_path('weekly_availability')))
+    reportsarchive_menu.add_command(label="Pay Period Guide",
                                     command=lambda: file_dialogue(dir_path('pp_guide')))
-    reportsarchive_menu.add_command(label="Weekly Availability Archive",
-                             command=lambda: file_dialogue(dir_path('weekly_availability')))
     reportsarchive_menu.add_separator()
-    reportsarchive_menu.add_command(label="Empty Spreadsheet Archive",
+    cleararchive = Menu(reportsarchive_menu, tearoff=0)
+    cleararchive.add_command(label="Mandates Spreadsheet",
                                     command=lambda: remove_file_var(dir_path('spreadsheets')))
-    reportsarchive_menu.add_command(label="Empty Over Max Finder Archive",
+    cleararchive.add_command(label="Over Max Spreadsheet",
+                             command=lambda: remove_file_var(dir_path('over_max_spreadsheet')))
+    cleararchive.add_command(label="Over Max Finder",
                                     command=lambda: remove_file_var(dir_path('over_max')))
-    reportsarchive_menu.add_command(label="Empty Over Max Spreadsheet Archive",
-                                    command=lambda: remove_file_var(dir_path('over_max_spreadsheet')))
-    reportsarchive_menu.add_command(label="Empty Everything Report Archive",
+    cleararchive.add_command(label="Everything Report",
                                     command=lambda: remove_file_var(dir_path('ee_reader')))
-    reportsarchive_menu.add_command(label="Empty Pay Period Guide Archive",
+    cleararchive.add_command(label="Weekly Availability",
+                             command=lambda: remove_file_var(dir_path('weekly_availability')))
+    cleararchive.add_command(label="Pay Period Guide",
                                     command=lambda: remove_file_var(dir_path('pp_guide')))
-    reportsarchive_menu.add_command(label="Empty Weekly Availability Archive Archive",
-                                    command=lambda: remove_file_var(dir_path('weekly_availability')))
+    reportsarchive_menu.add_cascade(label="Clear Archive", menu=cleararchive)
     menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
     # management menu
     management_menu = Menu(menubar, tearoff=0)
+    management_menu.add_command(label="GUI Configuration", command=lambda: gui_config(F))
+    management_menu.add_separator()
     management_menu.add_command(label="List of Stations", command=lambda: station_list(F))
     management_menu.add_command(label="Tolerances", command=lambda: tolerances(F))
     management_menu.add_command(label="Spreadsheet Settings", command=lambda: spreadsheet_settings(F))
+    management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(F))
+    if gs_day == "x":
+        management_menu.entryconfig(5, state=DISABLED)
+    management_menu.add_separator()
     management_menu.add_command(label="Auto Data Entry Settings", command=lambda: auto_data_entry_settings(F))
+    management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(F))
+    management_menu.add_separator()
     management_menu.add_command(label="Clean Carrier List", command=lambda: carrier_list_cleaning(F))
     management_menu.add_command(label="Clean Rings", command=lambda: clean_rings3_table())
+    management_menu.add_separator()
     management_menu.add_command(label="Name Index", command=lambda: (F.destroy(), name_index_screen()))
     management_menu.add_command(label="Station Index", command=lambda: station_index_mgmt(F))
-    management_menu.add_command(label="GUI Configuration", command=lambda: gui_config(F))
-    management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(F))
-    management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(F))
-    management_menu.add_separator()
-    management_menu.add_command(label="Location", command=lambda: location_klusterbox(F))
-    management_menu.add_command(label="About Klusterbox", command=lambda: about_klusterbox(F))
     menubar.add_cascade(label="Management", menu=management_menu)
     root.config(menu=menubar)
     # create the frame inside the canvas
@@ -11894,9 +12024,8 @@ def main_frame():
     if gs_day == "x":
         Button(FF, text="Automatic Data Entry", width=30, command=lambda: call_indexers(F)). \
             grid(row=0,column=1,pady=5)
-        Button(FF, text="Auto Over Max Finder", width=30, command=lambda: max_hr()).grid(row=1,column=1,pady=5)
-        Button(FF, text="Informal C", width=30, command=lambda: informalc(F)).grid(row=2,column=1,pady=5)
-        Button(FF, text="Quit", width=30, command=lambda: root.destroy()).grid(row=3, column=1, pady=5)
+        Button(FF, text="Informal C", width=30, command=lambda: informalc(F)).grid(row=1,column=1,pady=5)
+        Button(FF, text="Quit", width=30, command=lambda: root.destroy()).grid(row=2, column=1, pady=5)
         Label(FF, text="", width=16).grid(row=0,column=0)
     else:
         if g_range == "week":
@@ -12073,9 +12202,12 @@ if __name__ == "__main__":
     size_y = 600
     # set up platform variable
     platform = "py" # initialize platform variable
+    split_home = os.getcwd().split("\\")
     if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/": # if it is a mac app
         platform = "macapp"
-    elif os.getcwd() == 'C:\\Program Files (x86)\\klusterbox': # if it is a windows app
+    elif split_home[1] == "Program Files (x86)" and split_home[2] == "klusterbox":
+        platform = "winapp"
+    elif split_home[1] == "Program Files" and split_home[2] == "klusterbox":
         platform = "winapp"
     else:
         platform = "py" # if it is running as a .py or .exe outside program files/applications
@@ -12200,7 +12332,8 @@ if __name__ == "__main__":
             pass
     if sys.platform == "win32" and platform == "winapp":
         try:
-            root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+            # root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
         except:
             pass
     if sys.platform == "darwin" and platform == "py":

@@ -1,0 +1,70 @@
+Creating DMG Installer for Mac OS Distribution
+
+1. go to the project folder and copy/paste kb_install.png to the desktop.
+
+2. navigate to the klusterbox.app for mac OS. copy/paste the file on the desktop.
+
+3. open launch pad. select "other". select and open "disk utility".
+
+4. in disk utility, go to file on the menu bar. Select "File > New Image > Blank Image..."
+
+5. In the prompt, enter the following. 
+
+	a. Save As: klusterbox_setup
+	b. Where: Desktop
+	c. Name: klusterbox_install
+	d. Size: 1000MB
+	e. keep the other settings as default.
+	
+6. Close out the disk utility and any other windows on the desktop.
+
+7. On the desktop, double click to open "klusterbox_install". A large empty window should appear. 
+
+8. right click in the 'klusterbox_install' window and select 'show view options' from the menu. 
+
+9. in the view options window enter the following:
+	
+	a. Select 'always open in icon view'
+	b. icon size: 72 X 72
+	c. background: picture 
+	
+10. drag and drop the kb_install.png from the desktop to the klusterbox install window. 
+
+11. drag and drop the kb_install.png from the klusterbox install window into the box in the view options window where it says 'drag image here'.
+
+12. resize the klusterbox_install window to match the background image. 
+
+13. open terminal and enter: 
+
+	a. cd /Volumes/klusterbox_install # navigate to the klusterbox install 
+	b. mv kb_install.png .kb_install.png # change the file name to a hidden file
+	c. ls -a # will show hidden files in terminal 
+	
+14. close terminal
+
+15. close view options window.
+
+16. drag and drop klusterbox.app from the desktop into the klusterbox install window.
+
+17. open finder and navigate to Macintosh HD
+
+18. right click on Applications. select 'make alias'
+
+19. the alias will appear in a desktop folder and on the desktop. 
+
+20. drag and drop the Applications alias into the klusterbox_install. 
+
+21. on the desktop, move the Applications alias to Trash
+
+22. close klusterbox_install by pressing the x in the upper left hand side of the title bar.
+
+23. right click klusterbox_install icon on the desktop. select Eject "klusterbox_install"
+
+24. right click on klusterbox_setup.dmg and select Get Info. 
+
+25. In the Get Info window, under the General Section, check the box for Locked. 
+
+26. The klusterbox_setup.dmg file is ready for distribution. 
+
+
+
