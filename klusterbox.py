@@ -12205,10 +12205,13 @@ if __name__ == "__main__":
     split_home = os.getcwd().split("\\")
     if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/": # if it is a mac app
         platform = "macapp"
-    elif split_home[1] == "Program Files (x86)" and split_home[2] == "klusterbox":
-        platform = "winapp"
-    elif split_home[1] == "Program Files" and split_home[2] == "klusterbox":
-        platform = "winapp"
+    elif len(split_home)>2:
+        if split_home[1] == "Program Files (x86)" and split_home[2] == "klusterbox":
+            platform = "winapp"
+        elif split_home[1] == "Program Files" and split_home[2] == "klusterbox":
+            platform = "winapp"
+        else:
+            platform = "py"  # if it is running as a .py or .exe outside program files/applications
     else:
         platform = "py" # if it is running as a .py or .exe outside program files/applications
     pb["value"] = 1  # increment progress bar
