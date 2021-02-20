@@ -238,6 +238,148 @@ def gui_config(frame): # generate page to adjust gui configurations
     rear_window(wd)
 
 
+def database_clean_carriers():
+    sql = "SELECT DISTINCT station FROM carriers"
+    all_stations = inquire(sql)
+    sql = "SELECT station FROM stations"
+    good_stations = inquire(sql)
+    deceased = [x for x in all_stations if x not in good_stations]
+    for dead in deceased:
+        sql = "DELETE FROM carriers WHERE station='%s'" % (dead[0])
+        commit(sql)
+    sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
+    commit(sql)
+
+
+def database_clean_rings():
+    sql = "SELECT DISTINCT carrier_name FROM carriers"
+    carriers_results = inquire(sql)
+    sql = "SELECT DISTINCT carrier_name FROM rings3"
+    rings_results = inquire(sql)
+    deceased = [x for x in rings_results if x not in carriers_results]
+    for dead in deceased:
+        sql = "DELETE FROM rings3 WHERE carrier_name='%s'" % dead
+        commit(sql)
+    sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
+    commit(sql)
+
+
+def database_maintenance(frame):
+    wd = front_window(frame)
+    r = 0
+    Label(wd[3], text="Database Maintenance", font=macadj("bold", "Helvetica 18"), anchor="w") \
+        .grid(row=r, sticky="w", columnspan=4)
+    r += 1
+    Label(wd[3], text="").grid(row=r)
+    r += 1
+    Label(wd[3],text= "Database Records").grid(row=r, sticky="w", columnspan=4)
+    r += 1
+    Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+    r += 1
+    # get and display number of records for rings3
+    sql = "SELECT COUNT (*) FROM rings3"
+    results = inquire(sql)
+    Label(wd[3],text=results, anchor="e", fg="red").grid(row=r,column=0, sticky="e")
+    Label(wd[3],text=" records in rings table").grid(row=r,column=1, sticky="w")
+    r += 1
+    # get and display number of records for unique carriers in rings3
+    sql = "SELECT COUNT (DISTINCT carrier_name) FROM rings3"
+    results = inquire(sql)
+    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    Label(wd[3], text=" carrier names in rings table").grid(row=r, column=1, sticky="w")
+    r += 1
+    # get and display number of records for unique days in rings3
+    sql = "SELECT COUNT (DISTINCT rings_date) FROM rings3"
+    results = inquire(sql)
+    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    Label(wd[3], text=" distinct days in rings table").grid(row=r, column=1, sticky="w")
+    r += 1
+    # get and display number of records for carriers
+    sql = "SELECT COUNT (*) FROM carriers"
+    results = inquire(sql)
+    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    Label(wd[3], text=" records in carriers table").grid(row=r, column=1, sticky=W)
+    r += 1
+    # get and display number of records for distinct carrier names from carriers
+    sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers"
+    results = inquire(sql)
+    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    Label(wd[3], text=" carrier names in carriers table").grid(row=r, column=1, sticky=W)
+    r += 1
+    # get and display number of records for stations
+    sql = "SELECT COUNT (*) FROM stations"
+    results = inquire(sql)
+    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    Label(wd[3], text=" records in station table (this includes \'out of station\')")\
+        .grid(row=r, column=1, sticky="w")
+    r += 1
+    # find orphaned rings from deceased carriers
+    sql = "SELECT DISTINCT carrier_name FROM carriers"
+    carriers_results = inquire(sql)
+    sql = "SELECT DISTINCT carrier_name FROM rings3"
+    rings_results = inquire(sql)
+    deceased = [x for x in rings_results if x not in carriers_results]
+    Label(wd[3], text=len(deceased), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    Label(wd[3], text=" \'deceased\' carriers in rings table").grid(row=r, column=1, sticky=W)
+    r += 1
+    if len(deceased)>0:
+        print(deceased)
+        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+        r += 1
+        Button(wd[3],text="clean",
+               command = lambda:(database_clean_rings(),wd[0].destroy(),database_maintenance(frame)))\
+            .grid(row=r, column=0, sticky="w")
+        Label(wd[3], text="Clean rings table of orphaned rings from deceased carriers (recommended)")\
+            .grid(row=r, column=1, sticky="w", columnspan=6)
+        r += 1
+        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+        r += 1
+    sql = "SELECT DISTINCT station FROM carriers"
+    all_stations = inquire(sql)
+    sql = "SELECT station FROM stations"
+    good_stations = inquire(sql)
+    deceased = [x for x in all_stations if x not in good_stations]
+    Label(wd[3], text=len(deceased), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    Label(wd[3], text=" \'deceased\' stations in carriers table").grid(row=r, column=1, sticky=W)
+    r += 1
+    if len(deceased)>0:
+        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+        r += 1
+        Button(wd[3],text="clean",
+               command = lambda:(database_clean_carriers(),wd[0].destroy(),database_maintenance(frame)))\
+            .grid(row=r, column=0, sticky="w")
+        Label(wd[3], text="Clean rings table of orphaned carrier records from deceased stations (recommended)")\
+            .grid(row=r, column=1, sticky="w", columnspan=6)
+        r += 1
+    if g_station != "x":
+        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+        r += 1
+        Label(wd[3],text= "Database Records, {} Specific".format(g_station))\
+            .grid(row=r, sticky="w", columnspan=4)
+        r += 1
+        Label(wd[3], text="To see results from other stations, change station "
+                          "in the investigation range", fg="grey")\
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+        r += 1
+        # get and display number of records for carriers
+        sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % (g_station)
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" records in carriers table").grid(row=r, column=1, sticky=W)
+        r += 1
+        # get and display number of records for distinct carrier names from carriers
+        sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % (g_station)
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" carrier names in carriers table").grid(row=r, column=1, sticky=W)
+        r += 1
+    Button(wd[4], text="Go Back", width=20, anchor="w",
+           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+    rear_window(wd)
+
+
 def rpt_impman(list_carrier): # generate report for improper mandates
     date = g_date[0]
     dates = []  # array containing days.
@@ -706,6 +848,10 @@ def overmax_spreadsheet(carrier_list): # generate the overmax spreadsheet
     sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
           % (g_date[0], g_date[6])
     r_rings = inquire(sql)
+    # get minimum rows
+    sql = "SELECT tolerance FROM tolerances"
+    result = inquire(sql)
+    min_rows = int(result[14][0])
     # Named styles for workbook
     bd = Side(style='thin', color="80808080")  # defines borders
     ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
@@ -1249,6 +1395,7 @@ def overmax_spreadsheet(carrier_list): # generate the overmax spreadsheet
                 del candidates[:]  # empty out the candidates array.
     summary_i = 7
     i = 9
+    row_count = 0
     for line in carrier_list:
         # if there is a ring to match the carrier/ date then printe
         carrier_rings = []
@@ -1295,7 +1442,9 @@ def overmax_spreadsheet(carrier_list): # generate the overmax spreadsheet
             else: l = float(item[7])
             total = total + t
             grandtotal = grandtotal + t + l
+
         if grandtotal > 60 or daily_violation == True:
+            row_count += 1
             # output to the gui
             violations.row_dimensions[i].height = 10# adjust all row height
             violations.row_dimensions[i+1].height = 10
@@ -1499,6 +1648,216 @@ def overmax_spreadsheet(carrier_list): # generate the overmax spreadsheet
             summary.row_dimensions[summary_i].height = 10  # adjust all row height
             i += 2
             summary_i += 1
+    # insert rows if minimum rows is not reached
+    if row_count < min_rows:
+        add_rows = min_rows - row_count
+    else:
+        add_rows = 0
+    for add in range(add_rows):
+        # output to the gui
+        violations.row_dimensions[i].height = 10  # adjust all row height
+        violations.row_dimensions[i + 1].height = 10
+        violations.merge_cells('A' + str(i) + ':A' + str(i + 1))
+        violations['A' + str(i)] = ""  # name
+        violations['A' + str(i)].style = input_name
+        violations.merge_cells('B' + str(i) + ':B' + str(i + 1))  # merge box for list
+        violations['B' + str(i)] = ""  # list
+        violations['B' + str(i)].style = input_s
+        violations.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly 5200
+        violations['C' + str(i)] = ""  # total
+        violations['C' + str(i)].style = input_s
+        violations['C' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        # saturday
+        violations.merge_cells('D' + str(i + 1) + ':E' + str(i + 1))  # merge box for sat 5200
+        violations['D' + str(i)] = ""  # leave time
+        violations['D' + str(i)].style = input_s
+        violations['D' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        violations['E' + str(i)] = ""  # leave type
+        violations['E' + str(i)].style = input_s
+        violations['D' + str(i + 1)] = ""  # 5200 time
+        violations['D' + str(i + 1)].style = input_s
+        violations['D' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # sunday
+        violations.merge_cells('F' + str(i + 1) + ':G' + str(i + 1))  # merge box for sun 5200
+        violations['F' + str(i)] = ""  # leave time
+        violations['F' + str(i)].style = input_s
+        violations['F' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        violations['G' + str(i)] = ""  # leave type
+        violations['G' + str(i)].style = input_s
+        violations['F' + str(i + 1)] = ""  # 5200 time
+        violations['F' + str(i + 1)].style = input_s
+        violations['F' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # monday
+        violations.merge_cells('H' + str(i + 1) + ':I' + str(i + 1))  # merge box for mon 5200
+        violations['H' + str(i)] = ""  # leave time
+        violations['H' + str(i)].style = input_s
+        violations['H' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        violations['I' + str(i)] = ""  # leave type
+        violations['I' + str(i)].style = input_s
+        violations['H' + str(i + 1)] = ""  # 5200 time
+        violations['H' + str(i + 1)].style = input_s
+        violations['H' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # tuesday
+        violations.merge_cells('J' + str(i + 1) + ':K' + str(i + 1))  # merge box for tue 5200
+        violations['J' + str(i)] = ""  # leave time
+        violations['J' + str(i)].style = input_s
+        violations['J' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        violations['K' + str(i)] = ""  # leave type
+        violations['K' + str(i)].style = input_s
+        violations['J' + str(i + 1)] = ""  # 5200 time
+        violations['J' + str(i + 1)].style = input_s
+        violations['J' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # wednesday
+        violations.merge_cells('L' + str(i + 1) + ':M' + str(i + 1))  # merge box for wed 5200
+        violations['L' + str(i)] = ""  # leave time
+        violations['L' + str(i)].style = input_s
+        violations['L' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        violations['M' + str(i)] = ""  # leave type
+        violations['M' + str(i)].style = input_s
+        violations['L' + str(i + 1)] = ""  # 5200 time
+        violations['L' + str(i + 1)].style = input_s
+        violations['M' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # thursday
+        violations.merge_cells('N' + str(i + 1) + ':O' + str(i + 1))  # merge box for thr 5200
+        violations['N' + str(i)] = ""  # leave time
+        violations['N' + str(i)].style = input_s
+        violations['N' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        violations['O' + str(i)] = ""  # leave type
+        violations['O' + str(i)].style = input_s
+        violations['N' + str(i + 1)] = ""  # 5200 time
+        violations['N' + str(i + 1)].style = input_s
+        violations['N' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # friday
+        violations.merge_cells('P' + str(i + 1) + ':Q' + str(i + 1))  # merge box for fri 5200
+        violations['P' + str(i)] = ""  # leave time
+        violations['P' + str(i)].style = input_s
+        violations['P' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        violations['Q' + str(i)] = ""  # leave type
+        violations['Q' + str(i)].style = input_s
+        violations['P' + str(i + 1)] = ""  # 5200 time
+        violations['P' + str(i + 1)].style = input_s
+        violations['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # calculated fields
+        # hidden columns
+        formula_a = "=SUM(%s!D%s:P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
+                    "%s!N%s + %s!P%s" % ("violations", str(i + 1), str(i + 1),
+                                         "violations", str(i), "violations", str(i), "violations", str(i),
+                                         "violations", str(i), "violations", str(i), "violations", str(i))
+        violations['R' + str(i)] = formula_a
+        violations['R' + str(i)].style = calcs
+        violations['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        formula_b = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
+                    ("violations", str(i), "violations", str(i), "violations", str(i),
+                     "violations", str(i), "violations", str(i), "violations", str(i),
+                     "violations", str(i))
+        violations['R' + str(i + 1)] = formula_b
+        violations['R' + str(i + 1)].style = calcs
+        violations['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+        # weekly violation
+        violations.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
+        formula_c = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" \
+                    % ("violations", str(i),"violations", str(i + 1),"violations", str(i),
+                       "violations",str(i + 1),)
+        violations['S' + str(i)] = formula_c
+        violations['S' + str(i)].style = calcs
+        violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
+        # daily violation
+        formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                    "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
+                    "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
+                    "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
+                    "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
+                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1))
+        violations['T' + str(i)] = formula_d
+        violations.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
+        violations['T' + str(i)].style = calcs
+        violations['T' + str(i)].number_format = "#,###.00"
+        # wed adjustment
+        violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
+        formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                    "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
+                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
+                    "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
+                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
+                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i))
+        violations['U' + str(i)] = formula_e
+        violations['U' + str(i)].style = vert_calcs
+        violations['U' + str(i)].number_format = "#,###.00"
+        # thr adjustment
+        formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                    "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
+                    "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
+                    "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
+                    "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
+                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i)
+                       )
+        violations.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
+        violations['V' + str(i)] = formula_f
+        violations['V' + str(i)].style = vert_calcs
+        violations['V' + str(i)].number_format = "#,###.00"
+        # fri adjustment
+        violations.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
+        formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+                    "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
+                    "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
+                    "IF(AND(%s!S%s>0,%s!P%s>12)," \
+                    "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
+                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i))
+        violations['W' + str(i)] = formula_g
+        violations['W' + str(i)].style = vert_calcs
+        violations['W' + str(i)].number_format = "#,###.00"
+        # total violation
+        violations.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
+        formula_h = "=SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
+                    % ("violations", str(i), str(i), "violations", str(i),
+                       "violations", str(i), "violations", str(i))
+        violations['X' + str(i)] = formula_h
+        violations['X' + str(i)].style = calcs
+        violations['X' + str(i)].number_format = "#,###.00"
+        formula_i = "=IF(%s!A%s=0,\"\",%s!A%s)" % ("violations", str(i),"violations", str(i))
+        summary['A' + str(summary_i)] = formula_i
+        summary['A' + str(summary_i)].style = input_name
+        formula_j = "=%s!X%s" % ("violations", str(i))
+        summary['B' + str(summary_i)] = formula_j
+        summary['B' + str(summary_i)].style = input_s
+        summary['B' + str(summary_i)].number_format = "#,###.00"
+        summary.row_dimensions[summary_i].height = 10  # adjust all row height
+        i += 2
+        summary_i += 1
     # display totals for all violations
     violations.merge_cells('P' + str(i + 1) + ':T' + str(i + 1))
     violations['P' + str(i + 1)] = "Total Violations"
@@ -7856,18 +8215,24 @@ def auto_data_entry_settings(frame):
     Button(wd[3], text="Set", width=5, command=lambda: data_entry_permit_zero(wd[0], zero_top, zero_bottom)) \
         .grid(row=r, column=0, columnspan=4, sticky="e")
 
-    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), main_frame())).grid(row=0, column=0,
-                                                                                                  sticky="w")
+    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), main_frame()))\
+        .grid(row=0, column=0,sticky="w")
     rear_window(wd)
 
 
 def min_ss_presets(frame, order):
-    if order == "default": num = "25"
-    if order == "zero": num = "0"
+    if order == "default":
+        num = "25"
+        over_num = "30"
+    if order == "zero":
+        num = "0"
+        over_num = "0"
     types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
     for t in types:
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num, t)
         commit(sql)
+    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (over_num, "min_ss_overmax")
+    commit(sql)
     spreadsheet_settings(frame)
 
 
@@ -7895,7 +8260,8 @@ def apply_ss_min(frame, tolerance, type):
 
 def spreadsheet_settings(frame):
     wd = front_window(frame)  # F,S,C,FF,buttons
-    Label(wd[3], text="Spreadsheet Settings", font=macadj("bold","Helvetica 18")).grid(row=0, column=0, sticky="w")
+    Label(wd[3], text="Improper Mandate Spreadsheet Settings", font=macadj("bold","Helvetica 18"))\
+        .grid(row=0, column=0, sticky="w", columnspan=4)
     Label(wd[3], text="").grid(row=1, column=0)
     sql = "SELECT tolerance FROM tolerances"
     results = inquire(sql)  # get spreadsheet settings from database
@@ -7903,10 +8269,12 @@ def spreadsheet_settings(frame):
     min_wal = StringVar(wd[3])
     min_otdl = StringVar(wd[3])
     min_aux = StringVar(wd[3])
+    min_overmax = StringVar(wd[3])
     min_nl.set(results[3][0])  # set the values for the stringvars from dbase
     min_wal.set(results[4][0])
     min_otdl.set(results[5][0])
     min_aux.set(results[6][0])
+    min_overmax.set(results[14][0])
     # Lay out widgets for displaying/changing minimum spreadsheet rows
     Label(wd[3], text="Minimum rows for No List", width=30, anchor="w").grid(row=2, column=0, ipady=5, sticky="w")
     Entry(wd[3], width=5, textvariable=min_nl).grid(row=2, column=1, padx=4)
@@ -7928,13 +8296,25 @@ def spreadsheet_settings(frame):
     Entry(wd[3], width=5, textvariable=min_aux).grid(row=5, column=1, padx=4)
     Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_aux.get(), "min_ss_aux")) \
         .grid(row=5, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_wal")).grid(row=5, column=3, padx=4)
+    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_aux")).grid(row=5, column=3, padx=4)
+    # Display header for 12 and 60 Hour Violations Spread Sheet
+    Label(wd[3], text="").grid(row=6, column=0)
+    Label(wd[3], text="12 and 60 Hour Violations Spreadsheet Settings", font=macadj("bold", "Helvetica 18")) \
+        .grid(row=7, column=0, sticky="w", columnspan=4)
+    Label(wd[3], text="").grid(row=8, column=0)
+    # Display widgets for 12 and 60 Hour Violations Spread Sheet
+    Label(wd[3], text="Minimum rows for Over Max", width=30, anchor="w").grid(row=9, column=0, ipady=5, sticky="w")
+    Entry(wd[3], width=5, textvariable=min_overmax).grid(row=9, column=1, padx=4)
+    Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_overmax.get(), "min_ss_overmax")) \
+        .grid(row=9, column=2, padx=4)
+    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_overmax"))\
+        .grid(row=9, column=3, padx=4)
     Label(wd[3], text="_______________________________________________________________________", pady=5) \
-        .grid(row=6, columnspan=4, sticky="w")
-    Label(wd[3], text="Restore Defaults").grid(row=7, column=0, ipady=5, sticky="w")
-    Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "default")).grid(row=7, column=3)
-    Label(wd[3], text="Set rows to zero").grid(row=8, column=0, ipady=5, sticky="w")
-    Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "zero")).grid(row=8, column=3)
+        .grid(row=10, columnspan=4, sticky="w")
+    Label(wd[3], text="Restore Defaults").grid(row=11, column=0, ipady=5, sticky="w")
+    Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "default")).grid(row=11, column=3)
+    Label(wd[3], text="Set rows to zero").grid(row=12, column=0, ipady=5, sticky="w")
+    Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "zero")).grid(row=12, column=3)
     Button(wd[4], text="Go Back", width=20, anchor="w",
            command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
     rear_window(wd)
@@ -7969,6 +8349,10 @@ def tolerance_info(frame, switch):
     if switch == "min_aux":
         text = "Sets the minimum number of rows for the Auxiliary " \
                "section of the spreadsheet. \n\n" \
+               "Enter a value between 0 and 100"
+    if switch == "min_overmax":
+        text = "Sets the minimum number of rows for the " \
+               "12 and 60 Hour Violations spreadsheet. \n\n" \
                "Enter a value between 0 and 100"
     messagebox.showinfo("About Tolerances", text, parent=frame)
 
@@ -8096,10 +8480,21 @@ def apply_station(switch, station, frame):
             text = "You can not delete the \"out of station\" listing."
             messagebox.showerror("Action not allowed", text, parent=frame)
             return
-        sql = "DELETE FROM stations WHERE station='%s'" % (station)
-        commit(sql)
-        if g_station == station:
-            reset("none")
+        check = messagebox.askokcancel("Delete Station",
+                                       "Are you sure you want to delete {}? \n"
+                                       "The station will be deleted and maintenance actions will\n"
+                                       "clean any orphan carriers, clock rings and indexes from\n"
+                                       "database. This can not be reversed.".format(station),
+                                       parent = frame)
+        if check == True:
+            sql = "DELETE FROM stations WHERE station='%s'" % (station)
+            commit(sql)
+            database_clean_carriers()
+            database_clean_rings()
+            if g_station == station:
+                reset("none")
+        else:
+            return
     # access list of stations from database
     sql = "SELECT * FROM stations ORDER BY station"
     results = inquire(sql)
@@ -8200,8 +8595,8 @@ def station_list(frame):
     row += 1
     for record in results:
         Button(FF, text=record[0], width=30, anchor="w").grid(row=row, column=0, sticky="w")
-        Button(FF, text="delete", command=lambda x=record[0]: apply_station("delete", x, F)).grid(row=row, column=1,
-                                                                                                  sticky="w")
+        Button(FF, text="delete", command=lambda x=record[0]: apply_station("delete", x, F))\
+            .grid(row=row, column=1,sticky="w")
         row += 1
     Label(FF, text="____________________________________________________", pady=5). \
         grid(row=row, columnspan=2, sticky="w")
@@ -11937,6 +12332,7 @@ def main_frame():
     management_menu.add_command(label="Auto Data Entry Settings", command=lambda: auto_data_entry_settings(F))
     management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(F))
     management_menu.add_separator()
+    management_menu.add_command(label="Database", command=lambda: (F.destroy(), database_maintenance(F)))
     management_menu.add_command(label="Clean Carrier List", command=lambda: carrier_list_cleaning(F))
     management_menu.add_command(label="Clean Rings", command=lambda: clean_rings3_table())
     management_menu.add_separator()
@@ -12272,6 +12668,8 @@ if __name__ == "__main__":
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(12,"ns_auto_pref","rotation")'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(13,"mousewheel", -1)'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(14,"min_ss_overmax", 30)'
     commit(sql)
     sql = 'CREATE table IF NOT EXISTS carriers (effective_date date, carrier_name varchar, list_status varchar, ' \
           ' ns_day varchar, route_s varchar, station varchar)'
