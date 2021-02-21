@@ -375,6 +375,115 @@ def database_maintenance(frame):
         Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
         Label(wd[3], text=" carrier names in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
+    if "out of station" in list_of_stations:
+        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+        r += 1
+        Label(wd[3],text= "Database Records, for \"{}\"".format("out of station"))\
+            .grid(row=r, sticky="w", columnspan=4)
+        r += 1
+        Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+        r += 1
+        # get and display number of records for carriers
+        sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % ("out of station")
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" records in carriers table").grid(row=r, column=1, sticky=W)
+        r += 1
+        # get and display number of records for distinct carrier names from carriers
+        sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % ("out of station")
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" carrier names in carriers table").grid(row=r, column=1, sticky=W)
+        r += 1
+        Label(wd[3], text="").grid(row=r)
+        r += 1
+    # declare variables for Delete Database Records
+    clean1_range = StringVar(wd[3])
+    clean1_date = StringVar(wd[3])
+    clean1_table = StringVar(wd[3])
+    clean1_station = StringVar(wd[3])
+    # create frame and widgets for Delete Database Records
+    cleaner_frame1 = Frame(wd[3])
+    cleaner_frame1.grid(row=r, columnspan=6)
+    rr = 0
+    Label(cleaner_frame1, text="Delete Database Records (Remove records from database per given specifications)",
+          anchor="w").grid(row=rr, sticky="w", columnspan=6)
+    rr += 1
+    Label(cleaner_frame1, text="* format all date fields as mm/dd/yyyy, failure to do so will return an error",
+          anchor="w", fg = "grey").grid(row=rr, sticky="w", columnspan=4)
+    rr += 1
+    Label(cleaner_frame1, text="").grid(row=rr)
+    rr += 1
+    Label(cleaner_frame1, text="Delete Records: ", anchor="w").grid(row=rr, sticky="w", column=0)
+    Radiobutton(cleaner_frame1, text="before", variable=clean1_range, value="before", width=macadj(6,7), anchor="w")\
+        .grid(row=rr, sticky="w", column=1)
+    Radiobutton(cleaner_frame1, text="after", variable=clean1_range, value="after", width=macadj(6, 7), anchor="w") \
+        .grid(row=rr, sticky="w", column=2)
+    Label(cleaner_frame1, text="                               ", anchor="w").grid(row=rr, sticky="w", column=3)
+    Label(cleaner_frame1, text="                               ", anchor="w").grid(row=rr, sticky="w", column=4)
+    clean1_range.set("after")
+    r += 1
+    # create frame and widgets for Delete Database Records
+    cleaner_frame2 = Frame(wd[3])
+    cleaner_frame2.grid(row=r, columnspan=6, sticky="w")
+    rrr = 0
+    Label(cleaner_frame2, text="date* ", anchor ="e").grid(row=rrr,column=0, sticky="e")
+    Entry(cleaner_frame2, textvariable=clean1_date, width=macadj(12,8), justify='right')\
+        .grid(row=rrr,column=1, sticky="w")
+    Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
+    table_options = ("clock rings",  "carriers + indexes","stations + indexes", "all")
+    om1_table = OptionMenu(cleaner_frame2, clean1_table, *table_options)
+    om1_table.config(width=20, anchor="w")
+    om1_table.grid(row=rrr,column=3, sticky="w")
+    rrr += 1
+    station_options = list_of_stations[:] # use splice to make copy of list without creating alias
+    station_options.remove("out of station")
+    Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
+    om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
+    om1_station.config(width=20, anchor="w")
+    om1_station.grid(row=rrr, column=3, sticky="w")
+    Button(cleaner_frame2,text="delete",width=macadj(6,5)).grid(row=rrr, column=4, sticky="w")
+    rrr += 1
+    Label(cleaner_frame2, text="").grid(row=rrr)
+    rrr +=1
+
+    # declare variables for Delete Database Records
+    clean2_startdate = StringVar(wd[3])
+    clean2_enddate = StringVar(wd[3])
+    clean2_table = StringVar(wd[3])
+    clean2_station = StringVar(wd[3])
+    rr += 1
+    Label(cleaner_frame2, text="Delete Records within a specified range: ", anchor="w")\
+        .grid(row=rrr, sticky="w", column=0, columnspan=6)
+    rrr += 1
+    Label(cleaner_frame2, text="     start date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
+    Entry(cleaner_frame2, textvariable=clean2_startdate, width=macadj(12, 8), justify='right') \
+        .grid(row=rrr, column=1, sticky="w")
+    Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
+    om2_table = OptionMenu(cleaner_frame2, clean2_table, *table_options)
+    om2_table.config(width=20, anchor="w")
+    om2_table.grid(row=rrr, column=3, sticky="w")
+    rrr += 1
+    Label(cleaner_frame2, text="end date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
+    Entry(cleaner_frame2, textvariable=clean2_enddate, width=macadj(12, 8), justify='right') \
+        .grid(row=rrr, column=1, sticky="w")
+    Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
+    om2_station = OptionMenu(cleaner_frame2, clean2_station, *station_options)
+    om2_station.config(width=20, anchor="w")
+    om2_station.grid(row=rrr, column=3, sticky="w")
+    Button(cleaner_frame2, text="delete", width=macadj(6, 5)).grid(row=rrr, column=4, sticky="w")
+    rrr += 1
+    Label(cleaner_frame2, text="").grid(row=rrr)
+    rrr += 1
+    Label(cleaner_frame2, text="").grid(row=rrr)
+    rrr += 1
+    Label(cleaner_frame2, text="").grid(row=rrr)
+    rrr += 1
+
+    """
+    informalc_date_checker(date, type)
+    """
+
     Button(wd[4], text="Go Back", width=20, anchor="w",
            command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
     rear_window(wd)
