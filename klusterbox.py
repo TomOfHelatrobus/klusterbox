@@ -238,6 +238,122 @@ def gui_config(frame): # generate page to adjust gui configurations
     rear_window(wd)
 
 
+def database_delete_range(frame,start,end,table,stations):
+    print("hello there")
+    if informalc_date_checker(frame, start, "start date") == "fail":
+        return
+    if informalc_date_checker(frame, end, "end date") == "fail":
+        return
+    if table.get() == "" or stations.get() == "":
+        if messagebox.showerror("Database Maintenance",
+                                  "You must select a table and a station. ",
+                                  parent=frame):
+            return
+    if messagebox.askokcancel("Database Maintenance",
+                                   "This action will delete records from the database. "
+                                   "This action is irreversible. "
+                                   "Are you sure you want to proceed?",
+                                   parent=frame) == False:
+        return
+
+    print("so far, so good.", table.get(),stations.get())
+
+
+def database_delete_before_after(frame,range,date,table,stations):
+    if informalc_date_checker(frame, date, "date") == "fail":
+        return
+    if table.get() == "" or stations.get() == "":
+        if messagebox.showerror("Database Maintenance",
+                                  "You must select a table and a station. ",
+                                  parent=frame):
+            return
+    if messagebox.askokcancel("Database Maintenance",
+                                   "This action will delete records from the database. "
+                                   "This action is irreversible. "
+                                   "Are you sure you want to proceed?",
+                                   parent=frame) == False:
+        return
+    # convert date to format usable by sqlite
+    d = date.get().split("/")
+    db_date = datetime(int(d[2]), int(d[0]), int(d[1]))
+    # determine operator based on range
+    if range.get() == "before":
+        operator = "<"
+    elif range.get() == "entered date only":
+        operator = "="
+    elif range.get() == "after":
+        operator = ">"
+    # define the station array to loop
+    if stations.get() == "all stations":
+        station_array = list_of_stations[:]
+    else:
+        station_array = [stations.get()]
+    # define the table array to loop
+    if table.get() == "all":
+        table_array = ["carriers", "name_index", "rings3"]
+    elif table.get() == "carriers + index":
+        table_array = ["carriers", "name_index"]
+    elif table.get() == "carriers":
+        table_array = ["carriers"]
+    elif table.get() == "name index":
+        table_array = ["name_index"]
+    elif table.get() == "clock rings":
+        table_array = ["rings3"]
+    # loop for great justice
+    for stat in station_array:
+        for tab in table_array:
+            print(stat, "  ", tab)
+            if tab == "name_index" or tab == "rings3":
+                carrier_list = gen_carrier_list_for_dbase_mgmt(stat, db_date)
+            if tab == "carriers":
+                sql = "SELECT FROM carriers WHERE station = {} and effective_date {} {}" \
+                      .format(stat, operator, db_date)
+                print(sql)
+
+            if tab == "name_index":
+                for name in carrier_list:
+                    sql = "SELECT FROM name_index WHERE kb_name = {}"\
+                          .format(name[1])
+                    print(sql)
+            if tab == "rings3":
+                sql="SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s'" % stat
+                result = inquire(sql)
+                print("records in carriers: ", len(result))
+                for name in result:
+                    active_station = []
+                    print (name[0])
+                    # get all records for the carrier
+                    sql="SELECT * FROM carriers WHERE carrier_name= '%s' ORDER BY effective_date" % name[0]
+                    result_1 = inquire(sql)
+                    start_search=True
+                    start = ''
+                    end = ''
+                    # build the active_station array - find dates where carrier entered/left station
+                    for r in result_1:
+                        if r[5] == stat and start_search==True:
+                            start = r
+                            start_search=False
+                        if r[5] != stat and start_search==False:
+                            end = r
+                            active_station.append([start,end])
+                            start = ''
+                            end = ''
+                            start_search=True
+                    if start_search==False:
+                        active_station.append([start, end])
+                    # get all rings for the carrier
+                    sql="SELECT * FROM rings3 WHERE carrier_name = '%s' ORDER BY rings_date" % name[0]
+                    result_2 = inquire(sql)
+                    for active in active_station:
+                        for ring in result_2:
+                            if active[1] != '':
+                                if ring[0] >= active[0][0] and ring[0] <= active[1][0]:
+                                    print("hit", active[0][0], active[1][0],ring)
+                            else:
+                                if ring[0] >= active[0][0]:
+                                    print("hit single", active[0][0],ring)
+
+
 def database_clean_carriers():
     sql = "SELECT DISTINCT station FROM carriers"
     all_stations = inquire(sql)
@@ -280,13 +396,13 @@ def database_maintenance(frame):
     sql = "SELECT COUNT (*) FROM rings3"
     results = inquire(sql)
     Label(wd[3],text=results, anchor="e", fg="red").grid(row=r,column=0, sticky="e")
-    Label(wd[3],text=" records in rings table").grid(row=r,column=1, sticky="w")
+    Label(wd[3],text=" total records in rings table").grid(row=r,column=1, sticky="w")
     r += 1
     # get and display number of records for unique carriers in rings3
     sql = "SELECT COUNT (DISTINCT carrier_name) FROM rings3"
     results = inquire(sql)
     Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" carrier names in rings table").grid(row=r, column=1, sticky="w")
+    Label(wd[3], text=" distinct carrier names in rings table").grid(row=r, column=1, sticky="w")
     r += 1
     # get and display number of records for unique days in rings3
     sql = "SELECT COUNT (DISTINCT rings_date) FROM rings3"
@@ -298,19 +414,19 @@ def database_maintenance(frame):
     sql = "SELECT COUNT (*) FROM carriers"
     results = inquire(sql)
     Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" records in carriers table").grid(row=r, column=1, sticky=W)
+    Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
     r += 1
     # get and display number of records for distinct carrier names from carriers
     sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers"
     results = inquire(sql)
     Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" carrier names in carriers table").grid(row=r, column=1, sticky=W)
+    Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
     r += 1
     # get and display number of records for stations
     sql = "SELECT COUNT (*) FROM stations"
     results = inquire(sql)
     Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" records in station table (this includes \'out of station\')")\
+    Label(wd[3], text=" total records in station table (this includes \'out of station\')")\
         .grid(row=r, column=1, sticky="w")
     r += 1
     # find orphaned rings from deceased carriers
@@ -323,7 +439,6 @@ def database_maintenance(frame):
     Label(wd[3], text=" \'deceased\' carriers in rings table").grid(row=r, column=1, sticky=W)
     r += 1
     if len(deceased)>0:
-        print(deceased)
         Label(wd[3], text="").grid(row=r, column=0, sticky="w")
         r += 1
         Button(wd[3],text="clean",
@@ -367,13 +482,13 @@ def database_maintenance(frame):
         sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % (g_station)
         results = inquire(sql)
         Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" records in carriers table").grid(row=r, column=1, sticky=W)
+        Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
         # get and display number of records for distinct carrier names from carriers
         sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % (g_station)
         results = inquire(sql)
         Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" carrier names in carriers table").grid(row=r, column=1, sticky=W)
+        Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
     if "out of station" in list_of_stations:
         Label(wd[3], text="").grid(row=r, column=0, sticky="w")
@@ -387,13 +502,13 @@ def database_maintenance(frame):
         sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % ("out of station")
         results = inquire(sql)
         Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" records in carriers table").grid(row=r, column=1, sticky=W)
+        Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
         # get and display number of records for distinct carrier names from carriers
         sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % ("out of station")
         results = inquire(sql)
         Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" carrier names in carriers table").grid(row=r, column=1, sticky=W)
+        Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
         Label(wd[3], text="").grid(row=r)
         r += 1
@@ -417,10 +532,10 @@ def database_maintenance(frame):
     Label(cleaner_frame1, text="Delete Records: ", anchor="w").grid(row=rr, sticky="w", column=0)
     Radiobutton(cleaner_frame1, text="before", variable=clean1_range, value="before", width=macadj(6,7), anchor="w")\
         .grid(row=rr, sticky="w", column=1)
+    Radiobutton(cleaner_frame1, text="entered date only", variable=clean1_range, value="this_date",
+            anchor="w").grid(row=rr, sticky="w", column=2)
     Radiobutton(cleaner_frame1, text="after", variable=clean1_range, value="after", width=macadj(6, 7), anchor="w") \
-        .grid(row=rr, sticky="w", column=2)
-    Label(cleaner_frame1, text="                               ", anchor="w").grid(row=rr, sticky="w", column=3)
-    Label(cleaner_frame1, text="                               ", anchor="w").grid(row=rr, sticky="w", column=4)
+        .grid(row=rr, sticky="w", column=3)
     clean1_range.set("after")
     r += 1
     # create frame and widgets for Delete Database Records
@@ -431,22 +546,24 @@ def database_maintenance(frame):
     Entry(cleaner_frame2, textvariable=clean1_date, width=macadj(12,8), justify='right')\
         .grid(row=rrr,column=1, sticky="w")
     Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
-    table_options = ("clock rings",  "carriers + indexes","stations + indexes", "all")
+    table_options = ("carriers + index","carriers","name index","clock rings", "all")
     om1_table = OptionMenu(cleaner_frame2, clean1_table, *table_options)
     om1_table.config(width=20, anchor="w")
     om1_table.grid(row=rrr,column=3, sticky="w")
     rrr += 1
     station_options = list_of_stations[:] # use splice to make copy of list without creating alias
-    station_options.remove("out of station")
+    # station_options.remove("out of station")
+    station_options.append("all stations")
     Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
     om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
     om1_station.config(width=20, anchor="w")
     om1_station.grid(row=rrr, column=3, sticky="w")
-    Button(cleaner_frame2,text="delete",width=macadj(6,5)).grid(row=rrr, column=4, sticky="w")
+    Button(cleaner_frame2,text="delete",width=macadj(6,5),
+           command=lambda:database_delete_before_after(wd[3],clean1_range,clean1_date,clean1_table,clean1_station)
+           ).grid(row=rrr, column=4, sticky="w")
     rrr += 1
     Label(cleaner_frame2, text="").grid(row=rrr)
     rrr +=1
-
     # declare variables for Delete Database Records
     clean2_startdate = StringVar(wd[3])
     clean2_enddate = StringVar(wd[3])
@@ -455,6 +572,9 @@ def database_maintenance(frame):
     rr += 1
     Label(cleaner_frame2, text="Delete Records within a specified range: ", anchor="w")\
         .grid(row=rrr, sticky="w", column=0, columnspan=6)
+    rrr += 1
+    Label(cleaner_frame2, text="* format all date fields as mm/dd/yyyy, failure to do so will return an error",
+          anchor="w", fg="grey").grid(row=rrr, sticky="w", columnspan=4)
     rrr += 1
     Label(cleaner_frame2, text="     start date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
     Entry(cleaner_frame2, textvariable=clean2_startdate, width=macadj(12, 8), justify='right') \
@@ -471,18 +591,12 @@ def database_maintenance(frame):
     om2_station = OptionMenu(cleaner_frame2, clean2_station, *station_options)
     om2_station.config(width=20, anchor="w")
     om2_station.grid(row=rrr, column=3, sticky="w")
-    Button(cleaner_frame2, text="delete", width=macadj(6, 5)).grid(row=rrr, column=4, sticky="w")
+    Button(cleaner_frame2, text="delete", width=macadj(6, 5),
+       command=lambda:database_delete_range(wd[3],clean2_startdate,clean2_enddate,clean2_table,clean2_station))\
+           .grid(row=rrr, column=4, sticky="w")
     rrr += 1
     Label(cleaner_frame2, text="").grid(row=rrr)
-    rrr += 1
-    Label(cleaner_frame2, text="").grid(row=rrr)
-    rrr += 1
-    Label(cleaner_frame2, text="").grid(row=rrr)
-    rrr += 1
-
-    """
-    informalc_date_checker(date, type)
-    """
+    r += 1
 
     Button(wd[4], text="Go Back", width=20, anchor="w",
            command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
@@ -4333,27 +4447,37 @@ def informalc_grvlist_result(frame, result):
     rear_window(wd)
 
 
-def informalc_date_checker(date, type):
+def informalc_date_checker(frame,date, type):
     d = date.get().split("/")
     if len(d) != 3:
-        messagebox.showerror("Invalid Data Entry", "The date for the {} is not properly formatted.".format(type))
+        messagebox.showerror("Invalid Data Entry",
+                             "The date for the {} is not properly formatted.".format(type),
+                             parent=frame)
         return "fail"
     for num in d:
         if num.isnumeric() == False:
-            messagebox.showerror("Invalid Data Entry", "The month, day and year for the {} "
-                                                       "must be numeric.".format(type))
+            messagebox.showerror("Invalid Data Entry",
+                                 "The month, day and year for the {} "
+                                 "must be numeric.".format(type),
+                                 parent=frame)
             return "fail"
     if len(d[0]) > 2:
-        messagebox.showerror("Invalid Data Entry", "The month for the {} must be no more than two digits"
-                                                   " long.".format(type))
+        messagebox.showerror("Invalid Data Entry",
+                             "The month for the {} must be no more than two digits"
+                             " long.".format(type),
+                             parent=frame)
         return "fail"
     if len(d[1]) > 2:
-        messagebox.showerror("Invalid Data Entry", "The day for the {} must be no more than two digits"
-                                                   " long.".format(type))
+        messagebox.showerror("Invalid Data Entry",
+                             "The day for the {} must be no more than two digits"
+                             " long.".format(type),
+                             parent=frame)
         return "fail"
     if len(d[2]) > 4:
-        messagebox.showerror("Invalid Data Entry", "The year for the {} must be no more than four digits long."
-                             .format(type))
+        messagebox.showerror("Invalid Data Entry",
+                             "The year for the {} must be no more than four digits long."
+                             .format(type),
+                             parent=frame)
         return "fail"
     try:
         date = datetime(int(d[2]), int(d[0]), int(d[1]))
@@ -4361,8 +4485,10 @@ def informalc_date_checker(date, type):
     except ValueError:
         valid_date = False
     if valid_date == False:
-        messagebox.showerror("Invalid Data Entry", "The date entered for {} is not a valid date."
-                             .format(type))
+        messagebox.showerror("Invalid Data Entry",
+                             "The date entered for {} is not a valid date."
+                             .format(type),
+                             parent=frame)
         return "fail"
 
 
@@ -4374,10 +4500,10 @@ def informalc_grvlist_apply(frame,
                             docs, have_docs):
     conditions = []
     if incident_date.get() == "yes":
-        check = informalc_date_checker(incident_start, "starting incident date")
+        check = informalc_date_checker(frame,incident_start, "starting incident date")
         if check == "fail":
             return
-        check = informalc_date_checker(incident_end, "ending incident date")
+        check = informalc_date_checker(frame,incident_end, "ending incident date")
         if check == "fail":
             return
         d = incident_start.get().split("/")
@@ -4391,10 +4517,10 @@ def informalc_grvlist_apply(frame,
         to_add = "indate_start > '{}' and indate_end < '{}'".format(start, end)
         conditions.append(to_add)
     if signing_date.get() == "yes":
-        check = informalc_date_checker(signing_start, "starting signing date")
+        check = informalc_date_checker(frame,signing_start, "starting signing date")
         if check == "fail":
             return
-        check = informalc_date_checker(signing_end, "ending signing date")
+        check = informalc_date_checker(frame,signing_end, "ending signing date")
         if check == "fail":
             return
         d = signing_start.get().split("/")
@@ -4960,11 +5086,11 @@ def informalc_date_converter(date):  # be sure to run informalc date checker bef
     return dt
 
 
-def informalc_por_all(afterdate, beforedate, station, backdate):
-    check = informalc_date_checker(afterdate, "After Date")
+def informalc_por_all(frame, afterdate, beforedate, station, backdate):
+    check = informalc_date_checker(frame,afterdate, "After Date")
     if check == "fail":
         return
-    check = informalc_date_checker(beforedate, "Before Date")
+    check = informalc_date_checker(frame,beforedate, "Before Date")
     if check == "fail":
         return
     start = informalc_date_converter(afterdate)
@@ -5077,7 +5203,7 @@ def informalc_por(frame):
     Button(wd[4], text="Go Back", width=16, command=lambda: informalc(wd[0])).grid(row=0, column=0)
     Label(wd[4], text="Report: ", width=16).grid(row=0, column=1)
     Button(wd[4], text="All Carriers", width=16,
-           command=lambda: informalc_por_all(afterdate, beforedate, station, backdate)).grid(row=0, column=2)
+           command=lambda: informalc_por_all(wd[3],afterdate, beforedate, station, backdate)).grid(row=0, column=2)
     Button(wd[4], text="By Carrier", width=16).grid(row=0, column=3)
     rear_window(wd)
 
@@ -5694,14 +5820,63 @@ def auto_precheck():
     pb_root.destroy()
 
 
+def gen_carrier_list_for_dbase_mgmt(station, date):
+    sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+          " FROM carriers WHERE effective_date <= '%s'" \
+          "ORDER BY carrier_name, effective_date desc" % (date)
+    results = inquire(sql)  # call function to access database
+    carrier_list = []  # initialize arrays for data sorting
+    candidates = []
+    more_rows = []
+    pre_invest = []
+    for i in range(len(results)):  # take raw data and sort into appropriate arrays
+        candidates.append(results[i])  # put name into candidates array
+        jump = "no"  # triggers an analysis of the candidates array
+        if i != len(results) - 1:  # if the loop has not reached the end of the list
+            if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
+                jump = "yes"  # bypasses an analysis of the candidates array
+        if jump == "no":
+            # sort into records in investigation range and those prior
+            for record in candidates:
+                if record[0] <= str(date) and len(pre_invest) == 0: pre_invest.append(record)
+            # find carriers who start in the middle of the investigation range CATEGORY ONE
+            if len(more_rows) > 0 and len(pre_invest) == 0:
+                station_anchor = "no"
+                for each in more_rows:  # check if any records place the carrier in the selected station
+                    if each[5] == station: station_anchor = "yes"  # if so, set the station anchor
+                if station_anchor == "yes":
+                    list(more_rows)
+                    for each in more_rows:
+                        x = list(each)  # convert the tuple to a list
+                        carrier_list.append(x)  # add it to the list
+            # find carriers with records before and during the investigation range CATEGORY TWO
+            if len(more_rows) > 0 and len(pre_invest) > 0:
+                station_anchor = "no"
+                for each in more_rows + pre_invest:
+                    if each[5] == station: station_anchor = "yes"
+                if station_anchor == "yes":
+                    xx = list(pre_invest[0])
+                    carrier_list.append(xx)
+            # find carrier with records from only before investigation range.CATEGORY THREE
+            if len(more_rows) == 0 and len(pre_invest) == 1:
+                for each in pre_invest:
+                    if each[5] == station:
+                        x = list(pre_invest[0])
+                        carrier_list.append(x)
+            del more_rows[:]
+            del pre_invest[:]
+            del candidates[:]
+    return carrier_list
+
+
 def gen_carrier_list():
     # generate in range carrier list
     if g_range == "week":  # select sql dependant on range
-        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, g_station, rowid" \
               " FROM carriers WHERE effective_date <= '%s'" \
               "ORDER BY carrier_name, effective_date desc" % (g_date[6])
     if g_range == "day":
-        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, g_station, rowid" \
               " FROM carriers WHERE effective_date <= '%s'" \
               "ORDER BY carrier_name, effective_date desc" % (d_date)
     results = inquire(sql)  # call function to access database
