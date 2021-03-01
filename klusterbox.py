@@ -1,26 +1,3 @@
-"""
- _   _ _                             _
-| |/ /| |              _            | |
-| | / | | _   _  ___ _| |_ ___  _ _ | |_   __  _  __
-|  (  | || | | |/ __/_   _| __|| /_/|   \ /  \\ \/ /
-| | \ | |\ \_| |\__ \ | | | _| | |  | () | () |)  (
-|_|\_\|_| \____|/___/ |_| |___||_|  |___/ \__//_/\_\
-
-Klusterbox
-Copyright 2019 Thomas Weeks
-
-Caution: To ensure proper operation of Klusterbox outside Program Files (Windows) or Applications (mac OS),
-make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.
-
-For the newest version of Klusterbox, visit www.klusterbox.com/download.
-Visit https://github.com/TomOfHelatrobus/klusterbox for the most recent source code.
-
-This version of Klusterbox is being released under the GNU General Public License version 3.
-"""
-# version variables
-version = "4.001"
-release_date = "February 11, 2021"
-
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox
@@ -57,9 +34,33 @@ from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 
+# version variables
+version = "4.001"
+release_date = "February 11, 2021"
 
-# query the database
+"""
+ _   _ _                             _
+| |/ /| |              _            | |
+| | / | | _   _  ___ _| |_ ___  _ _ | |_   __  _  __
+|  (  | || | | |/ __/_   _| __|| /_/|   \ /  \\ \/ /
+| | \ | |\ \_| |\__ \ | | | _| | |  | () | () |)  (
+|_|\_\|_| \____|/___/ |_| |___||_|  |___/ \__//_/\_\
+
+Klusterbox
+Copyright 2019 Thomas Weeks
+
+Caution: To ensure proper operation of Klusterbox outside Program Files (Windows) or Applications (mac OS),
+make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.
+
+For the newest version of Klusterbox, visit www.klusterbox.com/download.
+Visit https://github.com/TomOfHelatrobus/klusterbox for the most recent source code.
+
+This version of Klusterbox is being released under the GNU General Public License version 3.
+"""
+
+
 def inquire(sql):
+    # query the database
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
     if platform == "winapp":
@@ -146,47 +147,84 @@ def rear_window(wd):  # This closes the window created by front_window()
     mainloop()
 
 
-def dir_path(dir):  # create needed directories if they don't exist and return the appropriate path
+def titlebar_icon(root):  # place icon in titlebar
+    if sys.platform == "win32" and platform == "py":
+        try:
+            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except:
+            pass
+    if sys.platform == "win32" and platform == "winapp":
+        try:
+            # root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
+            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
+        except:
+            pass
+    if sys.platform == "darwin" and platform == "py":
+        try:
+            root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
+            root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
+        except:
+            pass
+    if sys.platform == "linux":
+        try:
+            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
+            root.tk.call('wm', 'iconphoto', root._w, img)
+        except:
+            pass
+
+
+def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
     if sys.platform == "darwin":
         if platform == "macapp":
-            if os.path.isdir(os.path.expanduser("~") + '/Documents') == False:
+            if not os.path.isdir(os.path.expanduser("~") + '/Documents'):
                 os.makedirs(os.path.expanduser("~") + '/Documents')
-            if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox') == False:
+            if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox'):
                 os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox')
-            if os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dir) == False:
-                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dir)
-            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir + '/'
+            if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dirr):
+                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dirr)
+            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dirr + '/'
         else:
-            if not os.path.isdir('kb_sub/' + dir):
-                os.makedirs(('kb_sub/' + dir))
-            path = 'kb_sub/' + dir + '/'
+            if not os.path.isdir('kb_sub/' + dirr):
+                os.makedirs(('kb_sub/' + dirr))
+            path = 'kb_sub/' + dirr + '/'
     if sys.platform == "win32":
         if platform == "winapp":
             if not os.path.isdir(os.path.expanduser("~") + '\\Documents'):
                 os.makedirs(os.path.expanduser("~") + '\\Documents')
             if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox'):
                 os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
-            if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir):
-                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir)
-            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir + '\\'
+            if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr):
+                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr)
+            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr + '\\'
         else:
-            if not os.path.isdir('kb_sub\\' + dir):
-                os.makedirs(('kb_sub\\' + dir))
-            path = 'kb_sub\\' + dir + '\\'
+            if not os.path.isdir('kb_sub\\' + dirr):
+                os.makedirs(('kb_sub\\' + dirr))
+            path = 'kb_sub\\' + dirr + '\\'
     return path
 
 
-def dir_path_check(dir):  # return appropriate path depending on platorm
+def dir_path_check(dirr):  # return appropriate path depending on platorm
     if sys.platform == "darwin":
         if platform == "macapp":
-            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dir
+            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dirr
         else:
-            path = 'kb_sub/' + dir
+            path = 'kb_sub/' + dirr
     if sys.platform == "win32":
         if platform == "winapp":
-            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir
+            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr
         else:
-            path = 'kb_sub\\' + dir
+            path = 'kb_sub\\' + dirr
+    return path
+
+
+def dir_filedialog():
+    # determine where the file dialog opens
+    if sys.platform == "darwin":
+        path = os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')
+    elif sys.platform == "win32":
+        path = os.path.expanduser("~") + '\\Documents'
+    else:
+        path = os.path.expanduser("~")
     return path
 
 
@@ -251,7 +289,7 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
     if time_range.get() != "all":
         if informalc_date_checker(frame, date, "date") == "fail":
             return
-    if end_date != "x":
+    if time_range.get() == "between":
         if informalc_date_checker(frame, end_date, "end date") == "fail":
             return
     if table.get() == "" or stations.get() == "":
@@ -260,12 +298,12 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                                 parent=frame):
             return
     if not messagebox.askokcancel("Database Maintenance",
-                                  "This action will delete records from the database. "
-                                  "This action is irreversible. "
+                                  "This action will delete records from the database. \n\n"
+                                  "This action is irreversible. \n\n"
                                   "Are you sure you want to proceed?",
                                   parent=frame):
         return
-    # convert date to format usable by sqlite
+    #  convert date to format usable by sqlite
     if time_range.get() != "all":
         d = date.get().split("/")
         db_date = datetime(int(d[2]), int(d[0]), int(d[1]))
@@ -279,7 +317,7 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
         station_array = [stations.get()]
     # define the table array to loop
     if table.get() == "all":
-        table_array = ["rings3", "name_index", "carriers", "stations"]
+        table_array = ["rings3", "name_index", "carriers", "stations", "station_index"]
     elif table.get() == "carriers + index":
         table_array = ["carriers", "name_index"]
     elif table.get() == "carriers":
@@ -288,6 +326,38 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
         table_array = ["name_index"]
     elif table.get() == "clock rings":
         table_array = ["rings3"]
+    #  short cuts to delete all records in table
+    if time_range.get() == "all" and stations.get() == "all stations":
+        for tab in table_array:
+            if tab == "stations":
+                sql = "DELETE FROM stations"
+                commit(sql)
+            if tab == "station_index":
+                sql = "DELETE FROM station_index"
+                commit(sql)
+            if tab == "name_index":
+                sql = "DELETE FROM name_index"
+                commit(sql)
+            if tab == "carriers":
+                sql = "DELETE FROM carriers"
+                commit(sql)
+            if tab == "rings3":
+                sql = "DELETE FROM rings3"
+                commit(sql)
+            if tab == "stations":
+                sql = "DELETE FROM stations"
+                commit(sql)
+                sql = "INSERT INTO stations (station) VALUES('%s')" % "out of station"
+                commit(sql)
+                del list_of_stations[:]
+                list_of_stations.append("out of station")
+                reset("none")  #  reset investigation range
+        messagebox.showinfo("Database Maintenance",
+                            "Success! The database has been cleaned of the specified records.",
+                            parent=frame)
+        frame.destroy()
+        database_maintenance(masterframe)
+        return
     # loop for great justice
     for stat in station_array:
         for tab in table_array:
@@ -300,23 +370,28 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                     list_of_stations.remove(stat)
                 if g_station == stat:
                     reset("none")
+            if tab == "station_index":
+                if stat != "out of station":
+                    sql = "DELETE FROM stations WHERE station = '%s'" % stat
+                    commit(sql)
             if tab == "rings3":
                 # determine operator based on time_range
                 if time_range.get() == "before":
-                    operator = "AND rings_date <= '%s'" % db_date
+                    operator = " AND rings_date <= '%s'" % db_date
                 elif time_range.get() == "this_date":
-                    operator = "AND rings_date = '%s'" % db_date
+                    operator = " AND rings_date = '%s'" % db_date
                 elif time_range.get() == "after":
-                    operator = "AND rings_date >= '%s'" % db_date
+                    operator = " AND rings_date >= '%s'" % db_date
                 elif time_range.get() == "all":
                     operator = ""
                 elif time_range.get() == "between":
-                    operatotr = "AND '%s' <= rings_date <= '%s'" % (db_date, db_end_date)
+                    operator = " AND rings_date BETWEEN '%s' AND '%s'" % (db_date, db_end_date)
                 sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' ORDER BY carrier_name" \
                       % stat
                 result = inquire(sql)
                 pb_root = Tk()  # create a window for the progress bar
                 pb_root.title("Deleting Clock Rings from {}".format(stat))
+                titlebar_icon(pb_root)
                 pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
                 pb_label.grid(row=0, column=0, sticky="w")
                 pb = ttk.Progressbar(pb_root, length=400, mode = "determinate")  # create progress bar
@@ -328,11 +403,7 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                 pb["maximum"] = steps  # set length of progress bar
                 pb.start()
                 for name in result:
-                    pb_text.config(text = "Deleting clock rings for: {}".format(name[0]))
                     pb_count += 1
-                    pb["value"] = pb_count  # increment progress bar
-                    # change text for progress bar
-                    pb_root.update()
                     active_station = []
                     # get all records for the carrier
                     sql = "SELECT * FROM carriers WHERE carrier_name= '%s' ORDER BY effective_date" % name[0]
@@ -353,54 +424,37 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                             start_search = True
                     if not start_search:
                         active_station.append([start, end])
-                    # get all rings for the carrier
-                    sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' {} ORDER BY rings_date"\
-                              .format(operator) % name[0]
-                    print(sql)
-                    result_2 = inquire(sql)
                     for active in active_station:
-                        for ring in result_2:
-                            if active[1] != '':
-                                if active[0][0] <= ring[0] <= active[1][0]:
-                                    sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
-                                          % (ring[0], ring[1])
-                                    commit(sql)
-                                    print("rings delete: ", ring)
-                            else:
-                                if ring[0] >= active[0][0]:
-                                    sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
-                                          % (ring[0], ring[1])
-                                    commit(sql)
-                                    print("rings delete: ", ring)
+                        if active[1] != '':
+                            sql = "DELETE FROM rings3 WHERE rings_date " \
+                                  "BETWEEN '%s' AND '%s'{} AND carrier_name = '%s' " \
+                                      .format(operator) % (active[0][0], active[1][0], name[0])
+                            commit(sql)
+                            # change text for progress bar
+                            pb_text.config(text="Deleting in range rings for: {} - {} through {}"
+                                           .format(name[0], active[0][0], active[1][0]))
+                            pb["value"] = pb_count  # increment progress bar
+                            pb_root.update()
+                        else:
+                            sql = "DELETE FROM rings3 WHERE rings_date >= '%s'{} AND carrier_name = '%s' " \
+                                  .format(operator) % (active[0][0], name[0])
+                            commit(sql)
+                            # change text for progress bar
+                            pb_text.config(text="Deleting in range rings for: {} - {} +".format(name[0], active[0][0]))
+                            pb_root.update()
+                            pb["value"] = pb_count  # increment progress bar
                 pb.stop()  # stop and destroy the progress bar
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()
                 pb_root.destroy()
-
             if tab == "name_index":
                 sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s'" \
                       % stat
                 results = inquire(sql)
-                for car in results:
-                    sql = "DELETE FROM name_index WHERE kb_name='%s'" % car[0]
-                    commit(sql)
-                    print("name index delete: ", car[0])
-            if tab == "carriers":
-                # determine operator based on time_range
-                if time_range.get() == "before":
-                    operator = "AND effective_date <= '%s'" % db_date
-                elif time_range.get() == "this_date":
-                    operator = "AND effective_date = '%s'" % db_date
-                elif time_range.get() == "after":
-                    operator = "AND effective_date >= '%s'" % db_date
-                elif time_range.get() == "all":
-                    operator = ""
-                sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' {}" \
-                      .format(operator) % stat
-                print(sql)
-                results = inquire(sql)
+                pb_count = 0
                 pb_root = Tk()  # create a window for the progress bar
-                pb_root.title("Deleting Carrier Records from {}".format(stat))
+                pb_root.title("Deleting Clock Rings from {}".format(stat))
+                titlebar_icon(pb_root)
                 pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
                 pb_label.grid(row=0, column=0, sticky="w")
                 pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
@@ -412,10 +466,48 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                 pb["maximum"] = steps  # set length of progress bar
                 pb.start()
                 for car in results:
-                    pb_text.config(text="Deleting clock rings for: {}".format(car[0]))
+                    sql = "DELETE FROM name_index WHERE kb_name='%s'" % car[0]
+                    commit(sql)
+                    pb_count += 1
+                    pb_text.config(text="Deleting name index for: {}".format(car[0]))
+                    pb["value"] = pb_count  # increment progress bar
+                    pb_root.update()
+                pb.stop()  # stop and destroy the progress bar
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()
+                pb_root.destroy()
+            if tab == "carriers":
+                # determine operator based on time_range
+                if time_range.get() == "before":
+                    operator = "AND effective_date <= '%s'" % db_date
+                elif time_range.get() == "this_date":
+                    operator = "AND effective_date = '%s'" % db_date
+                elif time_range.get() == "after":
+                    operator = "AND effective_date >= '%s'" % db_date
+                elif time_range.get() == "all":
+                    operator = ""
+                elif time_range.get() == "between":
+                    operator = "AND '%s' <= effective_date <= '%s'" % (db_date, db_end_date)
+                sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' {}" \
+                      .format(operator) % stat
+                results = inquire(sql)
+                pb_root = Tk()  # create a window for the progress bar
+                pb_root.title("Deleting Carrier Records from {}".format(stat))
+                titlebar_icon(pb_root)
+                pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+                pb_label.grid(row=0, column=0, sticky="w")
+                pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+                pb.grid(row=0, column=1, sticky="w")
+                pb_text = Label(pb_root, text="", anchor="w")
+                pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+                steps = len(results)
+                pb_count = 0
+                pb["maximum"] = steps  # set length of progress bar
+                pb.start()
+                for car in results:
+                    pb_text.config(text="Deleting clock rings for: {}".format(car[0]))# change text for progress bar
                     pb_count += 1
                     pb["value"] = pb_count  # increment progress bar
-                    # change text for progress bar
                     pb_root.update()
                     sql = "SELECT * FROM carriers WHERE  carrier_name = '%s' {}".format(operator) % car[0]
                     car_ask = inquire(sql)
@@ -458,13 +550,14 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()
                 pb_root.destroy()
-    messagebox.showinfo("Database Maintenance","Success! The database has been cleaned of the specified records.",
-                         parent=frame)
+    messagebox.showinfo("Database Maintenance",
+                        "Success! The database has been cleaned of the specified records.",
+                        parent=frame)
     frame.destroy()
     database_maintenance(masterframe)
 
 
-def database_reset(masterframe, frame): # deletes the database and rebuilds it.
+def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
     if not messagebox.askokcancel("Delete Database",
                               "This action will delete your database and all information inside it."
                               "This includes carrier information, rings information, settings as "
@@ -491,27 +584,15 @@ def database_reset(masterframe, frame): # deletes the database and rebuilds it.
     start_up()
 
 
-def database_clean_carriers(): # delete carrier records where station no longer exist
+def database_clean_carriers():  # delete carrier records where station no longer exist
     sql = "SELECT DISTINCT station FROM carriers"
     all_stations = inquire(sql)
     sql = "SELECT station FROM stations"
     good_stations = inquire(sql)
     deceased = [x for x in all_stations if x not in good_stations]
-    for dead in deceased:
-        sql = "DELETE FROM carriers WHERE station ='%s'" % (dead[0])
-        commit(sql)
-    sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
-    commit(sql)
-
-
-def database_clean_rings():
-    sql = "SELECT DISTINCT carrier_name FROM carriers"
-    carriers_results = inquire(sql)
-    sql = "SELECT DISTINCT carrier_name FROM rings3"
-    rings_results = inquire(sql)
-    deceased = [x for x in rings_results if x not in carriers_results]
     pb_root = Tk()  # create a window for the progress bar
     pb_root.title("Deleting Orphaned Clock Rings")
+    titlebar_icon(pb_root)  # place icon in titlebar
     pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
     pb_label.grid(row=0, column=0, sticky="w")
     pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
@@ -523,7 +604,41 @@ def database_clean_rings():
     pb["maximum"] = steps  # set length of progress bar
     pb.start()
     for dead in deceased:
-        pb_text.config(text="Deleting clock rings for: {}".format(dead))
+        sql = "DELETE FROM carriers WHERE station ='%s'" % (dead[0])
+        commit(sql)
+        pb_count += 1
+        pb_text.config(text="Deleting carrier records for: {}".format(dead[0]))
+        pb["value"] = pb_count  # increment progress bar
+        pb_root.update()
+    sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
+    commit(sql)
+    pb.stop()  # stop and destroy the progress bar
+    pb_label.destroy()  # destroy the label for the progress bar
+    pb.destroy()
+    pb_root.destroy()
+
+
+def database_clean_rings():
+    sql = "SELECT DISTINCT carrier_name FROM carriers"
+    carriers_results = inquire(sql)
+    sql = "SELECT DISTINCT carrier_name FROM rings3"
+    rings_results = inquire(sql)
+    deceased = [x for x in rings_results if x not in carriers_results]
+    pb_root = Tk()  # create a window for the progress bar
+    pb_root.title("Deleting Orphaned Clock Rings")
+    titlebar_icon(pb_root)  # place icon in titlebar
+    pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+    pb_label.grid(row=0, column=0, sticky="w")
+    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+    pb.grid(row=0, column=1, sticky="w")
+    pb_text = Label(pb_root, text="", anchor="w")
+    pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+    steps = len(deceased)
+    pb_count = 0
+    pb["maximum"] = steps  # set length of progress bar
+    pb.start()
+    for dead in deceased:
+        pb_text.config(text="Deleting clock rings for: {}".format(dead[0]))
         pb_count += 1
         pb["value"] = pb_count  # increment progress bar
         # change text for progress bar
@@ -613,11 +728,11 @@ def database_maintenance(frame):
     all_stations = inquire(sql)
     sql = "SELECT station FROM stations"
     good_stations = inquire(sql)
-    deceased = [x for x in all_stations if x not in good_stations]
-    Label(wd[3], text=len(deceased), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+    deceased_cars = [x for x in all_stations if x not in good_stations]
+    Label(wd[3], text=len(deceased_cars), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
     Label(wd[3], text=" \'deceased\' stations in carriers table").grid(row=r, column=1, sticky=W)
     r += 1
-    if len(deceased) > 0:
+    if len(deceased_cars) > 0:
         Label(wd[3], text="").grid(row=r, column=0, sticky="w")
         r += 1
         Button(wd[3], text="clean",
@@ -717,7 +832,6 @@ def database_maintenance(frame):
     om1_table.grid(row=rrr, column=3, sticky="w")
     rrr += 1
     station_options = list_of_stations[:]  # use splice to make copy of list without creating alias
-    # station_options.remove("out of station")
     station_options.append("all stations")
     Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
     om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
@@ -731,6 +845,7 @@ def database_maintenance(frame):
     Label(cleaner_frame2, text="").grid(row=rrr)
     rrr += 1
     # declare variables for Delete Database Records
+    clean2_range = StringVar(wd[3])
     clean2_startdate = StringVar(wd[3])
     clean2_enddate = StringVar(wd[3])
     clean2_table = StringVar(wd[3])
@@ -742,6 +857,8 @@ def database_maintenance(frame):
     Label(cleaner_frame2, text="* format all date fields as mm/dd/yyyy, failure to do so will return an error",
           anchor="w", fg="grey").grid(row=rrr, sticky="w", columnspan=4)
     rrr += 1
+    # declare range as "between by default
+    clean2_range.set("between")
     Label(cleaner_frame2, text="     start date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
     Entry(cleaner_frame2, textvariable=clean2_startdate, width=macadj(12, 8), justify='right') \
         .grid(row=rrr, column=1, sticky="w")
@@ -758,7 +875,7 @@ def database_maintenance(frame):
     om2_station.config(width=20, anchor="w")
     om2_station.grid(row=rrr, column=3, sticky="w")
     Button(cleaner_frame2, text="delete", width=macadj(6, 5),
-           command=lambda: database_delete_records(frame, wd[0], "between", clean2_startdate, clean2_enddate,
+           command=lambda: database_delete_records(frame, wd[0], clean2_range, clean2_startdate, clean2_enddate,
                                                    clean2_table, clean2_station)) \
         .grid(row=rrr, column=4, sticky="w")
     rrr += 1
@@ -1427,21 +1544,28 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions['A3'].style = instruct_text
     instructions.merge_cells('A3:X3')
     instructions['A3'] = "Instructions: \n1. Fill in the name \n" \
-                         "2. Fill in the list. Enter either “otdl”,”wal”,”nl” or “aux” in list columns. Use only lowercase. \n" \
+                         "2. Fill in the list. Enter either “otdl”,”wal”,”nl” or “aux” in list columns. " \
+                         "Use only lowercase. \n" \
                          "   If you do not enter anything, the default is “otdl\n" \
                          "\totdl = overtime desired list\n" \
                          "\twal = work assignment list\n" \
                          "\tnl = no list \n" \
                          "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
-                         "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours or if the sum of all daily non 5200 times (all fields D) plus \n" \
+                         "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours " \
+                         "or if the sum of all daily non 5200 times (all fields D) plus \n" \
                          "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
-                         "4. Fill in any daily non 5200 times and types in fields D and E. Enter only paid leave types such as sick leave, annual\n" \
-                         "   leave and holiday leave. Do not enter unpaid leave types such as LWOP (leave without pay) or AWOL (absent \n" \
+                         "4. Fill in any daily non 5200 times and types in fields D and E. " \
+                         "Enter only paid leave types such as sick leave, annual\n" \
+                         "   leave and holiday leave. Do not enter unpaid leave types such as LWOP " \
+                         "(leave without pay) or AWOL (absent \n" \
                          "   without leave).\n" \
-                         "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers or 11.50 hours for any other carrier in fields F.\n" \
-                         "   Failing to fill out the daily values for Wednesday, Thursday and Friday could cause errors in calculating the adjustments,\n" \
+                         "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers " \
+                         "or 11.50 hours for any other carrier in fields F.\n" \
+                         "   Failing to fill out the daily values for Wednesday, Thursday and Friday " \
+                         "could cause errors in calculating the adjustments,\n" \
                          "   so fill those in.\n" \
-                         "6. The gray fields will fill automatically. Do not enter an information in these fields as it will delete the formulas.\n" \
+                         "6. The gray fields will fill automatically. Do not enter an information in " \
+                         "these fields as it will delete the formulas.\n" \
                          "7. Field O will show the violation in hours which you should seek a remedy for. \n"
     for x in range(4, 20): instructions.row_dimensions[x].height = 10  # adjust all row height
     instructions.merge_cells('D6:Q6')
@@ -1671,9 +1795,11 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
     formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
                 "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
+                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
+                "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                 "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
-                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
+                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
+                "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
                 % (page, str(i), page, str(i), page, str(i),
                    page, str(i), page, str(i + 1), page, str(i),
                    page, str(i + 1), page, str(i), page, str(i + 1),
@@ -1762,24 +1888,32 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions.merge_cells('A14:X14')
     instructions['A14'] = "Legend: \n" \
                           "A.  Name \n" \
-                          "B.  List: Either otdl, wal, nl or aux (always use lowercase to preserve operation of the formulas).\n" \
+                          "B.  List: Either otdl, wal, nl or aux (always use lowercase to preserve " \
+                          "operation of the formulas).\n" \
                           "C.  Weekly 5200 Time: Enter the 5200 time for the week. \n" \
-                          "D.  Daily Non 5200 Time: Enter daily hours for either holiday, annual sick leave or other type of paid leave.\n" \
+                          "D.  Daily Non 5200 Time: Enter daily hours for either holiday, annual sick leave or " \
+                          "other type of paid leave.\n" \
                           "E.  Daily Non 5200 Type: Enter “a” for annual, “s” for sick, “h” for holiday, etc. \n" \
                           "F.  Daily 5200 Hours: Enter 5200 hours or hours worked for the day. \n" \
                           "G.  No value allowed: No non 5200 times allowed for Sundays.\n" \
                           "J.   Weekly Violations: This is the total of violations over 60 hours in a week.\n" \
-                          "K.  Daily Violations: This is the total of daily violations which have exceeded 11.50 (for wal, nl or aux)\n" \
+                          "K.  Daily Violations: This is the total of daily violations which have exceeded 11.50 " \
+                          "(for wal, nl or aux)\n" \
                           "     or 12 hours in a day (for otdl).\n" \
-                          "L.  Wednesday Adjustment: In cases were the 60 hour limit is reached and a daily violation happens (on Wednesday),\n" \
+                          "L.  Wednesday Adjustment: In cases were the 60 hour limit is reached " \
+                          "and a daily violation happens (on Wednesday),\n" \
                           "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                          "M.  Thursday Adjustment: In cases were the 60 hour limit is reached and a daily violation happens (on Thursday), \n" \
+                          "M.  Thursday Adjustment: In cases were the 60 hour limit is reached and " \
+                          "a daily violation happens (on Thursday), \n" \
                           "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                          "N.  Friday Adjustment: In cases were the 60 hour limit is reached and a daily violation happens (on Friday),\n" \
+                          "N.  Friday Adjustment: In cases were the 60 hour limit is reached and " \
+                          "a daily violation happens (on Friday),\n" \
                           "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                          "O.  Total Violation: This field is the end result of the calculation. This is the addition of the total daily  " \
+                          "O.  Total Violation: This field is the end result of the calculation. " \
+                          "This is the addition of the total daily  " \
                           "violations and the\n" \
-                          "     weekly violation, it shows the sum of the two. This is the value which the steward should seek a remedy for."
+                          "     weekly violation, it shows the sum of the two. " \
+                          "This is the value which the steward should seek a remedy for."
     daily_list = []  # array
     candidates = []
     for day in dates:
@@ -1960,8 +2094,10 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # daily violation
             formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
-                        "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
-                        "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
+                        "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+" \
+                        "IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
+                        "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+" \
+                        "IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
                         "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
                         "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
                         % ("violations", str(i), "violations", str(i), "violations", str(i),
@@ -1981,9 +2117,11 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
             formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
                         "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
+                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
+                        "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                         "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
-                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
+                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
+                        "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
                         % ("violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
@@ -2191,9 +2329,11 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
         violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
         formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
                     "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
+                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
+                    "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                     "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
-                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
+                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
+                    "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
                     % ("violations", str(i), "violations", str(i), "violations", str(i),
                        "violations", str(i), "violations", str(i + 1), "violations", str(i),
                        "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
@@ -2297,7 +2437,8 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
                                                           "(the file can't be overwritten while open).")
 
 
-def ns_config_apply(frame, text_array, color_array):  # set ns configurations from Non-Scheduled Day Configurations page
+def ns_config_apply(frame, text_array, color_array):
+    # set ns configurations from Non-Scheduled Day Configurations page
     for t in text_array:
         if len(t.get()) > 6:
             messagebox.showerror("Non_Scheduled Day Configuration",
@@ -2335,9 +2476,8 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     sql = "SELECT * FROM ns_configuration"
     result = inquire(sql)
     wd = front_window(frame)
-    Label(wd[3], text="Non-Scheduled Day Configurations", font=macadj("bold", "Helvetica 18"), anchor="w").grid(row=0,
-                                                                                                                sticky="w",
-                                                                                                                columnspan=4)
+    Label(wd[3], text="Non-Scheduled Day Configurations", font=macadj("bold", "Helvetica 18"), anchor="w")\
+        .grid(row=0,sticky="w",columnspan=4)
     Label(wd[3], text=" ").grid(row=1, column=0)
     Label(wd[3], text="Change Configuration").grid(row=2, sticky="w", columnspan=4)
     f_date = g_date[0].strftime("%a - %b %d, %Y")
@@ -2429,13 +2569,15 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
 
 
 def get_file_path(subject_path):  # Created for pdf splitter - gets a pdf file
-    file_path = filedialog.askopenfilename(initialdir=os.getcwd(),
+    path = dir_filedialog()
+    file_path = filedialog.askopenfilename(initialdir = path,
                                            filetypes=[("PDF files", "*.pdf")], title="Select PDF")  # get the pdf file
     subject_path.set(file_path)
 
 
 def get_new_path(new_path):  # Created for pdf splitter - creates/overwrites a pdf file
-    save_filename = filedialog.asksaveasfilename(initialdir=os.getcwd(),
+    path = dir_filedialog()
+    save_filename = filedialog.asksaveasfilename(initialdir = path,
                                                  filetypes=[("PDF files", "*.pdf")], title="Overwrite/Create PDF")
     new_path.set(save_filename)
 
@@ -2473,12 +2615,13 @@ def pdf_splitter_apply(subject_path, firstpage, lastpage, new_path):
             if sys.platform == "darwin":
                 subprocess.call(["open", new_path])
     except:
-        messagebox.showerror("Klusterbox PDF Splitter", "The PDF splitting has failed. \n"
-                                                        "It could be that that the pages set to be split don't exist \n"
-                                                        "or \n"
-                                                        "the pdf can't be split by this program due to formatting issues. \n"
-                                                        "For better results try www.sodapdf.com, google chrome or Adobe Acrobat "
-                                                        "Pro DC")
+        messagebox.showerror("Klusterbox PDF Splitter",
+                             "The PDF splitting has failed. \n"
+                                "It could be that that the pages set to be split don't exist \n"
+                                "or \n"
+                                "the pdf can't be split by this program due to formatting issues. \n"
+                                "For better results try www.sodapdf.com, google chrome or Adobe Acrobat "
+                                "Pro DC")
 
 
 def pdf_splitter(frame):  # PDF Splitter
@@ -2628,8 +2771,9 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
             pb_root = Tk()  # create a window for the progress bar
             pb_root.geometry("%dx%d+%d+%d" % (450, 75, 200, 300))
             pb_root.title("Klusterbox PDF Converter - reading pdf")
-            Label(pb_root, text="This process takes several minutes. Please wait for results.").pack(anchor="w",
-                                                                                                     padx=20)
+            titlebar_icon(pb_root)  # place icon in titlebar
+            Label(pb_root, text="This process takes several minutes. Please wait for results.")\
+                .pack(anchor="w", padx=20)
             pb_label = Label(pb_root, text="Reading PDF: ")  # make label for progress bar
             pb_label.pack(anchor="w", padx=20)
             pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
@@ -2702,15 +2846,15 @@ def pdf_converter_short_name(file_path):
 
 def pdf_converter():
     # inquire as to if the pdf converter reports have been opted for by the user
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % ("pdf_error_rpt")
+    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
     result = inquire(sql)
     gen_error_report = result[0][0]
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % ("pdf_raw_rpt")
+    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_raw_rpt"
     result = inquire(sql)
     gen_raw_report = result[0][0]
     starttime = time.time()  # start the timer
     # make it possible for user to select text file
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % ("pdf_text_reader")
+    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_text_reader"
     result = inquire(sql)
     allow_txt_reader = result[0][0]
     if allow_txt_reader == "on":
@@ -2718,26 +2862,29 @@ def pdf_converter():
                                          "Did you want to read from a text file of data output by pdfminer?")
     else:
         preference = False
-    if preference == False:  # user opts to read from pdf file
-        file_path = filedialog.askopenfilename(initialdir=os.getcwd(),
+    if not preference:  # user opts to read from pdf file
+        path = dir_filedialog()
+        file_path = filedialog.askopenfilename(initialdir = path,
                                                filetypes=[("PDF files", "*.pdf")])  # get the pdf file
         new_file_path = pdf_converter_path_generator(file_path, "_kbpc", ".csv")  # generate csv file name and path
         short_file_name = pdf_converter_short_name(new_file_path)
         # if the file path already exist - ask for confirmation
         if os.path.exists(new_file_path):
-            proceed = messagebox.askokcancel("Possible File Name Discrepancy", "There is already a file named {}. "
-                                                                               "If you proceed, the file will be overwritten. Did you want to proceed?".format(
-                short_file_name))
-            if proceed == False:
+            proceed = messagebox.askokcancel("Possible File Name Discrepancy",
+                                             "There is already a file named {}. "
+                                             "If you proceed, the file will be overwritten. "
+                                             "Did you want to proceed?".format(short_file_name))
+            if not proceed:
                 return
         # warn user that the process can take several minutes
         proceed = messagebox.askokcancel("PDF Converter", "This process will take several minutes. "
                                                           "Did you want to proceed?")
-        if proceed == False:
+        if not proceed:
             return
         text = pdf_to_text(file_path)  # read the pdf with pdfminer
     else:  # user opts to read from text file
-        file_path = filedialog.askopenfilename(initialdir=os.getcwd(),
+        path = dir_filedialog()
+        file_path = filedialog.askopenfilename(initialdir = path,
                                                filetypes=[("text files", "*.txt")])  # get the pdf file
         new_file_path = pdf_converter_path_generator(file_path, "_kbpc", ".csv")  # generate csv file name and path
         short_file_name = pdf_converter_short_name(new_file_path)
@@ -2871,6 +3018,7 @@ def pdf_converter():
     pb_root = Tk()  # create a window for the progress bar
     pb_root.geometry("%dx%d+%d+%d" % (450, 75, 200, 300))
     pb_root.title("Klusterbox PDF Converter - translating pdf")
+    titlebar_icon(pb_root)  # place icon in titlebar
     Label(pb_root, text="This process takes several minutes. Please wait for results.").pack(anchor="w", padx=20)
     pb_label = Label(pb_root, text="Translating PDF: ")  # make label for progress bar
     pb_label.pack(anchor="w", padx=20)
@@ -3014,8 +3162,8 @@ def pdf_converter():
                     if re.match(r"[A-Z]{2}T", e) and len(time_holder) != 0:  # look for the time zone following chain
                         time_holder.append(e)
                         timezone_holder = time_holder
-                    elif len(
-                            time_holder) != 0 and unprocessedrings != "":  # solve for salih problem / missing time zone in ...
+                    # solve for salih problem / missing time zone in ...
+                    elif len(time_holder) != 0 and unprocessedrings != "":
                         unprocessed_counter += 1  # unprocessed rings
                         salih_rpt.append(lastname)
                     time_holder = []
@@ -3063,9 +3211,9 @@ def pdf_converter():
                         date_holder = mv_holder  # transfer array items to date holder
                         rose_rpt.append(lastname)
                     if e in days:  # find and record all days on the report
-                        if eid_label == True:
+                        if eid_label:
                             found_days.append(e)
-                        if eid_label == False:
+                        if not eid_label:
                             foundday_holder.append(e)
                     if e == "Processed Clock Rings":
                         eid_count = 0
@@ -3577,9 +3725,9 @@ def pdf_converter():
 
 def informalc_grvchange(frame, passed_result, old_num, new_num):
     l_passed_result = [list(x) for x in passed_result]  # chg tuple of tuples to list of lists
-    ok = messagebox.askokcancel("Grievance Number Change", "This will change the grievance number from {} to {} in all "
-                                                           "records. Are you sure you want to proceed?".format(old_num,
-                                                                                                               new_num.get()))
+    ok = messagebox.askokcancel("Grievance Number Change",
+                                "This will change the grievance number from {} to {} in all "
+                                "records. Are you sure you want to proceed?".format(old_num,new_num.get()))
     if ok == True:
         if new_num.get().strip() == "":
             messagebox.showerror("Invalid Data Entry", "You must enter a grievance number")
@@ -3648,7 +3796,7 @@ def informalc_edit_apply(frame, grv_no, incident_start, incident_end, date_signe
 def informalc_delete(frame, grv_no):
     check = messagebox.askokcancel("Delete Grievance", "Are you sure you want to delete his grievance and all the "
                                                        "data associated with it?")
-    if check == False:
+    if not check:
         return
     else:
         sql = "DELETE FROM informalc_grv WHERE grv_no='%s'" % grv_no.get()
@@ -3797,7 +3945,7 @@ def informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number
                                  "The date for the {} is not properly formatted.".format(date_ids[i]))
             return "fail"
         for num in d:
-            if num.isnumeric() == False:
+            if not num.isnumeric():
                 messagebox.showerror("Invalid Data Entry", "The month, day and year for the {} "
                                                            "must be numeric.".format(date_ids[i]))
                 return "fail"
@@ -3818,7 +3966,7 @@ def informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number
             valid_date = True
         except ValueError:
             valid_date = False
-        if valid_date == False:
+        if not valid_date:
             messagebox.showerror("Invalid Data Entry", "The date entered for {} is not a valid date."
                                  .format(date_ids[i]))
             return "fail"
@@ -3827,7 +3975,7 @@ def informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number
         messagebox.showerror("Invalid Data Entry", "The GATS number is limited to no more than 20 characters. ")
         return "fail"
     if gats_number.get().strip() != "":
-        if all(x.isalnum() or x.isspace() for x in gats_number.get()) == False:
+        if not all(x.isalnum() or x.isspace() for x in gats_number.get()):
             messagebox.showerror("Invalid Data Entry", "The GATS number can only contain letters and numbers. No "
                                                        "special characters are allowed.")
             return "fail"
@@ -3927,29 +4075,8 @@ def informalc_root(passed_result, grv_no):
     global informalc_newroot  # initialize the global
     new_root = Tk()
     informalc_newroot = new_root  # set the global
-    if sys.platform == "win32" and platform == "py":
-        try:
-            new_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except:
-            pass
-    if sys.platform == "win32" and platform == "winapp":
-        try:
-            # new_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
-            new_root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
-        except:
-            pass
-    if sys.platform == "darwin" and platform == "py":
-        try:
-            new_root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except:
-            pass
-    if sys.platform == "linux":
-        try:
-            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
-            new_root.tk.call('wm', 'iconphoto', new_root._w, img)
-        except:
-            pass
     new_root.title("KLUSTERBOX")
+    titlebar_icon(new_root)  # place icon in titlebar
     x_position = root.winfo_x() + 450
     y_position = root.winfo_y() - 25
     new_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
@@ -3987,8 +4114,8 @@ def informalc_root(passed_result, grv_no):
            command=lambda: (new_root.destroy())).pack(side=LEFT, anchor="w")
 
 
-def informalc_deletename(frame, passed_result, grv_no, id):
-    sql = "DELETE FROM informalc_awards WHERE rowid='%s'" % (id)
+def informalc_deletename(frame, passed_result, grv_no, ids):
+    sql = "DELETE FROM informalc_awards WHERE rowid='%s'" % ids
     commit(sql)
     informalc_addaward2(frame, passed_result, grv_no)
 
@@ -4009,96 +4136,124 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
         rate = var_rate[i].get().strip()
         amount = var_amount[i].get().strip()
         if hours and amount:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both hours and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. You can not enter both hours and "
+                                 "amount. You can only enter one or another, but not both. "
+                                 "Awards can be in the form of "
+                                 "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if rate and amount:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both rate and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. You can not enter both rate and "
+                                 "amount. You can only enter one or another, but not both. "
+                                 "Awards can be in the form of "
+                                 "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if hours and not rate:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must be a accompanied by a "
-                                                     "rate.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Hours must be a accompanied by a "
+                                 "rate.".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if rate and not hours:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rate must be a accompanied by a "
-                                                     "hours.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Rate must be a accompanied by a "
+                                 "hours.".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if hours and isfloat(hours) == False:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must be a number."
-                                 .format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Hours must be a number."
+                                 .format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if hours and '.' in hours:
             s_hrs = hours.split(".")
             if len(s_hrs[1]) > 2:
-                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must have no "
-                                                         "more than 2 decimal places.".format(name, str(i + 1)))
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Hours must have no "
+                                     "more than 2 decimal places.".format(name, str(i + 1)),
+                                     parent = frame)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
         if rate and amount:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both rate and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. You can not enter both rate and "
+                                 "amount. You can only enter one or another, but not both. "
+                                 "Awards can be in the form of "
+                                 "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if rate and amount:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both rate and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. You can not enter both rate and "
+                                 "amount. You can only enter one or another, but not both. "
+                                 "Awards can be in the form of "
+                                 "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if rate and isfloat(rate) == False:
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
-                                 .format(name, str(i + 1)))
+                                 .format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if rate and '.' in rate:
             s_rate = rate.split(".")
             if len(s_rate[1]) > 2:
-                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must have no "
-                                                         "more than 2 decimal places.".format(name, str(i + 1)))
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Rates must have no "
+                                     "more than 2 decimal places.".format(name, str(i + 1)),
+                                     parent = frame)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
         if rate and float(rate) > 10:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Values greater than 10 are not "
-                                                     "accepted. \n"
-                                                     "Note the following rates would be expressed as: \n "
-                                                     "additional %50         .50 or just .5 \n"
-                                                     "straight time rate     1.00 or just 1 \n"
-                                                     "overtime rate          1.50 or 1.5 \n"
-                                                     "penalty rate           2.00 or just 2".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Values greater than 10 are not "
+                                 "accepted. \n"
+                                 "Note the following rates would be expressed as: \n "
+                                 "additional %50         .50 or just .5 \n"
+                                 "straight time rate     1.00 or just 1 \n"
+                                 "overtime rate          1.50 or 1.5 \n"
+                                 "penalty rate           2.00 or just 2".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if amount and isfloat(amount) == False:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Amounts can only be expressed as "
-                                                     "numbers. No special characters, such as $ are allowed.".format(
-                name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Amounts can only be expressed as "
+                                 "numbers. No special characters, such as $ are allowed.".format(name, str(i + 1)),
+                                 parent = frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if amount and '.' in amount:
             s_amt = amount.split(".")
             if len(s_amt[1]) > 2:
-                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Amounts must have no "
-                                                         "more than 2 decimal places.".format(name, str(i + 1)))
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. "
+                                     "Amounts must have no more than 2 decimal places.".format(name, str(i + 1)),
+                                     parent = frame)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -4165,8 +4320,7 @@ def informalc_addaward2(frame, passed_result, grv_no):
         .grid(row=0, column=0)
     Button(wd[4], text="Apply", width=15,
            command=lambda: informalc_apply_addaward(wd[0], wd[4], passed_result, grv_no, var_id, var_name, var_hours,
-                                                    var_rate, var_amount)) \
-        .grid(row=0, column=1)
+                           var_rate, var_amount)).grid(row=0, column=1)
     rear_window(wd)
 
 
@@ -4183,7 +4337,7 @@ def informalc_addaward(frame, passed_result, grv_no):
     informalc_addaward2(frame, passed_result, grv_no)
 
 
-def informalc_rptgrvsum(result):
+def informalc_rptgrvsum(frame, result):
     if len(result) > 0:
         result = list(result)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -4268,10 +4422,10 @@ def informalc_rptgrvsum(result):
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('infc_grv') + filename])
         except:
-            messagebox.showerror("Report Generator", "The report was not generated.")
+            messagebox.showerror("Report Generator", "The report was not generated.", parent = frame)
 
 
-def informalc_bycarriers(result):
+def informalc_bycarriers(frame, result):
     unique_carrier = informalc_uniquecarrier(result)
     unique_grv = []  # get a list of all grv numbers in search range
     for grv in result:
@@ -4289,7 +4443,8 @@ def informalc_bycarriers(result):
             results = []
             for ug in unique_grv:  # do search for each grievance in list of unique grievances
                 sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount, informalc_grv.docs, informalc_grv.level FROM informalc_awards, informalc_grv " \
+                      "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
+                      "FROM informalc_awards, informalc_grv " \
                       "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s'" \
                       "and informalc_awards.grv_no = '%s' " \
                       "ORDER BY informalc_grv.date_signed" % (name, ug)
@@ -4341,7 +4496,7 @@ def informalc_bycarriers(result):
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
     except:
-        messagebox.showerror("Report Generator", "The report was not generated.")
+        messagebox.showerror("Report Generator", "The report was not generated.", parent = frame)
 
 
 def informalc_apply_bycarrier(result, names, cursor):
@@ -4432,7 +4587,8 @@ def informalc_bycarrier(frame, result):
     scrollbar.config(command=listbox.yview)
     scrollbar.pack(side=RIGHT, fill=Y)
     listbox.pack(side=LEFT, expand=1)
-    Button(wd[4], text="Go Back", width=20, command=lambda: informalc_grvlist_result(wd[0], result)).pack(side=LEFT)
+    Button(wd[4], text="Go Back", width=20,
+           command=lambda: informalc_grvlist_result(wd[0], result)).pack(side=LEFT)
     Button(wd[4], text="Report", width=20,
            command=lambda: informalc_apply_bycarrier(result, unique_carrier, listbox.curselection())).pack(side=LEFT)
     rear_window(wd)
@@ -4592,8 +4748,8 @@ def informalc_grvlist_setsum(result):
 
 def informalc_grvlist_result(frame, result):
     wd = front_window(frame)
-    Label(wd[3], text="Informal C: Search Results", font=macadj("bold", "Helvetica 18")).grid(row=0, column=0,
-                                                                                              columnspan=4, sticky="w")
+    Label(wd[3], text="Informal C: Search Results", font=macadj("bold", "Helvetica 18"))\
+        .grid(row=0, column=0, columnspan=4, sticky="w")
     Label(wd[3], text="").grid(row=1)
     if len(result) == 0:
         Label(wd[3], text="The search has no results.").grid(row=2, column=0, columnspan=4)
@@ -4631,9 +4787,9 @@ def informalc_grvlist_result(frame, result):
     Button(wd[4], text="Go Back", width=macadj(16, 13), command=lambda: informalc_grvlist(wd[0])) \
         .grid(row=0, column=0)
     Label(wd[4], text="Report: ", width=macadj(16, 11)).grid(row=0, column=1)
-    Button(wd[4], text="By Settlements", width=macadj(16, 13), command=lambda: informalc_rptgrvsum(result)) \
+    Button(wd[4], text="By Settlements", width=macadj(16, 13), command=lambda: informalc_rptgrvsum(wd[0],result)) \
         .grid(row=0, column=2)
-    Button(wd[4], text="By Carriers", width=macadj(16, 13), command=lambda: informalc_bycarriers(result)) \
+    Button(wd[4], text="By Carriers", width=macadj(16, 13), command=lambda: informalc_bycarriers(wd[0],result)) \
         .grid(row=0, column=3)
     Button(wd[4], text="By Carrier", width=macadj(16, 13), command=lambda: informalc_bycarrier(wd[0], result)) \
         .grid(row=0, column=4)
@@ -4651,7 +4807,7 @@ def informalc_date_checker(frame, date, type):
                              parent=frame)
         return "fail"
     for num in d:
-        if num.isnumeric() == False:
+        if not num.isnumeric():
             messagebox.showerror("Invalid Data Entry",
                                  "The month, day and year for the {} "
                                  "must be numeric.".format(type),
@@ -4669,9 +4825,9 @@ def informalc_date_checker(frame, date, type):
                              " long.".format(type),
                              parent=frame)
         return "fail"
-    if len(d[2]) > 4:
+    if len(d[2]) != 4:
         messagebox.showerror("Invalid Data Entry",
-                             "The year for the {} must be no more than four digits long."
+                             "The year for the {} must be four digits long."
                              .format(type),
                              parent=frame)
         return "fail"
@@ -4680,7 +4836,7 @@ def informalc_date_checker(frame, date, type):
         valid_date = True
     except ValueError:
         valid_date = False
-    if valid_date == False:
+    if not valid_date:
         messagebox.showerror("Invalid Data Entry",
                              "The date entered for {} is not a valid date."
                              .format(type),
@@ -4761,9 +4917,8 @@ def informalc_grvlist_apply(frame,
 
 def informalc_grvlist(frame):
     wd = front_window(frame)
-    Label(wd[3], text="Informal C: Settlement Search Criteria", font=macadj("bold", "Helvetica 18")).grid(row=0,
-                                                                                                          columnspan=6,
-                                                                                                          sticky="w")
+    Label(wd[3], text="Informal C: Settlement Search Criteria", font=macadj("bold", "Helvetica 18"))\
+        .grid(row=0,columnspan=6,sticky="w")
     Label(wd[3], text=" ").grid(row=1, columnspan=6)
     # initialize varibles
     station = StringVar(wd[0])
@@ -4779,7 +4934,6 @@ def informalc_grvlist(frame):
     have_gats = StringVar(wd[0])
     docs = StringVar(wd[0])
     have_docs = StringVar(wd[0])
-
     # select station
     Label(wd[3], text=" Station ", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
           anchor="w", width=macadj(14, 12)).grid(row=2, column=0, columnspan=3, sticky="w")
@@ -4794,7 +4948,6 @@ def informalc_grvlist(frame):
     Label(wd[3], text="Category", fg="grey").grid(row=3, column=3)
     Label(wd[3], text="Start", fg="grey").grid(row=3, column=4)
     Label(wd[3], text="End", fg="grey").grid(row=3, column=5)
-
     # select for starting date
     Radiobutton(wd[3], text="yes", variable=incident_date, value='yes', width=macadj(2, 4)) \
         .grid(row=4, column=0, sticky="w")
@@ -4806,7 +4959,6 @@ def informalc_grvlist(frame):
     Entry(wd[3], textvariable=incident_start, width=macadj(12, 8), justify='right').grid(row=4, column=4)
     Entry(wd[3], textvariable=incident_end, width=macadj(12, 8), justify='right').grid(row=4, column=5)
     incident_date.set('no')
-
     # select for signing date
     Radiobutton(wd[3], text="yes", variable=signing_date, value='yes', width=macadj(2, 4)) \
         .grid(row=5, column=0, sticky="w")
@@ -4862,8 +5014,7 @@ def informalc_grvlist(frame):
     Button(wd[4], text="Search", width=20,
            command=lambda: informalc_grvlist_apply(wd[0], incident_date, incident_start, incident_end,
                                                    signing_date, signing_start, signing_end, station, set_lvl, level,
-                                                   gats, have_gats, docs, have_docs)) \
-        .grid(row=0, column=1)
+                                                   gats, have_gats, docs, have_docs)).grid(row=0, column=1)
     Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: informalc(wd[0])).grid(row=0, column=0)
     rear_window(wd)
 
@@ -4872,7 +5023,6 @@ def informalc_new(frame, msg):
     wd = front_window(frame)  # F,S,C,FF,buttons
     Label(wd[3], text="New Settlement", font=macadj("bold", "Helvetica 18")).grid(row=0, column=0, sticky="w")
     Label(wd[3], text="").grid(row=1, column=0, sticky="w")
-
     Label(wd[3], text="Grievance Number: ", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
         .grid(row=2, column=0, sticky="w")
@@ -4944,13 +5094,12 @@ def informalc_new(frame, msg):
         .grid(row=16, column=0, sticky="w", columnspan=2)
     Label(wd[3], text="", height=macadj(1, 1)).grid(row=17, column=0)
     Label(wd[3], text=msg, fg="red", height=macadj(1, 1)).grid(row=18, column=0, columnspan=2, sticky="w")
-    Button(wd[4], text="Go Back", width=macadj(19, 18), anchor="w", command=lambda: informalc(wd[0])).grid(row=0,
-                                                                                                           column=0)
-    Button(wd[4], text="Enter", width=macadj(19, 18), command=lambda: informalc_new_apply(wd[0], grv_no, incident_start,
-                                                                                          incident_end, date_signed,
-                                                                                          station, gats_number, docs,
-                                                                                          description, lvl)).grid(row=0,
-                                                                                                                  column=1)
+    Button(wd[4], text="Go Back", width=macadj(19, 18), anchor="w",
+           command=lambda: informalc(wd[0])).grid(row=0, column=0)
+    Button(wd[4], text="Enter", width=macadj(19, 18),
+           command=lambda: informalc_new_apply
+           (wd[0], grv_no, incident_start,incident_end, date_signed, station, gats_number,
+            docs, description, lvl)).grid(row=0, column=1)
     rear_window(wd)
 
 
@@ -4961,7 +5110,7 @@ def informalc_poe_apply_search(frame, year, station, backdate):
     if "." in year.get():
         messagebox.showerror("Data Entry Error", "The year can not contain decimal points.")
         return
-    if year.get().isnumeric() == False:
+    if not year.get().isnumeric():
         messagebox.showerror("Data Entry Error", "The year must numeric without any letters or special characters.")
         return
     if float(year.get()) > 9999 or float(year.get()) < 2:
@@ -4994,77 +5143,106 @@ def informalc_poe_apply_add(frame, name, year, buttons):
         rt = poe_add_rate[i].get().strip()
         amt = poe_add_amount[i].get().strip()
         if pp and not isint(pp):
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. The pay period must be a number"
-                                 .format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. The pay period must be a number"
+                                 .format(name, str(i + 1)),
+                                 parent = frame)
             return
         if pp and int(pp) > 27:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. The pay period can not be greater "
-                                                     "than 27".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. The pay period can not be greater "
+                                 "than 27".format(name, str(i + 1)),
+                                 parent = frame)
             return
         if hr and amt:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both hours and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. You can not enter both hours and "
+                                 "amount. You can only enter one or another, but not both. "
+                                 "Awards can be in the form of "
+                                 "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                 parent = frame)
             return
         if rt and amt:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both rate and "
-                                                     "amount. You can only enter one or another, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. You can not enter both rate and "
+                                 "amount. You can only enter one or another, but not both. "
+                                 "Awards can be in the form of "
+                                 "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                 parent = frame)
             return
         if hr and not rt:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must be a accompanied by a "
-                                                     "rate.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Hours must be a accompanied by a "
+                                 "rate.".format(name, str(i + 1)),
+                                 parent = frame)
             return
         if rt and not hr:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rate must be a accompanied by a "
-                                                     "hours.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Rate must be a accompanied by a "
+                                 "hours.".format(name, str(i + 1)),
+                                 parent = frame)
             return
         if hr and isfloat(hr) == False:
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must be a number."
-                                 .format(name, str(i + 1)))
+                                 .format(name, str(i + 1)),
+                                 parent = frame)
             return
         if hr and '.' in hr:
             s_hrs = hr.split(".")
             if len(s_hrs[1]) > 2:
-                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must have no "
-                                                         "more than 2 decimal places.".format(name, str(i + 1)))
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Hours must have no "
+                                     "more than 2 decimal places.".format(name, str(i + 1)),
+                                     parent = frame)
                 return
         if rt and amt:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. You can not enter both rate and "
-                                                     "amount. You can only enter one or the other, but not both. Awards can be in the form of "
-                                                     "hours at a given rate OR an amount.".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. You can not enter both rate and "
+                                 "amount. You can only enter one or the other, but not both. "
+                                 "Awards can be in the form of "
+                                 "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                 parent = frame)
             return
         if rt and isfloat(rt) == False:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rate must be a number."
-                                 .format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Rate must be a number."
+                                 .format(name, str(i + 1)),
+                                 parent = frame)
             return
         if rt and '.' in rt:
             s_rate = rt.split(".")
             if len(s_rate[1]) > 2:
-                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must have no "
-                                                         "more than 2 decimal places.".format(name, str(i + 1)))
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Rates must have no "
+                                     "more than 2 decimal places.".format(name, str(i + 1)),
+                                     parent = frame)
                 return
         if rt and float(rt) > 10:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Values greater than 10 are not "
-                                                     "accepted. \n"
-                                                     "Note the following rates would be expressed as: \n "
-                                                     "additional %50         .50 or just .5 \n"
-                                                     "straight time rate     1.00 or just 1 \n"
-                                                     "overtime rate          1.50 or 1.5 \n"
-                                                     "penalty rate           2.00 or just 2".format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Values greater than 10 are not "
+                                 "accepted. \n"
+                                 "Note the following rates would be expressed as: \n "
+                                 "additional %50         .50 or just .5 \n"
+                                 "straight time rate     1.00 or just 1 \n"
+                                 "overtime rate          1.50 or 1.5 \n"
+                                 "penalty rate           2.00 or just 2".format(name, str(i + 1)),
+                                 parent = frame)
             return
         if amt and isfloat(amt) == False:
-            messagebox.showerror("Data Input Error", "Input error for {} in row {}. Amounts can only be expressed as "
-                                                     "numbers. No special characters, such as $ are allowed."
-                                 .format(name, str(i + 1)))
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in row {}. Amounts can only be expressed as "
+                                 "numbers. No special characters, such as $ are allowed."
+                                 .format(name, str(i + 1)),
+                                 parent = frame)
             return
         if amt and '.' in amt:
             s_amt = amt.split(".")
             if len(s_amt[1]) > 2:
-                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Amounts must have no "
-                                                         "more than 2 decimal places.".format(name, str(i + 1)))
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Amounts must have no "
+                                     "more than 2 decimal places.".format(name, str(i + 1)),
+                                     parent = frame)
                 return
-
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.grid(row=1, column=2)
     pb = ttk.Progressbar(buttons, length=200, mode="determinate")  # create progress bar
@@ -5090,8 +5268,9 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                 paydays.append(dt)
                 sql = "INSERT INTO informalc_payouts (year,pp,payday,carrier_name,hours,rate,amount) " \
                       "VALUES('%s','%s','%s','%s','%s','%s','%s')" \
-                      % (year, poe_add_pay_periods[i].get().strip(), paydays[i], name, poe_add_hours[i].get().strip()
-                         , poe_add_rate[i].get().strip(), poe_add_amount[i].get().strip())
+                      % (year, poe_add_pay_periods[i].get().strip(), paydays[i], name,
+                         poe_add_hours[i].get().strip(), poe_add_rate[i].get().strip(),
+                         poe_add_amount[i].get().strip())
                 commit(sql)
                 count += 1
                 ii += 1
@@ -5153,8 +5332,8 @@ def informalc_poe_add(frame, array, selection, year, msg):
     global informalc_poe_gadd
     wd = front_window(frame)
     informalc_poe_gadd = wd[0]
-    Label(wd[3], text="Informal C: Payout Entry", font=macadj("bold", "Helvetica 18")).grid(row=0, column=0, sticky="w",
-                                                                                            columnspan=5)
+    Label(wd[3], text="Informal C: Payout Entry", font=macadj("bold", "Helvetica 18"))\
+        .grid(row=0, column=0, sticky="w",columnspan=5)
     Label(wd[3], text="").grid(row=1)
     if selection != "none":
         Label(wd[3], text=array[int(selection[0])], font="bold").grid(row=2, column=0, sticky="w", columnspan=5)
@@ -5198,30 +5377,8 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
     global informalc_poe_lbox  # initialize the global
     poe_root = Tk()
     informalc_poe_lbox = poe_root  # set the global
-    if sys.platform == "win32" and platform == "py":
-        try:
-            poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except:
-            pass
-    if sys.platform == "win32" and platform == "winapp":
-        try:
-            # poe_root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
-            poe_root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
-        except:
-            pass
-    if sys.platform == "darwin" and platform == "py":
-        try:
-            # poe_root.iconbitmap(r'kb_sub/kb_images/kb_icon2.icns')
-            poe_root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except:
-            pass
-    if sys.platform == "linux":
-        try:
-            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
-            poe_root.tk.call('wm', 'iconphoto', poe_root._w, img)
-        except:
-            pass
     poe_root.title("KLUSTERBOX")
+    titlebar_icon(poe_root)  # place icon in titlebar
     x_position = root.winfo_x() + 450
     y_position = root.winfo_y() - 25
     poe_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
@@ -5261,11 +5418,11 @@ def informalc_poe_search(frame):
     the_station.set("undefined")
     backdate = StringVar(wd[0])
     backdate.set("1")
-    Label(wd[3], text="Informal C: Payout Entry Criteria", font=macadj("bold", "Helvetica 18")).grid(row=0, column=0,
-                                                                                                     sticky="w",
-                                                                                                     columnspan=4)
+    Label(wd[3], text="Informal C: Payout Entry Criteria", font=macadj("bold", "Helvetica 18"))\
+        .grid(row=0, column=0,sticky="w",columnspan=4)
     Label(wd[3], text="").grid(row=1)
-    Label(wd[3], text="Enter the year and the station to be updated.").grid(row=2, column=0, columnspan=4, sticky="w")
+    Label(wd[3], text="Enter the year and the station to be updated.")\
+        .grid(row=2, column=0, columnspan=4, sticky="w")
     Label(wd[3], text="\t\t\tYear: ").grid(row=3, column=1, sticky="e")
     Entry(wd[3], textvariable=the_year, width=12).grid(row=3, column=2, sticky="w")
     Label(wd[3], text="Station").grid(row=4, column=1, sticky="e")
@@ -5356,7 +5513,6 @@ def informalc_por_all(frame, afterdate, beforedate, station, backdate):
                     amt = "{0:.2f}".format(float(result[6]))
                 else:
                     amt = "---"
-                # report.write(result[0]+" - "+result[1]+result[2]+result[3]+result[4]+result[5]+result[6]+"\n")
                 report.write('    {:<5}{:>17}{:>9}{:>7}{:>10}{:>12}\n'.format(pp, payday, hours, rate, adj, amt))
             report.write("    --------------------------------------------------------------\n")
             report.write("    {:<40}{:>10}\n".format("Payouts adjusted to straight time", "{0:.2f}"
@@ -5389,8 +5545,8 @@ def informalc_por(frame):
         .grid(row=0, column=0, columnspan=4, sticky="w")
     Label(wd[3], text="").grid(row=1)
     Label(wd[3], text="Enter range of dates and select station").grid(row=2, column=0, columnspan=4, sticky="w")
-    Label(wd[3], text="\tProvide dates in mm/dd/yyyy format.", fg="grey").grid(row=3, column=0, columnspan=4,
-                                                                               sticky="w")
+    Label(wd[3], text="\tProvide dates in mm/dd/yyyy format.", fg="grey")\
+        .grid(row=3, column=0, columnspan=4,  sticky="w")
     Label(wd[3], text="", width=20).grid(row=4, column=0)
     Label(wd[3], text="After Date: ").grid(row=4, column=1, sticky="w")
     Entry(wd[3], textvariable=afterdate, width=16).grid(row=4, column=2, sticky="w")
@@ -5409,7 +5565,8 @@ def informalc_por(frame):
     Button(wd[4], text="Go Back", width=16, command=lambda: informalc(wd[0])).grid(row=0, column=0)
     Label(wd[4], text="Report: ", width=16).grid(row=0, column=1)
     Button(wd[4], text="All Carriers", width=16,
-           command=lambda: informalc_por_all(wd[3], afterdate, beforedate, station, backdate)).grid(row=0, column=2)
+           command=lambda: informalc_por_all(wd[3], afterdate, beforedate, station, backdate))\
+        .grid(row=0, column=2)
     Button(wd[4], text="By Carrier", width=16).grid(row=0, column=3)
     rear_window(wd)
 
@@ -5418,7 +5575,8 @@ def informalc(frame):
     if os.path.isdir(dir_path_check('infc_grv')) == True:  # clear contents of temp folder
         shutil.rmtree(dir_path_check('infc_grv'))
     sql = 'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,' \
-          'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar, level varchar)'
+          'date_signed varchar, station varchar, gats_number varchar, ' \
+          'docs varchar, description varchar, level varchar)'
     commit(sql)
     # modify table for legacy version which did not have level column of informalc_grv table.
     sql = 'PRAGMA table_info(informalc_grv)'  # get table info. returns an array of columns.
@@ -5429,7 +5587,8 @@ def informalc(frame):
     sql = 'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, ' \
           'rate varchar, amount varchar)'
     commit(sql)
-    sql = 'CREATE table IF NOT EXISTS informalc_payouts(year varchar,pp varchar,payday varchar,carrier_name varchar,' \
+    sql = 'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, ' \
+          'payday varchar, carrier_name varchar,' \
           'hours varchar,rate varchar,amount varchar)'
     commit(sql)
     # put out of station back into the list of stations in case it has been removed.
@@ -5445,26 +5604,31 @@ def informalc(frame):
     Button(wd[3], text="Payout Entry", width=30, command=lambda: informalc_poe_search(wd[0])).grid(row=5, pady=5)
     Button(wd[3], text="Payout Report", width=30, command=lambda: informalc_por(wd[0])).grid(row=6, pady=5)
     Label(wd[3], text="", width=70).grid(row=7)
-    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: (wd[0].destroy(), main_frame())).grid(row=0,
-                                                                                                              column=0)
+    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: (wd[0].destroy(), main_frame()))\
+        .grid(row=0,      column=0)
     rear_window(wd)
 
 
 def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availability
-    file_path = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=[("Excel files", "*.csv *.xls")])
+    path = dir_filedialog()
+    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
     if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
         pass
     else:
-        messagebox.showerror("Report Generator", "The file you have selected is not a .csv or .xls file.\n"
-                                                 "You must select a file with a .csv or .xls extension.")
+        messagebox.showerror("Report Generator",
+                             "The file you have selected is not a .csv or .xls file.\n"
+                             "You must select a file with a .csv or .xls extension.",
+                             parent = frame)
         return
     with open(file_path, newline="") as file:
         a_file = csv.reader(file)
         c = 0
         for line in a_file:
             if c == 0 and line[0][:8] != "TAC500R3":
-                messagebox.showwarning("File Selection Error", "The selected file does not appear to be an "
-                                                               "Employee Everything report.")
+                messagebox.showwarning("File Selection Error",
+                                       "The selected file does not appear to be an "
+                                       "Employee Everything report.",
+                                       parent = frame)
                 return
             if c == 3:
                 tacs_pp = line[0]  # find the pay period
@@ -5479,9 +5643,10 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
             if c == 150: break  # survey 150 lines before breaking to anaylize results.
             c += 1
         if len(range_days) > 5:
-            messagebox.showwarning("File Selection Error", "Employee Everything Reports that cover only one day /n"
-                                                           "are not supported in version {} of Klusterbox.".format(
-                version))
+            messagebox.showwarning("File Selection Error",
+                                   "Employee Everything Reports that cover only one day /n"
+                                   "are not supported in version {} of Klusterbox.".format(version),
+                                   parent = frame)
             return
         else:
             t_range = "week"
@@ -5544,21 +5709,25 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
         if name[0] == "no index":
             not_indexed.append(name[1])  # add any names who do not into an array
     if len(not_indexed) != 0:  # message box info that some otdl do not have a record in the name index
-        messagebox.showwarning("Missing Data", "There are {} name/s which have not been matched with their employee id."
-                                               " Please exit and run the Auto Data Entry Feature to ensure that all carriers have "
-                                               " employee ids entered into Klusterbox.".format(len(not_indexed)))
+        messagebox.showwarning("Missing Data",
+                               "There are {} name/s which have not been matched with their employee id."
+                               " Please exit and run the Auto Data Entry Feature to ensure that all carriers have "
+                               " employee ids entered into Klusterbox.".format(len(not_indexed)),
+                               parent = frame)
     if len(otdl_list) == 0:
-        messagebox.showwarning("Empty OTDL", "Klusterbox has no records of any otdl carriers for {} station "
-                                             "for the week of {}. This could mean that: \n1. The carrier list is empty. Run the "
-                                             "Automatic Data Entry Feature, selecting the Employee Everything Report you used here "
-                                             " to remedy this. You do not have to enter the rings data at the final step "
-                                             " \n2. The Name Index which matches the carrier name to the employee id "
-                                             "empty. As in #1, run the Automatic Data Entry Feature to fix this.\n3. The carrier list "
-                                             "has no otdl carriers "
-                                             "designated. Use the Multi Input Feature to designate otdl carriers. \n"
-                                             "This Weekly Availability Report can not be generated without a list of otdl carriers. "
-                                             "Build the carrier list/otdl before re-running Weekly Availability."
-                               .format(g_station, g_date[0].strftime("%b %d, %Y")))
+        messagebox.showwarning("Empty OTDL",
+                             "Klusterbox has no records of any otdl carriers for {} station "
+                             "for the week of {}. This could mean that: \n1. The carrier list is empty. Run the "
+                             "Automatic Data Entry Feature, selecting the Employee Everything Report you used here "
+                             " to remedy this. You do not have to enter the rings data at the final step "
+                             " \n2. The Name Index which matches the carrier name to the employee id "
+                             "empty. As in #1, run the Automatic Data Entry Feature to fix this.\n3. The carrier list "
+                             "has no otdl carriers "
+                             "designated. Use the Multi Input Feature to designate otdl carriers. \n"
+                             "This Weekly Availability Report can not be generated without a list of otdl carriers. "
+                             "Build the carrier list/otdl before re-running Weekly Availability."
+                             .format(g_station, g_date[0].strftime("%b %d, %Y")),
+                               parent = frame)
         frame.destroy()
         main_frame()
     else:  # if there is an otdl then build array holding hours for each day
@@ -5800,10 +5969,12 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                 if sys.platform == "darwin":
                     subprocess.call(["open", dir_path('weekly_availability') + xl_filename])
             except:
-                messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
-                                                              "Suggestion: "
-                                                              "Make sure that identically named spreadsheets are closed "
-                                                              "(the file can't be overwritten while open).")
+                messagebox.showerror("Spreadsheet generator",
+                                     "The spreadsheet was not generated. \n"
+                                      "Suggestion: "
+                                      "Make sure that identically named spreadsheets are closed "
+                                      "(the file can't be overwritten while open).",
+                                     parent = frame)
         frame.destroy()
         main_frame()
 
@@ -5846,7 +6017,8 @@ def stationindexer_del_all():
 def station_index_mgmt(frame):
     wd = front_window(frame)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     g = 0
-    Label(wd[3], text="Station Index Management", font=macadj("bold", "Helvetica 18")).grid(row=g, column=0, sticky="w")
+    Label(wd[3], text="Station Index Management", font=macadj("bold", "Helvetica 18"))\
+        .grid(row=g, column=0, sticky="w")
     Label(wd[3], text="").grid(row=g + 1, column=0)
     g += 2
     all_stations = []
@@ -5886,8 +6058,12 @@ def station_index_mgmt(frame):
             to_add = Button(frame[f], text="rename", width=6)
             rename_button.append(to_add)
             rename_button[f]['command'] = \
-                lambda frame=frame[f], tacs=record[0], kb=record[1], newname=si_newname[f], button=rename_button[f]: \
-                    station_index_rename(wd[0], frame, tacs, kb, newname, button, all_stations)
+                lambda frame = frame[f], \
+                       tacs = record[0], \
+                       kb = record[1], \
+                       newname = si_newname[f], \
+                       button = rename_button[f]: \
+                       station_index_rename(wd[0], frame, tacs, kb, newname, button, all_stations)
             rename_button[f].grid(row=0, column=2)
             delete_button = Button(frame[f], text="delete", width=6,
                                    command=lambda tacs=record[0], kb=record[1]: station_rec_del(wd[0], tacs, kb))
@@ -5924,9 +6100,8 @@ def name_index_screen():
     if len(results) == 0:
         Label(wd[3], text="The Name Index is empty").grid(row=0, column=x)
     else:
-        Label(wd[3], text="Name Index Management", font=macadj("bold", "Helvetica 18")).grid(row=x, column=0,
-                                                                                             sticky="w",
-                                                                                             columnspan=2)  # page header
+        Label(wd[3], text="Name Index Management", font=macadj("bold", "Helvetica 18"))\
+            .grid(row=x, column=0, sticky="w", columnspan=2)  # page header
         x += 1
         Label(wd[3], text="").grid(row=x, column=0, sticky="w")
         x += 1
@@ -5992,7 +6167,7 @@ def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
             to_add = (good_id, day)
             results.append(to_add)
         del carrier[:]  # empty array
-        return (results)
+        return results
 
 
 def auto_precheck():
@@ -6009,6 +6184,7 @@ def auto_precheck():
     pb_root = Tk()  # create a window for the progress bar
     pb_root.geometry("%dx%d+%d+%d" % (500, 50, 200, 300))
     pb_root.title("Database Maintenance")
+    titlebar_icon(pb_root)  # place icon in titlebar
     pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
     pb_label.pack(side=LEFT)
     pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
@@ -6030,65 +6206,16 @@ def auto_precheck():
     pb_root.destroy()
 
 
-def gen_carrier_list_for_dbase_mgmt(station, date):
-    sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
-          " FROM carriers WHERE effective_date <= '%s'" \
-          "ORDER BY carrier_name, effective_date desc" % (date)
-    results = inquire(sql)  # call function to access database
-    carrier_list = []  # initialize arrays for data sorting
-    candidates = []
-    more_rows = []
-    pre_invest = []
-    for i in range(len(results)):  # take raw data and sort into appropriate arrays
-        candidates.append(results[i])  # put name into candidates array
-        jump = "no"  # triggers an analysis of the candidates array
-        if i != len(results) - 1:  # if the loop has not reached the end of the list
-            if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
-                jump = "yes"  # bypasses an analysis of the candidates array
-        if jump == "no":
-            # sort into records in investigation range and those prior
-            for record in candidates:
-                if record[0] <= str(date) and len(pre_invest) == 0: pre_invest.append(record)
-            # find carriers who start in the middle of the investigation range CATEGORY ONE
-            if len(more_rows) > 0 and len(pre_invest) == 0:
-                station_anchor = "no"
-                for each in more_rows:  # check if any records place the carrier in the selected station
-                    if each[5] == station: station_anchor = "yes"  # if so, set the station anchor
-                if station_anchor == "yes":
-                    list(more_rows)
-                    for each in more_rows:
-                        x = list(each)  # convert the tuple to a list
-                        carrier_list.append(x)  # add it to the list
-            # find carriers with records before and during the investigation range CATEGORY TWO
-            if len(more_rows) > 0 and len(pre_invest) > 0:
-                station_anchor = "no"
-                for each in more_rows + pre_invest:
-                    if each[5] == station: station_anchor = "yes"
-                if station_anchor == "yes":
-                    xx = list(pre_invest[0])
-                    carrier_list.append(xx)
-            # find carrier with records from only before investigation range.CATEGORY THREE
-            if len(more_rows) == 0 and len(pre_invest) == 1:
-                for each in pre_invest:
-                    if each[5] == station:
-                        x = list(pre_invest[0])
-                        carrier_list.append(x)
-            del more_rows[:]
-            del pre_invest[:]
-            del candidates[:]
-    return carrier_list
-
-
 def gen_carrier_list():
     # generate in range carrier list
     if g_range == "week":  # select sql dependant on range
-        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, g_station, rowid" \
-              " FROM carriers WHERE effective_date <= '%s'" \
-              "ORDER BY carrier_name, effective_date desc" % (g_date[6])
+        sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
+              " FROM carriers WHERE effective_date <= '%s' " \
+              "ORDER BY carrier_name, effective_date desc" % g_date[6]
     if g_range == "day":
-        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, g_station, rowid" \
-              " FROM carriers WHERE effective_date <= '%s'" \
-              "ORDER BY carrier_name, effective_date desc" % (d_date)
+        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+              " FROM carriers WHERE effective_date <= '%s' " \
+              "ORDER BY carrier_name, effective_date desc" % d_date
     results = inquire(sql)  # call function to access database
     carrier_list = []  # initialize arrays for data sorting
     candidates = []
@@ -6154,8 +6281,10 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
         c = 0
         for line in a_file:
             if c == 0 and line[0][:8] != "TAC500R3":
-                messagebox.showwarning("File Selection Error", "The selected file does not appear to be an "
-                                                               "Employee Everything report.")
+                messagebox.showwarning("File Selection Error",
+                                       "The selected file does not appear to be an "
+                                       "Employee Everything report.",
+                                       parent = frame)
                 return
             if c == 3:
                 tacs_pp = line[0]  # find the pay period
@@ -6171,8 +6300,10 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
             c += 1
         if len(range_days) > 5:
             t_range = "day"  # set the range
-            messagebox.showwarning("File Selection Error", "Employee Everything Reports that cover only one day /n"
-                                                           "are not supported in version 3.002 of Klusterbox.")
+            messagebox.showwarning("File Selection Error",
+                                   "Employee Everything Reports that cover only one day /n"
+                                   "are not supported in this version of Klusterbox.",
+                                   parent = frame)
             return
         else:
             t_range = "week"
@@ -6218,15 +6349,16 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
                                "The Employee Everything Report does not include "
                                "information about the station. This could be caused by an error of the pdf "
                                "converter. If you can obtain an Employee Everything Report from management in "
-                               "csv format, you should have better results.")
+                               "csv format, you should have better results.",
+                               parent = F)
         F.destroy()
         main_frame()
         return
 
     station_index.append("out of station")
     possible_stations = [x for x in possible_stations if x not in station_index]
-    Label(FF, text="Station Pairing", font=macadj("bold", "Helvetica 18"), pady=10).grid(row=0, column=0, columnspan=4,
-                                                                                         sticky=W)  # page contents
+    Label(FF, text="Station Pairing", font=macadj("bold", "Helvetica 18"), pady=10)\
+        .grid(row=0, column=0, columnspan=4, sticky=W)  # page contents
     Label(FF, text="Match the station detected from TACS with a pre-existing station\n "
                    "or use ADD STATION to add the station if there isn't a match.", justify=LEFT) \
         .grid(row=1, column=0, columnspan=4, sticky=W)
@@ -6251,8 +6383,8 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
     Entry(FF, width=35, textvariable=station_new).grid(row=10, column=0, columnspan=4, sticky=W)
     Label(FF, text=" ", justify=LEFT).grid(row=11, column=0, sticky=W)
     Button(FF, text="OK", width=8, command=lambda: apply_auto_indexer_1
-    (F, file_path, tacs_station, station_sorter.get(), station_new.get(), t_date, t_range)).grid(row=12, column=2,
-                                                                                                 sticky=W)
+    (F, file_path, tacs_station, station_sorter.get(), station_new.get(), t_date, t_range))\
+        .grid(row=12, column=2, sticky=W)
     Button(FF, text="Cancel", width=8, command=lambda: (F.destroy(), main_frame())).grid(row=12, column=3, sticky=W)
     if tacs_station in tacs_index:
         auto_indexer_2(F, file_path, t_date, tacs_station, t_range)
@@ -6286,11 +6418,15 @@ def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station
             sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
                   % (tacs_station, station_new, "")
             commit(sql)
-        messagebox.showinfo("Database Updated", "The {} station has been added to the list of stations automatically "
-                                                "recognized.".format(station_new))
+        messagebox.showinfo("Database Updated",
+                            "The {} station has been added to the list of stations automatically "
+                            "recognized.".format(station_new),
+                            parent = frame)
     elif station_sorter != "ADD STATION" and station_new != "":
-        messagebox.showerror("Data Entry Error", "You can not select a station from the drop down menu AND enter "
-                                                 "a station in the text field.")
+        messagebox.showerror("Data Entry Error",
+                             "You can not select a station from the drop down menu AND enter "
+                             "a station in the text field.",
+                             parent = frame)
         return
     else:
         sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
@@ -6298,7 +6434,8 @@ def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station
         commit(sql)
         messagebox.showinfo("Database Updated",
                             "The {} station has been paired to the {} station. In the future, this association "
-                            "will be automatically recognized.".format(tacs_station, station_sorter))
+                            "will be automatically recognized.".format(tacs_station, station_sorter),
+                            parent = frame)
     auto_indexer_2(frame, file_path, t_date, tacs_station, t_range)
 
 
@@ -6371,6 +6508,7 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
     pb_root = Tk()  # create a window for the progress bar
     pb_root.geometry("%dx%d+%d+%d" % (500, 50, 200, 300))
     pb_root.title("Database Maintenance")
+    titlebar_icon(pb_root)  # place icon in titlebar
     pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
     pb_label.pack(side=LEFT)
     pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
@@ -6411,7 +6549,8 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % name[0]
         result = inquire(sql)
         kb_name = result[0][0]
-        sql = "SELECT effective_date,carrier_name FROM carriers WHERE carrier_name = '%s' AND effective_date <= '%s' " \
+        sql = "SELECT effective_date,carrier_name FROM carriers " \
+              "WHERE carrier_name = '%s' AND effective_date <= '%s' " \
               "ORDER BY effective_date DESC" % (kb_name, g_date[0])
         result = inquire(sql)
         if not result:
@@ -6420,10 +6559,12 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
             to_remove.append(name[0])  # removes from tacs list
     check_these = [x for x in check_these if x[0] not in dont_check]  # removes don't check from check these
     """
-    messagebox.showinfo("Processing Carriers", "{} Carrier names were added to the database\n"
-                                               "{} Carrier names were recognized as pre-existing in the database.\n"
-                                               "{} Carrier names have not been handled."
-                                                .format(add, rec, out))
+    messagebox.showinfo("Processing Carriers", 
+    "{} Carrier names were added to the database\n"
+   "{} Carrier names were recognized as pre-existing in the database.\n"
+   "{} Carrier names have not been handled."
+    .format(add, rec, out), 
+    parent = frame)
     """
     tacs_list = [x for x in tacs_list if x[0] not in new_carrier]
     tacs_list = [x for x in tacs_list if x[0] not in to_remove]
@@ -6468,9 +6609,8 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         FF = Frame(C)  # create the frame inside the canvas
         C.create_window((0, 0), window=FF, anchor=NW)
         c_list = [x for x in c_list if x not in name_index]
-        Label(FF, text="Search for Name Matches #1", font=macadj("bold", "Helvetica 18"), pady=10).grid(row=0, column=0,
-                                                                                                        sticky="w",
-                                                                                                        columnspan=10)  # page contents
+        Label(FF, text="Search for Name Matches #1", font=macadj("bold", "Helvetica 18"), pady=10)\
+            .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
         Label(FF, text=
         "Look for possible matches for each unrecognized name. If the name has already been entered manually, you \n"
         "should be able to find it on this screen or the next. It is possible that the name has no match, if that is \n"
@@ -6496,9 +6636,10 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         for t_name in tacs_list:
             possible_names = []
             Label(FF, text=str(i + 1), anchor="w").grid(row=c, column=0, sticky="w")
-            Label(FF, text=t_name[1] + ", " + t_name[2], anchor="w", width=15, fg=color).grid(row=c, column=1,
-                                                                                              sticky="w")  # name
-            Label(FF, text=t_name[3], anchor="w", width=10, fg=color).grid(row=c, column=2, sticky="w")  # assignment
+            Label(FF, text=t_name[1] + ", " + t_name[2], anchor="w", width=15, fg=color)\
+                .grid(row=c, column=1, sticky="w")  # name
+            Label(FF, text=t_name[3], anchor="w", width=10, fg=color)\
+                .grid(row=c, column=2, sticky="w")  # assignment
             # build option menu for unmatched tacs names
             for c_name in c_list:
                 if c_name[0] == t_name[1][0]:
@@ -6552,10 +6693,11 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
         commit(sql)
     """
 # message screens to summerize output
-    messagebox.showinfo("Processing Carriers", "{} Carrier names were paired to names in klusterbox\n"
-                                               "{} Carrier names were discarded.\n"
-                                               "{} Carrier names have not been handled."
-                                                .format(pair, dis, out))
+    messagebox.showinfo("Processing Carriers", 
+    "{} Carrier names were paired to names in klusterbox\n"
+    "{} Carrier names were discarded.\n"
+    "{} Carrier names have not been handled."
+    .format(pair, dis, out), parent = frame)
     """
     # build possible names for option menus
     sql = "SELECT kb_name FROM name_index"
@@ -6593,16 +6735,14 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
     FF = Frame(C)  # create the frame inside the canvas
     C.create_window((0, 0), window=FF, anchor=NW)
-
     # route to functions conditional on arrays
     if len(tacs_list) < 1 and len(check_these) > 0:  # if empty tacs list and something in check these
         auto_indexer_5(F, file_path, check_these)
     elif len(tacs_list) < 1 and len(check_these) < 1:
         auto_indexer_6(F, file_path)
     else:
-        Label(FF, text="Search for Name Matches #2", font=macadj("bold", "Helvetica 18"), pady=10).grid(row=0, column=0,
-                                                                                                        sticky="w",
-                                                                                                        columnspan=10)  # page contents
+        Label(FF, text="Search for Name Matches #2", font=macadj("bold", "Helvetica 18"), pady=10)\
+            .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
         Label(FF, text=
         "Look for possible matches for each unrecognized name. If the name has already been entered manually, \n"
         " you should be able to find it on this screen. It is possible that the name has no match, if that is \n"
@@ -6687,7 +6827,6 @@ def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_
             check_these.append(tacs_list[i])
             pair += 1
         i += 1
-
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.grid(row=0, column=2)
     pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
@@ -6697,7 +6836,8 @@ def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_
     i = 0
     for item in to_nameindex:  # when a name from the optionmenu was selected
         pb["value"] = i  # increment progress bar
-        tac_str = "{}, {}".format(item[0][1], item[0][2])  # tac str is last name and first initial from tacs report
+        # tac str is last name and first initial from tacs report
+        tac_str = "{}, {}".format(item[0][1], item[0][2])
         sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s','%s','%s')" \
               % (tac_str, item[1], item[0][0])
         commit(sql)
@@ -6710,7 +6850,6 @@ def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_
     to_chg = []  # array of items from to_addname where the name needs to be modified with emp id
     new_name = []  # array of new names which have been modified with emp id
     for name in new_carrier: to_addname.append(name)  # add new carriers in list to be added to carrier table
-
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.grid(row=0, column=2)
     pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
@@ -6753,7 +6892,7 @@ def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_
     messagebox.showinfo("Processing Carriers", "{} Carrier names were added to the database\n"
                                                "{} Carrier names were paired to names in klusterbox\n"
                                                "{} Carrier names were discarded.\n"
-                                               .format(add, pair, dis))
+                                               .format(add, pair, dis), parent = frame)
     """
     count = 0  # swap out the names which have been modified in to_addname
     for item in to_chg:  # for each item to be swapped
@@ -6810,7 +6949,7 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     C1 = Canvas(F)
     C1.pack(fill=BOTH, side=BOTTOM)
     Button(C1, text="Continue", width=8, command=lambda: apply_auto_indexer_4
-    (F, C1, file_path, carrier_name, l_s, l_ns, route, check_these)).pack(side=LEFT)
+    (F, C1, file_path, to_addname, carrier_name, l_s, l_ns, route, check_these)).pack(side=LEFT)
     Button(C1, text="Cancel", width=8, command=lambda: (F.destroy(), main_frame())).pack(side=LEFT)
     S = Scrollbar(F)  # link up the canvas and scrollbar
     C = Canvas(F, width=1600)
@@ -6891,7 +7030,7 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     mainloop()
 
 
-def apply_auto_indexer_4(frame, buttons, file_path, carrier_name, l_s, l_ns, route,
+def apply_auto_indexer_4(frame, buttons, file_path, to_addname, carrier_name, l_s, l_ns, route,
                          check_these):  # adds new carriers to the carriers table
     if g_range == "week": eff_date = g_date[0]
     if g_range == "day": eff_date = d_date
@@ -6908,7 +7047,9 @@ def apply_auto_indexer_4(frame, buttons, file_path, carrier_name, l_s, l_ns, rou
         passed_ns = l_ns[i].get().split(" - ")  # clean the passed ns day data
         clean_ns = StringVar(frame)  # put ns day var in StringVar object
         clean_ns.set(passed_ns[1])
-        apply_2(eff_date, carrier_name[i], l_s[i], clean_ns, route[i], station, frame)
+        if apply_2(eff_date, carrier_name[i], l_s[i], clean_ns, route[i], station, frame) == "error":
+            auto_indexer_4(frame, file_path, to_addname, check_these)
+            return
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
@@ -6981,9 +7122,9 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     "information currently recorded in the Klusterbox database (below in the entry fields and option menus)to reflect \n"
     "the carrier's status acurately. This will update the Klusterbox database. Routes must 4 digits long. In cases \n"
     "were there multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
-    "Investigation Range: {0} through {1}\n\n".format(g_date[0].strftime("%a - %b %d, %Y"),
-                                                      g_date[6].strftime("%a - %b %d, %Y")),
-          justify=LEFT).grid(row=1, sticky="w")
+    "Investigation Range: {0} through {1}\n\n"
+        .format(g_date[0].strftime("%a - %b %d, %Y"), g_date[6].strftime("%a - %b %d, %Y")), justify=LEFT)\
+        .grid(row=1, sticky="w")
     y = 1  # count for the row
     Label(wd[3], text="    ", fg="Grey").grid(row=y, column=0, sticky="w")
     Label(wd[3], text="List Status", fg="Grey").grid(row=y, column=1, sticky="w")
@@ -7008,7 +7149,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     tlist = aux_list_tuple
                     tnsday = "none"
                     troute = ""
-                if name[3][-4:].isnumeric() == True:
+                if name[3][-4:].isnumeric():
                     tlist = reg_list_tuple
                     tnsday = code_ns[str(ns_dict[name[0]])]
                     troute = name[3][-4:]
@@ -7068,8 +7209,8 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     ns_day.config(width=12)
                     ns_day.grid(row=y, column=2, sticky="w")
                     e_route.append(StringVar(wd[3]))  # create entry field for route
-                    Entry(wd[3], width=25, textvariable=e_route[i]).grid(row=y, column=3,
-                                                                         sticky="w")  # create entry for routes
+                    Entry(wd[3], width=25, textvariable=e_route[i])\
+                        .grid(row=y, column=3, sticky="w")  # create entry for routes
                     e_route[i].set(k_name[4])
                     l_station.append(StringVar(wd[3]))
                     l_station[i].set(k_name[5])
@@ -7107,11 +7248,10 @@ def apply_auto_indexer_5(frame, buttons, file_path, carrier_name, l_s, l_ns, e_r
         passed_ns = l_ns[i].get().split(" - ")  # clean the passed ns day data
         clean_ns = StringVar(frame)  # put ns day var in StringVar object
         clean_ns.set(passed_ns[1])
-        check = apply_2_auto_indexer_5(eff_date, carrier_name[i], l_s[i], clean_ns, e_route[i], l_station[i], frame)
-        if check == "error":
-            frame.destroy()
+        if apply_2_auto_indexer_5(eff_date, carrier_name[i], l_s[i], clean_ns, e_route[i], l_station[i],
+                                  frame) == "error":
             auto_indexer_5(frame, file_path, check_these)
-            break
+            return
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
@@ -7232,24 +7372,28 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
     new_station = []
     c = 0
     for name in ex_carrier:
-        sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' ORDER BY effective_date DESC" \
+        sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
+              "ORDER BY effective_date DESC" \
               % (name, g_date[0])
         result = inquire(sql)
         carrier_name.append(StringVar(wd[3]))  # store name
         carrier_name[c].set(result[0][1])
-        Button(wd[3], text=result[0][1], relief=RIDGE, width=25, anchor="w").grid(row=y, column=0, sticky="w")  # name
+        Button(wd[3], text=result[0][1], relief=RIDGE, width=25, anchor="w")\
+            .grid(row=y, column=0, sticky="w")  # name
         list_status.append(StringVar(wd[3]))  # store list status
         list_status[c].set(result[0][2])
-        Button(wd[3], text=result[0][2], relief=RIDGE, width=7, anchor="w").grid(row=y, column=1, sticky="w")  # list
+        Button(wd[3], text=result[0][2], relief=RIDGE, width=7, anchor="w")\
+            .grid(row=y, column=1, sticky="w")  # list
         ns_day.append(StringVar(wd[3]))  # store ns day
         ns_day[c].set(result[0][3])
         route.append(StringVar(wd[3]))  # store route
         route[c].set(result[0][4])
-        Button(wd[3], text=result[0][4], relief=RIDGE, width=20, anchor="w").grid(row=y, column=2, sticky="w")  # route
+        Button(wd[3], text=result[0][4], relief=RIDGE, width=20, anchor="w")\
+            .grid(row=y, column=2, sticky="w")  # route
         station.append(StringVar(wd[3]))  # store station
         station[c].set(result[0][5])
         new_station.append(StringVar(wd[3]))
-        new_station[c].set(result[0][5])
+        new_station[c].set("out of station")
         stat_om = OptionMenu(wd[3], new_station[c], *list_of_stations)  # station
         stat_om.config(width=25, anchor="w")
         stat_om.grid(row=y, column=3, sticky="w")
@@ -7277,8 +7421,8 @@ def apply_auto_indexer_6(frame, buttons, file_path, carrier_name, list_status, n
     for i in range(len(carrier_name)):
         pb["value"] = i  # increment progress bar
         if station[i].get() != new_station[i].get():
-            apply_2_auto_indexer_5(date, carrier_name[i].get(), list_status[i], ns_day[i], route[i], new_station[i],
-                                   frame)
+            apply_2_auto_indexer_5(date, carrier_name[i].get(), list_status[i],
+                                   ns_day[i], route[i], new_station[i], frame)
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
@@ -7287,7 +7431,6 @@ def apply_auto_indexer_6(frame, buttons, file_path, carrier_name, list_status, n
 
 
 def auto_skimmer(frame, file_path):
-    frame.destroy()
     global allow_zero_top
     global allow_zero_bottom
     global skippers
@@ -7303,21 +7446,25 @@ def auto_skimmer(frame, file_path):
     for item in results:
         skippers.append(item[0])
     carrier_list_cleaning_for_auto_skimmer()
-    ok = messagebox.askokcancel("Auto Rings", "Do you want to automatically enter the rings?")
-    if ok == False:
+    ok = messagebox.askokcancel("Auto Rings",
+                                "Do you want to automatically enter the rings?",
+                                parent = frame)
+    if not ok:
         main_frame()
     else:
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         mv_codes = ("BT", "MV", "ET")
         carrier = []
-        proto_array = []
+        # proto_array = []
         pb_root = Tk()  # create a window for the progress bar
-        pb_root.geometry("%dx%d+%d+%d" % (500, 50, 200, 300))
         pb_root.title("Entering Carrier Rings")
+        titlebar_icon(pb_root)  # place icon in titlebar
         pb_label = Label(pb_root, text="Updating Rings: ")  # make label for progress bar
-        pb_label.pack(side=LEFT)
+        pb_label.grid(row=0, column=0, sticky="w")
         pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-        pb.pack(side=LEFT)
+        pb.grid(row=1, column=0, sticky="w")
+        pb_text = Label(pb_root, text="", anchor="w")
+        pb_text.grid(row=2, column=0, sticky="w")
         with open(file_path, newline="") as file:
             a_file = csv.reader(file)
             row_count = sum(1 for row in a_file)  # get number of rows in csv file
@@ -7334,26 +7481,29 @@ def auto_skimmer(frame, file_path):
                     if line[0][:8] != "TAC500R3":
                         messagebox.showwarning("File Selection Error",
                                                "The selected file does not appear to be an "
-                                               "Employee Everything report.")
+                                               "Employee Everything report.", parent = frame)
                         return
                 if c != 0:
                     if good_id != line[4] and good_id != "no":  # if new carrier or employee
-                        proto_rings = auto_weekly_analysis(carrier)  # trigger analysis
-                        proto_array.append(proto_rings)
+                        auto_weekly_analysis(carrier)  # trigger analysis
+                        # proto_rings = auto_weekly_analysis(carrier)  # trigger analysis
+                        # proto_array.append(proto_rings)
                         del carrier[:]  # empty array
                         good_id = "no"  # reset trigger
-                    if line[18] == "Base" and line[19] == "844" or line[
-                        19] == "134":  # find first line of specific carrier
+                    if line[18] == "Base" and line[19] == "844" \
+                            or line[19] == "134":  # find first line of specific carrier
                         good_id = line[4]  # set trigger to id of carriers who are FT or aux carriers
                         carrier.append(line)  # gather times and moves for anaylsis
+                        pb_text.config(text="Entering rings for {}".format(line[5]))
                     if good_id == line[4] and line[18] != "Base":
                         if line[18] in days:  # get the hours for each day
                             carrier.append(line)  # gather times and moves for anaylsis
                         if line[19] in mv_codes and line[32] != "(W)Ring Deleted From PC":
                             carrier.append(line)  # gather times and moves for anaylsis
+                        pb_text.config(text="Entering rings for {}".format(line[5]))
                 c += 1
-                pb_root.update()
                 i += 1
+                pb_root.update()
             auto_weekly_analysis(carrier)  # when loop ends, run final analysis
             del carrier[:]  # empty array
             pb.stop()  # stop and destroy the progress bar
@@ -7361,7 +7511,9 @@ def auto_skimmer(frame, file_path):
             pb.destroy()
             pb_root.destroy()
         messagebox.showinfo("Auto Rings",
-                            "The Employee Everything Report has been sucessfully inputed into the database")
+                            "The Employee Everything Report has been sucessfully inputed into the database",
+                            parent = frame)
+        frame.destroy()
         main_frame()
 
 
@@ -7449,14 +7601,14 @@ def auto_weekly_analysis(array):
                     if pair == "open":  # if open at end, then close it with the last ring
                         mv_triad.append(line[5][len(line[5]) - 1][1])
                         mv_triad.append(route_holder)
-                if allow_zero_bottom == False:
+                if not allow_zero_bottom:
                     if len(mv_triad) > 0:  # find and remove duplicate ET rings at end
                         if mv_triad[int(len(mv_triad) - 3)] == mv_triad[
                             int(len(mv_triad) - 2)]:  # if the last 2 are the same
                             mv_triad.pop()  # pop out the last triad
                             mv_triad.pop()
                             mv_triad.pop()
-                if allow_zero_top == False:
+                if not allow_zero_top:
                     if len(mv_triad) > 0:  # find and remove rings in the front
                         if mv_triad[0] == mv_triad[1]:
                             mv_triad.pop(0)  # pop out the triad
@@ -7577,12 +7729,17 @@ def auto_daily_analysis(rings):
 
 
 def call_indexers(frame):
-    file_path = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=[("Excel files", "*.csv *.xls")])
-    if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
+    path = dir_filedialog()
+    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
+    if file_path == "":
+        return
+    elif file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
         auto_indexer_1(frame, file_path)
     else:
-        messagebox.showerror("Report Generator", "The file you have selected is not a .csv or .xls file. "
-                                                 "You must select a file with a .csv or .xls extension.")
+        messagebox.showerror("Report Generator",
+                             "The file you have selected is not a .csv or .xls file. "
+                             "You must select a file with a .csv or .xls extension.",
+                             parent = frame)
 
 
 def save_all(frame):
@@ -7696,11 +7853,12 @@ def ee_analysis(array, report):
         del moves_array[:]
 
 
-def ee_skimmer():
+def ee_skimmer(frame):
     days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     mv_codes = ("BT", "MV", "ET")
     carrier = []
-    file_path = filedialog.askopenfilename(initialdir=os.getcwd())
+    path = dir_filedialog()
+    file_path = filedialog.askopenfilename(initialdir = path)
     if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
         with open(file_path, newline="") as file:
             a_file = csv.reader(file)
@@ -7711,7 +7869,8 @@ def ee_skimmer():
                     if line[0][:8] != "TAC500R3":
                         messagebox.showwarning("File Selection Error",
                                                "The selected file does not appear to be an "
-                                               "Employee Everything report.")
+                                               "Employee Everything report.",
+                                               parent = frame)
                         return
                 if c == 2:
                     pp = line[0]  # find the pay period
@@ -7721,7 +7880,8 @@ def ee_skimmer():
                     except:
                         messagebox.showwarning("Report Generator",
                                                "The Employee Everything Report Reader "
-                                               "was not generated.")
+                                               "was not generated.",
+                                               parent = frame)
                         return
                     report.write("\nEmployee Everything Report Reader\n")
                     report.write(
@@ -7753,7 +7913,8 @@ def ee_skimmer():
     else:
         messagebox.showerror("Report Generator",
                              "The file you have selected is not a .csv or .xls file.\n"
-                             "You must select a file with a .csv or .xls extension.")
+                             "You must select a file with a .csv or .xls extension.",
+                             parent = frame)
         return
 
 
@@ -7806,7 +7967,7 @@ def pay_period_guide(frame):
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('pp_guide') + filename])
         except:
-            messagebox.showerror("Report Generator", "The report was not generated.")
+            messagebox.showerror("Report Generator", "The report was not generated.", parent = frame)
 
 
 def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
@@ -7859,8 +8020,9 @@ def move_translator(num):  # makes 721, 722 codes readable.
         return num  # just return the code
 
 
-def max_hr():  # generates a report for 12/60 hour violations
-    file_path = filedialog.askopenfilename(initialdir=os.getcwd(), filetypes=[("Excel files", "*.csv *.xls")])
+def max_hr(frame):  # generates a report for 12/60 hour violations
+    path = dir_filedialog()
+    file_path = filedialog.askopenfilename(initialdir = path, filetypes=[("Excel files", "*.csv *.xls")])
     day_xlr = {"Saturday": "sat", "Sunday": "sun", "Monday": "mon", "Tuesday": "tue", "Wednesday": "wed",
                "Thursday": "thr", "Friday": "fri"}
     leave_xlr = {"49": "owcp   ", "55": "annual ", "56": "sick   ", "58": "holiday", "59": "lwop   ", "60": "lwop   "}
@@ -7882,7 +8044,8 @@ def max_hr():  # generates a report for 12/60 hour violations
                     if line[0][:8] != "TAC500R3":
                         messagebox.showwarning("File Selection Error",
                                                "The selected file does not appear to be an "
-                                               "Employee Everything report.")
+                                               "Employee Everything report.",
+                                               parent = frame)
                         return
                 if c == 2:  # on the second line
                     pp = line[0]  # find the pay period
@@ -7967,7 +8130,7 @@ def max_hr():  # generates a report for 12/60 hour violations
                                 if float(spt_20[1]) > 12 and FT == True:
                                     add_max_ft = (line[5].lower(), line[6].lower(), line[18], spt_20[1])
                                     max_ft_day.append(add_max_ft)
-                                if FT == True:  # increment daily totals to find weekly total
+                                if FT:  # increment daily totals to find weekly total
                                     add_day_hours = (line[5].lower(), line[6].lower(), spt_20[1], line[18])
                                     day_hours.append(add_day_hours)
                             extra_hour_codes = ("49", "55", "56", "58")  # paid leave types only , (lwop "59", "60")
@@ -7982,7 +8145,8 @@ def max_hr():  # generates a report for 12/60 hour violations
     else:
         messagebox.showerror("Report Generator",
                              "The file you have selected is not a .csv or .xls file.\n"
-                             "You must select a file with a .csv or .xls extension.")
+                             "You must select a file with a .csv or .xls extension.",
+                             parent = frame)
         return
     # find the weekly total by adding daily totals for last carrier
     if len(day_hours) > 0:
@@ -7998,8 +8162,10 @@ def max_hr():  # generates a report for 12/60 hour violations
         del extra_hours[:]
 
     if len(max_hr) == 0 and len(max_ft_day) == 0 and len(max_aux_day) == 0:
-        messagebox.showwarning("Report Generator", "No violations were found. "
-                                                   "The report was not generated.")
+        messagebox.showwarning("Report Generator",
+                               "No violations were found. "
+                               "The report was not generated.",
+                               parent = frame)
         return
     weekly_max = []  # array hold each carrier's hours for the week
     daily_max = []  # array hold each carrier's sum of maximum daily hours for the week
@@ -8204,7 +8370,7 @@ def max_hr():  # generates a report for 12/60 hour violations
 
 
 def file_dialogue(folder):  # opens file folders to access generated reports
-    if os.path.isdir(folder) == False:
+    if not os.path.isdir(folder):
         os.makedirs(folder)
     if platform == "py":
         file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
@@ -8220,7 +8386,7 @@ def file_dialogue(folder):  # opens file folders to access generated reports
 
 
 def remove_file(folder):  # removes a file and all contents
-    if os.path.isdir(folder) == True:
+    if os.path.isdir(folder):
         shutil.rmtree(folder)
 
 
@@ -8230,11 +8396,11 @@ def remove_file_var(folder):  # removes a file and all contents
     else:
         folder_name = folder.split("/")
     folder_name = folder_name[1]
-    if os.path.isdir(folder) == True:
+    if os.path.isdir(folder):
         if messagebox.askokcancel("Delete Folder Contents",
                                   "This will delete all the files in the {} archive. ".format(folder_name)):
             shutil.rmtree(folder)
-        if os.path.isdir(folder) == False:
+        if not os.path.isdir(folder):
             messagebox.showinfo("Delete Folder Contents",
                                 "Success! All the files in the {} archive have been deleted.".format(folder_name))
 
@@ -8460,12 +8626,14 @@ def start_up():  # the start up screen when no information has been entered
     C.pack(side=LEFT, fill=BOTH)
     FF = Frame(C)
     C.create_window((0, 0), window=FF, anchor=NW)
-    Label(FF, text="Welcome to Klusterbox", font=macadj("bold", "Helvetica 18")).grid(row=0, columnspan=2, sticky="w")
+    Label(FF, text="Welcome to Klusterbox", font=macadj("bold", "Helvetica 18"))\
+        .grid(row=0, columnspan=2, sticky="w")
     Label(FF, text="version: {}".format(version)).grid(row=1, columnspan=2, sticky="w")
     Label(FF, text="", pady=20).grid(row=2, column=0)
     # enter new stations
     new_station = StringVar(FF)
-    Label(FF, text="To get started, please enter your station name:", pady=5).grid(row=3, columnspan=2, sticky="w")
+    Label(FF, text="To get started, please enter your station name:", pady=5)\
+        .grid(row=3, columnspan=2, sticky="w")
     e = Entry(FF, width=35, textvariable=new_station)
     e.grid(row=4, column=0, sticky="w")
     new_station.set("")
@@ -8473,7 +8641,8 @@ def start_up():  # the start up screen when no information has been entered
         grid(row=4, column=1, sticky="w")
     Label(FF, text="", pady=20).grid(row=5, columnspan=2, sticky="w")
     Label(FF, text="Or you can exit to the main screen and enter your\n"
-                   "station by going to Management > list of stations.").grid(row=6, columnspan=2, sticky="w")
+                   "station by going to Management > list of stations.")\
+        .grid(row=6, columnspan=2, sticky="w")
     Button(FF, width=5, text="EXIT", command=lambda: [F.destroy(), main_frame()]). \
         grid(row=7, columnspan=2, sticky="e")
     root.update()
@@ -8495,6 +8664,7 @@ def carrier_list_cleaning_for_auto_skimmer():  # cleans the database of duplicat
     if len(duplicates) > 0:
         pb_root = Tk()  # create a window for the progress bar
         pb_root.title("Database Maintenance")
+        titlebar_icon(pb_root)  # place icon in titlebar
         pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
         pb_label.pack(side=LEFT)
         pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
@@ -8537,9 +8707,10 @@ def carrier_list_cleaning(frame):  # cleans the database of duplicate records
                                     "{} redundancies have been found in the database \n"
                                     "This is recommended maintenance.".format(len(duplicates)),
                                     parent=frame)
-    if ok == True:
+    if ok:
         pb_root = Tk()  # create a window for the progress bar
         pb_root.title("Database Maintenance")
+        titlebar_icon(pb_root)  # place icon in titlebar
         pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
         pb_label.pack(side=LEFT)
         pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
@@ -8563,9 +8734,9 @@ def carrier_list_cleaning(frame):  # cleans the database of duplicate records
                             parent=frame)
         frame.destroy()
         main_frame()
-    if ok == False: messagebox.showinfo("Database Maintenance",
+    if not ok: messagebox.showinfo("Database Maintenance",
                                         "No redundancies have been found in the carrier list.",
-                                        parent=frame)
+                                   parent=frame)
     del duplicates[:]
 
 
@@ -8599,19 +8770,23 @@ def data_mods_codes_add(frame, code, description):
         existing_codes.append(item[0])
     prohibited_codes = ('721', '722')
     if code.get() in prohibited_codes:
-        messagebox.showerror("Data Entry Error", "It is prohibited to exclude code {}".format(code.get()))
+        messagebox.showerror("Data Entry Error",
+                             "It is prohibited to exclude code {}".format(code.get(),
+                             parent = frame))
         return
     if code.get() in existing_codes:
-        messagebox.showerror("Data Entry Error", "This code had already been entered.")
+        messagebox.showerror("Data Entry Error", "This code had already been entered.", parent = frame)
         return
     if code.get().isdigit() == FALSE:
-        messagebox.showerror("Data Entry Error", "TACS code must contain only numbers.")
+        messagebox.showerror("Data Entry Error", "TACS code must contain only numbers.", parent = frame)
         return
     if len(code.get()) > 3 or len(code.get()) < 3:
-        messagebox.showerror("Data Entry Error", "TACS code must be 3 digits long.")
+        messagebox.showerror("Data Entry Error", "TACS code must be 3 digits long.", parent = frame)
         return
     if len(description.get()) > 39:
-        messagebox.showerror("Data Enty Error", "Please limit description to less than 40 characters.")
+        messagebox.showerror("Data Enty Error",
+                             "Please limit description to less than 40 characters.",
+                             parent = frame)
         return
     sql = "INSERT INTO skippers(code,description) VALUES('%s','%s')" % (code.get(), description.get())
     commit(sql)
@@ -8632,7 +8807,7 @@ def data_mods_codes_default(frame):
 def apply_auto_ns_structure(frame, ns_structure):
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
     commit(sql)
-    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.")
+    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.", parent = frame)
 
 
 def data_entry_permit_zero(frame, top, bottom):
@@ -8768,7 +8943,7 @@ def min_ss_presets(frame, order):
 
 
 def apply_ss_min(frame, tolerance, type):
-    if isint(tolerance) == False:
+    if not isint(tolerance):
         text = "You must enter a number with no decimals. "
         messagebox.showerror("Tolerance value entry error", text, parent=frame)
         return
@@ -8900,7 +9075,7 @@ def tolerance_info(frame, switch):
 
 
 def apply_tolerance(frame, tolerance, type):
-    if isfloat(tolerance) == False:
+    if not isfloat(tolerance):
         text = "You must enter a number."
         messagebox.showerror("Tolerance value entry error", text, parent=frame)
         return
@@ -9037,7 +9212,7 @@ def apply_station(switch, station, frame):
                                        "database. This can not be reversed.".format(station),
                                        parent=frame)
         if check:
-            sql = "DELETE FROM stations WHERE station='%s'" % (station)
+            sql = "DELETE FROM stations WHERE station='%s'" % station
             commit(sql)
             database_clean_carriers()
             database_clean_rings()
@@ -9080,7 +9255,7 @@ def station_update_apply(frame, old_station, new_station):
         sql = "DELETE FROM stations WHERE station='%s'" % old_station.get()
         commit(sql)
         list_of_stations.remove(new_station.get())
-    if go_ahead == True:
+    if go_ahead:
         sql = "UPDATE stations SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
         commit(sql)
         sql = "UPDATE carriers SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
@@ -9090,7 +9265,7 @@ def station_update_apply(frame, old_station, new_station):
         list_of_stations.append(new_station.get())
         list_of_stations.remove(old_station.get())
         station_list(frame)
-    if go_ahead == False:
+    if not go_ahead:
         return
 
 
@@ -9112,7 +9287,7 @@ def station_list(frame):
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta)), "units"))
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -9132,7 +9307,7 @@ def station_list(frame):
     Label(FF, text="Enter New Station", pady=5, font=macadj("bold", "Helvetica 18")) \
         .grid(row=row, columnspan=2, sticky="w")
     row += 1
-    e = Entry(FF, width=35, textvariable=new_name)
+    e = Entry(FF, width=35, textvariable = new_name)
     e.grid(row=row, column=0, sticky="w")
     new_name.set("")
     Button(FF, width=5, anchor="w", text="ENTER", command=lambda: apply_station("enter", new_name, F)). \
@@ -9258,7 +9433,7 @@ def mass_input(frame, day, sort):
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta)), "units"))
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -9724,7 +9899,8 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['H' + str(oi)] = formula  # move total
                             ws_list[i]['H' + str(oi)].style = input_s
                             ws_list[i]['H' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
+                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, " \
+                                      "MAX(%s!C%s - 8, 0)))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi))
                             ws_list[i]['I' + str(oi)] = formula  # overtime
@@ -9735,7 +9911,8 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, " \
+                                      "IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -9765,7 +9942,8 @@ def spreadsheet(list_carrier, r_rings):
                             oi += 1
                         if move_count < 2:
                             # input formula for overtime
-                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8+ reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
+                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8+ reference!C3, 0, " \
+                                      "MAX(%s!C%s - 8, 0)))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi))
                             ws_list[i]['I' + str(oi)] = formula  # overtime
@@ -9778,7 +9956,8 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + " \
+                                      "reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10037,7 +10216,8 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + " \
+                                      "reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10079,7 +10259,8 @@ def spreadsheet(list_carrier, r_rings):
                             ws_list[i]['J' + str(oi)].style = calcs
                             ws_list[i]['J' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                             # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
+                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + " \
+                                      "reference!C4, 0, MIN" \
                                       "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
                                       % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
                                          day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10270,7 +10451,8 @@ def spreadsheet(list_carrier, r_rings):
                         ws_list[i]['D' + str(oi)] = rs  # rs
                         ws_list[i]['D' + str(oi)].style = input_s
                         ws_list[i]['D' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                                   "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                                   "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
                                       day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10281,7 +10463,8 @@ def spreadsheet(list_carrier, r_rings):
                         ws_list[i]['E' + str(oi)] = formula  # availability to 10
                         ws_list[i]['E' + str(oi)].style = calcs
                         ws_list[i]['E' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                                   "%s!B%s = \"sick\", %s!C%s >= 12 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                                   "12, IF(%s!C%s = 0, 0, MAX(12 - %s!C%s, 0))))" % (
                                       day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10303,7 +10486,8 @@ def spreadsheet(list_carrier, r_rings):
                 ws_list[i]['C' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                 ws_list[i]['D' + str(oi)].style = input_s
                 ws_list[i]['D' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                          "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                           "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                           "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
                               day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10314,7 +10498,8 @@ def spreadsheet(list_carrier, r_rings):
                 ws_list[i]['E' + str(oi)] = formula  # availability to 10
                 ws_list[i]['E' + str(oi)].style = calcs
                 ws_list[i]['E' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                          "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                           "%s!B%s = \"sick\", %s!C%s >= 12 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                           "12, IF(%s!C%s = 0, 0, MAX(12 - %s!C%s, 0))))" % (
                               day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10456,7 +10641,8 @@ def spreadsheet(list_carrier, r_rings):
                         ws_list[i]['D' + str(oi)] = rs  # rs
                         ws_list[i]['D' + str(oi)].style = input_s
                         ws_list[i]['D' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                                   "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                                   "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
                                       day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10467,7 +10653,8 @@ def spreadsheet(list_carrier, r_rings):
                         ws_list[i]['E' + str(oi)] = formula  # availability to 10
                         ws_list[i]['E' + str(oi)].style = calcs
                         ws_list[i]['E' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                                   "%s!B%s = \"sick\", %s!C%s >= 11.5 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                                   "11.5, IF(%s!C%s = 0, 0, MAX(11.5 - %s!C%s, 0))))" % (
                                       day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10490,7 +10677,8 @@ def spreadsheet(list_carrier, r_rings):
                     ws_list[i]['C' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
                     ws_list[i]['D' + str(oi)].style = input_s
                     ws_list[i]['D' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                    formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                    formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                              "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                               "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                               "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
                                   day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10501,7 +10689,8 @@ def spreadsheet(list_carrier, r_rings):
                     ws_list[i]['E' + str(oi)] = formula  # availability to 10
                     ws_list[i]['E' + str(oi)].style = calcs
                     ws_list[i]['E' + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-                    formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                    formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
+                              "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                               "%s!B%s = \"sick\", %s!C%s >= 11.5 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
                               "11.5, IF(%s!C%s = 0, 0, MAX(11.5 - %s!C%s, 0))))" % (
                                   day_of_week[i], str(oi), day_of_week[i], str(oi),
@@ -10642,7 +10831,8 @@ def spreadsheet(list_carrier, r_rings):
         summary['C' + str(row)].style = input_s
         summary['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
         summary['D' + str(row)] = "=IF(%s!B%s<%s!C%s,%s!B%s,%s!C%s)" \
-                                  % ('summary', str(row), 'summary', str(row), 'summary', str(row), 'summary', str(row))
+                                  % ('summary', str(row), 'summary', str(row), 'summary',
+                                     str(row), 'summary', str(row))
         summary['D' + str(row)].style = calcs
         summary['D' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
         summary['F' + str(row)] = "=%s!F%s" % (day_of_week[av_to_12_day[i]], av_to_12_row[i])  # availability to 12
@@ -10652,7 +10842,8 @@ def spreadsheet(list_carrier, r_rings):
         summary['G' + str(row)].style = input_s
         summary['G' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
         summary['H' + str(row)] = "=IF(%s!F%s<%s!G%s,%s!F%s,%s!G%s)" \
-                                  % ('summary', str(row), 'summary', str(row), 'summary', str(row), 'summary', str(row))
+                                  % ('summary', str(row), 'summary', str(row), 'summary',
+                                     str(row), 'summary', str(row))
         summary['H' + str(row)].style = calcs
         summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
         row = row + 2
@@ -10706,8 +10897,8 @@ def spreadsheet(list_carrier, r_rings):
     if g_range == "day": r = "_d"
     xl_filename = "kb" + str(format(dates[0], "_%y_%m_%d")) + r + ".xlsx"
     ok = messagebox.askokcancel("Spreadsheet generator",
-                                "Do you want to generate a spreadsheet?")
-    if ok == True:
+                                "Do you want to generate a spreadsheet?", parent=root)
+    if ok:
         try:
             wb.save(dir_path('spreadsheets') + xl_filename)
             messagebox.showinfo("Spreadsheet generator",
@@ -10719,8 +10910,8 @@ def spreadsheet(list_carrier, r_rings):
                                  "The spreadsheet was not generated. \n"
                                  "Suggestion: "
                                  "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).")
-    if ok == True:
+                                 "(the file can't be overwritten while open).", parent=root)
+    if ok:
         try:
             if sys.platform == "win32":
                 os.startfile(dir_path('spreadsheets') + xl_filename)
@@ -10733,7 +10924,7 @@ def spreadsheet(list_carrier, r_rings):
                                  "The spreadsheet was not opened. \n"
                                  "Suggestion: "
                                  "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).")
+                                 "(the file can't be overwritten while open).", parent=root)
 
 
 def tab_selected(t):  # attach notebook tab for
@@ -10823,7 +11014,7 @@ def output_tab(frame, list_carrier):
                                                                               "units"))
         elif sys.platform == "darwin":
             C[current_tab].bind_all('<MouseWheel>',
-                                    lambda event: C[current_tab].yview_scroll(int(mousewheel * (event.delta)), "units"))
+                                    lambda event: C[current_tab].yview_scroll(int(mousewheel * event.delta), "units"))
         elif sys.platform == "linux":
             C[current_tab].bind_all('<Button-4>', lambda event: C[current_tab].yview('scroll', -1, 'units'))
             C[current_tab].bind_all('<Button-5>', lambda event: C[current_tab].yview('scroll', 1, 'units'))
@@ -11098,7 +11289,7 @@ def output_tab(frame, list_carrier):
         oi += 2
         #  overtime desired list xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         Label(F, text="overtime desired list", justify=LEFT,
-              font=macadj(('Helvetica 10 bold'), ('Futura 16 bold')), bg="white") \
+              font=macadj('Helvetica 10 bold', 'Futura 16 bold'), bg="white") \
             .grid(sticky=W, row=oi, column=0, columnspan=10)
         oi += 1
         Label(F, text="Availability to:", bg="white") \
@@ -11323,7 +11514,7 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, lv_type, lv_time,
                     messagebox.showerror("Move entry error", text, parent=frame)
                     return
             if triad_col_finder(i) == 2:  # find the third of the triad
-                if int(d[i].get().isnumeric()) == False:
+                if not int(d[i].get().isnumeric()):
                     if d[i].get().strip() == "":
                         continue
                     text = "You must enter a numeric value on route for {}.".format(day[c])
@@ -11338,7 +11529,7 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, lv_type, lv_time,
     c = -1
     for t in total:  # check for bad inputs in 5200 fields
         c += 1
-        if isfloat(t.get()) == False:
+        if not isfloat(t.get()):
             if t.get().strip() == "":
                 continue
             text = "You must enter a numeric value in 5200 for {}.".format(day[c])
@@ -11355,14 +11546,14 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, lv_type, lv_time,
     ttotal = []
     for t in total:
         t = str(t.get()).strip()
-        if isfloat(t) == TRUE:
+        if isfloat(t):
             ttotal.append(format(float(str(t)), '.2f'))
         else:
             ttotal.append(str(t))
     c = -1
     for r in RS:  # check for bad inputs in RS fields
         c += 1
-        if isfloat(r.get()) == False:
+        if not isfloat(r.get()):
             if r.get().strip() == "":
                 continue
             text = "You must enter a numeric value in RS for {}.".format(day[c])
@@ -11387,7 +11578,7 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, lv_type, lv_time,
     c = -1
     for t in lv_time:
         c += 1
-        if isfloat(t.get()) == False:
+        if not isfloat(t.get()):
             if t.get().strip() == "":
                 continue
             text = "You must enter a numeric value for leave times {}.".format(day[c])
@@ -11397,10 +11588,6 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, lv_type, lv_time,
             text = "Values greater than 8 are not accepted for leave times for {}.".format(day[c])
             messagebox.showerror("5200 entry error", text, parent=frame)
             return
-        # if float(t.get()) <= 0:
-        #     text = "Values less than or equal to 0 are not accepted for leave time for {}.".format(day[c])
-        #     messagebox.showerror("5200 entry error", text, parent=frame)
-        #     return
     llv_time = []  # create new array to keep formated leave times
     for t in lv_time:
         t = str(t.get()).strip()
@@ -11411,7 +11598,6 @@ def apply_rings(origin_frame, frame, carrier, total, RS, code, lv_type, lv_time,
                 llv_time.append(format(float(str(t)), '.2f'))  # format it as a float with 2 decimal places
         else:
             llv_time.append(str(t))  # otherwise input the string as it appears
-
     dates = []
     if g_range == "week": dates = g_date
     if g_range == "day": dates.append(d_date)
@@ -11561,30 +11747,9 @@ def new_entry(frame, day, moves):  # creates new entry fields for moves
 def rings2(carrier, origin_frame):
     root = Tk()
     root.title("KLUSTERBOX - Carrier Rings")
+    titlebar_icon(root)  # place icon in titlebar
     root.geometry("%dx%d+%d+%d" % (origin_frame.winfo_width(), origin_frame.winfo_height(),
                                    origin_frame.winfo_rootx(), origin_frame.winfo_rooty() - 30))
-    if sys.platform == "win32" and platform == "py":
-        try:
-            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except:
-            pass
-    if sys.platform == "win32" and platform == "winapp":
-        try:
-            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
-        except:
-            pass
-    if sys.platform == "darwin" and platform == "py":
-        try:
-            root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
-            root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except:
-            pass
-    if sys.platform == "linux":
-        try:
-            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
-            root.tk.call('wm', 'iconphoto', root._w, img)
-        except:
-            pass
     switchF2 = Frame(root)
     switchF2.pack(fill=BOTH, side=LEFT)
     C1 = Canvas(switchF2)
@@ -11919,7 +12084,8 @@ def apply(year, month, day, c_name, ls, ns, route, station, frame):
     if len(carrier) < 1:
         messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
         return
-    apply_2(date, carrier, ls, ns, route, station, frame)
+    if apply_2(date, carrier, ls, ns, route, station, frame) == "error":
+        return
 
 
 def apply_2(date, carrier, ls, ns, route, station, frame):
@@ -11931,7 +12097,7 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
                              "If there are multiple routes, route numbers must be separated by "
                              "the \'/\' character. For example: 1001/1015/1024/1036/0972. Do not use "
                              "commas or empty spaces", parent=frame)
-        return
+        return "error"
     for item in route_list:
         item = item.strip()
         if item != "":
@@ -11941,12 +12107,12 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
                                      'If there are multiple routes, route numbers must be separated by '
                                      'the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use '
                                      'commas or empty spaces', parent=frame)
-                return
+                return "error"
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error",
                                  "Route numbers must be numbers and can not contain "
                                  "letters", parent=frame)
-            return
+            return "error"
     # find all matches for date and name
     route_input = route.get()
     if route_input == "0000":
@@ -12008,6 +12174,24 @@ def name_change(name, c_name, frame):
         main_frame()
 
 
+def purge_carrier(frame, carrier):
+    if not messagebox.askokcancel("Delete Carrier",
+                              "This will delete the carrier and all records associated with "
+                              "this carrier, including rings and name index.\n\n"
+                              "If this carrier has left the station, quit, been fired or retired "
+                              "you should change station to \"out of station\" and not delete. \n\n"
+                              "This can not be reversed.", parent = frame):
+        return
+    sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % carrier
+    commit(sql)
+    sql = "DELETE FROM rings3 WHERE carrier_name= '%s'" % carrier
+    commit(sql)
+    sql = "DELETE FROM name_index WHERE kb_name = '%s'" % carrier
+    commit(sql)
+    frame.destroy()
+    main_frame()
+
+
 def update_carrier(a):
     sql = "SELECT * FROM ns_configuration"
     ns_results = inquire(sql)
@@ -12037,7 +12221,7 @@ def update_carrier(a):
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta)), "units"))
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -12100,7 +12284,6 @@ def update_carrier(a):
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ns = StringVar(ns_frame)
     ns.set(a[3])
-
     Radiobutton(ns_frame, text="{}:   {}".format(ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["yellow"]) \
@@ -12362,6 +12545,17 @@ def edit_carrier(e_name):
     rowid = StringVar(F)
     rowid = results[0][6]
     station_frame.grid(row=6, sticky=W)
+    #  delete button
+    delete_frame = Frame(F, bd=1, relief=RIDGE, pady=2)
+    Label(delete_frame, text=" delete", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
+          width=5).grid(row=0, column=0, sticky=W)
+    Label(delete_frame,text = "Delete carrier and all associated records. ", anchor="w")\
+        .grid(row=1, column=0, sticky=W)
+    Button(delete_frame, text = "Delete", width=15,
+           bg=macadj("red3", "red3"), fg=macadj("white", "white"),
+           command = lambda: purge_carrier(switchF3, e_name)).grid(row=3, column=0, sticky=W)
+    delete_frame.grid(row=7, sticky=W)
+    Label(F, text = "").grid(row = 8)
     #   History of status changes
     history_frame = Frame(F, pady=2)
     row_line = 0
@@ -12393,7 +12587,7 @@ def edit_carrier(e_name):
                command=lambda x=line: [switchF3.destroy(), delete_carrier(x)]) \
             .grid(row=row_line, column=1, sticky=W)
         row_line += 1
-    history_frame.grid(row=7, sticky=W)
+    history_frame.grid(row=9, sticky=W)
     root.update()
     C.config(scrollregion=C.bbox("all"))
     # apply and close buttons
@@ -12405,11 +12599,8 @@ def edit_carrier(e_name):
 
 
 def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, frame):
-    if year.get() > 9999:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
-        return
-    if year.get() < 1:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
+    if year.get() > 9999 or year.get() < 1000:
+        messagebox.showerror("Year Input Error", "Year must be between 1000 and 9999", parent=frame)
         return
     try:
         date = datetime(year.get(), month.get(), day.get())
@@ -12477,7 +12668,7 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
         ok = messagebox.askokcancel("New Carrier Input Warning",
                                     "This carrier name is already in the database.\n"
                                     "Did you want to proceed?", parent=frame)
-        if ok == True:
+        if ok:
             for pair in results:
                 if pair[0] == carrier and pair[1] == str(datetime(year.get(), month.get(), day.get(), 00, 00, 00)):
                     messagebox.showwarning("New Carrier - Prohibited Action",
@@ -12487,10 +12678,9 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
                                            "\"edit\" to the right of the carrier's name. ",
                                            parent=frame)
                     match = True
-        if ok == False:
+        if not ok:
             match = True
-    if match == False: commit(sql)
-
+    if not match: commit(sql)
     frame.destroy()
     main_frame()
 
@@ -12532,7 +12722,7 @@ def input_carriers(frame):  # window for inputting new carriers
     if sys.platform == "win32":
         C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * (event.delta)), "units"))
+        C.bind_all('<MouseWheel>', lambda event: C.yview_scroll(int(mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         C.bind_all('<Button-4>', lambda event: C.yview('scroll', -1, 'units'))
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
@@ -12859,8 +13049,8 @@ def main_frame():
     automated_menu = Menu(menubar, tearoff=0)
     automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(F))
     automated_menu.add_separator()
-    automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr())
-    automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer())
+    automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(F))
+    automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(F))
     automated_menu.add_command(label="Weekly Availability", command=lambda: wkly_avail(F))
     automated_menu.add_separator()
     automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter())
@@ -13040,7 +13230,7 @@ def main_frame():
                 # sort into records in investigation range and those prior
                 for record in candidates:
                     if g_range == "week":  # if record falls in investigation range - add it to more rows array
-                        if record[0] >= str(g_date[1]) and record[0] <= str(g_date[6]):
+                        if str(g_date[1]) <= record[0] <= str(g_date[6]):
                             more_rows.append(record)
                         if record[0] <= str(g_date[0]) and len(pre_invest) == 0:
                             pre_invest.append(record)
@@ -13058,7 +13248,6 @@ def main_frame():
                         list(more_rows)
                         more_rows.reverse()  # reverse the tuple
                         for each in more_rows:
-                            # carrier_list.append(list(each))
                             x = list(each)  # convert the tuple to a list
                             if x[5] == g_station:
                                 x.append("B_in")  # tag if the record is the first in the list
@@ -13150,25 +13339,29 @@ def main_frame():
 
 def setup_database():
     pb_root = Tk()  # create a window for the progress bar
-    pb_root.title("Starting Klusterbox")
+    pb_root.title("Building Klusterbox Database")
+    titlebar_icon(pb_root)  # place icon in titlebar
     pb_label = Label(pb_root, text="Running Setup: ")  # make label for progress bar
-    pb_label.pack(side=LEFT)
+    pb_label.grid(row=0, column=0,sticky="w")
     pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-    pb.pack(side=LEFT)
-    steps = 20
+    pb.grid(row=1, column=0, sticky="w")
+    pb_text = Label(pb_root, text="", anchor="w")
+    pb_text.grid(row=2, column=0, sticky="w")
+    steps = 10
     pb["maximum"] = steps  # set length of progress bar
+    pb_counter = 0
     pb.start()
-    pb["value"] = 1  # increment progress bar
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Global Variables ")
     pb_root.update()
     global gs_year
     global gs_mo
     global gs_day
     global g_date
-    global d_date
     global g_range
     global g_station
     global list_of_stations
-    global pay_period
     global platform
     global mousewheel
     # set initial value of globals
@@ -13178,49 +13371,21 @@ def setup_database():
     g_range = "x"
     g_station = "x"
     g_date = []
-    # set up platform variable
-    platform = "py"  # initialize platform variable
-    split_home = os.getcwd().split("\\")
-    if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/":  # if it is a mac app
-        platform = "macapp"
-    elif len(split_home) > 2:
-        if split_home[1] == "Program Files (x86)" and split_home[2] == "klusterbox":
-            platform = "winapp"
-        elif split_home[1] == "Program Files" and split_home[2] == "klusterbox":
-            platform = "winapp"
-        else:
-            platform = "py"  # if it is running as a .py or .exe outside program files/applications
-    else:
-        platform = "py"  # if it is running as a .py or .exe outside program files/applications
-    pb["value"] = 1  # increment progress bar
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Tables - Station")
     pb_root.update()
-    # create directories if they don't exist
-    if platform == "macapp":
-        if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')) == False:
-            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents'))
-        if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox')) == False:
-            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox'))
-        if os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox')) == False:
-            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox'))
-    if platform == "winapp":
-        if os.path.isdir(os.path.expanduser("~") + '\\Documents') == False:
-            os.makedirs(os.path.expanduser("~") + '\\Documents')
-        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox') == False:
-            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
-        if os.path.isdir(os.path.expanduser("~") + '\\Documents\\.klusterbox') == False:
-            os.makedirs(os.path.expanduser("~") + '\\Documents\\.klusterbox')
-    if platform == "py":
-        if os.path.isdir('kb_sub') == False:
-            os.makedirs('kb_sub')
     # set up database if it does not exist
     sql = 'CREATE table IF NOT EXISTS stations (station varchar primary key)'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO stations (station) VALUES ("out of station")'
     commit(sql)
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Tables - Tolerances")
+    pb_root.update()
     sql = 'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)'
     commit(sql)
-    pb["value"] = 5  # increment progress bar
-    pb_root.update()
     sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (0,"ot_own_rt", .25)'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (1,"ot_tol", .25)'
@@ -13231,8 +13396,6 @@ def setup_database():
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (4,"min_ss_wal", 25)'
     commit(sql)
-    pb["value"] = 10  # increment progress bar
-    pb_root.update()
     sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (5,"min_ss_otdl", 25)'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (6,"min_ss_aux", 25)'
@@ -13253,9 +13416,17 @@ def setup_database():
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(14,"min_ss_overmax", 30)'
     commit(sql)
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Tables - Carriers")
+    pb_root.update()
     sql = 'CREATE table IF NOT EXISTS carriers (effective_date date, carrier_name varchar, list_status varchar, ' \
           ' ns_day varchar, route_s varchar, station varchar)'
     commit(sql)
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Tables - Rings")
+    pb_root.update()
     sql = 'CREATE table IF NOT EXISTS rings3 ' \
           '(rings_date date, carrier_name varchar, total varchar, rs varchar, code varchar, moves varchar, ' \
           'leave_type varchar, leave_time varchar)'
@@ -13268,14 +13439,24 @@ def setup_database():
         commit(sql)
         sql = 'ALTER table rings3 ADD COLUMN leave_time varchar'
         commit(sql)
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Tables - Indexes")
+    pb_root.update()
     sql = 'CREATE table IF NOT EXISTS name_index (tacs_name varchar, kb_name varchar, emp_id varchar)'
     commit(sql)
-    pb["value"] = 15  # increment progress bar
-    pb_root.update()
     sql = 'CREATE table IF NOT EXISTS station_index (tacs_station varchar, kb_station varchar, finance_num varchar)'
     commit(sql)  # access list of stations from database
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Tables - Skippers")
+    pb_root.update()
     sql = 'CREATE table IF NOT EXISTS skippers (code varchar primary key, description varchar)'
     commit(sql)
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Tables - NS Configurations")
+    pb_root.update()
     sql = 'CREATE table IF NOT EXISTS ns_configuration (ns_name varchar primary key, fill_color varchar, ' \
           'custom_name varchar)'
     commit(sql)
@@ -13291,18 +13472,24 @@ def setup_database():
     commit(sql)
     sql = 'INSERT OR IGNORE INTO ns_configuration(ns_name,fill_color,custom_name)VALUES("black","gray10","black")'
     commit(sql)
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: Mousewheel")
+    pb_root.update()
     # initialize mousewheel - mouse wheel scroll direction
-    sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % ("mousewheel")
+    sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
     results = inquire(sql)
     mousewheel = int(results[0][0])
     sql = "SELECT * FROM stations ORDER BY station"
     results = inquire(sql)
+    pb_counter += 1  # increment progress bar
+    pb["value"] = pb_counter
+    pb_text.config(text="Setting up: List of Stations")
+    pb_root.update()
     # define and populate list of stations variable
     list_of_stations = []
     for stat in results:
         list_of_stations.append(stat[0])
-    pb["value"] = 20  # increment progress bar
-    pb_root.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
     pb.destroy()
@@ -13310,31 +13497,31 @@ def setup_database():
 
 
 if __name__ == "__main__":
-    setup_database()
-    root = Tk()
-    if sys.platform == "win32" and platform == "py":
-        try:
-            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except:
-            pass
-    if sys.platform == "win32" and platform == "winapp":
-        try:
-            # root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
-            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
-        except:
-            pass
-    if sys.platform == "darwin" and platform == "py":
-        try:
-            root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
-            root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except:
-            pass
-    if sys.platform == "linux":
-        try:
-            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
-            root.tk.call('wm', 'iconphoto', root._w, img)
-        except:
-            pass
+    # declare all global variables
+    global gs_year
+    global gs_mo
+    global gs_day
+    global g_date
+    global d_date
+    global g_range
+    global g_station
+    global list_of_stations
+    global ns_code
+    global pay_period
+    global platform
+    global mousewheel
+    global informalc_newroot
+    global informalc_addframe
+    global poe_add_pay_periods
+    global poe_add_hours
+    global poe_add_rate
+    global poe_add_amount
+    global informalc_poe_gadd
+    global informalc_poe_lbox
+    global allow_zero_top
+    global allow_zero_bottom
+    global skippers
+    global current_tab
     # initialize arrays for multiple move functionality
     sat_mm = []
     sun_mm = []
@@ -13343,15 +13530,50 @@ if __name__ == "__main__":
     wed_mm = []
     thr_mm = []
     fri_mm = []
+    # set up platform variable
+    platform = "py"  # initialize platform variable
+    split_home = os.getcwd().split("\\")
+    if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/":  # if it is a mac app
+        platform = "macapp"
+    elif len(split_home) > 2:
+        if split_home[1] == "Program Files (x86)" and split_home[2] == "klusterbox":
+            platform = "winapp"
+        elif split_home[1] == "Program Files" and split_home[2] == "klusterbox":
+            platform = "winapp"
+        else:
+            platform = "py"  # if it is running as a .py or .exe outside program files/applications
+    else:
+        platform = "py"  # if it is running as a .py or .exe outside program files/applications
+    # create directories if they don't exist
+    if platform == "macapp":
+        if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')):
+            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents'))
+        if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox')):
+            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox'))
+        if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox')):
+            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox'))
+    if platform == "winapp":
+        if not os.path.isdir(os.path.expanduser("~") + '\\Documents'):
+            os.makedirs(os.path.expanduser("~") + '\\Documents')
+        if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox'):
+            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
+        if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\.klusterbox'):
+            os.makedirs(os.path.expanduser("~") + '\\Documents\\.klusterbox')
+    if platform == "py":
+        if not os.path.isdir('kb_sub'):
+            os.makedirs('kb_sub')
+    # set up the database
+    setup_database()
+    root = Tk()
     # initialize position and size for root window
     position_x = 100
     position_y = 50
     size_x = 625
     size_y = 600
     root.title("KLUSTERBOX version {}".format(version))
+    titlebar_icon(root)  # place icon in titlebar
     root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
-    # if there are no stations in the stations list
-    if len(list_of_stations) < 2:
+    if len(list_of_stations) < 2:  # if there are no stations in the stations list
         start_up()
     else:
         remove_file(dir_path_check('report'))  # empty out folders
