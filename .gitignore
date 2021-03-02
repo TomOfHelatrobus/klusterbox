@@ -30,9 +30,11 @@ Pipfile
 Pipfile.lock
 
 # ignore DS Store files
+
 .DS_Store
 
 # ignore .idea files
+
 /.idea/workspace.xml
 /.idea/tasks.xml
 /.idea/dictionary

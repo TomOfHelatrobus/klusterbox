@@ -283,6 +283,121 @@ def gui_config(frame):  # generate page to adjust gui configurations
     rear_window(wd)
 
 
+def database_delete_carriers_apply(frame, station, vars):
+    if station.get() == "Select a station":
+        station_string = "x"
+    else:
+        station_string = station.get()
+
+    del_holder = []
+    for pair in vars:
+        if pair[1].get():
+            del_holder.append(pair[0])
+    if len(del_holder) > 0:
+        if messagebox.askokcancel("Delete Carrier Records",
+                                  "Are you sure you want to delete {} carriers, \n"
+                                  "along with all their clock rings and name indexes? \n\n"
+                                  "This action is not reversible.".format(len(del_holder)),
+                                  parent=frame):
+            pb_root = Tk()  # create a window for the progress bar
+            pb_root.title("Deleting Carrier Records")
+            titlebar_icon(pb_root)
+            pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+            pb_label.grid(row=0, column=0, sticky="w")
+            pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+            pb.grid(row=0, column=1, sticky="w")
+            pb_text = Label(pb_root, text="", anchor="w")
+            pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+            steps = len(del_holder)
+            pb_count = 0
+            pb["maximum"] = steps  # set length of progress bar
+            pb.start()
+            for name in del_holder:
+                pb_count += 1
+                # change text for progress bar
+                pb_text.config(text="Deleting records for: {}".format(name))
+                pb_root.update()
+                pb["value"] = pb_count  # increment progress bar
+                sql = "DELETE FROM rings3 WHERE carrier_name = '%s'" % name
+                commit(sql)
+                sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % name
+                commit(sql)
+                sql = "DELETE FROM name_index WHERE kb_name = '%s'" % name
+                commit(sql)
+            pb.stop()  # stop and destroy the progress bar
+            pb_label.destroy()  # destroy the label for the progress bar
+            pb.destroy()
+            pb_root.destroy()
+            database_delete_carriers(frame, station_string)
+        else:
+            return
+
+
+def database_chg_station(frame, station):
+    if station.get() == "Select a station":
+        station_string = "x"
+    else:
+        station_string = station.get()
+    database_delete_carriers(frame, station_string)
+
+
+def database_delete_carriers(frame, station):
+    wd = front_window(frame)
+    Label(wd[3], text="Delete Carriers", font=macadj("bold", "Helvetica 18")) \
+        .grid(row=0, column=0, sticky="w")
+    Label(wd[3], text="").grid(row=1, column=0)
+    Label(wd[3], text="Select the station to see all carriers who have ever worked "
+                      "at the station - past and present. \nDeleting the carrier will"
+                      "result in all records for that carrier being deleted. This "
+                      "includes clock \nrings and name indexes. ", justify=LEFT)\
+        .grid(row=2, column=0, sticky="w", columnspan=6)
+    Label(wd[3], text="").grid(row=3, column=0)
+    Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
+    station_selection = StringVar(wd[3])
+    om_station = OptionMenu(wd[3], station_selection, *list_of_stations)
+    om_station.config(width=30, anchor="w")
+    om_station.grid(row=5, column=0, columnspan=2, sticky="w")
+    if station == "x":
+        station_selection.set("Select a station")
+    else:
+        station_selection.set(station)
+    Button(wd[3], text="select", width=macadj(14, 12), anchor="w",
+           command=lambda: database_chg_station(wd[0],station_selection))\
+        .grid(row=5, column=2, sticky="w")
+    Label(wd[3], text="").grid(row=6, column=0)
+    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
+          "ORDER BY carrier_name ASC" % station
+    results = inquire(sql)
+    # sql = "SELECT DISTINCT carrier_name FROM rings3 WHERE carrier_name = '%s'" % carrier
+    # inquire(sql)
+    if station != "x":
+        Label(wd[3], text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
+    results_frame = Frame(wd[3])
+    results_frame.grid(row=8, columnspan=4)
+    i = 0
+    vars = []
+    for name in results:
+        sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
+        top_rec = inquire(sql)
+        var = BooleanVar()
+        chk = Checkbutton(results_frame, text=name[0], variable=var, anchor="w")
+        chk.grid(row=i, column=0, sticky="w")
+        vars.append((name[0],var))
+        Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
+            .grid(row=i, column=1, sticky="w")
+        Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
+        Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
+        Label(results_frame, text="                 ", anchor="w").grid(row=i, column=4, sticky="w")
+        i += 1
+    # apply and close buttons
+    Button(wd[4], text="Apply", width=15, bg="light yellow", anchor="w",
+           command=lambda: database_delete_carriers_apply(wd[0], station_selection, vars)) \
+        .pack(side=LEFT)
+    Button(wd[4], text="Go Back", width=15, bg="light yellow", anchor="w",
+           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+    rear_window(wd)
+
+
 def database_delete_records(masterframe, frame, time_range, date, end_date, table, stations):
     global list_of_stations
     global g_station
@@ -564,7 +679,7 @@ def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
                               "well as any informal c data. The database will be rebuilt and will be "
                               "like new. "
                               "\n\n This action can not be reversed."
-                              "\n\n Are you sure you want to proceed?", parent = frame):
+                              "\n\n Are you sure you want to proceed?", parent=frame):
         return
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
@@ -4159,7 +4274,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Hours must be a accompanied by a "
                                  "rate.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -4167,7 +4282,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Rate must be a accompanied by a "
                                  "hours.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -4175,7 +4290,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Hours must be a number."
                                  .format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -4185,7 +4300,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Hours must have no "
                                      "more than 2 decimal places.".format(name, str(i + 1)),
-                                     parent = frame)
+                                     parent=frame)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -4195,7 +4310,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                                  "amount. You can only enter one or another, but not both. "
                                  "Awards can be in the form of "
                                  "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -4205,14 +4320,14 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                                  "amount. You can only enter one or another, but not both. "
                                  "Awards can be in the form of "
                                  "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
         if rate and isfloat(rate) == False:
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
                                  .format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -4222,7 +4337,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Rates must have no "
                                      "more than 2 decimal places.".format(name, str(i + 1)),
-                                     parent = frame)
+                                     parent=frame)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -4235,7 +4350,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                                  "straight time rate     1.00 or just 1 \n"
                                  "overtime rate          1.50 or 1.5 \n"
                                  "penalty rate           2.00 or just 2".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -4243,7 +4358,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Amounts can only be expressed as "
                                  "numbers. No special characters, such as $ are allowed.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
@@ -4253,7 +4368,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. "
                                      "Amounts must have no more than 2 decimal places.".format(name, str(i + 1)),
-                                     parent = frame)
+                                     parent=frame)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -4422,7 +4537,7 @@ def informalc_rptgrvsum(frame, result):
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('infc_grv') + filename])
         except:
-            messagebox.showerror("Report Generator", "The report was not generated.", parent = frame)
+            messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def informalc_bycarriers(frame, result):
@@ -4496,7 +4611,7 @@ def informalc_bycarriers(frame, result):
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
     except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent = frame)
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def informalc_apply_bycarrier(result, names, cursor):
@@ -5146,13 +5261,13 @@ def informalc_poe_apply_add(frame, name, year, buttons):
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. The pay period must be a number"
                                  .format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if pp and int(pp) > 27:
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. The pay period can not be greater "
                                  "than 27".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if hr and amt:
             messagebox.showerror("Data Input Error",
@@ -5160,7 +5275,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                                  "amount. You can only enter one or another, but not both. "
                                  "Awards can be in the form of "
                                  "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if rt and amt:
             messagebox.showerror("Data Input Error",
@@ -5168,24 +5283,24 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                                  "amount. You can only enter one or another, but not both. "
                                  "Awards can be in the form of "
                                  "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if hr and not rt:
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Hours must be a accompanied by a "
                                  "rate.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if rt and not hr:
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Rate must be a accompanied by a "
                                  "hours.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if hr and isfloat(hr) == False:
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must be a number."
                                  .format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if hr and '.' in hr:
             s_hrs = hr.split(".")
@@ -5193,7 +5308,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Hours must have no "
                                      "more than 2 decimal places.".format(name, str(i + 1)),
-                                     parent = frame)
+                                     parent=frame)
                 return
         if rt and amt:
             messagebox.showerror("Data Input Error",
@@ -5201,13 +5316,13 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                                  "amount. You can only enter one or the other, but not both. "
                                  "Awards can be in the form of "
                                  "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if rt and isfloat(rt) == False:
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Rate must be a number."
                                  .format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if rt and '.' in rt:
             s_rate = rt.split(".")
@@ -5215,7 +5330,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Rates must have no "
                                      "more than 2 decimal places.".format(name, str(i + 1)),
-                                     parent = frame)
+                                     parent=frame)
                 return
         if rt and float(rt) > 10:
             messagebox.showerror("Data Input Error",
@@ -5226,14 +5341,14 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                                  "straight time rate     1.00 or just 1 \n"
                                  "overtime rate          1.50 or 1.5 \n"
                                  "penalty rate           2.00 or just 2".format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if amt and isfloat(amt) == False:
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Amounts can only be expressed as "
                                  "numbers. No special characters, such as $ are allowed."
                                  .format(name, str(i + 1)),
-                                 parent = frame)
+                                 parent=frame)
             return
         if amt and '.' in amt:
             s_amt = amt.split(".")
@@ -5241,7 +5356,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Amounts must have no "
                                      "more than 2 decimal places.".format(name, str(i + 1)),
-                                     parent = frame)
+                                     parent=frame)
                 return
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.grid(row=1, column=2)
@@ -5618,7 +5733,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
         messagebox.showerror("Report Generator",
                              "The file you have selected is not a .csv or .xls file.\n"
                              "You must select a file with a .csv or .xls extension.",
-                             parent = frame)
+                             parent=frame)
         return
     with open(file_path, newline="") as file:
         a_file = csv.reader(file)
@@ -5628,7 +5743,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                 messagebox.showwarning("File Selection Error",
                                        "The selected file does not appear to be an "
                                        "Employee Everything report.",
-                                       parent = frame)
+                                       parent=frame)
                 return
             if c == 3:
                 tacs_pp = line[0]  # find the pay period
@@ -5646,7 +5761,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
             messagebox.showwarning("File Selection Error",
                                    "Employee Everything Reports that cover only one day /n"
                                    "are not supported in version {} of Klusterbox.".format(version),
-                                   parent = frame)
+                                   parent=frame)
             return
         else:
             t_range = "week"
@@ -5713,7 +5828,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                "There are {} name/s which have not been matched with their employee id."
                                " Please exit and run the Auto Data Entry Feature to ensure that all carriers have "
                                " employee ids entered into Klusterbox.".format(len(not_indexed)),
-                               parent = frame)
+                               parent=frame)
     if len(otdl_list) == 0:
         messagebox.showwarning("Empty OTDL",
                              "Klusterbox has no records of any otdl carriers for {} station "
@@ -5727,7 +5842,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                              "This Weekly Availability Report can not be generated without a list of otdl carriers. "
                              "Build the carrier list/otdl before re-running Weekly Availability."
                              .format(g_station, g_date[0].strftime("%b %d, %Y")),
-                               parent = frame)
+                               parent=frame)
         frame.destroy()
         main_frame()
     else:  # if there is an otdl then build array holding hours for each day
@@ -5974,7 +6089,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                       "Suggestion: "
                                       "Make sure that identically named spreadsheets are closed "
                                       "(the file can't be overwritten while open).",
-                                     parent = frame)
+                                     parent=frame)
         frame.destroy()
         main_frame()
 
@@ -6123,6 +6238,27 @@ def name_index_screen():
     wd[0].update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
+
+
+def route_adj(route):  # convert five digit route numbers to four when the route number < 99
+    if len(route) == 5:  # when the route number is five digits
+        if route[2] == "0":  # and the third digit is a zero
+            return route[0] + route[1] + route[3] + route[4]  # rewrite the string, deleting the third digit
+        else:
+            return route  # if the route number is > 99, return it without change
+    if len(route) == 4:
+        return route  # if the route number is 4 digits, return it without change
+
+
+def routes_adj(routes):  # only allow five digit route numbers in chains where route number > 99
+    if routes.strip() == "":
+        return ""  # return empty strings with an empty string
+    routes = routes.split("/")  # convert andy chains into an array
+    new_array = []
+    for r in routes:
+        new_array.append(route_adj(r))
+    separator = "/"  #  convert the array into a string
+    return separator.join(new_array)  #  and return
 
 
 def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
@@ -6284,7 +6420,7 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
                 messagebox.showwarning("File Selection Error",
                                        "The selected file does not appear to be an "
                                        "Employee Everything report.",
-                                       parent = frame)
+                                       parent=frame)
                 return
             if c == 3:
                 tacs_pp = line[0]  # find the pay period
@@ -6303,7 +6439,7 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
             messagebox.showwarning("File Selection Error",
                                    "Employee Everything Reports that cover only one day /n"
                                    "are not supported in this version of Klusterbox.",
-                                   parent = frame)
+                                   parent=frame)
             return
         else:
             t_range = "week"
@@ -6421,12 +6557,12 @@ def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station
         messagebox.showinfo("Database Updated",
                             "The {} station has been added to the list of stations automatically "
                             "recognized.".format(station_new),
-                            parent = frame)
+                            parent=frame)
     elif station_sorter != "ADD STATION" and station_new != "":
         messagebox.showerror("Data Entry Error",
                              "You can not select a station from the drop down menu AND enter "
                              "a station in the text field.",
-                             parent = frame)
+                             parent=frame)
         return
     else:
         sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
@@ -6435,7 +6571,7 @@ def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station
         messagebox.showinfo("Database Updated",
                             "The {} station has been paired to the {} station. In the future, this association "
                             "will be automatically recognized.".format(tacs_station, station_sorter),
-                            parent = frame)
+                            parent=frame)
     auto_indexer_2(frame, file_path, t_date, tacs_station, t_range)
 
 
@@ -6564,7 +6700,7 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
    "{} Carrier names were recognized as pre-existing in the database.\n"
    "{} Carrier names have not been handled."
     .format(add, rec, out), 
-    parent = frame)
+    parent=frame)
     """
     tacs_list = [x for x in tacs_list if x[0] not in new_carrier]
     tacs_list = [x for x in tacs_list if x[0] not in to_remove]
@@ -6697,7 +6833,7 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
     "{} Carrier names were paired to names in klusterbox\n"
     "{} Carrier names were discarded.\n"
     "{} Carrier names have not been handled."
-    .format(pair, dis, out), parent = frame)
+    .format(pair, dis, out), parent=frame)
     """
     # build possible names for option menus
     sql = "SELECT kb_name FROM name_index"
@@ -6892,7 +7028,7 @@ def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_
     messagebox.showinfo("Processing Carriers", "{} Carrier names were added to the database\n"
                                                "{} Carrier names were paired to names in klusterbox\n"
                                                "{} Carrier names were discarded.\n"
-                                               .format(add, pair, dis), parent = frame)
+                                               .format(add, pair, dis), parent=frame)
     """
     count = 0  # swap out the names which have been modified in to_addname
     for item in to_chg:  # for each item to be swapped
@@ -6966,8 +7102,8 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         C.bind_all('<Button-5>', lambda event: C.yview('scroll', 1, 'units'))
     FF = Frame(C)  # create the frame inside the canvas
     C.create_window((0, 0), window=FF, anchor=NW)
-    Label(FF, text="Input New Carriers", font=macadj("bold", "Helvetica 18"), pady=10).grid(row=0, column=0, sticky="w",
-                                                                                            columnspan=6)  # Pairing Screen #3
+    Label(FF, text="Input New Carriers", font=macadj("bold", "Helvetica 18"), pady=10)\
+        .grid(row=0, column=0, sticky="w",columnspan=6)  # Pairing Screen #3
     Label(FF, text=
     "Enter in information for carriers not already recorded in the Klusterbox database. You can use the TACS \n"
     "information (shown in blue),as a guide if it is accurate. As OTDL/WAL information is not in TACS, it is \n"
@@ -7448,7 +7584,7 @@ def auto_skimmer(frame, file_path):
     carrier_list_cleaning_for_auto_skimmer()
     ok = messagebox.askokcancel("Auto Rings",
                                 "Do you want to automatically enter the rings?",
-                                parent = frame)
+                                parent=frame)
     if not ok:
         main_frame()
     else:
@@ -7481,7 +7617,7 @@ def auto_skimmer(frame, file_path):
                     if line[0][:8] != "TAC500R3":
                         messagebox.showwarning("File Selection Error",
                                                "The selected file does not appear to be an "
-                                               "Employee Everything report.", parent = frame)
+                                               "Employee Everything report.", parent=frame)
                         return
                 if c != 0:
                     if good_id != line[4] and good_id != "no":  # if new carrier or employee
@@ -7512,7 +7648,7 @@ def auto_skimmer(frame, file_path):
             pb_root.destroy()
         messagebox.showinfo("Auto Rings",
                             "The Employee Everything Report has been sucessfully inputed into the database",
-                            parent = frame)
+                            parent=frame)
         frame.destroy()
         main_frame()
 
@@ -7739,7 +7875,7 @@ def call_indexers(frame):
         messagebox.showerror("Report Generator",
                              "The file you have selected is not a .csv or .xls file. "
                              "You must select a file with a .csv or .xls extension.",
-                             parent = frame)
+                             parent=frame)
 
 
 def save_all(frame):
@@ -7870,7 +8006,7 @@ def ee_skimmer(frame):
                         messagebox.showwarning("File Selection Error",
                                                "The selected file does not appear to be an "
                                                "Employee Everything report.",
-                                               parent = frame)
+                                               parent=frame)
                         return
                 if c == 2:
                     pp = line[0]  # find the pay period
@@ -7881,7 +8017,7 @@ def ee_skimmer(frame):
                         messagebox.showwarning("Report Generator",
                                                "The Employee Everything Report Reader "
                                                "was not generated.",
-                                               parent = frame)
+                                               parent=frame)
                         return
                     report.write("\nEmployee Everything Report Reader\n")
                     report.write(
@@ -7914,7 +8050,7 @@ def ee_skimmer(frame):
         messagebox.showerror("Report Generator",
                              "The file you have selected is not a .csv or .xls file.\n"
                              "You must select a file with a .csv or .xls extension.",
-                             parent = frame)
+                             parent=frame)
         return
 
 
@@ -7967,7 +8103,7 @@ def pay_period_guide(frame):
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('pp_guide') + filename])
         except:
-            messagebox.showerror("Report Generator", "The report was not generated.", parent = frame)
+            messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
@@ -8045,7 +8181,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
                         messagebox.showwarning("File Selection Error",
                                                "The selected file does not appear to be an "
                                                "Employee Everything report.",
-                                               parent = frame)
+                                               parent=frame)
                         return
                 if c == 2:  # on the second line
                     pp = line[0]  # find the pay period
@@ -8146,7 +8282,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
         messagebox.showerror("Report Generator",
                              "The file you have selected is not a .csv or .xls file.\n"
                              "You must select a file with a .csv or .xls extension.",
-                             parent = frame)
+                             parent=frame)
         return
     # find the weekly total by adding daily totals for last carrier
     if len(day_hours) > 0:
@@ -8165,7 +8301,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
         messagebox.showwarning("Report Generator",
                                "No violations were found. "
                                "The report was not generated.",
-                               parent = frame)
+                               parent=frame)
         return
     weekly_max = []  # array hold each carrier's hours for the week
     daily_max = []  # array hold each carrier's sum of maximum daily hours for the week
@@ -8772,21 +8908,21 @@ def data_mods_codes_add(frame, code, description):
     if code.get() in prohibited_codes:
         messagebox.showerror("Data Entry Error",
                              "It is prohibited to exclude code {}".format(code.get(),
-                             parent = frame))
+                             parent=frame))
         return
     if code.get() in existing_codes:
-        messagebox.showerror("Data Entry Error", "This code had already been entered.", parent = frame)
+        messagebox.showerror("Data Entry Error", "This code had already been entered.", parent=frame)
         return
     if code.get().isdigit() == FALSE:
-        messagebox.showerror("Data Entry Error", "TACS code must contain only numbers.", parent = frame)
+        messagebox.showerror("Data Entry Error", "TACS code must contain only numbers.", parent=frame)
         return
     if len(code.get()) > 3 or len(code.get()) < 3:
-        messagebox.showerror("Data Entry Error", "TACS code must be 3 digits long.", parent = frame)
+        messagebox.showerror("Data Entry Error", "TACS code must be 3 digits long.", parent=frame)
         return
     if len(description.get()) > 39:
         messagebox.showerror("Data Enty Error",
                              "Please limit description to less than 40 characters.",
-                             parent = frame)
+                             parent=frame)
         return
     sql = "INSERT INTO skippers(code,description) VALUES('%s','%s')" % (code.get(), description.get())
     commit(sql)
@@ -8807,7 +8943,7 @@ def data_mods_codes_default(frame):
 def apply_auto_ns_structure(frame, ns_structure):
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
     commit(sql)
-    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.", parent = frame)
+    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.", parent=frame)
 
 
 def data_entry_permit_zero(frame, top, bottom):
@@ -11834,9 +11970,9 @@ def rings2(carrier, origin_frame):
                 if r[5] == g_station:
                     in_station = "true"  # hit if in station at any time
         for r in results:
-            if (str(start_invest) <= r[0]):
+            if str(start_invest) <= r[0]:
                 in_range.append(r)
-            if (r[0] < str(start_invest) and sat_rec == "false"):
+            if r[0] < str(start_invest) and sat_rec == "false":
                 candidates.append(r)
         if candidates and sat_rec == "false":
             winner = max(candidates, key=itemgetter(0))
@@ -12180,7 +12316,7 @@ def purge_carrier(frame, carrier):
                               "this carrier, including rings and name index.\n\n"
                               "If this carrier has left the station, quit, been fired or retired "
                               "you should change station to \"out of station\" and not delete. \n\n"
-                              "This can not be reversed.", parent = frame):
+                              "This can not be reversed.", parent=frame):
         return
     sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % carrier
     commit(sql)
@@ -13115,6 +13251,7 @@ def main_frame():
     management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(F))
     management_menu.add_separator()
     management_menu.add_command(label="Database", command=lambda: (F.destroy(), database_maintenance(F)))
+    management_menu.add_command(label="Delete Carriers", command=lambda: database_delete_carriers(F,g_station))
     management_menu.add_command(label="Clean Carrier List", command=lambda: carrier_list_cleaning(F))
     management_menu.add_command(label="Clean Rings", command=lambda: clean_rings3_table())
     management_menu.add_separator()
