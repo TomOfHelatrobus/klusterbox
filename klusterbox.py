@@ -1079,7 +1079,7 @@ def rpt_impman(list_carrier):  # generate report for improper mandates
                 dl_wal.append(item)
             if item[2] == "otdl":
                 dl_otdl.append(item)
-            if item[2] == "aux":
+            if item[2] in ("aux", "ptf"):
                 dl_aux.append(item)
         daily_summary = [day]  # initialize array for the daily summary
         # daily_summary.append(day)
@@ -1666,13 +1666,14 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions['A3'].style = instruct_text
     instructions.merge_cells('A3:X3')
     instructions['A3'] = "Instructions: \n1. Fill in the name \n" \
-                         "2. Fill in the list. Enter either “otdl”,”wal”,”nl” or “aux” in list columns. " \
+                         "2. Fill in the list. Enter either “otdl”,”wal”,”nl”,“aux” or “ptf” in list columns. " \
                          "Use only lowercase. \n" \
                          "   If you do not enter anything, the default is “otdl\n" \
                          "\totdl = overtime desired list\n" \
                          "\twal = work assignment list\n" \
                          "\tnl = no list \n" \
                          "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
+                         "\tptf = part time flexible"\
                          "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours " \
                          "or if the sum of all daily non 5200 times (all fields D) plus \n" \
                          "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
@@ -1896,12 +1897,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions['S10'].style = calcs
     instructions['S10'].number_format = "#,###.00;[RED]-#,###.00"
     # instructions daily violations
-    formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+    formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                 "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
                 "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
                 "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
                 "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                % (page, str(i), page, str(i), page, str(i),
+                % (page, str(i), page, str(i), page, str(i), page, str(i),
                    page, str(i + 1), page, str(i + 1), page, str(i + 1),
                    page, str(i + 1), page, str(i + 1), page, str(i + 1),
                    page, str(i + 1), page, str(i + 1), page, str(i + 1),
@@ -1916,14 +1917,14 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions['T' + str(i)].number_format = "#,###.00"
     # instructions wed adjustment
     instructions.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-    formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+    formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                 "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
                 "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
                 "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                 "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
                 "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
                 "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                % (page, str(i), page, str(i), page, str(i),
+                % (page, str(i), page, str(i), page, str(i), page, str(i),
                    page, str(i), page, str(i + 1), page, str(i),
                    page, str(i + 1), page, str(i), page, str(i + 1),
                    page, str(i), page, str(i + 1), page, str(i),
@@ -1940,12 +1941,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions['U' + str(i)].style = vert_calcs
     instructions['U' + str(i)].number_format = "#,###.00"
     # instructions thr adjustment
-    formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+    formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                 "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
                 "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
                 "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
                 "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                % (page, str(i), page, str(i), page, str(i),
+                % (page, str(i), page, str(i), page, str(i), page, str(i),
                    page, str(i), page, str(i + 1), page, str(i),
                    page, str(i + 1),
                    page, str(i), page, str(i + 1), page, str(i),
@@ -1963,12 +1964,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions['V' + str(i)].number_format = "#,###.00"
     # instructions fri adjustment
     instructions.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-    formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+    formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\",%s!B%s=\"ptf\")," \
                 "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
                 "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
                 "IF(AND(%s!S%s>0,%s!P%s>12)," \
                 "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                % (page, str(i), page, str(i), page, str(i),
+                % (page, str(i), page, str(i), page, str(i), page, str(i),
                    page, str(i), page, str(i + 1), page, str(i),
                    page, str(i + 1), page, str(i + 1), page, str(i),
                    page, str(i), page, str(i + 1), page, str(i),
@@ -2011,7 +2012,7 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
     instructions.merge_cells('A14:X14')
     instructions['A14'] = "Legend: \n" \
                           "A.  Name \n" \
-                          "B.  List: Either otdl, wal, nl or aux (always use lowercase to preserve " \
+                          "B.  List: Either otdl, wal, nl, ptf or aux (always use lowercase to preserve " \
                           "operation of the formulas).\n" \
                           "C.  Weekly 5200 Time: Enter the 5200 time for the week. \n" \
                           "D.  Daily Non 5200 Time: Enter daily hours for either holiday, annual sick leave or " \
@@ -2021,7 +2022,7 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
                           "G.  No value allowed: No non 5200 times allowed for Sundays.\n" \
                           "J.   Weekly Violations: This is the total of violations over 60 hours in a week.\n" \
                           "K.  Daily Violations: This is the total of daily violations which have exceeded 11.50 " \
-                          "(for wal, nl or aux)\n" \
+                          "(for wal, nl, ptf or aux)\n" \
                           "     or 12 hours in a day (for otdl).\n" \
                           "L.  Wednesday Adjustment: In cases were the 60 hour limit is reached " \
                           "and a daily violation happens (on Wednesday),\n" \
@@ -2217,14 +2218,14 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['S' + str(i)].style = calcs
             violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # daily violation
-            formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                         "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+" \
                         "IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
                         "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+" \
                         "IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
                         "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
                         "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i),
+                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
@@ -2239,14 +2240,14 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['T' + str(i)].number_format = "#,###.00"
             # wed adjustment
             violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-            formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                         "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
                         "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
                         "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                         "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
                         "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
                         "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i),
+                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
@@ -2263,12 +2264,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['U' + str(i)].style = vert_calcs
             violations['U' + str(i)].number_format = "#,###.00"
             # thr adjustment
-            formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                         "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
                         "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
                         "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
                         "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i),
+                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
@@ -2286,12 +2287,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['V' + str(i)].number_format = "#,###.00"
             # fri adjustment
             violations.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-            formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+            formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                         "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
                         "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
                         "IF(AND(%s!S%s>0,%s!P%s>12)," \
                         "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i),
+                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
@@ -2431,12 +2432,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
         violations['S' + str(i)].style = calcs
         violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
         # daily violation
-        formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+        formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                     "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
                     "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
                     "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
                     "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                        "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                        "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                        "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
@@ -2451,14 +2452,14 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
         violations['T' + str(i)].number_format = "#,###.00"
         # wed adjustment
         violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-        formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+        formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                     "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
                     "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
                     "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                     "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
                     "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
                     "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                        "violations", str(i), "violations", str(i + 1), "violations", str(i),
                        "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
                        "violations", str(i), "violations", str(i + 1), "violations", str(i),
@@ -2475,12 +2476,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
         violations['U' + str(i)].style = vert_calcs
         violations['U' + str(i)].number_format = "#,###.00"
         # thr adjustment
-        formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+        formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                     "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
                     "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
                     "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
                     "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                        "violations", str(i), "violations", str(i + 1), "violations", str(i),
                        "violations", str(i + 1),
                        "violations", str(i), "violations", str(i + 1), "violations", str(i),
@@ -2498,12 +2499,12 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
         violations['V' + str(i)].number_format = "#,###.00"
         # fri adjustment
         violations.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-        formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\")," \
+        formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
                     "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
                     "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
                     "IF(AND(%s!S%s>0,%s!P%s>12)," \
                     "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i),
+                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                        "violations", str(i), "violations", str(i + 1), "violations", str(i),
                        "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
                        "violations", str(i), "violations", str(i + 1), "violations", str(i),
@@ -2897,11 +2898,13 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
             pb_root.title("Klusterbox PDF Converter - reading pdf")
             titlebar_icon(pb_root)  # place icon in titlebar
             Label(pb_root, text="This process takes several minutes. Please wait for results.") \
-                .pack(anchor="w", padx=20)
+                .grid(row=0, column=0, columnspan=2, sticky="w")
             pb_label = Label(pb_root, text="Reading PDF: ")  # make label for progress bar
-            pb_label.pack(anchor="w", padx=20)
+            pb_label.grid(row=1, column=0,sticky="w")
             pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-            pb.pack(anchor="w", padx=20)
+            pb.grid(row=1, column=1,sticky="w")
+            pb_text = Label(pb_root, text="", anchor="w")
+            pb_text.grid(row=2, column=0, columnspan=2, sticky="w")
             pb["maximum"] = page_count  # set length of progress bar
             pb.start()
             count = 0
@@ -2909,6 +2912,7 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
                                           check_extractable=True):
                 interpreter.process_page(page)
                 pb["value"] = count  # increment progress bar
+                pb_text.config(text="Reading page: {}/{}".format(count, page_count))
                 pb_root.update()
                 count += 1
             text = retstr.getvalue()
@@ -5897,7 +5901,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                         day_over = "empty"  # reset
                         running_total = 0  # reset
                     # find first line of specific carrier
-                    if line[18] == "Base" and line[19] == "844" or line[19] == "134":
+                    if line[18] == "Base" and line[19] in ("844","134","434"):
                         good_id = line[4].zfill(8)  # remember id of carriers who are FT or aux carriers
                     if good_id == line[4].zfill(8) and line[18] != "Base":
                         if line[18] in days:  # get the hours for each day
@@ -6256,7 +6260,7 @@ def name_index_screen():
     mainloop()
 
 
-def route_adj(route):  # convert five digit route numbers to four when the route number < 99
+def route_adj(route):  # convert five digit route numbers to four when the route number > 99
     if len(route) == 5:  # when the route number is five digits
         if route[2] == "0":  # and the third digit is a zero
             return route[0] + route[1] + route[3] + route[4]  # rewrite the string, deleting the third digit
@@ -6280,7 +6284,7 @@ def routes_adj(routes):  # only allow five digit route numbers in chains where r
 def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
     days = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     mv_codes = ("BT", "MV", "ET")
-    good_jobs = ("134", "844")
+    good_jobs = ("134", "844", "434")
     results = []
     carrier = []
     id_bank = []
@@ -6618,7 +6622,7 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
             c_list.append(each[1])
     # Get the names from tacs report
     tacs_list = []
-    good_jobs = ("134", "844")
+    good_jobs = ("134", "844", "434")
     with open(file_path, newline="") as file:
         a_file = csv.reader(file)
         cc = 0
@@ -6632,8 +6636,10 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
                     assignment = "reg " + routes_adj(tac_route)
                 elif line[19] == "134" and lvl == "02":
                     assignment = "reg " + "floater"
-                elif line[19] == "844":
+                elif line[19] == "434":
                     assignment = "auxiliary"
+                elif line[19] == "844":
+                    assignment = "parttimeflex"
                 else:
                     assignment = "undetected"
                 lastname = line[5].lower().replace("\'", " ")
@@ -7161,9 +7167,11 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         Label(ff, text=name[3], fg=color).grid(row=y, column=3, sticky="w")
         Label(ff, text=g_station, fg=color).grid(row=y, column=4, sticky="w")
         y += 1
-        list_options = ("otdl", "wal", "nl", "aux")  # create optionmenu for list status
+        list_options = ("otdl", "wal", "nl", "ptf", "aux" )  # create optionmenu for list status
         if name[3] == "auxiliary":
             lx = 3  # configure defaults for list status
+        elif name[3] == "parttimeflex":
+            lx = 4  # set as ptf
         else:
             lx = 2  # set as 'nl' if not 'aux'
         l_s.append(StringVar(ff))
@@ -7178,14 +7186,8 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         ns_day.grid(row=y, column=2, sticky="w")
         route.append(StringVar(ff))  # create entry field for route
         Entry(ff, width=24, textvariable=route[i]).grid(row=y, column=3, sticky="w")  # create entry for routes
-        print("name 3: ", name[3])
-
         if "reg " in name[3] and name[3] != "reg floater":
             rte = name[3].replace("reg ", "")
-
-
-        # if name[3][-4:].isnumeric():
-        #     rte = name[3][-4:]
         else:
             rte = ""
         route[i].set(rte)
@@ -7293,8 +7295,8 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     "Correct any discrepancies and inconsistancies that exist between the incoming TACS data (in blue) \n"
     "and the information currently recorded in the Klusterbox database (below in the entry fields and \n"
     "option menus)to reflect the carrier's status acurately. This will update the Klusterbox database. \n"
-    "Routes must 4 digits long. In cases where there are multiple routes, the routes must be separated \n"
-    "by a \"/\" backslash.\n\n"
+    "Routes must 4  or 5 digits long. In cases where there are multiple routes, the routes must be \n"
+    "separated by a \"/\" backslash.\n\n"
     "Investigation Range: {0} through {1}\n\n"
           .format(g_date[0].strftime("%a - %b %d, %Y"), g_date[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
         .grid(row=1, sticky="w")
@@ -7312,13 +7314,17 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     l_ns = []  # create array for ns days
     e_route = []  # create array for routes
     l_station = []
-    aux_list_tuple = ("aux")
+    aux_list_tuple = ("aux", "ptf")
     reg_list_tuple = ("nl", "wal", "otdl")
     skip_this_screen = "yes"
     for name in check_these:
         for k_name in carrier_list:
             if name_dict[name[0]] == k_name[1]:
                 if name[3] == "auxiliary":  # parse assignments from tacs list
+                    tlist = aux_list_tuple
+                    tnsday = "none"
+                    troute = ""
+                if name[3] == "parttimeflex":  # parse assignments from tacs list
                     tlist = aux_list_tuple
                     tnsday = "none"
                     troute = ""
@@ -7370,7 +7376,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     Label(wd[3], text=g_station, fg=color).grid(row=y, column=4, sticky="w")
                     y += 1
                     carrier_name.append(k_name[1])  # add kb name to the array
-                    list_options = ("otdl", "wal", "nl", "aux")  # create optionmenu for list status
+                    list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
                     l_s.append(StringVar(wd[3]))
                     l_s[i].set(k_name[2])  # set the list status
                     list_status = OptionMenu(wd[3], l_s[i], *list_options)
@@ -7489,7 +7495,7 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
         if name[1] not in names_list:
             names_list.append(name[1])
     tacs_ids = []  # generate tacs list
-    good_jobs = ("134", "844")
+    good_jobs = ("844","134","434")
     with open(file_path, newline="") as file:
         a_file = csv.reader(file)
         to_add = ("x", "x")  # create placeholder for
@@ -7665,8 +7671,8 @@ def auto_skimmer(frame, file_path):
                         # proto_array.append(proto_rings)
                         del carrier[:]  # empty array
                         good_id = "no"  # reset trigger
-                    if line[18] == "Base" and line[19] == "844" \
-                            or line[19] == "134":  # find first line of specific carrier
+                    # find first line of specific carrier
+                    if line[18] == "Base" and line[19] in ("844","134","434"):
                         good_id = line[4]  # set trigger to id of carriers who are FT or aux carriers
                         carrier.append(line)  # gather times and moves for anaylsis
                         pb_text.config(text="Entering rings for {}".format(line[5]))
@@ -7708,9 +7714,9 @@ def auto_weekly_analysis(array):
             input_rings.append(to_input)
             del rings[:]
             good_day = line[18]
-        if line[18] == "Base" and line[19] == "844" or line[19] == "134":  # find first line of specific carrier
+        if line[18] == "Base" and line[19] in ("844","134","434"):  # find first line of specific carrier
             continue  # gather base line data
-        elif line[18] == "Temp" and line[19] == "844" or line[19] == "134":  # find first line of specific carrier
+        elif line[18] == "Temp" and line[19] in ("844","134","434"):  # find first line of specific carrier
             continue  # gather base line data
         else:
             if line[18] in days and line[18] == good_day:
@@ -7741,12 +7747,12 @@ def auto_weekly_analysis(array):
                 if not result:
                     return
                 # find the code, if any
-                if newest_carrier[2] == "nl" or newest_carrier[2] == "wal":
+                if newest_carrier[2] in ("nl","wal"):
                     if day_dict[line[0]].strftime("%a") == ns_code[newest_carrier[3]] and float(line[2]) > 0:
                         c_code = "ns day"
                     else:
                         c_code = "none"
-                elif newest_carrier[2] == "otdl" or newest_carrier[2] == "aux":
+                elif newest_carrier[2] in ("otdl","ptf","aux"):
                     if line[4] == "":
                         c_code = "none"  # line[4] is the code from proto-array
                     else:
@@ -7978,10 +7984,16 @@ def ee_analysis(array, report):
         if line[19] and line[19] not in mv_codes and len(moves_array) > 0:
             find_move_sets(moves_array)  # call function to analyse moves
             del moves_array[:]
-        if line[18] == "Base" and line[19] == "844" or line[18] == "Base" and line[
-            19] == "134":  # find first line of specific carrier
+        # find first line of specific carrier
+        if line[18] == "Base" and line[19] == "844" \
+                or line[18] == "Base" and line[19] == "134"\
+                or line[18] == "Base" and line[19] == "434":
             if line[19] == "844":
                 list = "aux"
+                route = ""
+                ns_day = ""
+            elif line[19] == "434":
+                list = "ptf"
                 route = ""
                 ns_day = ""
             else:
@@ -7990,6 +8002,7 @@ def ee_analysis(array, report):
                 if line[23].zfill(2) == "01":
                     route = line[25].zfill(6)
                     route = route[1] + route[2] + route[4] + route[5]
+                    route = routes_adj(route)
                 if line[23].zfill(2) == "02":
                     route = "floater"
             report.write("================================================\n")
@@ -8074,7 +8087,7 @@ def ee_skimmer(frame):
                         del carrier[:]  # empty array
                         good_id = "no"  # reset trigger
                     # find first line of specific carrier
-                    if line[18] == "Base" and line[19] == "844" or line[19] == "134":
+                    if line[18] == "Base" and line[19] in ("844","134","434"):
                         good_id = line[4]  # set trigger to id of carriers who are FT or aux carriers
                         carrier.append(line)  # gather times and moves for anaylsis
                     if good_id == line[4] and line[18] != "Base":
@@ -8294,9 +8307,9 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
                         del day_hours[:]
                         del extra_hours[:]
                     # find first line of specific carrier
-                    if line[18] == "Base" and line[19] == "844" or line[19] == "134":
+                    if line[18] == "Base" and line[19] in ("844", "134", "434"):
                         good_id = line[4]  # remember id of carriers who are FT or aux carriers
-                        if line[19] == "844":
+                        if line[19] in ("844", "434"):
                             ft = False
                         else:
                             ft = True
@@ -9685,6 +9698,7 @@ def mass_input(frame, day, sort):
         otdl_array = []
         wal_array = []
         nl_array = []
+        ptf_array = []
         aux_array = []
     if sort == "ns day":
         yellow_array = []
@@ -9712,6 +9726,8 @@ def mass_input(frame, day, sort):
                         wal_array.append(winner)
                     if winner[2] == "nl":
                         nl_array.append(winner)
+                    if winner[2] == "ptf":
+                        ptf_array.append(winner)
                     if winner[2] == "aux":
                         aux_array.append(winner)
                 if sort == "ns day":  # sort carrier list by ns day if selected
@@ -9739,7 +9755,7 @@ def mass_input(frame, day, sort):
             array_var.append(car)
         list_header = "carrier list"
     if sort == "list":
-        array_var = nl_array + wal_array + otdl_array + aux_array
+        array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array
         if len(nl_array) > 0:
             list_header = "nl"
         else:
@@ -9763,7 +9779,7 @@ def mass_input(frame, day, sort):
     ns_dict["none"] = "none"  # add "none" to dictionary
     # intialize arrays for option menus
     mi_list = []
-    opt_list = "nl", "wal", "otdl", "aux"
+    opt_list = "nl", "wal", "otdl", "aux", "ptf"
     mi_nsday = []
     nsk = []
     days = ("sat", "mon", "tue", "wed", "thu", "fri")
@@ -9936,7 +9952,7 @@ def spreadsheet(list_carrier, r_rings):
                 dl_wal.append(item)
             if item[2] == "otdl":
                 dl_otdl.append(item)
-            if item[2] == "aux":
+            if item[2] in ("aux", "ptf"):
                 dl_aux.append(item)
         ws_list[i].oddFooter.center.text = "&A"
         ws_list[i].column_dimensions["A"].width = 14
@@ -11204,7 +11220,7 @@ def output_tab(frame, list_carrier):
                 dl_wal.append(item)
             if item[2] == "otdl":
                 dl_otdl.append(item)
-            if item[2] == "aux":
+            if item[2] in ("aux", "ptf"):
                 dl_aux.append(item)
         tabs = Frame(tab_control)  # put frame in notebook
         tabs.pack(fill=BOTH, side=LEFT)
@@ -12487,6 +12503,8 @@ def update_carrier(a):
         .grid(row=2, column=0, sticky=W)
     Radiobutton(list_frame, text="Auxiliary", variable=ls, value='aux', justify=LEFT) \
         .grid(row=2, column=1, sticky=W)
+    Radiobutton(list_frame, text= "Part Time Flex", variable=ls, value="ptf", justify=LEFT) \
+        .grid(row=3, column=1, sticky=W)
     list_frame.grid(row=3, sticky=W)
     # set non scheduled day
     ns_frame = Frame(f, pady=2)
@@ -12670,8 +12688,12 @@ def edit_carrier(e_name):
         .grid(row=1, column=0, sticky=W)
     Radiobutton(list_frame, text="Work Assignment", variable=ls, value='wal', justify=LEFT) \
         .grid(row=1, column=1, sticky=W)
-    Radiobutton(list_frame, text="No List", variable=ls, value='nl', justify=LEFT).grid(row=2, column=0, sticky=W)
-    Radiobutton(list_frame, text="Auxiliary", variable=ls, value='aux', justify=LEFT).grid(row=2, column=1, sticky=W)
+    Radiobutton(list_frame, text="No List", variable=ls, value='nl', justify=LEFT)\
+        .grid(row=2, column=0, sticky=W)
+    Radiobutton(list_frame, text="Auxiliary", variable=ls, value='aux', justify=LEFT)\
+        .grid(row=2, column=1, sticky=W)
+    Radiobutton(list_frame, text="Part Time Flex", variable=ls, value="ptf", justify=LEFT) \
+        .grid(row=3, column=1, sticky=W)
     list_frame.grid(row=3, sticky=W)
     # set non scheduled day
     ns_frame = Frame(f, pady=2)
@@ -12990,6 +13012,8 @@ def input_carriers(frame):  # window for inputting new carriers
         .grid(row=2, column=0, sticky=W)
     Radiobutton(list_frame, text="Auxiliary", variable=nc_ls, value='aux', justify=LEFT) \
         .grid(row=2, column=1, sticky=W)
+    Radiobutton(list_frame, text="Part Time Flex", variable=nc_ls, value='ptf', justify=LEFT) \
+        .grid(row=3, column=1, sticky=W)
     list_frame.grid(row=3, sticky=W)
     # set non scheduled day
     ns_frame = Frame(nc_f, pady=2)
