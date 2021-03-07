@@ -332,19 +332,19 @@ def database_rings_report(frame, station):
             unique_dates.append(gd)
     unique_dates.sort(reverse=True)  # sort the unique dates in reverse order
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = "report_carrier_route" + "_" + stamp + ".txt"
+    filename = "clock_rings_summary" + "_" + stamp + ".txt"
     try:
         report = open(dir_path('report') + filename, "w")
         report.write("Clock Rings Summary Report\n\n\n")
         report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(station))
+        report.write('   Station: {}\n'.format(station))
         report.write('\n')
         report.write('{:>4}  {:<26} {:<24}\n'.format("", "Date", "Records Available"))
         report.write('      --------------------------------------------\n')
         i = 1
         for line in unique_dates:
             report.write('{:>4}  {:<26} {:<24}\n'
-                         .format("", dt_converter(line).strftime("%b %d, %Y - %a"), gross_dates.count(line)))
+                         .format("", dt_converter(line).strftime("%m/%d/%Y - %a"), gross_dates.count(line)))
             if i % 3 == 0:
                 report.write('      --------------------------------------------\n')
             i += 1
@@ -444,6 +444,8 @@ def database_delete_carriers(frame, station):
     Button(wd[3], text="select", width=macadj(14, 12), anchor="w",
            command=lambda: database_chg_station(wd[0], station_selection)) \
         .grid(row=5, column=2, sticky="w")
+    Label(wd[3], text="                ",
+          anchor="w").grid(row=5, column=3, sticky="w")
     Label(wd[3], text="").grid(row=6, column=0)
     sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
           "ORDER BY carrier_name ASC" % station
@@ -454,6 +456,13 @@ def database_delete_carriers(frame, station):
     results_frame.grid(row=8, columnspan=4)
     i = 0
     vars = []
+    if len(results)==0 and station != "x":
+        Label(results_frame, text="", anchor="w").grid(row=i, column=2, sticky="w")
+        i += 1
+        Label(results_frame, text="After a search, no carrier records were found in the Klustebox database",
+              anchor="w").grid(row=i, column=0, columnspan=3, sticky="w")
+        Label(results_frame, text="                                    ",
+              anchor="w").grid(row=i, column=3, sticky="w")
     for name in results:
         sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
         top_rec = inquire(sql)
@@ -1446,6 +1455,131 @@ def rpt_impman(list_carrier):  # generate report for improper mandates
         print(line)
 
 
+def rpt_carrier_by_list(frame, carrier_list):
+    print(carrier_list)
+    
+    # initialize arrays for data sorting
+    otdl_array = []
+    wal_array = []
+    nl_array = []
+    ptf_array = []
+    aux_array = []
+    for carrier in carrier_list:
+            if carrier[2] == "otdl":
+                otdl_array.append(carrier)
+            if carrier[2] == "wal":
+                wal_array.append(carrier)
+            if carrier[2] == "nl":
+                nl_array.append(carrier)
+            if carrier[2] == "ptf":
+                ptf_array.append(carrier)
+            if carrier[2] == "aux":
+                aux_array.append(carrier)
+    array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array  #
+
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+    filename = "report_carrier_by_list" + "_" + stamp + ".txt"
+    try:
+        report = open(dir_path('report') + filename, "w")
+        report.write("Carrier by List\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date.strftime("%b %d, %Y")
+        else:
+            f_date = g_date[0].strftime("%b %d, %Y")
+        report.write('      Date: {}\n'.format(f_date))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<5}\n'.format("", "Carrier Name", "List"))
+        report.write('      ----------------------------------------------------------------\n')
+        i = 1
+        for line in array_var:
+                report.write('{:>4}  {:<22} {:<5}\n'
+                             .format(i, line[1], line[2]))
+                if i % 3 == 0:
+                    report.write('      ----------------------------------------------------------------\n')
+                i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
+
+
+def rpt_chg_station(frame, station):
+    if station.get() == "Select a station":
+        station_string = "x"
+    else:
+        station_string = station.get()
+    rpt_find_carriers(frame, station_string)
+
+
+def rpt_find_carriers(frame, station):
+    wd = front_window(frame)
+    Label(wd[3], text="Carriers Status History", font=macadj("bold", "Helvetica 18")) \
+        .grid(row=0, column=0, sticky="w")
+    Label(wd[3], text="").grid(row=1, column=0)
+    Label(wd[3], text="Select the station to see all carriers who have ever worked "
+                      "at the station - past and present. \n ", justify=LEFT) \
+        .grid(row=2, column=0, sticky="w", columnspan=6)
+    Label(wd[3], text="").grid(row=3, column=0)
+    Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
+    station_selection = StringVar(wd[3])
+    om_station = OptionMenu(wd[3], station_selection, *list_of_stations)
+    om_station.config(width=30, anchor="w")
+    om_station.grid(row=5, column=0, columnspan=2, sticky="w")
+    if station == "x":
+        station_selection.set("Select a station")
+    else:
+        station_selection.set(station)
+    Button(wd[3], text="select", width=macadj(14, 12), anchor="w",
+           command=lambda: rpt_chg_station(wd[0], station_selection)) \
+        .grid(row=5, column=2, sticky="w")
+    Label(wd[3], text="").grid(row=6, column=0)
+    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
+          "ORDER BY carrier_name ASC" % station
+    results = inquire(sql)
+    if station != "x":
+        Label(wd[3], text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
+    results_frame = Frame(wd[3])
+    results_frame.grid(row=8, columnspan=4)
+    i = 0
+    if station != "x":
+        if len(results)>0:
+            Label(results_frame, text="Name", anchor="w", fg="grey").grid(row=i, column=0, sticky="w")
+            Label(results_frame, text="Last Date", anchor="w", fg="grey")\
+                .grid(row=i, column=1, columnspan=2, sticky="w")
+            Label(results_frame, text="Station", anchor="w", fg="grey").grid(row=i, column=3, sticky="w")
+        elif len(results)==0:
+            Label(results_frame, text="", anchor="w").grid(row=i, column=0, sticky="w")
+            i += 1
+            Label(results_frame, text="After a search, no results were found in the klusterbox database.", anchor="w")\
+                .grid(row=i, column=0, sticky="w")
+    i += 1
+    for name in results:
+        sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
+        top_rec = inquire(sql)
+        Label(results_frame, text=name[0], anchor="w").grid(row=i, column=0, sticky="w")
+        Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
+            .grid(row=i, column=1, sticky="w")
+        Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
+        Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
+        Label(results_frame, text="     ", anchor="w").grid(row=i, column=4, sticky="w")
+        Button(results_frame, text="Report", anchor="w",
+               command=lambda in_line=name: rpt_carrier_history(wd[0], in_line[0]))\
+            .grid(row=i, column=5, sticky="w")
+        Label(results_frame, text="         ", anchor="w").grid(row=i, column=6, sticky="w")
+        i += 1
+    # apply and close buttons
+    Button(wd[4], text="Go Back", width=20, bg="light yellow", anchor="w",
+           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+    rear_window(wd)
+
+
 def rpt_carrier(carrier_list):  # Generate and display a report of carrier routes and nsday
     ns_dict = get_custom_nsday()  # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
@@ -1460,8 +1594,7 @@ def rpt_carrier(carrier_list):  # Generate and display a report of carrier route
             report.write('      Date: {}\n'.format(f_date))
         else:
             f_date = g_date[0].strftime("%b %d, %Y")
-            end_f_date = g_date[6].strftime("%b %d, %Y")
-            report.write('      Dates: {} through {}\n'.format(f_date, end_f_date))
+            report.write('      Date: {}\n'.format(f_date))
         report.write('      Pay Period: {}\n\n'.format(pay_period))
         report.write('{:>4}  {:<22} {:<17}{:<24}\n'.format("", "Carrier Name", "N/S Day", "Route/s"))
         report.write('      ----------------------------------------------------------------\n')
@@ -1499,8 +1632,7 @@ def rpt_carrier_route(carrier_list):  # Generate and display a report of carrier
             report.write('      Date: {}\n'.format(f_date))
         else:
             f_date = g_date[0].strftime("%b %d, %Y")
-            end_f_date = g_date[6].strftime("%b %d, %Y")
-            report.write('      Dates: {} through {}\n'.format(f_date, end_f_date))
+            report.write('      Date: {}\n'.format(f_date))
         report.write('      Pay Period: {}\n\n'.format(pay_period))
         report.write('{:>4}  {:<22} {:<24}\n'.format("", "Carrier Name", "Route/s"))
         report.write('      -----------------------------------------------\n')
@@ -1538,8 +1670,7 @@ def rpt_carrier_nsday(carrier_list):  # Generate and display a report of carrier
             report.write('      Date: {}\n'.format(f_date))
         else:
             f_date = g_date[0].strftime("%b %d, %Y")
-            end_f_date = g_date[6].strftime("%b %d, %Y")
-            report.write('      Dates: {} through {}\n'.format(f_date, end_f_date))
+            report.write('      Date: {}\n'.format(f_date))
         report.write('      Pay Period: {}\n\n'.format(pay_period))
         report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
         report.write('      ----------------------------------------\n')
@@ -1562,6 +1693,37 @@ def rpt_carrier_nsday(carrier_list):  # Generate and display a report of carrier
             subprocess.call(["open", dir_path('report') + filename])
     except:
         messagebox.showerror("Report Generator", "The report was not generated.")
+
+
+def rpt_carrier_history(frame, carrier):
+    sql = "SELECT effective_date, list_status, ns_day, route_s, station" \
+          " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % carrier
+    results = inquire(sql)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = "report_carrier_history" + "_" + stamp + ".txt"
+    try:
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier Status Change History\n\n")
+        report.write('   Showing all status changes in the klusterbox database for {}\n\n'.format(carrier))
+        report.write('{:<16}{:<8}{:<10}{:<31}{:<25}\n'
+                     .format("Date Effective", "List", "N/S Day", "Route/s", "Station"))
+        report.write('----------------------------------------------------------------------------------\n')
+        i = 1
+        for line in results:
+            report.write('{:<16}{:<8}{:<10}{:<31}{:<25}\n'
+                             .format(dt_converter(line[0]).strftime("%m/%d/%Y"), line[1], line[2], line[3], line[4]))
+            if i % 3 == 0:
+                report.write('----------------------------------------------------------------------------------\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def clean_rings3_table():  # database maintenance
@@ -12756,7 +12918,7 @@ def update_carrier(a):
     title_f = Frame(f)
     Label(title_f, text="Update Carrier Information", font=macadj("bold", "Helvetica 18")) \
         .grid(row=0, column=0, columnspan=4)
-    title_f.grid(row=0, sticky=W)  # put frame on grid
+    title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
     # date
     date_frame = Frame(f)  # define frame
     year = IntVar(date_frame)  # define variables for date
@@ -12766,7 +12928,7 @@ def update_carrier(a):
     month.set(int(a[0][5:7]))
     day.set(int(a[0][8:10]))
     year.set(int(a[0][:4]))
-    Label(date_frame, text=" date (month/day/year):", background=macadj("gray95", "grey"),
+    Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30, anchor="w") \
         .grid(row=0, column=0, sticky=W, columnspan=30)  # date label
     om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
@@ -12778,18 +12940,18 @@ def update_carrier(a):
     om_day.config(width=2)
     om_day.grid(row=1, column=1, sticky=W)
     Entry(date_frame, width=6, textvariable=year).grid(row=1, column=2, sticky=W)
-    date_frame.grid(row=1, sticky=W)  # put frame on grid
+    date_frame.grid(row=1, sticky=W, pady=5)  # put frame on grid
     # carrier name
     name_frame = Frame(f, pady=2)
     name = StringVar(name_frame)
     name = a[1]  # name value if name is not changed
-    Label(name_frame, text=" carrier name: ", anchor="w", background=macadj("gray95", "grey"),
+    Label(name_frame, text=" Carrier Name: ", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W)
     Label(name_frame, text="{}".format(a[1].lower()), anchor="w", width=37).grid(row=1, column=0, sticky=W)
-    name_frame.grid(row=2, sticky=W)
+    name_frame.grid(row=2, sticky=W, pady=5)
     # list status
     list_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame, text=" list status", anchor="w", background=macadj("gray95", "grey"),
+    Label(list_frame, text=" List Status", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ls = StringVar(list_frame)
     ls.set(value=a[2])
@@ -12803,10 +12965,10 @@ def update_carrier(a):
         .grid(row=2, column=1, sticky=W)
     Radiobutton(list_frame, text= "Part Time Flex", variable=ls, value="ptf", justify=LEFT) \
         .grid(row=3, column=1, sticky=W)
-    list_frame.grid(row=3, sticky=W)
+    list_frame.grid(row=3, sticky=W, pady=5)
     # set non scheduled day
     ns_frame = Frame(f, pady=2)
-    Label(ns_frame, text=" non scheduled day", anchor="w", background=macadj("gray95", "grey"),
+    Label(ns_frame, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ns = StringVar(ns_frame)
     ns.set(a[3])
@@ -12863,25 +13025,25 @@ def update_carrier(a):
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["fri"],
                 indicatoron=macadj(0, 1), width=15, anchor="w") \
         .grid(row=7, column=1)
-    ns_frame.grid(row=4, sticky=W)
+    ns_frame.grid(row=4, sticky=W, pady=5)
     # set route entry field
     route_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text=" route/s", anchor="w", background=macadj("gray95", "grey"),
+    Label(route_frame, text=" Route/s", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W)
     route = StringVar(route_frame)
     route.set(a[4])
     Entry(route_frame, width=macadj(37, 29), textvariable=route).grid(row=1, column=0, sticky=W)
-    route_frame.grid(row=5, sticky=W)
+    route_frame.grid(row=5, sticky=W, pady=5)
     # set station option menu
     station_frame = Frame(f, pady=2)
-    Label(station_frame, text=" station", anchor="w", background=macadj("gray95", "grey"),
+    Label(station_frame, text="Station", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=5).grid(row=0, column=0, sticky=W)
     station = StringVar(station_frame)
     station.set(a[5])  # default value
     om_stat = OptionMenu(station_frame, station, *list_of_stations)
     om_stat.config(width=macadj("24", "22"))
     om_stat.grid(row=0, column=1, sticky=W)
-    station_frame.grid(row=6, sticky=W)
+    station_frame.grid(row=6, sticky=W, pady=5)
     # set rowid
     rowid = StringVar(f)
     rowid = a[6]
@@ -12938,7 +13100,7 @@ def edit_carrier(e_name):
     title_f = Frame(f)
     Label(title_f, text="Edit Carrier Information", font=macadj("bold", "Helvetica 18")) \
         .grid(row=0, column=0, columnspan=4)
-    title_f.grid(row=0, sticky=W)  # put frame on grid
+    title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
     # current date
     year = IntVar(f)
     month = IntVar(f)
@@ -12949,8 +13111,8 @@ def edit_carrier(e_name):
     year.set(gs_year)
     # define frame
     date_frame = Frame(f)
-    Label(date_frame, text=" date (month/day/year):", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
-          width=30).grid(row=0, column=0, sticky=W, columnspan=30)  # date label
+    Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
+          width=30, anchor="w").grid(row=0, column=0, sticky=W, columnspan=30)  # date label
     om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
     om_month.config(width=2)
     om_month.grid(row=1, column=0, sticky=W)  # option menu for month
@@ -12960,22 +13122,23 @@ def edit_carrier(e_name):
     om_day.config(width=2)
     om_day.grid(row=1, column=1, sticky=W)  # option menu for day
     Entry(date_frame, width=6, textvariable=year).grid(row=1, column=2, sticky=W)  # entry field for year
-    date_frame.grid(row=1, sticky=W)  # put frame on grid
+    date_frame.grid(row=1, column=0, sticky=W, pady=5)  # put frame on grid
     # carrier name
     name_frame = Frame(f, pady=2)
     c_name = StringVar(name_frame)
     name = StringVar(name_frame)
     name = e_name  # name value if name is not changed
     c_name.set(e_name)  # name value for name changes
-    Label(name_frame, text=" carrier name: {}".format(e_name), anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W)
-    Entry(name_frame, width=macadj(37, 29), textvariable=c_name).grid(row=1, column=0, sticky=W)
+    Label(name_frame, text=" Carrier Name: {}".format(e_name), anchor="w", background=macadj("gray95", "grey"),
+          fg=macadj("black", "white"), width=30).grid(row=0, column=0, columnspan=4, sticky=W)
+    Entry(name_frame, width=macadj(37, 29), textvariable=c_name).grid(row=1, column=0, columnspan=4, sticky=W)
+    Label(name_frame,text="Change Name: ").grid(row=2, column=0, sticky=W)
     Button(name_frame, width=7, text="update", command=lambda: name_change(name, c_name, switch_f3)) \
-        .grid(row=2, column=0, sticky=W)
-    name_frame.grid(row=2, sticky=W)
+        .grid(row=2, column=1, sticky=W, pady=6)
+    name_frame.grid(row=2, sticky=W, pady=5)
     # list status
     list_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame, text=" list status", anchor="w", background=macadj("gray95", "grey"),
+    Label(list_frame, text=" List Status", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ls = StringVar(list_frame)
     try:
@@ -12992,10 +13155,10 @@ def edit_carrier(e_name):
         .grid(row=2, column=1, sticky=W)
     Radiobutton(list_frame, text="Part Time Flex", variable=ls, value="ptf", justify=LEFT) \
         .grid(row=3, column=1, sticky=W)
-    list_frame.grid(row=3, sticky=W)
+    list_frame.grid(row=3, sticky=W, pady=5)
     # set non scheduled day
     ns_frame = Frame(f, pady=2)
-    Label(ns_frame, text=" non scheduled day", anchor="w", background=macadj("gray95", "grey"),
+    Label(ns_frame, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"),
           width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ns = StringVar(ns_frame)
@@ -13053,37 +13216,43 @@ def edit_carrier(e_name):
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["fri"],
                 indicatoron=macadj(0, 1), width=15, anchor="w") \
         .grid(row=7, column=1)
-    ns_frame.grid(row=4, sticky=W)
+    ns_frame.grid(row=4, sticky=W, pady=5)
     # set route entry field
     route_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text=" route/s", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
+    Label(route_frame, text=" Route/s", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
           width=30).grid(row=0, column=0, sticky=W)
     route = StringVar(route_frame)
     route.set(results[0][4])
     Entry(route_frame, width=macadj(37, 29), textvariable=route).grid(row=1, column=0, sticky=W)
-    route_frame.grid(row=5, sticky=W)
+    route_frame.grid(row=5, sticky=W, pady=5)
     # set station option menu
     station_frame = Frame(f, pady=2)
-    Label(station_frame, text=" station", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
+    Label(station_frame, text="Station", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
           width=5).grid(row=0, column=0, sticky=W)
     station = StringVar(station_frame)
     station.set(results[0][5])  # default value
     om_stat = OptionMenu(station_frame, station, *list_of_stations)
     om_stat.config(width=macadj("24", "22"))
     om_stat.grid(row=0, column=1, sticky=W)
-    Label(station_frame, text=" ").grid(row=1)
-    station_frame.grid(row=6, sticky=W)
+    # Label(station_frame, text=" ").grid(row=1)
+    station_frame.grid(row=6, sticky=W, pady=5)
     #  delete button
     delete_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(delete_frame, text=" delete", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
+    Label(delete_frame, text=" Delete All", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
           width=5).grid(row=0, column=0, sticky=W)
     Label(delete_frame, text="Delete carrier and all associated records. ", anchor="w") \
         .grid(row=1, column=0, sticky=W)
     Button(delete_frame, text="Delete", width=15,
            bg=macadj("red3", "red3"), fg=macadj("white", "white"),
-           command=lambda: purge_carrier(switch_f3, e_name)).grid(row=3, column=0, sticky=W)
-    delete_frame.grid(row=7, sticky=W)
-    Label(f, text="").grid(row=8)
+           command=lambda: purge_carrier(switch_f3, e_name)).grid(row=3, column=0, sticky=W, padx=8)
+    delete_frame.grid(row=7, sticky=W, pady=5)
+    report_frame = Frame(f,padx=2,)
+    Label(report_frame, text="Status Change Report: ",anchor="w").grid(row=0, column=0, sticky=W, columnspan=4)
+    Label(report_frame, text="Generate Report: ", anchor="w").grid(row=1, column=0, sticky=W)
+    Button(report_frame, text="Report", width=10, command=lambda: rpt_carrier_history(switch_f3, e_name))\
+        .grid(row=1, column=1, sticky=W, padx=10)
+    report_frame.grid(row=8, sticky=W, pady=5)
+    Label(f, text="").grid(row=9)
     #   History of status changes
     history_frame = Frame(f, pady=2)
     row_line = 0
@@ -13102,7 +13271,7 @@ def edit_carrier(e_name):
         Label(history_frame, width=25, text="ns day: {}".format(ns_dict[line[3]]), anchor="w") \
             .grid(row=row_line, column=0, sticky=W, columnspan=4)
         row_line += 1
-        Label(history_frame, width=25, text="route: {}".format(line[4]), anchor="w") \
+        Label(history_frame, width=35, text="route: {}".format(line[4]), anchor="w") \
             .grid(row=row_line, column=0, sticky=W, columnspan=4)
         row_line += 1
         Label(history_frame, width=25, text="station: {}".format(line[5]), anchor="w") \
@@ -13114,8 +13283,9 @@ def edit_carrier(e_name):
         Button(history_frame, width=14, text="delete", anchor="w",
                command=lambda x=line: [switch_f3.destroy(), delete_carrier(x)]) \
             .grid(row=row_line, column=1, sticky=W)
+        Label(history_frame, text="                             ").grid(row=row_line, column=2, sticky=W)
         row_line += 1
-    history_frame.grid(row=9, sticky=W)
+    history_frame.grid(row=9, sticky=W, pady=5)
     root.update()
     c.config(scrollregion=c.bbox("all"))
     # apply and close buttons
@@ -13263,7 +13433,7 @@ def input_carriers(frame):  # window for inputting new carriers
     title_f = Frame(nc_f)
     Label(title_f, text="Enter New Carrier", font=macadj("bold", "Helvetica 18")) \
         .grid(row=0, column=0, columnspan=4)
-    title_f.grid(row=0, sticky=W)  # put frame on grid
+    title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
     # date
     date_frame = Frame(nc_f)  # define frame
     year = IntVar(date_frame)  # define variables for date
@@ -13272,7 +13442,7 @@ def input_carriers(frame):  # window for inputting new carriers
     month.set(gs_mo)  # set values for variables
     day.set(gs_day)
     year.set(gs_year)
-    Label(date_frame, text=" date (month/day/year):", background=macadj("gray95", "grey"),
+    Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30,
           anchor="w").grid(row=0, column=0, sticky=W, columnspan=30)  # date label
     om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
@@ -13284,21 +13454,21 @@ def input_carriers(frame):  # window for inputting new carriers
     om_day.config(width=2)
     om_day.grid(row=1, column=1, sticky=W)
     Entry(date_frame, width=6, textvariable=year).grid(row=1, column=2, sticky=W)
-    date_frame.grid(row=1, sticky=W)  # put frame on grid
+    date_frame.grid(row=1, sticky=W, pady=5)  # put frame on grid
     # carrier name:
     name_frame = Frame(nc_f, pady=2)
-    Label(name_frame, text=" last name: ", width=22, anchor="w", background=macadj("gray95", "grey"),
+    Label(name_frame, text=" Last Name: ", width=22, anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white")).grid(row=0, column=0, sticky=W)
-    Label(name_frame, text=" 1st initial ", width=7, anchor="w", background=macadj("gray95", "grey"),
+    Label(name_frame, text=" 1st Initial ", width=7, anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white")).grid(row=0, column=1, sticky=W)
     nc_name = StringVar(nc_f)
     nc_fname = StringVar(nc_f)
     Entry(name_frame, width=macadj(27, 22), textvariable=nc_name).grid(row=1, column=0, sticky=W)
     Entry(name_frame, width=macadj(8, 6), textvariable=nc_fname).grid(row=1, column=1, sticky=W)
-    name_frame.grid(row=2, sticky=W)
+    name_frame.grid(row=2, sticky=W, pady=5)
     # list status
-    list_frame = Frame(nc_f, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame, width=30, text=" list status", anchor="w", background=macadj("gray95", "grey"),
+    list_frame = Frame(nc_f, bd=1, relief=RIDGE, pady=5)
+    Label(list_frame, width=30, text=" List Status", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white")).grid(row=0, column=0, sticky=W, columnspan=2)
     nc_ls = StringVar(list_frame)
     nc_ls.set(value="nl")
@@ -13312,10 +13482,10 @@ def input_carriers(frame):  # window for inputting new carriers
         .grid(row=2, column=1, sticky=W)
     Radiobutton(list_frame, text="Part Time Flex", variable=nc_ls, value='ptf', justify=LEFT) \
         .grid(row=3, column=1, sticky=W)
-    list_frame.grid(row=3, sticky=W)
+    list_frame.grid(row=3, sticky=W, pady=5)
     # set non scheduled day
-    ns_frame = Frame(nc_f, pady=2)
-    Label(ns_frame, width=30, text=" non scheduled day", anchor="w", background=macadj("gray95", "grey"),
+    ns_frame = Frame(nc_f, pady=5)
+    Label(ns_frame, width=30, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white")).grid(row=0, column=0, sticky=W, columnspan=2)
     nc_ns = StringVar(ns_frame)
     nc_ns.set("none")
@@ -13372,18 +13542,18 @@ def input_carriers(frame):  # window for inputting new carriers
                 fg=macadj("white", "black"),
                 selectcolor=ns_color_dict["fri"], indicatoron=macadj(0, 1),
                 width=15, anchor="w").grid(row=7, column=1)
-    ns_frame.grid(row=4, sticky=W)
+    ns_frame.grid(row=4, sticky=W, pady=5)
     # set route entry field
     route_frame = Frame(nc_f, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text=" route/s", width=30, anchor="w", background=macadj("gray95", "grey"),
+    Label(route_frame, text=" Route/s", width=30, anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white")).grid(row=0, column=0, sticky=W)
     nc_route = StringVar(route_frame)
     nc_route.set("")
     Entry(route_frame, width=macadj(37, 29), textvariable=nc_route).grid(row=1, column=0, sticky=W)
     route_frame.grid(row=5, sticky=W)
     # set station option menu
-    station_frame = Frame(nc_f, pady=2)
-    Label(station_frame, text=" station", width=5, anchor="w", background=macadj("gray95", "grey"),
+    station_frame = Frame(nc_f, pady=5)
+    Label(station_frame, text="Station", width=5, anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white")) \
         .grid(row=0, column=0, sticky=W)
     nc_station = StringVar(station_frame)
@@ -13391,7 +13561,7 @@ def input_carriers(frame):  # window for inputting new carriers
     om_stat = OptionMenu(station_frame, nc_station, *list_of_stations)
     om_stat.config(width=macadj(24, 22))
     om_stat.grid(row=0, column=1, sticky=W)
-    station_frame.grid(row=6, sticky=W)
+    station_frame.grid(row=6, sticky=W, pady=5)
     root.update()
     c.config(scrollregion=c.bbox("all"))
 
@@ -13596,6 +13766,8 @@ def main_frame():
     reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(carrier_list))
     reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(carrier_list))
     reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(carrier_list))
+    reports_menu.add_command(label="Carrier by List", command=lambda: rpt_carrier_by_list(f, carrier_list))
+    reports_menu.add_command(label="Carrier Status History", command=lambda: rpt_find_carriers(f, g_station))
     # reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(carrier_list))
     reports_menu.add_separator()
     reports_menu.add_command(label="Clock Rings Summary", command=lambda: database_rings_report(f, g_station))
@@ -13605,7 +13777,8 @@ def main_frame():
         reports_menu.entryconfig(0, state=DISABLED)
         reports_menu.entryconfig(1, state=DISABLED)
         reports_menu.entryconfig(2, state=DISABLED)
-        reports_menu.entryconfig(4, state=DISABLED)
+        reports_menu.entryconfig(3, state=DISABLED)
+        reports_menu.entryconfig(6, state=DISABLED)
     menubar.add_cascade(label="Reports", menu=reports_menu)
     # library menu
     reportsarchive_menu = Menu(menubar, tearoff=0)
