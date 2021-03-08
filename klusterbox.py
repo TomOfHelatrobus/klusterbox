@@ -63,9 +63,11 @@ def inquire(sql):
     # query the database
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    if platform == "winapp":
+    elif platform == "winapp":
         path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    if platform == "py":
+    elif platform == "py":
+        path = "kb_sub/mandates.sqlite"
+    else:
         path = "kb_sub/mandates.sqlite"
     db = sqlite3.connect(path)
     cursor = db.cursor()
@@ -84,9 +86,11 @@ def inquire(sql):
 def commit(sql):
     if platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    if platform == "winapp":
+    elif platform == "winapp":
         path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    if platform == "py":
+    elif platform == "py":
+        path = "kb_sub/mandates.sqlite"
+    else:
         path = "kb_sub/mandates.sqlite"
     db = sqlite3.connect(path)
     cursor = db.cursor()
@@ -152,7 +156,7 @@ def titlebar_icon(root):  # place icon in titlebar
     if sys.platform == "win32" and platform == "py":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except  OSError:
+        except OSError:
             pass
     if sys.platform == "win32" and platform == "winapp":
         try:
@@ -335,7 +339,7 @@ def database_rings_report(frame, station):
     filename = "clock_rings_summary" + "_" + stamp + ".txt"
     try:
         report = open(dir_path('report') + filename, "w")
-        report.write("Clock Rings Summary Report\n\n\n")
+        report.write("\nClock Rings Summary Report\n\n\n")
         report.write('   Showing results for:\n')
         report.write('   Station: {}\n'.format(station))
         report.write('\n')
@@ -1455,9 +1459,23 @@ def rpt_impman(list_carrier):  # generate report for improper mandates
         print(line)
 
 
+def rpt_dt_limiter(date, first_date): # return the first day if it is earlier than the date
+    if date < first_date:
+        return first_date
+    else:
+        return date
+
+
 def rpt_carrier_by_list(frame, carrier_list):
-    print(carrier_list)
-    
+    unique_names = []  # get a list of unique names
+    reoccurring_names = []  # get a list of reoccurring names
+    for car in carrier_list:
+        if car[1] not in unique_names:
+            unique_names.append(car[1])
+        else:
+            reoccurring_names.append(car[1])
+    list_dict = {"nl":"No List","wal":"Work Assignment List",
+                 "otdl":"Overtime Desired List","ptf":"Part Time Flexible","aux":"Auxiliary Carrier"}
     # initialize arrays for data sorting
     otdl_array = []
     wal_array = []
@@ -1476,38 +1494,49 @@ def rpt_carrier_by_list(frame, carrier_list):
             if carrier[2] == "aux":
                 aux_array.append(carrier)
     array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array  #
-
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
     filename = "report_carrier_by_list" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('report') + filename, "w")
-        report.write("Carrier by List\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
-        if g_range == "day":
-            f_date = d_date.strftime("%b %d, %Y")
+    report = open(dir_path('report') + filename, "w")
+    report.write("\nCarrier by List\n\n")
+    report.write('   Showing results for:\n')
+    report.write('      Station: {}\n'.format(g_station))
+    if g_range == "day":
+        f_date = d_date
+        report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+    else:
+        f_date = g_date[0]
+        report.write('      Dates: {} through {}\n'
+                     .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
+    report.write('      Pay Period: {}\n'.format(pay_period))
+
+    i = 1
+    last_list = ""
+    for line in array_var:
+        if last_list != line[2]:
+            report.write('\n\n      {:<20}\n\n'
+                         .format(list_dict[line[2]]))
+            report.write('{:>4}  {:<22} {:>4}\n'.format("", "Carrier Name", "List"))
+            report.write('      ---------------------------  -------------------\n')
+            i = 1
+        if line[1] not in reoccurring_names:
+            report.write('{:>4}  {:<22} {:>4}\n'.format(i, line[1], line[2]))
         else:
-            f_date = g_date[0].strftime("%b %d, %Y")
-        report.write('      Date: {}\n'.format(f_date))
-        report.write('      Pay Period: {}\n\n'.format(pay_period))
-        report.write('{:>4}  {:<22} {:<5}\n'.format("", "Carrier Name", "List"))
-        report.write('      ----------------------------------------------------------------\n')
-        i = 1
-        for line in array_var:
-                report.write('{:>4}  {:<22} {:<5}\n'
-                             .format(i, line[1], line[2]))
-                if i % 3 == 0:
-                    report.write('      ----------------------------------------------------------------\n')
-                i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
+            report.write('{:>4}  {:<22} {:>4}  effective {:<10}\n'
+                         .format(i, line[1], line[2],
+                                 rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+        if i % 3 == 0:
+            report.write('      ---------------------------  -------------------\n')
+        last_list = line[2]
+        i += 1
+    report.close()
+    if sys.platform == "win32":  # open the text document
+        os.startfile(dir_path('report') + filename)
+    if sys.platform == "linux":
+        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+    if sys.platform == "darwin":
+        subprocess.call(["open", dir_path('report') + filename])
+    # except:
+    #     messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def rpt_chg_station(frame, station):
@@ -1581,70 +1610,98 @@ def rpt_find_carriers(frame, station):
 
 
 def rpt_carrier(carrier_list):  # Generate and display a report of carrier routes and nsday
+    unique_names = []  # get a list of unique names
+    reoccurring_names = []  # get a list of reoccurring names
+    for car in carrier_list:
+        if car[1] not in unique_names:
+            unique_names.append(car[1])
+        else:
+            reoccurring_names.append(car[1])
     ns_dict = get_custom_nsday()  # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
     filename = "report_carrier_route" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('report') + filename, "w")
-        report.write("Carrier Route and NS Day Report\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
-        if g_range == "day":
-            f_date = d_date.strftime("%b %d, %Y")
-            report.write('      Date: {}\n'.format(f_date))
+    # try:
+    report = open(dir_path('report') + filename, "w")
+    report.write("\nCarrier Route and NS Day Report\n\n\n")
+    report.write('   Showing results for:\n')
+    report.write('      Station: {}\n'.format(g_station))
+    if g_range == "day":
+        f_date = d_date
+        report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+    else:
+        f_date = g_date[0]
+        report.write('      Dates: {} through {}\n'
+                     .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
+    report.write('      Pay Period: {}\n\n'.format(pay_period))
+    report.write('{:>4} {:<23} {:<13} {:<29} {:<10}\n'.format("", "Carrier Name", "N/S Day", "Route/s",
+                                                                   "Start Date"))
+    report.write('     ------------------------------------------------------------------- ----------\n')
+    i = 1
+    for line in carrier_list:
+        if line[1] not in reoccurring_names:
+            report.write('{:>4} {:<23} {:<4} {:<8} {:<29}\n'
+                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]], line[4]))
         else:
-            f_date = g_date[0].strftime("%b %d, %Y")
-            report.write('      Date: {}\n'.format(f_date))
-        report.write('      Pay Period: {}\n\n'.format(pay_period))
-        report.write('{:>4}  {:<22} {:<17}{:<24}\n'.format("", "Carrier Name", "N/S Day", "Route/s"))
-        report.write('      ----------------------------------------------------------------\n')
-        aforementioned = []
-        i = 1
-        for line in carrier_list:
-            if line[1] not in aforementioned:
-                report.write('{:>4}  {:<22} {:<5}{:<12}{:<24}\n'
-                             .format(i, line[1], ns_code[line[3]], ns_dict[line[3]], line[4]))
-                if i % 3 == 0:
-                    report.write('      ----------------------------------------------------------------\n')
-                aforementioned.append(line[1])
-                i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.")
+            report.write('{:>4} {:<23} {:<4} {:<8} {:<29} {:<10}\n'
+                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]], line[4],
+                                 rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+        if i % 3 == 0:
+            report.write('     ------------------------------------------------------------------- ----------\n')
+        i += 1
+    report.close()
+    if sys.platform == "win32":  # open the text document
+        os.startfile(dir_path('report') + filename)
+    if sys.platform == "linux":
+        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+    if sys.platform == "darwin":
+        subprocess.call(["open", dir_path('report') + filename])
+    # except:
+    #     messagebox.showerror("Report Generator", "The report was not generated.")
 
 
 def rpt_carrier_route(carrier_list):  # Generate and display a report of carrier routes
+    unique_names = []  # get a list of unique names
+    reoccurring_names = []  # get a list of reoccurring names
+    for car in carrier_list:
+        if car[1] not in unique_names:
+            unique_names.append(car[1])
+        else:
+            reoccurring_names.append(car[1])
+    unique_names = []  # get a list of unique names
+    reoccurring_names = []  # get a list of reoccurring names
+    for car in carrier_list:
+        if car[1] not in unique_names:
+            unique_names.append(car[1])
+        else:
+            reoccurring_names.append(car[1])
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "report_carrier_route" + "_" + stamp + ".txt"
     try:
         report = open(dir_path('report') + filename, "w")
-        report.write("Carrier Route Report\n\n\n")
+        report.write("\nCarrier Route Report\n\n\n")
         report.write('   Showing results for:\n')
         report.write('      Station: {}\n'.format(g_station))
         if g_range == "day":
-            f_date = d_date.strftime("%b %d, %Y")
-            report.write('      Date: {}\n'.format(f_date))
+            f_date = d_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            f_date = g_date[0].strftime("%b %d, %Y")
-            report.write('      Date: {}\n'.format(f_date))
+            f_date = g_date[0]
+            report.write('      Date: {} through {}\n'
+                         .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
         report.write('      Pay Period: {}\n\n'.format(pay_period))
-        report.write('{:>4}  {:<22} {:<24}\n'.format("", "Carrier Name", "Route/s"))
-        report.write('      -----------------------------------------------\n')
-        aforementioned = []
+        report.write('{:>4}  {:<22} {:<29}\n'.format("", "Carrier Name", "Route/s"))
+        report.write('      ---------------------------------------------------- -------------------\n')
         i = 1
         for line in carrier_list:
-            if line[1] not in aforementioned:
-                report.write('{:>4}  {:<22} {:<24}\n'.format(i, line[1], line[4]))
-                if i % 3 == 0:
-                    report.write('      -----------------------------------------------\n')
-                aforementioned.append(line[1])
-                i += 1
+            if line[1] not in reoccurring_names:
+                report.write('{:>4}  {:<22} {:<29}\n'.format(i, line[1], line[4]))
+            else:
+                report.write('{:>4}  {:<22} {:<29} effective {:<10}\n'
+                             .format(i, line[1], line[4],
+                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+            if i % 3 == 0:
+                report.write('      ---------------------------------------------------- -------------------\n')
+            i += 1
         report.close()
         if sys.platform == "win32":  # open the text document
             os.startfile(dir_path('report') + filename)
@@ -1657,42 +1714,52 @@ def rpt_carrier_route(carrier_list):  # Generate and display a report of carrier
 
 
 def rpt_carrier_nsday(carrier_list):  # Generate and display a report of carrier ns day
+    unique_names = []  # get a list of unique names
+    reoccurring_names = []  # get a list of reoccurring names
+    for car in carrier_list:
+        if car[1] not in unique_names:
+            unique_names.append(car[1])
+        else:
+            reoccurring_names.append(car[1])
     ns_dict = get_custom_nsday()  # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "report_carrier_route" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('report') + filename, "w")
-        report.write("Carrier Routes NS Day\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
-        if g_range == "day":
-            f_date = d_date.strftime("%b %d, %Y")
-            report.write('      Date: {}\n'.format(f_date))
+    # try:
+    report = open(dir_path('report') + filename, "w")
+    report.write("\nCarrier Routes NS Day\n\n\n")
+    report.write('   Showing results for:\n')
+    report.write('      Station: {}\n'.format(g_station))
+    if g_range == "day":
+        f_date = d_date
+        report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+    else:
+        f_date = g_date[0]
+        report.write('      Date: {} through {}\n'
+                     .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
+    report.write('      Pay Period: {}\n\n'.format(pay_period))
+    report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
+    report.write('      ----------------------------------------  -------------------\n')
+    i = 1
+    for line in carrier_list:
+        if line[1] not in reoccurring_names:
+            report.write('{:>4}  {:<22} {:<5}{:<12}\n'
+                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]]))
         else:
-            f_date = g_date[0].strftime("%b %d, %Y")
-            report.write('      Date: {}\n'.format(f_date))
-        report.write('      Pay Period: {}\n\n'.format(pay_period))
-        report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
-        report.write('      ----------------------------------------\n')
-        aforementioned = []
-        i = 1
-        for line in carrier_list:
-            if line[1] not in aforementioned:
-                report.write('{:>4}  {:<22} {:<5}{:<12}\n'
-                             .format(i, line[1], ns_code[line[3]], ns_dict[line[3]]))
-                if i % 3 == 0:
-                    report.write('      ----------------------------------------\n')
-                aforementioned.append(line[1])
-                i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.")
+            report.write('{:>4}  {:<22} {:<5}{:<12}  effective {:<10}\n'
+                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]],
+                                 rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+        if i % 3 == 0:
+            report.write('      ----------------------------------------  -------------------\n')
+        i += 1
+    report.close()
+    if sys.platform == "win32":  # open the text document
+        os.startfile(dir_path('report') + filename)
+    if sys.platform == "linux":
+        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+    if sys.platform == "darwin":
+        subprocess.call(["open", dir_path('report') + filename])
+    # except:
+    #     messagebox.showerror("Report Generator", "The report was not generated.")
 
 
 def rpt_carrier_history(frame, carrier):
@@ -1722,7 +1789,7 @@ def rpt_carrier_history(frame, carrier):
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
-    except:
+    except OSError:
         messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
@@ -1745,7 +1812,13 @@ def clean_rings3_table():  # database maintenance
     return
 
 
-def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
+def overmax_spreadsheet(pre_carrier_list):  # generate the overmax spreadsheet
+    carrier_list = [] # remove any duplicate multiple occurances of the same carrier
+    unique_name = []
+    for pre in pre_carrier_list:
+        if pre[1] not in unique_name:
+            unique_name.append(pre[1])
+            carrier_list.append(pre)  # the carrier_list is now ready and has no duplicates
     date = g_date[0]
     dates = []  # array containing days.
     if g_range == "week":
@@ -2436,7 +2509,7 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['M' + str(i)].style = input_s
             violations['L' + str(i + 1)] = totals_array[4]  # 5200 time
             violations['L' + str(i + 1)].style = input_s
-            violations['M' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
+            violations['L' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
             # thursday
             violations.merge_cells('N' + str(i + 1) + ':O' + str(i + 1))  # merge box for thr 5200
             violations['N' + str(i)] = leavetime_array[5]  # leave time
@@ -2459,17 +2532,18 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
             # calculated fields
             # hidden columns
-            formula_a = "=SUM(%s!D%s:P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
+            formula_a = "=SUM(%s!D%s:P%s)+%s!D%s + %s!F%s + %s!H%s + %s!J%s + %s!L%s + " \
                         "%s!N%s + %s!P%s" % ("violations", str(i + 1), str(i + 1),
                                              "violations", str(i), "violations", str(i), "violations", str(i),
-                                             "violations", str(i), "violations", str(i), "violations", str(i))
+                                             "violations", str(i), "violations", str(i), "violations", str(i),
+                                             "violations", str(i))
             violations['R' + str(i)] = formula_a
             violations['R' + str(i)].style = calcs
             violations['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            formula_b = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
+            formula_b = "=SUM(%s!C%s+%s!D%s+%s!F%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
                         ("violations", str(i), "violations", str(i), "violations", str(i),
                          "violations", str(i), "violations", str(i), "violations", str(i),
-                         "violations", str(i))
+                         "violations", str(i), "violations", str(i))
             violations['R' + str(i + 1)] = formula_b
             violations['R' + str(i + 1)].style = calcs
             violations['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
@@ -2484,11 +2558,13 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
             violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # daily violation
             formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+" \
+                        "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!F%s>11.5,%s!F%s-11.5,0)" \
+                        "+IF(%s!H%s>11.5,%s!H%s-11.5,0)+" \
                         "IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
                         "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+" \
                         "IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
-                        "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
+                        "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!F%s>12,%s!F%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)" \
+                        "+IF(%s!J%s>12,%s!J%s-12,0)" \
                         "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
                         % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
@@ -2498,7 +2574,9 @@ def overmax_spreadsheet(carrier_list):  # generate the overmax spreadsheet
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1))
+                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
+                           "violations", str(i + 1), "violations", str(i + 1),
+                           "violations", str(i + 1), "violations", str(i + 1))
             violations['T' + str(i)] = formula_d
             violations.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
             violations['T' + str(i)].style = calcs
@@ -8320,7 +8398,7 @@ def ee_skimmer(frame):
     mv_codes = ("BT", "MV", "ET")
     carrier = []
     path = dir_filedialog()
-    file_path = filedialog.askopenfilename(initialdir=path)
+    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
     if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
         with open(file_path, newline="") as file:
             a_file = csv.reader(file)
@@ -8865,11 +8943,16 @@ def remove_file_var(folder):  # removes a file and all contents
     if os.path.isdir(folder):
         if messagebox.askokcancel("Delete Folder Contents",
                                   "This will delete all the files in the {} archive. ".format(folder_name)):
-            shutil.rmtree(folder)
-        if not os.path.isdir(folder):
-            messagebox.showinfo("Delete Folder Contents",
-                                "Success! All the files in the {} archive have been deleted.".format(folder_name))
-
+            try:
+                shutil.rmtree(folder)
+                if not os.path.isdir(folder):
+                    messagebox.showinfo("Delete Folder Contents",
+                                        "Success! All the files in the {} archive have been deleted."
+                                        .format(folder_name))
+            except OSError:
+                messagebox.showerror("Delete Folder Contents",
+                                    "Failure! {} can not be deleted because it is being used by another program."
+                                     .format(folder_name))
     else:
         messagebox.showwarning("Delete Folder Contents",
                                "The {} folder is already empty".format(folder_name))
@@ -12353,7 +12436,6 @@ def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time,
               % (dates[i], carrier[1], ttotal[i], r_rs[i], code[i].get(), all_moves[i], lv_type[i].get(), llv_time[i])
         commit(sql)
     sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_time ='%s'" % ("", 'none', 'none')
-
     commit(sql)
     # destroy the old rings entry window
     if go_return == "no_return":
