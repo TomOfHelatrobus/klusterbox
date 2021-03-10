@@ -78,7 +78,8 @@ def inquire(sql):
     except:
         messagebox.showerror("Database Error",
                              "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql))
+                             "\n Attempted Query: {}".format(sql),
+                             parent=root)
     db.close()
 
 
@@ -101,7 +102,8 @@ def commit(sql):
     except:
         messagebox.showerror("Database Error",
                              "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql))
+                             "\n Attempted Query: {}".format(sql),
+                             parent=root)
 
 
 def dt_converter(string):  # converts a string of a datetime to an actual datetime
@@ -156,25 +158,24 @@ def titlebar_icon(root):  # place icon in titlebar
     if sys.platform == "win32" and platform == "py":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except OSError:
+        except:
             pass
     if sys.platform == "win32" and platform == "winapp":
         try:
             # root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
             root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
-        except OSError:
+        except:
             pass
     if sys.platform == "darwin" and platform == "py":
         try:
             root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
-            root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except OSError:
+        except:
             pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
             root.tk.call('wm', 'iconphoto', root._w, img)
-        except OSError:
+        except:
             pass
 
 
@@ -781,7 +782,7 @@ def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
     try:
         if os.path.exists(path):
             os.remove(path)
-    except OSError:
+    except:
         messagebox.showerror("Access Error",
                              "Klusterbox can not delete the database as it is being used by another "
                              "application. Close the database in the other application and retry.",
@@ -1059,14 +1060,22 @@ def database_maintenance(frame):
     Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
     table_options = ("carriers + index", "carriers", "name index", "clock rings", "all")
     om1_table = OptionMenu(cleaner_frame2, clean1_table, *table_options)
-    om1_table.config(width=20, anchor="w")
+    clean1_table.set(table_options[-1])
+    if sys.platform != "darwin":
+        om1_table.config(width=20, anchor="w")
+    else:
+        om1_table.config(width=20)
     om1_table.grid(row=rrr, column=3, sticky="w")
     rrr += 1
     station_options = list_of_stations[:]  # use splice to make copy of list without creating alias
     station_options.append("all stations")
     Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
     om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
-    om1_station.config(width=20, anchor="w")
+    clean1_station.set(station_options[-1])
+    if sys.platform != "darwin":
+        om1_station.config(width=20, anchor="w")
+    else:
+        om1_station.config(width=20)
     om1_station.grid(row=rrr, column=3, sticky="w")
     Button(cleaner_frame2, text="delete", width=macadj(6, 5),
            command=lambda: database_delete_records
@@ -1095,7 +1104,11 @@ def database_maintenance(frame):
         .grid(row=rrr, column=1, sticky="w")
     Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
     om2_table = OptionMenu(cleaner_frame2, clean2_table, *table_options)
-    om2_table.config(width=20, anchor="w")
+    clean2_table.set(table_options[-1])
+    if sys.platform != "darwin":
+        om2_table.config(width=20, anchor="w")
+    else:
+        om2_table.config(width=20)
     om2_table.grid(row=rrr, column=3, sticky="w")
     rrr += 1
     Label(cleaner_frame2, text="end date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
@@ -1103,7 +1116,11 @@ def database_maintenance(frame):
         .grid(row=rrr, column=1, sticky="w")
     Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
     om2_station = OptionMenu(cleaner_frame2, clean2_station, *station_options)
-    om2_station.config(width=20, anchor="w")
+    clean2_station.set(station_options[-1])
+    if sys.platform != "darwin":
+        om2_station.config(width=20, anchor="w")
+    else:
+        om2_station.config(width=20)
     om2_station.grid(row=rrr, column=3, sticky="w")
     Button(cleaner_frame2, text="delete", width=macadj(6, 5),
            command=lambda: database_delete_records(frame, wd[0], clean2_range, clean2_startdate, clean2_enddate,
@@ -1117,7 +1134,7 @@ def database_maintenance(frame):
     rrr += 1
     Label(cleaner_frame2, text="").grid(row=rrr)
     rrr += 1
-    Button(cleaner_frame2, text="Reset", width=10, padx=5, fg="white", bg="red",
+    Button(cleaner_frame2, text="Reset", width=10, padx=5, fg=macadj("white","red"), bg=macadj("red","white"),
            command=lambda: database_reset(frame, wd[0])) \
         .grid(row=rrr, column=0, sticky="w")
     rrr += 1
@@ -1466,6 +1483,15 @@ def rpt_dt_limiter(date, first_date): # return the first day if it is earlier th
         return date
 
 
+def rpt_ns_fixer(ns_code): # remove the day from the ns_code if fixed
+    fix = []
+    if "fixed" in ns_code:
+        fix = ns_code.split(":")
+        return fix[0]
+    else:
+        return ns_code
+
+
 def rpt_carrier_by_list(frame, carrier_list):
     unique_names = []  # get a list of unique names
     reoccurring_names = []  # get a list of reoccurring names
@@ -1496,47 +1522,48 @@ def rpt_carrier_by_list(frame, carrier_list):
     array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array  #
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
     filename = "report_carrier_by_list" + "_" + stamp + ".txt"
-    report = open(dir_path('report') + filename, "w")
-    report.write("\nCarrier by List\n\n")
-    report.write('   Showing results for:\n')
-    report.write('      Station: {}\n'.format(g_station))
-    if g_range == "day":
-        f_date = d_date
-        report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-    else:
-        f_date = g_date[0]
-        report.write('      Dates: {} through {}\n'
-                     .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
-    report.write('      Pay Period: {}\n'.format(pay_period))
-
-    i = 1
-    last_list = ""
-    for line in array_var:
-        if last_list != line[2]:
-            report.write('\n\n      {:<20}\n\n'
-                         .format(list_dict[line[2]]))
-            report.write('{:>4}  {:<22} {:>4}\n'.format("", "Carrier Name", "List"))
-            report.write('      ---------------------------  -------------------\n')
-            i = 1
-        if line[1] not in reoccurring_names:
-            report.write('{:>4}  {:<22} {:>4}\n'.format(i, line[1], line[2]))
+    try:
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier by List\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            report.write('{:>4}  {:<22} {:>4}  effective {:<10}\n'
-                         .format(i, line[1], line[2],
-                                 rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
-        if i % 3 == 0:
-            report.write('      ---------------------------  -------------------\n')
-        last_list = line[2]
-        i += 1
-    report.close()
-    if sys.platform == "win32":  # open the text document
-        os.startfile(dir_path('report') + filename)
-    if sys.platform == "linux":
-        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-    if sys.platform == "darwin":
-        subprocess.call(["open", dir_path('report') + filename])
-    # except:
-    #     messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
+            f_date = g_date[0]
+            report.write('      Dates: {} through {}\n'
+                         .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n'.format(pay_period))
+
+        i = 1
+        last_list = ""
+        for line in array_var:
+            if last_list != line[2]:
+                report.write('\n\n      {:<20}\n\n'
+                             .format(list_dict[line[2]]))
+                report.write('{:>4}  {:<22} {:>4}\n'.format("", "Carrier Name", "List"))
+                report.write('      ---------------------------  -------------------\n')
+                i = 1
+            if line[1] not in reoccurring_names:
+                report.write('{:>4}  {:<22} {:>4}\n'.format(i, line[1], line[2]))
+            else:
+                report.write('{:>4}  {:<22} {:>4}  effective {:<10}\n'
+                             .format(i, line[1], line[2],
+                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+            if i % 3 == 0:
+                report.write('      ---------------------------  -------------------\n')
+            last_list = line[2]
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def rpt_chg_station(frame, station):
@@ -1559,7 +1586,10 @@ def rpt_find_carriers(frame, station):
     Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
     station_selection = StringVar(wd[3])
     om_station = OptionMenu(wd[3], station_selection, *list_of_stations)
-    om_station.config(width=30, anchor="w")
+    if sys.platform != "darwin":
+        om_station.config(width=30, anchor="w")
+    else:
+        om_station.config(width=30)
     om_station.grid(row=5, column=0, columnspan=2, sticky="w")
     if station == "x":
         station_selection.set("Select a station")
@@ -1609,7 +1639,7 @@ def rpt_find_carriers(frame, station):
     rear_window(wd)
 
 
-def rpt_carrier(carrier_list):  # Generate and display a report of carrier routes and nsday
+def rpt_carrier(frame, carrier_list):  # Generate and display a report of carrier routes and nsday
     unique_names = []  # get a list of unique names
     reoccurring_names = []  # get a list of reoccurring names
     for car in carrier_list:
@@ -1619,47 +1649,47 @@ def rpt_carrier(carrier_list):  # Generate and display a report of carrier route
             reoccurring_names.append(car[1])
     ns_dict = get_custom_nsday()  # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
-    filename = "report_carrier_route" + "_" + stamp + ".txt"
-    # try:
-    report = open(dir_path('report') + filename, "w")
-    report.write("\nCarrier Route and NS Day Report\n\n\n")
-    report.write('   Showing results for:\n')
-    report.write('      Station: {}\n'.format(g_station))
-    if g_range == "day":
-        f_date = d_date
-        report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-    else:
-        f_date = g_date[0]
-        report.write('      Dates: {} through {}\n'
-                     .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
-    report.write('      Pay Period: {}\n\n'.format(pay_period))
-    report.write('{:>4} {:<23} {:<13} {:<29} {:<10}\n'.format("", "Carrier Name", "N/S Day", "Route/s",
-                                                                   "Start Date"))
-    report.write('     ------------------------------------------------------------------- ----------\n')
-    i = 1
-    for line in carrier_list:
-        if line[1] not in reoccurring_names:
-            report.write('{:>4} {:<23} {:<4} {:<8} {:<29}\n'
-                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]], line[4]))
+    filename = "report_carrier_route_nsday" + "_" + stamp + ".txt"
+    try:
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier Route and NS Day Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            report.write('{:>4} {:<23} {:<4} {:<8} {:<29} {:<10}\n'
-                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]], line[4],
-                                 rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
-        if i % 3 == 0:
-            report.write('     ------------------------------------------------------------------- ----------\n')
-        i += 1
-    report.close()
-    if sys.platform == "win32":  # open the text document
-        os.startfile(dir_path('report') + filename)
-    if sys.platform == "linux":
-        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-    if sys.platform == "darwin":
-        subprocess.call(["open", dir_path('report') + filename])
-    # except:
-    #     messagebox.showerror("Report Generator", "The report was not generated.")
+            f_date = g_date[0]
+            report.write('      Dates: {} through {}\n'
+                         .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4} {:<23} {:<13} {:<29} {:<10}\n'.format("", "Carrier Name", "N/S Day", "Route/s",
+                                                                       "Start Date"))
+        report.write('     ------------------------------------------------------------------- ----------\n')
+        i = 1
+        for line in carrier_list:
+            if line[1] not in reoccurring_names:
+                report.write('{:>4} {:<23} {:<4} {:<8} {:<29}\n'
+                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]), line[4]))
+            else:
+                report.write('{:>4} {:<23} {:<4} {:<8} {:<29} {:<10}\n'
+                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]) , line[4],
+                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+            if i % 3 == 0:
+                report.write('     ------------------------------------------------------------------- ----------\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
-def rpt_carrier_route(carrier_list):  # Generate and display a report of carrier routes
+def rpt_carrier_route(frame, carrier_list):  # Generate and display a report of carrier routes
     unique_names = []  # get a list of unique names
     reoccurring_names = []  # get a list of reoccurring names
     for car in carrier_list:
@@ -1710,10 +1740,10 @@ def rpt_carrier_route(carrier_list):  # Generate and display a report of carrier
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
     except:
-        messagebox.showerror("Report Generator", "The report was not generated.")
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
-def rpt_carrier_nsday(carrier_list):  # Generate and display a report of carrier ns day
+def rpt_carrier_nsday(frame, carrier_list):  # Generate and display a report of carrier ns day
     unique_names = []  # get a list of unique names
     reoccurring_names = []  # get a list of reoccurring names
     for car in carrier_list:
@@ -1723,43 +1753,43 @@ def rpt_carrier_nsday(carrier_list):  # Generate and display a report of carrier
             reoccurring_names.append(car[1])
     ns_dict = get_custom_nsday()  # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = "report_carrier_route" + "_" + stamp + ".txt"
-    # try:
-    report = open(dir_path('report') + filename, "w")
-    report.write("\nCarrier Routes NS Day\n\n\n")
-    report.write('   Showing results for:\n')
-    report.write('      Station: {}\n'.format(g_station))
-    if g_range == "day":
-        f_date = d_date
-        report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-    else:
-        f_date = g_date[0]
-        report.write('      Date: {} through {}\n'
-                     .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
-    report.write('      Pay Period: {}\n\n'.format(pay_period))
-    report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
-    report.write('      ----------------------------------------  -------------------\n')
-    i = 1
-    for line in carrier_list:
-        if line[1] not in reoccurring_names:
-            report.write('{:>4}  {:<22} {:<5}{:<12}\n'
-                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]]))
+    filename = "report_carrier_nsday" + "_" + stamp + ".txt"
+    try:
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier NS Day\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(g_station))
+        if g_range == "day":
+            f_date = d_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            report.write('{:>4}  {:<22} {:<5}{:<12}  effective {:<10}\n'
-                         .format(i, line[1], ns_code[line[3]], ns_dict[line[3]],
-                                 rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
-        if i % 3 == 0:
-            report.write('      ----------------------------------------  -------------------\n')
-        i += 1
-    report.close()
-    if sys.platform == "win32":  # open the text document
-        os.startfile(dir_path('report') + filename)
-    if sys.platform == "linux":
-        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-    if sys.platform == "darwin":
-        subprocess.call(["open", dir_path('report') + filename])
-    # except:
-    #     messagebox.showerror("Report Generator", "The report was not generated.")
+            f_date = g_date[0]
+            report.write('      Date: {} through {}\n'
+                         .format(g_date[0].strftime("%m/%d/%Y"),g_date[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
+        report.write('      ----------------------------------------  -------------------\n')
+        i = 1
+        for line in carrier_list:
+            if line[1] not in reoccurring_names:
+                report.write('{:>4}  {:<22} {:<5}{:<12}\n'
+                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]])))
+            else:
+                report.write('{:>4}  {:<22} {:<5}{:<12}  effective {:<10}\n'
+                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]),
+                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+            if i % 3 == 0:
+                report.write('      ----------------------------------------  -------------------\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+    except:
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def rpt_carrier_history(frame, carrier):
@@ -1789,7 +1819,7 @@ def rpt_carrier_history(frame, carrier):
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
-    except OSError:
+    except:
         messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
@@ -1804,15 +1834,17 @@ def clean_rings3_table():  # database maintenance
               % (type, time)
         commit(sql)
         messagebox.showinfo("Clean Rings",
-                            "Rings table has been cleared of NULL values in leave type and leave time columns.")
+                            "Rings table has been cleared of NULL values in leave type and leave time columns.",
+                            parent=root)
     else:
         messagebox.showinfo("Clean Rings",
                             "No NULL values in leave type and leave time columns were found in the Rings3 "
-                            "table of the database. No action taken.")
+                            "table of the database. No action taken.",
+                            parent=root)
     return
 
 
-def overmax_spreadsheet(pre_carrier_list):  # generate the overmax spreadsheet
+def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spreadsheet
     carrier_list = [] # remove any duplicate multiple occurances of the same carrier
     unique_name = []
     for pre in pre_carrier_list:
@@ -2886,12 +2918,15 @@ def overmax_spreadsheet(pre_carrier_list):  # generate the overmax spreadsheet
     violations.row_dimensions[i + 1].height = 10  # adjust all row height
     # name the excel file
     xl_filename = "kb_om" + str(format(g_date[0], "_%y_%m_%d")) + ".xlsx"
-    ok = messagebox.askokcancel("Spreadsheet generator", "Do you want to generate a spreadsheet?")
-    if ok:
+    if messagebox.askokcancel("Spreadsheet generator",
+                              "Do you want to generate a spreadsheet?",
+                              parent=frame):
         try:
             wb.save(dir_path('over_max_spreadsheet') + xl_filename)
-            messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
-                                                         "File is named: {}".format(xl_filename))
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=frame)
             if sys.platform == "win32":  # open the text document
                 os.startfile(dir_path('over_max_spreadsheet') + xl_filename)
             if sys.platform == "linux":
@@ -2899,10 +2934,12 @@ def overmax_spreadsheet(pre_carrier_list):  # generate the overmax spreadsheet
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('over_max_spreadsheet') + xl_filename])
         except:
-            messagebox.showerror("Spreadsheet generator", "The spreadsheet was not generated. \n"
-                                                          "Suggestion: "
-                                                          "Make sure that identically named spreadsheets are closed "
-                                                          "(the file can't be overwritten while open).")
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not generated. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=frame)
 
 
 def ns_config_apply(frame, text_array, color_array):
@@ -2910,11 +2947,13 @@ def ns_config_apply(frame, text_array, color_array):
     for t in text_array:
         if len(t.get()) > 6:
             messagebox.showerror("Non_Scheduled Day Configuration",
-                                 "Names must not be longer than 6 characters.")
+                                 "Names must not be longer than 6 characters.",
+                                 parent=frame)
             return
         if len(t.get()) < 1:
             messagebox.showerror("Non_Scheduled Day Configuration",
-                                 "Names must not be shorter than 1 character.")
+                                 "Names must not be shorter than 1 character.",
+                                 parent=frame)
             return
     colors = ("yellow", "blue", "green", "brown", "red", "black")
     for i in range(6):
@@ -2939,7 +2978,8 @@ def ns_config_reset(frame):  # reset ns day configurations from Non-Scheduled Da
 def ns_config(frame):  # generate Non-Scheduled Day Configurations page to configure ns day settings
     if gs_day == "x":
         messagebox.showerror("Non-Scheduled Day Configurations",
-                             "You must set the Investigation Range before changing the NS Day Configurations.")
+                             "You must set the Investigation Range before changing the NS Day Configurations.",
+                             parent=frame)
         return
     sql = "SELECT * FROM ns_configuration"
     result = inquire(sql)
@@ -3051,20 +3091,26 @@ def get_new_path(new_path):  # Created for pdf splitter - creates/overwrites a p
 
 
 # check for empty fields / return if there are any errors
-def pdf_splitter_apply(subject_path, firstpage, lastpage, new_path):
+def pdf_splitter_apply(frame, subject_path, firstpage, lastpage, new_path):
     if subject_path == "":
-        messagebox.showerror("Klusterbox PDF Splitter", "You must select a pdf file to split.")
+        messagebox.showerror("Klusterbox PDF Splitter",
+                             "You must select a pdf file to split.",
+                             parent=frame)
         return
     if new_path == "":
-        messagebox.showerror("Klusterbox PDF Splitter", "You must designate a destination"
-                                                        " and a name for the df file you are creating.")
+        messagebox.showerror("Klusterbox PDF Splitter",
+                             "You must designate a destination"
+                             " and a name for the df file you are creating.",
+                             parent=frame)
         return
     # if the last characters are not .pdf then add the extension
     if new_path[-4:] != ".pdf":
         new_path = new_path + ".pdf"
     if firstpage > lastpage:
-        messagebox.showerror("Klusterbox PDF Splitter", "The First Page of the document can not be "
-                                                        "higher than the Last Page.")
+        messagebox.showerror("Klusterbox PDF Splitter",
+                             "The First Page of the document can not be "
+                             "higher than the Last Page.",
+                             parent=frame)
         return
     try:
         pdf = PdfFileReader(subject_path, "rb")
@@ -3075,7 +3121,8 @@ def pdf_splitter_apply(subject_path, firstpage, lastpage, new_path):
             pdf_writer.write(out)
         if messagebox.askokcancel("Klusterbox PDF Splitter",
                                   "PDF file has been split sucessfully."
-                                  "Do you want to open the pdf file?"):
+                                  "Do you want to open the pdf file?",
+                                  parent=frame):
             if sys.platform == "win32":
                 os.startfile(new_path)
             if sys.platform == "linux":
@@ -3089,7 +3136,8 @@ def pdf_splitter_apply(subject_path, firstpage, lastpage, new_path):
                              "or \n"
                              "the pdf can't be split by this program due to formatting issues. \n"
                              "For better results try www.sodapdf.com, google chrome or Adobe Acrobat "
-                             "Pro DC")
+                             "Pro DC",
+                             parent=frame)
 
 
 def pdf_splitter(frame):  # PDF Splitter
@@ -3100,7 +3148,7 @@ def pdf_splitter(frame):  # PDF Splitter
     Label(wd[3], text="Select pdf file you want to split:") \
         .grid(row=3, column=1, columnspan=4, sticky="w")
     subject_path = StringVar(wd[3])
-    Entry(wd[3], textvariable=subject_path, width=95).grid(row=4, column=1, columnspan=4)
+    Entry(wd[3], textvariable=subject_path, width=macadj(95,50)).grid(row=4, column=1, columnspan=4)
     Button(wd[3], text="Select", width="10", command=lambda: get_file_path(subject_path)) \
         .grid(row=5, column=1, sticky="w")
     Label(wd[3], text="").grid(row=6)
@@ -3118,18 +3166,21 @@ def pdf_splitter(frame):  # PDF Splitter
     Label(wd[3], text="Select pdf file you want to over write or a create a new file:") \
         .grid(row=11, column=1, columnspan=4, sticky="w")
     new_path = StringVar(wd[3])
-    Entry(wd[3], textvariable=new_path, width=95) \
+    Entry(wd[3], textvariable=new_path, width=macadj(95,50)) \
         .grid(row=12, column=1, columnspan=4, sticky="w")
     Button(wd[3], text="Select", width="10", command=lambda: get_new_path(new_path)) \
         .grid(row=13, column=1, sticky="w")
     Label(wd[3], text="").grid(row=14)
     Label(wd[3], text="If all fields are filled out, split the file.") \
         .grid(row=15, column=1, columnspan=3, sticky="w")
-    Button(wd[3], text="Split PDF", width="10", command=lambda: pdf_splitter_apply(
-        subject_path.get().strip(),
-        firstpage.get(),
-        lastpage.get(),
-        new_path.get().strip())).grid(row=15, column=4, sticky="e")
+    Button(wd[3], text="Split PDF", width="10",
+           command=lambda: pdf_splitter_apply(
+               wd[0],
+               subject_path.get().strip(),
+               firstpage.get(),
+               lastpage.get(),
+               new_path.get().strip()))\
+        .grid(row=15, column=4, sticky="e")
     Button(wd[4], text="Go Back", width=20, anchor="w",
            command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
     rear_window(wd)
@@ -3204,7 +3255,7 @@ def pdf_converter_pagecount(filepath):  # gives a page count for pdf_to_text
     return page_count
 
 
-def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfminer
+def pdf_to_text(frame, filepath):  # Called by pdf_converter() to read pdfs with pdfminer
     codec = 'utf-8'
     password = ""
     maxpages = 0
@@ -3276,7 +3327,8 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
             if i < 1:
                 result = messagebox.askokcancel("Klusterbox PDF Converter",
                                                 "PDF Conversion has failed and will not generate a file.  \n\n"
-                                                "We will try again.")
+                                                "We will try again.",
+                                                parent=frame)
                 if not result:
                     return text
             else:
@@ -3284,7 +3336,8 @@ def pdf_to_text(filepath):  # Called by pdf_converter() to read pdfs with pdfmin
                                      "PDF Conversion has failed and will not generate a file.  \n\n"
                                      "You will either have to obtain the Employee Everything Report "
                                      "in the csv format from management or manually enter in the "
-                                     "information")
+                                     "information",
+                                     parent=frame)
 
     return text
 
@@ -3315,7 +3368,7 @@ def pdf_converter_short_name(file_path):
     return file_name_xten
 
 
-def pdf_converter():
+def pdf_converter(frame):
     # inquire as to if the pdf converter reports have been opted for by the user
     sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
     result = inquire(sql)
@@ -3330,7 +3383,8 @@ def pdf_converter():
     allow_txt_reader = result[0][0]
     if allow_txt_reader == "on":
         preference = messagebox.askyesno("PDF Converter",
-                                         "Did you want to read from a text file of data output by pdfminer?")
+                                         "Did you want to read from a text file of data output by pdfminer?",
+                                         parent=frame)
     else:
         preference = False
     if not preference:  # user opts to read from pdf file
@@ -3344,15 +3398,17 @@ def pdf_converter():
             proceed = messagebox.askokcancel("Possible File Name Discrepancy",
                                              "There is already a file named {}. "
                                              "If you proceed, the file will be overwritten. "
-                                             "Did you want to proceed?".format(short_file_name))
+                                             "Did you want to proceed?".format(short_file_name),
+                                             parent=frame)
             if not proceed:
                 return
         # warn user that the process can take several minutes
         proceed = messagebox.askokcancel("PDF Converter", "This process will take several minutes. "
-                                                          "Did you want to proceed?")
+                                                          "Did you want to proceed?",
+                                                          parent=frame)
         if not proceed:
             return
-        text = pdf_to_text(file_path)  # read the pdf with pdfminer
+        text = pdf_to_text(frame, file_path)  # read the pdf with pdfminer
     else:  # user opts to read from text file
         path = dir_filedialog()
         file_path = filedialog.askopenfilename(initialdir=path,
@@ -3361,11 +3417,11 @@ def pdf_converter():
         short_file_name = pdf_converter_short_name(new_file_path)
         # if the file path already exist - ask for confirmation
         if os.path.exists(new_file_path):
-            proceed = messagebox.askokcancel(
+            if not messagebox.askokcancel(
                 "Possible File Name Discrepancy",
                 "There is already a file named {}. If you proceed, the file will be overwritten. "
-                "Did you want to proceed?".format(short_file_name))
-            if not proceed:
+                "Did you want to proceed?".format(short_file_name),
+                 parent=frame):
                 return
         gen_raw_report = "off"  # since you are reading a raw report, turn off the generator
         with open(file_path, 'r') as file:  # read the txt file and put it in the text variable
@@ -3478,7 +3534,8 @@ def pdf_converter():
     except:
         messagebox.showerror("Klusterbox PDF Converter",
                              "This file does not appear to be an Employee Everything Report. \n\n"
-                             "The PDF Converter will not generate a file")
+                             "The PDF Converter will not generate a file",
+                             parent=frame)
         os.remove(new_file_path)
         if gen_error_report == "on":
             kbpc_rpt.close()
@@ -4190,37 +4247,50 @@ def pdf_converter():
         failed_daily = ""
         for f in failed:
             failed_daily = failed_daily + " \n " + f
-        messagebox.showerror("Klusterbox PDF Converter", "Errors have occured for the following carriers {}."
-                             .format(failed_daily))
+        messagebox.showerror("Klusterbox PDF Converter",
+                             "Errors have occured for the following carriers {}."
+                             .format(failed_daily),
+                             parent=frame)
     # create messagebox for completion
-    messagebox.showinfo("Klusterbox PDF Converter", "The PDF Convertion is complete. "
-                                                    "The file name is {}. ".format(short_file_name))
+    messagebox.showinfo("Klusterbox PDF Converter",
+                        "The PDF Convertion is complete. "
+                        "The file name is {}. ".format(short_file_name),
+                        parent=frame)
 
 
 def informalc_grvchange(frame, passed_result, old_num, new_num):
     l_passed_result = [list(x) for x in passed_result]  # chg tuple of tuples to list of lists
-    ok = messagebox.askokcancel("Grievance Number Change",
+    if messagebox.askokcancel("Grievance Number Change",
                                 "This will change the grievance number from {} to {} in all "
-                                "records. Are you sure you want to proceed?".format(old_num, new_num.get()))
-    if ok:
+                                "records. Are you sure you want to proceed?".format(old_num, new_num.get()),
+                                parent=frame):
         if new_num.get().strip() == "":
-            messagebox.showerror("Invalid Data Entry", "You must enter a grievance number")
+            messagebox.showerror("Invalid Data Entry",
+                                 "You must enter a grievance number",
+                                 parent=frame)
             return "fail"
         if not new_num.get().isalnum():
             messagebox.showerror("Invalid Data Entry",
                                  "The grievance number can only contain numbers and letters. No other "
-                                 "characters are allowed")
+                                 "characters are allowed",
+                                 parent=frame)
             return "fail"
         if len(new_num.get()) < 8:
-            messagebox.showerror("Invalid Data Entry", "The grievance number must be at least eight characters long")
+            messagebox.showerror("Invalid Data Entry",
+                                 "The grievance number must be at least eight characters long",
+                                 parent=frame)
             return "fail"
         if len(new_num.get()) > 16:
-            messagebox.showerror("Invalid Data Entry", "The grievance number must not exceed 16 characters in lenght.")
+            messagebox.showerror("Invalid Data Entry",
+                                 "The grievance number must not exceed 16 characters in length.",
+                                 parent=frame)
             return "fail"
         sql = "SELECT grv_no FROM informalc_grv WHERE grv_no = '%s'" % new_num.get().lower()
         result = inquire(sql)
         if result:
-            messagebox.showerror("Grievance Number Error", "This number is already being used for another grievance.")
+            messagebox.showerror("Grievance Number Error",
+                                 "This number is already being used for another grievance.",
+                                 parent=frame)
             return "fail"
 
         sql = "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_num.get().lower(), old_num)
@@ -4236,7 +4306,7 @@ def informalc_grvchange(frame, passed_result, old_num, new_num):
 
 def informalc_edit_apply(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, docs,
                          description, lvl):
-    check = informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number, description)
+    check = informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats_number, description)
     if check == "fail":
         return
     dates = [incident_start, incident_end, date_signed]
@@ -4251,24 +4321,32 @@ def informalc_edit_apply(frame, grv_no, incident_start, incident_end, date_signe
         dt_dates[i] = new_date
         i += 1
     if dt_dates[0] > dt_dates[1]:
-        messagebox.showerror("Data Entry Error", "The Incident Start Date can not be later that the Incident End "
-                                                 "Date.")
+        messagebox.showerror("Data Entry Error",
+                             "The Incident Start Date can not be later that the Incident End "
+                             "Date.",
+                             parent=frame)
         return
     if dt_dates[0] > dt_dates[2]:
-        messagebox.showerror("Data Entry Error", "The Incident Start Date can not be later that the Date Signed.")
+        messagebox.showerror("Data Entry Error",
+                             "The Incident Start Date can not be later that the Date Signed.",
+                             parent=frame)
         return
     sql = "UPDATE informalc_grv SET indate_start='%s',indate_end='%s',date_signed='%s',station='%s',gats_number='%s'," \
           "docs='%s',description='%s', level='%s' WHERE grv_no='%s'" \
           % (dt_dates[0], dt_dates[1], dt_dates[2], station.get(), gats_number.get().strip(), docs.get(),
              description.get(), lvl.get(), grv_no.get())
     commit(sql)
-    messagebox.showerror("Sucessful Update", "Grievance number: {} succesfully updated.".format(grv_no.get()))
+    messagebox.showerror("Sucessful Update",
+                         "Grievance number: {} succesfully updated.".format(grv_no.get()),
+                         frame)
     informalc_grvlist(frame)
 
 
 def informalc_delete(frame, grv_no):
-    check = messagebox.askokcancel("Delete Grievance", "Are you sure you want to delete his grievance and all the "
-                                                       "data associated with it?")
+    check = messagebox.askokcancel("Delete Grievance",
+                                   "Are you sure you want to delete his grievance and all the "
+                                   "data associated with it?",
+                                   parent=frame)
     if not check:
         return
     else:
@@ -4385,29 +4463,38 @@ def informalc_edit(frame, result, grv_num, msg):
     rear_window(wd)
 
 
-def informalc_check_grv(grv_no, incident_start, incident_end, date_signed, station, gats_number, description):
+def informalc_check_grv(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, description):
     if station.get() == "Select a Station":
-        messagebox.showerror("Invalid Data Entry", "You must select a station.")
+        messagebox.showerror("Invalid Data Entry",
+                             "You must select a station.",
+                             parent=frame)
         return "fail"
     if grv_no.get().strip() == "":
-        messagebox.showerror("Invalid Data Entry", "You must enter a grievance number")
+        messagebox.showerror("Invalid Data Entry",
+                             "You must enter a grievance number",
+                             parent=frame)
         return "fail"
     if re.search('[^1234567890abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ,]', grv_no.get()):
         messagebox.showerror("Invalid Data Entry",
                              "The grievance number can only contain numbers and letters. No other "
-                             "characters are allowed")
+                             "characters are allowed",
+                             parent=frame)
         return "fail"
     if len(grv_no.get()) < 8:
-        messagebox.showerror("Invalid Data Entry", "The grievance number must be at least eight characters long")
+        messagebox.showerror("Invalid Data Entry",
+                             "The grievance number must be at least eight characters long",
+                             parent=frame)
         return "fail"
     if len(grv_no.get()) > 20:
-        messagebox.showerror("Invalid Data Entry", "The grievance number must not exceed 20 characters in length.")
+        messagebox.showerror("Invalid Data Entry",
+                             "The grievance number must not exceed 20 characters in length.",
+                             parent=frame)
         return "fail"
-    check = informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number, description)
+    check = informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats_number, description)
     return check
 
 
-def informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number, description):
+def informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats_number, description):
     dates = [incident_start, incident_end, date_signed]
     date_ids = ("starting incident date", "ending incident date", "date signed")
     i = 0
@@ -4415,24 +4502,33 @@ def informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number
         d = date.get().split("/")
         if len(d) != 3:
             messagebox.showerror("Invalid Data Entry",
-                                 "The date for the {} is not properly formatted.".format(date_ids[i]))
+                                 "The date for the {} is not properly formatted.".format(date_ids[i]),
+                                 parent=frame)
             return "fail"
         for num in d:
             if not num.isnumeric():
-                messagebox.showerror("Invalid Data Entry", "The month, day and year for the {} "
-                                                           "must be numeric.".format(date_ids[i]))
+                messagebox.showerror("Invalid Data Entry",
+                                     "The month, day and year for the {} "
+                                     "must be numeric.".format(date_ids[i]),
+                                     parent=frame)
                 return "fail"
         if len(d[0]) > 2:
-            messagebox.showerror("Invalid Data Entry", "The month for the {} must be no more than two digits"
-                                                       " long.".format(date_ids[i]))
+            messagebox.showerror("Invalid Data Entry",
+                                 "The month for the {} must be no more than two digits"
+                                 " long.".format(date_ids[i]),
+                                 parent=frame)
             return "fail"
         if len(d[1]) > 2:
-            messagebox.showerror("Invalid Data Entry", "The day for the {} must be no more than two digits"
-                                                       " long.".format(date_ids[i]))
+            messagebox.showerror("Invalid Data Entry",
+                                 "The day for the {} must be no more than two digits"
+                                 " long.".format(date_ids[i]),
+                                 parent=frame)
             return "fail"
         if len(d[2]) != 4:
-            messagebox.showerror("Invalid Data Entry", "The year for the {} must be four digits long."
-                                 .format(date_ids[i]))
+            messagebox.showerror("Invalid Data Entry",
+                                 "The year for the {} must be four digits long."
+                                 .format(date_ids[i]),
+                                 parent=frame)
             return "fail"
         try:
             date = datetime(int(d[2]), int(d[0]), int(d[1]))
@@ -4440,32 +4536,42 @@ def informalc_check_grv_2(incident_start, incident_end, date_signed, gats_number
         except ValueError:
             valid_date = False
         if not valid_date:
-            messagebox.showerror("Invalid Data Entry", "The date entered for {} is not a valid date."
-                                 .format(date_ids[i]))
+            messagebox.showerror("Invalid Data Entry",
+                                 "The date entered for {} is not a valid date."
+                                 .format(date_ids[i]),
+                                 parent=frame)
             return "fail"
         i += 1
     if len(gats_number.get()) > 50:
-        messagebox.showerror("Invalid Data Entry", "The GATS number is limited to no more than 20 characters. ")
+        messagebox.showerror("Invalid Data Entry",
+                             "The GATS number is limited to no more than 20 characters. ",
+                             parent=frame)
         return "fail"
     if gats_number.get().strip() != "":
         if not all(x.isalnum() or x.isspace() for x in gats_number.get()):
-            messagebox.showerror("Invalid Data Entry", "The GATS number can only contain letters and numbers. No "
-                                                       "special characters are allowed.")
+            messagebox.showerror("Invalid Data Entry",
+                                 "The GATS number can only contain letters and numbers. No "
+                                 "special characters are allowed.",
+                                 parent=frame)
             return "fail"
     if description.get().strip() != "":
         if not all(x.isalnum() or x.isspace() for x in description.get()):
-            messagebox.showerror("Invalid Data Entry", "The Description can only contain letters and numbers. No "
-                                                       "special characters are allowed.")
+            messagebox.showerror("Invalid Data Entry",
+                                 "The Description can only contain letters and numbers. No "
+                                 "special characters are allowed.",
+                                 parent=frame)
             return "fail"
         if len(description.get()) > 40:
-            messagebox.showerror("Invalid Data Entry", "The Description is limited to no more than 40 characters. ")
+            messagebox.showerror("Invalid Data Entry",
+                                 "The Description is limited to no more than 40 characters. ",
+                                 parent=frame)
             return "fail"
     return "pass"
 
 
 def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, docs,
                         description, lvl):
-    check = informalc_check_grv(grv_no, incident_start, incident_end, date_signed, station, gats_number, description)
+    check = informalc_check_grv(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, description)
     if check == "pass":
         dates = [incident_start, incident_end, date_signed]
         in_start = datetime(1, 1, 1)
@@ -4479,11 +4585,15 @@ def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed
             dt_dates[i] = new_date
             i += 1
         if dt_dates[0] > dt_dates[1]:
-            messagebox.showerror("Data Entry Error", "The Incident Start Date can not be later that the Incident End "
-                                                     "Date.")
+            messagebox.showerror("Data Entry Error",
+                                 "The Incident Start Date can not be later that the Incident End "
+                                "Date.",
+                                 parent=frame)
             return
         if dt_dates[0] > dt_dates[2]:
-            messagebox.showerror("Data Entry Error", "The Incident Start Date can not be later that the Date Signed.")
+            messagebox.showerror("Data Entry Error",
+                                 "The Incident Start Date can not be later that the Date Signed.",
+                                 parent=frame)
             return
         sql = "SELECT grv_no FROM informalc_grv"
         results = inquire(sql)
@@ -4494,7 +4604,8 @@ def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed
         if grv_no.get() in existing_grv:
             messagebox.showerror("Data Entry Error",
                                  "The Grievance Number {} is already present in the database. You can not "
-                                 "create a duplicate.".format(grv_no.get()))
+                                 "create a duplicate.".format(grv_no.get()),
+                                 parent=frame)
             return
         sql = "INSERT INTO informalc_grv (grv_no, indate_start, indate_end, date_signed, station, gats_number, docs," \
               "description, level) VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s')" \
@@ -4975,7 +5086,7 @@ def informalc_bycarriers(frame, result):
         messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
-def informalc_apply_bycarrier(result, names, cursor):
+def informalc_apply_bycarrier(frame, result, names, cursor):
     if len(cursor) == 0:
         return
     unique_grv = []  # get a list of all grv numbers in search range
@@ -5004,7 +5115,6 @@ def informalc_apply_bycarrier(result, names, cursor):
                 for q in query:
                     q = list(q)
                     results.append(q)
-
         if len(results) == 0:
             report.write("    There are no awards on record for this carrier.\n")
         total_adj = 0
@@ -5047,7 +5157,7 @@ def informalc_apply_bycarrier(result, names, cursor):
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
     except:
-        messagebox.showerror("Report Generator", "The report was not generated.")
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def informalc_bycarrier(frame, result):
@@ -5066,7 +5176,8 @@ def informalc_bycarrier(frame, result):
     Button(wd[4], text="Go Back", width=20,
            command=lambda: informalc_grvlist_result(wd[0], result)).pack(side=LEFT)
     Button(wd[4], text="Report", width=20,
-           command=lambda: informalc_apply_bycarrier(result, unique_carrier, listbox.curselection())).pack(side=LEFT)
+           command=lambda: informalc_apply_bycarrier
+           (frame, result, unique_carrier, listbox.curselection())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -5086,7 +5197,7 @@ def informalc_uniquecarrier(result):
     return unique_carrier
 
 
-def informalc_rptbygrv(grv_info):
+def informalc_rptbygrv(frame, grv_info):
     grv_info = list(grv_info)  # correct for legacy problem of NULL Settlement Levels
     if grv_info[8] is None:
         grv_info[8] = "unknown"
@@ -5161,7 +5272,7 @@ def informalc_rptbygrv(grv_info):
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
     except:
-        messagebox.showerror("Report Generator", "The report was not generated.")
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def informalc_grvlist_setsum(result):
@@ -5258,7 +5369,7 @@ def informalc_grvlist_result(frame, result):
                command=lambda x=r[0]: informalc_edit(wd[0], result, x, '')) \
             .grid(row=row, column=5)
         Button(wd[3], text="Report", width=macadj(6, 5), relief=RIDGE,
-               command=lambda x=r: informalc_rptbygrv(x)).grid(row=row, column=6)
+               command=lambda x=r: informalc_rptbygrv(wd[0], x)).grid(row=row, column=6)
         Button(wd[3], text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE,
                command=lambda x=r[0]: informalc_addaward(wd[0], result, x)).grid(row=row, column=7)
         row += 1
@@ -5345,8 +5456,10 @@ def informalc_grvlist_apply(frame,
         d = incident_end.get().split("/")
         end = datetime(int(d[2]), int(d[0]), int(d[1]))
         if start > end:
-            messagebox.showerror("Invalid Data Entry", "Your starting incident date must be earlier than your "
-                                                       "ending incident date.")
+            messagebox.showerror("Invalid Data Entry",
+                                 "Your starting incident date must be earlier than your "
+                                 "ending incident date.",
+                                 parent=frame)
             return
         to_add = "indate_start > '{}' and indate_end < '{}'".format(start, end)
         conditions.append(to_add)
@@ -5362,13 +5475,17 @@ def informalc_grvlist_apply(frame,
         d = signing_end.get().split("/")
         end = datetime(int(d[2]), int(d[0]), int(d[1]))
         if start > end:
-            messagebox.showerror("Invalid Data Entry", "Your starting signing date must be earlier than your "
-                                                       "ending signing date.")
+            messagebox.showerror("Invalid Data Entry",
+                                 "Your starting signing date must be earlier than your "
+                                 "ending signing date.",
+                                 parent=frame)
             return
         to_add = "date_signed BETWEEN '{}' AND '{}'".format(start, end)
         conditions.append(to_add)
     if station.get() == "Select a Station":
-        messagebox.showerror("Invalid Station", "You must select a station.")
+        messagebox.showerror("Invalid Station",
+                             "You must select a station.",
+                             parent=frame)
         return
     to_add = "station = '{}'".format(station.get())
     conditions.append(to_add)
@@ -5587,20 +5704,30 @@ def informalc_new(frame, msg):
 
 def informalc_poe_apply_search(frame, year, station, backdate):
     if year.get().strip() == "":
-        messagebox.showerror("Data Entry Error", "You must enter a year.")
+        messagebox.showerror("Data Entry Error",
+                             "You must enter a year.",
+                             parent=frame)
         return
     if "." in year.get():
-        messagebox.showerror("Data Entry Error", "The year can not contain decimal points.")
+        messagebox.showerror("Data Entry Error",
+                             "The year can not contain decimal points.",
+                             parent=frame)
         return
     if not year.get().isnumeric():
-        messagebox.showerror("Data Entry Error", "The year must numeric without any letters or special characters.")
+        messagebox.showerror("Data Entry Error",
+                             "The year must numeric without any letters or special characters.",
+                             parent=frame)
         return
     if float(year.get()) > 9999 or float(year.get()) < 2:
-        messagebox.showerror("Data Entry Error", "The year must be between the year 2 and 9999.\nI think I'm being "
-                                                 "reasonable.")
+        messagebox.showerror("Data Entry Error",
+                             "The year must be between the year 2 and 9999.\nI think I'm being "
+                             "reasonable.",
+                             parent=frame)
         return
     if station.get() == "undefined":
-        messagebox.showerror("Data Entry Error", "You must select a station.")
+        messagebox.showerror("Data Entry Error",
+                             "You must select a station.",
+                             parent=frame)
         return
     weeks = int(backdate.get()) * 52
     dt_year = datetime(int(year.get()), int(1), int(1))
@@ -5615,7 +5742,9 @@ def informalc_poe_apply_search(frame, year, station, backdate):
 
 def informalc_poe_apply_add(frame, name, year, buttons):
     if name == "none":
-        messagebox.showerror("Data Entry Error", "You must select a name.")
+        messagebox.showerror("Data Entry Error",
+                             "You must select a name.",
+                             parent=frame)
         return
     for i in range(len(poe_add_pay_periods)):
         pp = poe_add_pay_periods[i].get().strip()
@@ -5937,10 +6066,14 @@ def informalc_por_all(frame, afterdate, beforedate, station, backdate):
     start = informalc_date_converter(afterdate)
     end = informalc_date_converter(beforedate)
     if start > end:
-        messagebox.showerror("Data Entry Error", "The After Date can not be earlier than the Before Date")
+        messagebox.showerror("Data Entry Error",
+                             "The After Date can not be earlier than the Before Date",
+                             parent=frame)
         return
     if station.get() == "undefined":
-        messagebox.showerror("Data Entry Error", "You must select a station. ")
+        messagebox.showerror("Data Entry Error",
+                             "You must select a station. ",
+                             parent=frame)
         return
     weeks = int(backdate.get()) * 52
     clist_start = start - timedelta(weeks=weeks)
@@ -6140,7 +6273,9 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
     sql = "SELECT kb_station FROM station_index WHERE tacs_station = '%s'" % tacs_station
     station = inquire(sql)  # check to see if station has match in station index
     if not station:
-        messagebox.showwarning("Error", "This station has not been matched with Auto Data Entry.")
+        messagebox.showwarning("Error",
+                               "This station has not been matched with Auto Data Entry.",
+                               parent=frame)
         return
     set_globals(s_year, s_mo, s_day, t_range, station[0][0], "None")  # set the investigation range
     # get the otdl list from the carriers table
@@ -6436,12 +6571,16 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                 oi += 1
         # name the excel file
         xl_filename = "kb_wa" + str(format(g_date[0], "_%y_%m_%d")) + ".xlsx"
-        ok = messagebox.askokcancel("Spreadsheet generator", "Do you want to generate a spreadsheet?")
+        ok = messagebox.askokcancel("Spreadsheet generator",
+                                    "Do you want to generate a spreadsheet?",
+                                    parent=frame)
         if ok:
             try:
                 wb.save(dir_path('weekly_availability') + xl_filename)
-                messagebox.showinfo("Spreadsheet generator", "Your spreadsheet was successfully generated. \n"
-                                                             "File is named: {}".format(xl_filename))
+                messagebox.showinfo("Spreadsheet generator",
+                                    "Your spreadsheet was successfully generated. \n"
+                                    "File is named: {}".format(xl_filename),
+                                    parent=frame)
                 if sys.platform == "win32":
                     os.startfile(dir_path('weekly_availability') + xl_filename)
                 if sys.platform == "linux":
@@ -6909,10 +7048,14 @@ def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station
     global list_of_stations
     station_new = station_new.strip()
     if station_sorter == "select matching station":
-        messagebox.showerror("Data Entry Error", "You must select a station or ADD STATION", parent=frame)
+        messagebox.showerror("Data Entry Error",
+                             "You must select a station or ADD STATION",
+                             parent=frame)
         return
     elif station_sorter == "ADD STATION" and station_new == "":
-        messagebox.showerror("Data Entry Error", "You must provide a name for the new station.", parent=frame)
+        messagebox.showerror("Data Entry Error",
+                             "You must provide a name for the new station.",
+                             parent=frame)
         return
     elif station_sorter == "ADD STATION" and station_new != "":
         if station_new not in list_of_stations:
@@ -7491,7 +7634,7 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
           , justify=LEFT).grid(row=1, column=0, sticky="w", columnspan=6)
     y = 2  # count for the row
     Label(ff, text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
-    Label(ff, text="List Status", fg="Grey").grid(row=y, column=1, sticky="w")
+    Label(ff, text=macadj("List Status","List"), fg="Grey").grid(row=y, column=1, sticky="w")
     Label(ff, text="NS Day", fg="Grey").grid(row=y, column=2, sticky="w")
     Label(ff, text="Route_s", fg="Grey").grid(row=y, column=3, sticky="w")
     Label(ff, text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
@@ -7506,7 +7649,7 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     for name in to_addname:
         Label(ff, text=name[1] + ", " + name[2], fg=color).grid(row=y, column=0, sticky="w")
         carrier_name.append(str(name[1] + ", " + name[2]))
-        Label(ff, text="not in record", fg=color).grid(row=y, column=1, sticky="w")
+        Label(ff, text=macadj("not in record","unknown"), fg=color).grid(row=y, column=1, sticky="w")
         Label(ff, text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
         Label(ff, text=name[3], fg=color).grid(row=y, column=3, sticky="w")
         Label(ff, text=g_station, fg=color).grid(row=y, column=4, sticky="w")
@@ -7521,12 +7664,12 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         l_s.append(StringVar(ff))
         l_s[i].set(list_options[lx])  # set the list status
         list_status = OptionMenu(ff, l_s[i], *list_options)
-        list_status.config(width=5)
+        list_status.config(width=macadj(5,4))
         list_status.grid(row=y, column=1, sticky="w")
         l_ns.append(StringVar(ff))  # create optionmenu for ns days
         l_ns[i].set(full_ns_dict[str(ns_dict[name[0]])])  # set ns day default
         ns_day = OptionMenu(ff, l_ns[i], *opt_nsday)
-        ns_day.config(width=12)
+        ns_day.config(width=macadj(12,10))
         ns_day.grid(row=y, column=2, sticky="w")
         route.append(StringVar(ff))  # create entry field for route
         Entry(ff, width=24, textvariable=route[i]).grid(row=y, column=3, sticky="w")  # create entry for routes
@@ -7633,10 +7776,10 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     wd = front_window("none")  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     header = Frame(wd[3])
     header.grid(row=0, columnspan=6, sticky="w")
-    Label(header, text="Discrepancy Resolution Screen", font="bold,", pady=10) \
+    Label(header, text="Discrepancy Resolution Screen", font=macadj("bold", "Helvetica 18"), pady=10) \
         .grid(row=0, sticky="w")
     Label(header, text=
-    "Correct any discrepancies and inconsistancies that exist between the incoming TACS data (in blue) \n"
+    "Correct any discrepancies and inconsistencies that exist between the incoming TACS data (in blue) \n"
     "and the information currently recorded in the Klusterbox database (below in the entry fields and \n"
     "option menus)to reflect the carrier's status acurately. This will update the Klusterbox database. \n"
     "Routes must 4  or 5 digits long. In cases where there are multiple routes, the routes must be \n"
@@ -7646,7 +7789,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
         .grid(row=1, sticky="w")
     y = 1  # count for the row
     Label(wd[3], text="    ", fg="Grey").grid(row=y, column=0, sticky="w")
-    Label(wd[3], text="List Status", fg="Grey").grid(row=y, column=1, sticky="w")
+    Label(wd[3], text=macadj("List Status","List"), fg="Grey").grid(row=y, column=1, sticky="w")
     Label(wd[3], text="NS Day", fg="Grey").grid(row=y, column=2, sticky="w")
     Label(wd[3], text="Route_s", fg="Grey").grid(row=y, column=3, sticky="w")
     Label(wd[3], text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
@@ -7714,7 +7857,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     Label(name_f, text=" / " + k_name[1]).grid(row=0, column=2, sticky="w")
                     y += 1
                     Label(wd[3], text="    ", fg=color).grid(row=y, column=0, sticky="w")
-                    Label(wd[3], text="not in record", fg=color).grid(row=y, column=1, sticky="w")
+                    Label(wd[3], text=macadj("not in record","unknown"), fg=color).grid(row=y, column=1, sticky="w")
                     Label(wd[3], text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
                     Label(wd[3], text=name[3], fg=color).grid(row=y, column=3, sticky="w")
                     Label(wd[3], text=g_station, fg=color).grid(row=y, column=4, sticky="w")
@@ -7724,12 +7867,12 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     l_s.append(StringVar(wd[3]))
                     l_s[i].set(k_name[2])  # set the list status
                     list_status = OptionMenu(wd[3], l_s[i], *list_options)
-                    list_status.config(width=6)
+                    list_status.config(width=macadj(6,4))
                     list_status.grid(row=y, column=1, sticky="w")
                     l_ns.append(StringVar(wd[3]))  # create optionmenu for ns days
                     l_ns[i].set(ns_opt_dict[k_name[3]])  # set ns day default
                     ns_day = OptionMenu(wd[3], l_ns[i], *opt_nsday)
-                    ns_day.config(width=12)
+                    ns_day.config(width=macadj(12,8))
                     ns_day.grid(row=y, column=2, sticky="w")
                     e_route.append(StringVar(wd[3]))  # create entry field for route
                     Entry(wd[3], width=25, textvariable=e_route[i]) \
@@ -7738,7 +7881,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     l_station.append(StringVar(wd[3]))
                     l_station[i].set(k_name[5])
                     list_station = OptionMenu(wd[3], l_station[i], *list_of_stations)
-                    list_station.config(width=25)
+                    list_station.config(width=macadj(25,18))
                     list_station.grid(row=y, column=4, sticky="w")
                     y += 1
                     Label(wd[3], text="").grid(row=y, column=0)
@@ -7771,8 +7914,8 @@ def apply_auto_indexer_5(frame, buttons, file_path, carrier_name, l_s, l_ns, e_r
         passed_ns = l_ns[i].get().split(" - ")  # clean the passed ns day data
         clean_ns = StringVar(frame)  # put ns day var in StringVar object
         clean_ns.set(passed_ns[1])
-        if apply_2_auto_indexer_5(eff_date, carrier_name[i], l_s[i], clean_ns, e_route[i], l_station[i],
-                                  frame) == "error":
+        if apply_2_auto_indexer_5(frame, eff_date, carrier_name[i],
+                                  l_s[i], clean_ns, e_route[i], l_station[i]) == "error":
             auto_indexer_5(frame, file_path, check_these)
             return
         buttons.update()
@@ -7782,8 +7925,7 @@ def apply_auto_indexer_5(frame, buttons, file_path, carrier_name, l_s, l_ns, e_r
     auto_indexer_6(frame, file_path)
 
 
-def apply_2_auto_indexer_5(date, carrier, ls, ns, route, station, frame):
-    route_list = route.get().split("/")
+def apply_2_auto_indexer_5(frame, date, carrier, ls, ns, route, station):
     if len(route.get()) > 29:
         messagebox.showerror("Route number input error",
                              "There can be no more than five routes per carrier "
@@ -7792,19 +7934,23 @@ def apply_2_auto_indexer_5(date, carrier, ls, ns, route, station, frame):
                              "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
                              "commas or empty spaces", parent=frame)
         return "error"
+    route_list = route.get().split("/")
     for item in route_list:
         item = item.strip()
         if item != "":
-            if 4 > len(item) > 5:
+            if len(item) < 4 or len(item) > 5:
                 messagebox.showerror("Route number input error",
-                                     'Routes numbers must be four or five digits long.\n'
-                                     'If there are multiple routes, route numbers must be separated by '
-                                     'the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use '
-                                     'commas or empty spaces', parent=frame)
+                                     "Routes numbers must be four or five digits long.\n"
+                                     "If there are multiple routes, route numbers must be separated by "
+                                     "the \'/\' character. For example: 1001/1015/10124/10224/0972. "
+                                     "Do not use commas or empty spaces",
+                                     parent=frame)
                 return "error"
         if item.isdigit() == FALSE and item != "":
-            messagebox.showerror("Route number input error", "Route numbers must be numbers and can not contain "
-                                                             "letters", parent=frame)
+            messagebox.showerror("Route number input error",
+                                 "Route numbers must be numbers and can not contain "
+                                 "letters",
+                                 parent=frame)
             return "error"
     route_input = routes_adj(route.get())
     if route_input == "0000":
@@ -7871,7 +8017,7 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
     wd = front_window(frame)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     header = Frame(wd[3])
     header.grid(row=0, columnspan=5, sticky="w")
-    Label(header, text="Carriers No Longer At Station", font="bold,", pady=10) \
+    Label(header, text="Carriers No Longer At Station", font=macadj("bold", "Helvetica 18"), pady=10) \
         .grid(row=0, sticky="w")
     Label(header, text=
     "Klusterbox has detected that the following carriers may no longer be at the station. "
@@ -7884,8 +8030,9 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
           justify=LEFT).grid(row=1, sticky="w")
     y = 1  # count for the row
     Label(wd[3], text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
-    Label(wd[3], text="List Status", fg="Grey").grid(row=y, column=1, sticky="w")
-    Label(wd[3], text="Route_s", fg="Grey").grid(row=y, column=2, sticky="w")
+    Label(wd[3], text=macadj("List Status","List"), fg="Grey").grid(row=y, column=1, sticky="w")
+    if sys.platform != "darwin":
+        Label(wd[3], text="Route_s", fg="Grey").grid(row=y, column=2, sticky="w")
     Label(wd[3], text="Station", fg="Grey").grid(row=y, column=3, sticky="w")
     Label(wd[3], text="             ", fg="Grey").grid(row=y, column=4, sticky="w")
     y += 1
@@ -7913,14 +8060,18 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
         ns_day[cc].set(result[0][3])
         route.append(StringVar(wd[3]))  # store route
         route[cc].set(result[0][4])
-        Button(wd[3], text=result[0][4], relief=RIDGE, width=20, anchor="w") \
-            .grid(row=y, column=2, sticky="w")  # route
+        if sys.platform != "darwin":
+            Button(wd[3], text=result[0][4], relief=RIDGE, width=20, anchor="w") \
+                .grid(row=y, column=2, sticky="w")  # route
         station.append(StringVar(wd[3]))  # store station
         station[cc].set(result[0][5])
         new_station.append(StringVar(wd[3]))
         new_station[cc].set("out of station")
         stat_om = OptionMenu(wd[3], new_station[cc], *list_of_stations)  # station
-        stat_om.config(width=25, anchor="w")
+        if sys.platform != "darwin":
+            stat_om.config(width=25, anchor="w")
+        else:
+            stat_om.config(width=25)
         stat_om.grid(row=y, column=3, sticky="w")
         Label(wd[3], text="                     ").grid(row=y, column=4)
         cc += 1
@@ -7946,8 +8097,8 @@ def apply_auto_indexer_6(frame, buttons, file_path, carrier_name, list_status, n
     for i in range(len(carrier_name)):
         pb["value"] = i  # increment progress bar
         if station[i].get() != new_station[i].get():
-            apply_2_auto_indexer_5(date, carrier_name[i].get(), list_status[i],
-                                   ns_day[i], route[i], new_station[i], frame)
+            apply_2_auto_indexer_5(frame, date, carrier_name[i].get(), list_status[i],
+                                   ns_day[i], route[i], new_station[i])
         buttons.update()
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
@@ -7970,7 +8121,7 @@ def auto_skimmer(frame, file_path):
     skippers = []  # fill the array for skippers
     for item in results:
         skippers.append(item[0])
-    carrier_list_cleaning_for_auto_skimmer()
+    carrier_list_cleaning_for_auto_skimmer(frame)
     if messagebox.askokcancel("Auto Rings",
                                 "Do you want to automatically enter the rings?",
                                 parent=frame):
@@ -8003,7 +8154,8 @@ def auto_skimmer(frame, file_path):
                     if line[0][:8] != "TAC500R3":
                         messagebox.showwarning("File Selection Error",
                                                "The selected file does not appear to be an "
-                                               "Employee Everything report.", parent=frame)
+                                               "Employee Everything report.",
+                                               parent=frame)
                         return
                 if cc != 0:
                     if good_id != line[4] and good_id != "no":  # if new carrier or employee
@@ -8507,7 +8659,9 @@ def pay_period_guide(frame):
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('pp_guide') + filename])
         except:
-            messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.",
+                                 parent=frame)
 
 
 def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
@@ -8910,7 +9064,9 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('over_max') + filename])
         except:
-            messagebox.showerror("Report Generator", "The report was not generated.")
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.",
+                                 parent=frame)
 
 
 def file_dialogue(folder):  # opens file folders to access generated reports
@@ -8934,7 +9090,7 @@ def remove_file(folder):  # removes a file and all contents
         shutil.rmtree(folder)
 
 
-def remove_file_var(folder):  # removes a file and all contents
+def remove_file_var(frame, folder):  # removes a file and all contents
     if sys.platform == "win32":
         folder_name = folder.split("\\")
     else:
@@ -8942,20 +9098,25 @@ def remove_file_var(folder):  # removes a file and all contents
     folder_name = folder_name[1]
     if os.path.isdir(folder):
         if messagebox.askokcancel("Delete Folder Contents",
-                                  "This will delete all the files in the {} archive. ".format(folder_name)):
+                                  "This will delete all the files in the {} archive. "
+                                  .format(folder_name),
+                                  parent=frame):
             try:
                 shutil.rmtree(folder)
                 if not os.path.isdir(folder):
                     messagebox.showinfo("Delete Folder Contents",
                                         "Success! All the files in the {} archive have been deleted."
-                                        .format(folder_name))
-            except OSError:
+                                        .format(folder_name),
+                                        parent=frame)
+            except:
                 messagebox.showerror("Delete Folder Contents",
                                     "Failure! {} can not be deleted because it is being used by another program."
-                                     .format(folder_name))
+                                     .format(folder_name),
+                                     parent=frame)
     else:
         messagebox.showwarning("Delete Folder Contents",
-                               "The {} folder is already empty".format(folder_name))
+                               "The {} folder is already empty".format(folder_name),
+                               parent=frame)
 
 
 def location_klusterbox(frame):  # provides the location of the program
@@ -8984,7 +9145,8 @@ def location_klusterbox(frame):  # provides the location of the program
                         "On this computer Klusterbox is located at:\n"
                         "{}\n\nThe Klusterbox database is located at \n"
                         "{}\n\nThe Klusterbox archive is located at \n"
-                        "{}".format(path, dbase, archive), parent=frame)
+                        "{}".format(path, dbase, archive),
+                        parent=frame)
 
 
 def open_docs(frame, doc):  # opens docs in the about_klusterbox() function
@@ -9003,7 +9165,8 @@ def open_docs(frame, doc):  # opens docs in the about_klusterbox() function
                 subprocess.call(["open", doc])
     except:
         messagebox.showerror("Project Documents",
-                             "The document was not opened or found.", parent=frame)
+                             "The document was not opened or found.",
+                             parent=frame)
 
 
 def callback(url):  # open hyperlinks at about_klusterbox()
@@ -9149,7 +9312,8 @@ def apply_startup(switch, station, frame):
     if switch == "enter":
         if station.get().strip() == "":
             messagebox.showerror("Prohibited Action",
-                                 "You can not enter a blank entry for a station.", parent=frame)
+                                 "You can not enter a blank entry for a station.",
+                                 parent=frame)
             return
         sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
         commit(sql)
@@ -9200,7 +9364,7 @@ def start_up():  # the start up screen when no information has been entered
     mainloop()
 
 
-def carrier_list_cleaning_for_auto_skimmer():  # cleans the database of duplicate records
+def carrier_list_cleaning_for_auto_skimmer(frame):  # cleans the database of duplicate records
     sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
     results = inquire(sql)
     duplicates = []
@@ -9235,7 +9399,8 @@ def carrier_list_cleaning_for_auto_skimmer():  # cleans the database of duplicat
         pb.destroy()
         pb_root.destroy()
         messagebox.showinfo("Database Maintenance",
-                            "All redundancies have been eliminated from the carrier list.")
+                            "All redundancies have been eliminated from the carrier list.",
+                            parent=frame)
     del duplicates[:]
 
 
@@ -9323,17 +9488,24 @@ def data_mods_codes_add(frame, code, description):
     prohibited_codes = ('721', '722')
     if code.get() in prohibited_codes:
         messagebox.showerror("Data Entry Error",
-                             "It is prohibited to exclude code {}".format(code.get(),
-                                                                          parent=frame))
+                             "It is prohibited to exclude code {}"
+                             .format(code.get(),
+                             parent=frame))
         return
     if code.get() in existing_codes:
-        messagebox.showerror("Data Entry Error", "This code had already been entered.", parent=frame)
+        messagebox.showerror("Data Entry Error",
+                             "This code had already been entered.",
+                             parent=frame)
         return
     if code.get().isdigit() == FALSE:
-        messagebox.showerror("Data Entry Error", "TACS code must contain only numbers.", parent=frame)
+        messagebox.showerror("Data Entry Error",
+                             "TACS code must contain only numbers.",
+                             parent=frame)
         return
     if len(code.get()) > 3 or len(code.get()) < 3:
-        messagebox.showerror("Data Entry Error", "TACS code must be 3 digits long.", parent=frame)
+        messagebox.showerror("Data Entry Error",
+                             "TACS code must be 3 digits long.",
+                             parent=frame)
         return
     if len(description.get()) > 39:
         messagebox.showerror("Data Enty Error",
@@ -9359,7 +9531,9 @@ def data_mods_codes_default(frame):
 def apply_auto_ns_structure(frame, ns_structure):
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
     commit(sql)
-    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.", parent=frame)
+    messagebox.showinfo("Settings Updated",
+                        "Auto Data Entry settings have been updated.",
+                        parent=frame)
 
 
 def data_entry_permit_zero(frame, top, bottom):
@@ -9367,7 +9541,9 @@ def data_entry_permit_zero(frame, top, bottom):
     commit(sql)
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (bottom.get(), "allow_zero_bottom")
     commit(sql)
-    messagebox.showinfo("Settings Updated", "Auto Data Entry settings have been updated.")
+    messagebox.showinfo("Settings Updated",
+                        "Auto Data Entry settings have been updated.",
+                        parent=frame)
 
 
 def auto_data_entry_settings(frame):
@@ -9454,7 +9630,9 @@ def auto_data_entry_settings(frame):
            "You can always delete them manually. Selecting 'don't allow' will hide these entries." \
            "\n'Top' refers to the start of the workday and 'Bottom' refers to the end of the workday."
     Button(wd[3], text="info", width=5,
-           command=lambda: messagebox.showinfo("For Your Information", text, parent=wd[0])) \
+           command=lambda: messagebox.showinfo("For Your Information",
+                                               text,
+                                               parent=wd[0])) \
         .grid(row=r, column=3)
     zero_top = BooleanVar(wd[3])
     zero_bottom = BooleanVar(wd[3])
@@ -9498,19 +9676,27 @@ def min_ss_presets(frame, order):
 def apply_ss_min(frame, tolerance, type):
     if not isint(tolerance):
         text = "You must enter a number with no decimals. "
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
+        messagebox.showerror("Tolerance value entry error",
+                             text,
+                             parent=frame)
         return
     if tolerance.strip() == "":
         text = "You must enter a numeric value for tolerances"
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
+        messagebox.showerror("Tolerance value entry error",
+                             text,
+                             parent=frame)
         return
     if float(tolerance) < 0:
         text = "Values must be equal to or greater than zero."
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
+        messagebox.showerror("Tolerance value entry error",
+                             text,
+                             parent=frame)
         return
     if float(tolerance) > 100:
         text = "You must enter a value less than one-hundred."
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
+        messagebox.showerror("Tolerance value entry error",
+                             text,
+                             parent=frame)
         return
     sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (tolerance, type)
     commit(sql)
@@ -9745,11 +9931,13 @@ def apply_station(switch, station, frame):
     if switch == "enter":
         if station.get().strip() == "":
             messagebox.showerror("Prohibited Action",
-                                 "You can not enter a blank entry for a station.", parent=frame)
+                                 "You can not enter a blank entry for a station.",
+                                 parent=frame)
             return
         if station.get() in list_of_stations:
             messagebox.showerror("Prohibited Action",
-                                 "That station is already in the list of stations.", parent=frame)
+                                 "That station is already in the list of stations.",
+                                 parent=frame)
             return
     if switch == "enter":
         sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
@@ -9788,11 +9976,13 @@ def station_update_apply(frame, old_station, new_station):
     global list_of_stations
     if old_station.get() == "select a station":
         messagebox.showerror("Prohibited Action",
-                             "Please select a station.", parent=frame)
+                             "Please select a station.",
+                             parent=frame)
         return
     if new_station.get().strip() == "" or new_station.get() == "enter a new station name":
         messagebox.showerror("Prohibited Action",
-                             "You can not enter a blank entry for a station.", parent=frame)
+                             "You can not enter a blank entry for a station.",
+                             parent=frame)
         return
     if g_station == old_station.get():
         reset("none")
@@ -9803,7 +9993,8 @@ def station_update_apply(frame, old_station, new_station):
                                           "This station already exist in the list of stations. "
                                           "If you proceed, all records for {} will be merged with "
                                           "records from {}. Do you want to proceed?"
-                                          .format(old_station.get(), new_station.get()))
+                                          .format(old_station.get(), new_station.get()),
+                                          parent=frame)
         duplicate = True
     if duplicate == True and go_ahead == True:
         sql = "DELETE FROM stations WHERE station='%s'" % old_station.get()
@@ -10199,7 +10390,7 @@ def mass_input(frame, day, sort):
     c.config(scrollregion=c.bbox("all"))
 
 
-def spreadsheet(list_carrier, r_rings):
+def spreadsheet(frame, list_carrier, r_rings):
     date = g_date[0]
     dates = []  # array containing days.
     if g_range == "week":
@@ -10637,15 +10828,12 @@ def spreadsheet(list_carrier, r_rings):
             cell = ws_list[i]['B' + str(oi)]
             cell.style = input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
-
             cell = ws_list[i]['C' + str(oi)]
             cell.style = input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
-
             cell = ws_list[i]['D' + str(oi)]
             cell.style = input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
-
             cell = ws_list[i]['E' + str(oi)]
             cell.style = input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -11657,22 +11845,22 @@ def spreadsheet(list_carrier, r_rings):
     if g_range == "day":
         r = "_d"
     xl_filename = "kb" + str(format(dates[0], "_%y_%m_%d")) + r + ".xlsx"
-    ok = messagebox.askokcancel("Spreadsheet generator",
-                                "Do you want to generate a spreadsheet?", parent=root)
-    if ok:
+    if messagebox.askokcancel("Spreadsheet generator",
+                                "Do you want to generate a spreadsheet?",
+                              parent=frame):
         try:
             wb.save(dir_path('spreadsheets') + xl_filename)
             messagebox.showinfo("Spreadsheet generator",
                                 "Your spreadsheet was successfully generated. \n"
-                                "File is named: {}".format(xl_filename), parent=root)
+                                "File is named: {}".format(xl_filename),
+                                parent=frame)
         except:
-            ok = False
             messagebox.showerror("Spreadsheet generator",
                                  "The spreadsheet was not generated. \n"
                                  "Suggestion: "
                                  "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).", parent=root)
-    if ok:
+                                 "(the file can't be overwritten while open).",
+                                 parent=frame)
         try:
             if sys.platform == "win32":
                 os.startfile(dir_path('spreadsheets') + xl_filename)
@@ -11685,7 +11873,8 @@ def spreadsheet(list_carrier, r_rings):
                                  "The spreadsheet was not opened. \n"
                                  "Suggestion: "
                                  "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).", parent=root)
+                                 "(the file can't be overwritten while open).",
+                                 parent=frame)
 
 
 def tab_selected(t):  # attach notebook tab for
@@ -11700,7 +11889,7 @@ def output_tab(frame, list_carrier):
     c1 = Canvas(switch_f5)
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="spreadsheet", width=15, anchor="w",
-           command=lambda: [spreadsheet(list_carrier, r_rings)]).pack(side=LEFT)
+           command=lambda: spreadsheet(switch_f5, list_carrier, r_rings)).pack(side=LEFT)
     Button(c1, text="Go Back", width=15, anchor="w",
            command=lambda: [switch_f5.destroy(), main_frame()]).pack(side=LEFT)
     dates = []  # array containing days
@@ -11708,7 +11897,6 @@ def output_tab(frame, list_carrier):
         dates = g_date
     if g_range == "day":
         dates.append(d_date)
-
     if g_range == "week":
         sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
               % (g_date[0], g_date[6])
@@ -11879,7 +12067,11 @@ def output_tab(frame, list_carrier):
                                     color = in_color
                                 else:
                                     color = out_color
-                                Label(f, text="", justify=LEFT, width=macadj(6, 4),
+                                if i == 6:
+                                    ml = 5
+                                else:
+                                    ml = 4
+                                Label(f, text="", justify=LEFT, width=macadj(6, ml),
                                       relief=RIDGE, bg=color).grid(row=oi, column=i)
                         for i in range(move_count):  # if there are moves, create + populate cells
                             Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
@@ -11888,7 +12080,7 @@ def output_tab(frame, list_carrier):
                             Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
                                   relief=RIDGE, bg=in_color).grid(row=oi, column=5)  # move on
                             count += 1
-                            Label(f, text=s_moves[count], justify=LEFT, width=macadj(6, 4),
+                            Label(f, text=s_moves[count], justify=LEFT, width=macadj(6, 5),
                                   relief=RIDGE, bg=in_color).grid(row=oi, column=6)  # route
                             count += 1
                             Label(f, text=format(move_totals[i], '.2f'), justify=LEFT, width=macadj(6, 4),
@@ -11914,7 +12106,11 @@ def output_tab(frame, list_carrier):
                         color = in_color
                     else:
                         color = out_color
-                    Label(f, text="", width=macadj(6, 4), relief=RIDGE, bg=color) \
+                    if i == 5:
+                        ml = 5
+                    else:
+                        ml = 4
+                    Label(f, text="", width=macadj(6, ml), relief=RIDGE, bg=color) \
                         .grid(row=oi, column=i + 1)  # generate blank cells
                 oi += 1
         oi += 1
@@ -12008,7 +12204,11 @@ def output_tab(frame, list_carrier):
                                     color = in_color
                                 else:
                                     color = out_color
-                                Label(f, text="", justify=LEFT, width=macadj(6, 4),
+                                if i == 6:
+                                    ml = 5
+                                else:
+                                    ml = 4
+                                Label(f, text="", justify=LEFT, width=macadj(6, ml),
                                       relief=RIDGE, bg=color).grid(row=oi, column=i)
                         for i in range(move_count):  # if there are moves, create + populate cells
                             Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
@@ -12017,7 +12217,7 @@ def output_tab(frame, list_carrier):
                             Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
                                   relief=RIDGE, bg=in_color).grid(row=oi, column=5)  # move on
                             count += 1
-                            Label(f, text=s_moves[count], justify=LEFT, width=macadj(6, 4),
+                            Label(f, text=s_moves[count], justify=LEFT, width=macadj(6, 5),
                                   relief=RIDGE, bg=in_color).grid(row=oi, column=6)  # route
                             count += 1
                             Label(f, text=format(move_totals[i], '.2f'), justify=LEFT, width=macadj(6, 4),
@@ -12043,7 +12243,11 @@ def output_tab(frame, list_carrier):
                         color = in_color
                     else:
                         color = out_color
-                    Label(f, text="", width=macadj(6, 4), relief=RIDGE, bg=color) \
+                    if i == 5:
+                        ml = 5
+                    else:
+                        ml = 4
+                    Label(f, text="", width=macadj(6, ml), relief=RIDGE, bg=color) \
                         .grid(row=oi, column=i + 1)  # generate blank cells
                 oi += 1
         oi += 1
@@ -12500,7 +12704,7 @@ def new_entry(frame, day, moves):  # creates new entry fields for "more move fun
         Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move off
         mm.append(StringVar(frame))  # create second entry field for new entries
-        Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
+        Entry(frame, width=macadj(8, 5), textvariable=mm[len(mm) - 1]) \
             .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move on
     else:  # if there are moves which need to be set
         moves = moves.split(",")
@@ -12508,7 +12712,11 @@ def new_entry(frame, day, moves):  # creates new entry fields for "more move fun
         for i in range(int(iterations)):
             mm.append(StringVar(frame))  # create entry field for moves from database
             mm[i].set(moves[i])
-            Entry(frame, width=macadj(8, 4), textvariable=mm[i]) \
+            if (i + 1) % 3 == 0:
+                ml = 5
+            else:
+                ml = 4
+            Entry(frame, width=macadj(8, ml), textvariable=mm[i]) \
                 .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
 
 
@@ -12792,7 +13000,8 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
                              "(for T6 carriers).\n Routes numbers must be 4 or 5 digits long.\n"
                              "If there are multiple routes, route numbers must be separated by "
                              "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                             "commas or empty spaces", parent=frame)
+                             "commas or empty spaces",
+                             parent=frame)
         return
     for item in route_list:
         item = item.strip()
@@ -12802,12 +13011,14 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
                                      'Routes numbers must be four or five digits long.\n'
                                      'If there are multiple routes, route numbers must be separated by '
                                      'the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use '
-                                     'commas or empty spaces', parent=frame)
+                                     'commas or empty spaces',
+                                     parent=frame)
                 return
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error",
                                  "Route numbers must be numbers and can not contain "
-                                 "letters", parent=frame)
+                                 "letters",
+                                 parent=frame)
             return
     route_input = routes_adj(route.get())  # call routes adj to shorten routes that don't need 5 digits
     if route_input == "0000":
@@ -12864,7 +13075,8 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
                              "(for T6 carriers).\n Routes numbers must be four or five digits long.\n"
                              "If there are multiple routes, route numbers must be separated by "
                              "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                             "commas or empty spaces", parent=frame)
+                             "commas or empty spaces",
+                             parent=frame)
         return "error"
     for item in route_list:
         item = item.strip()
@@ -12874,12 +13086,14 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
                                      'Routes numbers must be four or five digits long.\n'
                                      'If there are multiple routes, route numbers must be separated by '
                                      'the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use '
-                                     'commas or empty spaces', parent=frame)
+                                     'commas or empty spaces',
+                                     parent=frame)
                 return "error"
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error",
                                  "Route numbers must be numbers and can not contain "
-                                 "letters", parent=frame)
+                                 "letters",
+                                 parent=frame)
             return "error"
     # find all matches for date and name
     route_input = routes_adj(route.get())  # call routes adj to shorten routes that don't need 5 digits
@@ -12948,7 +13162,8 @@ def purge_carrier(frame, carrier):
                                   "this carrier, including rings and name index.\n\n"
                                   "If this carrier has left the station, quit, been fired or retired "
                                   "you should change station to \"out of station\" and not delete. \n\n"
-                                  "This can not be reversed.", parent=frame):
+                                  "This can not be reversed.",
+                                  parent=frame):
         return
     sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % carrier
     commit(sql)
@@ -13321,11 +13536,11 @@ def edit_carrier(e_name):
     #  delete button
     delete_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
     Label(delete_frame, text=" Delete All", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
-          width=5).grid(row=0, column=0, sticky=W)
+          width=macadj(8,10)).grid(row=0, column=0, sticky=W)
     Label(delete_frame, text="Delete carrier and all associated records. ", anchor="w") \
         .grid(row=1, column=0, sticky=W)
     Button(delete_frame, text="Delete", width=15,
-           bg=macadj("red3", "red3"), fg=macadj("white", "white"),
+           bg=macadj("red3", "white"), fg=macadj("white", "red"),
            command=lambda: purge_carrier(switch_f3, e_name)).grid(row=3, column=0, sticky=W, padx=8)
     delete_frame.grid(row=7, sticky=W, pady=5)
     report_frame = Frame(f,padx=2,)
@@ -13385,25 +13600,34 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
     try:
         date = datetime(year.get(), month.get(), day.get())
     except:
-        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
+        messagebox.showerror("Invalid Date",
+                             "Date entered is not valid",
+                             parent=frame)
         return
     carrier = nc_name.get().strip().lower() + ", " + nc_fname.get().strip().lower()
     if len(nc_name.get()) > 30 or len(nc_fname.get()) > 12:
-        messagebox.showerror("Name input error", "Names must not exceed 30 characters."
-                                                 "First names must not exceed 12 characters", parent=frame)
+        messagebox.showerror("Name input error",
+                             "Names must not exceed 30 characters."
+                             "First names must not exceed 12 characters",
+                             parent=frame)
         return
     if len(nc_name.get()) < 1:
-        messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
+        messagebox.showerror("Name input error",
+                             "You must enter a name.",
+                             parent=frame)
         return
     if len(nc_fname.get()) < 1:
-        messagebox.showerror("Name input error", "You must enter a first initial or name.", parent=frame)
+        messagebox.showerror("Name input error",
+                             "You must enter a first initial or name.",
+                             parent=frame)
         return
     if len(nc_fname.get()) > 1:
         answer = messagebox.askyesno("Caution",
                                      "It is recommended that you use only the first initial of the first"
                                      "name unless it is necessary to create a unique identifier, such as"
-                                     "when you have two identical names that must be distinquished."
-                                     "Do you want to proceed?", parent=frame)
+                                     "when you have two identical names that must be distinguished."
+                                     "Do you want to proceed?",
+                                     parent=frame)
         if not answer:
             return
     nc_route_list = nc_route.get().split("/")
@@ -13413,8 +13637,8 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
                              "(for T6 carriers).\n Routes numbers four or five digits long.\n"
                              "If there are multiple routes, route numbers must be separated by "
                              "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                             "commas or empty spaces"
-                             , parent=frame)
+                             "commas or empty spaces",
+                             parent=frame)
         return
     for item in nc_route_list:
         item = item.strip()
@@ -13424,13 +13648,14 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
                                      "Routes numbers must be four or five digits long.\n"
                                      "If there are multiple routes, route numbers must be separated by "
                                      "the \"/\" character. For example: 1001/1015/10124/10224/0972. Do not use "
-                                     "commas or empty spaces"
-                                     , parent=frame)
+                                     "commas or empty spaces",
+                                     parent=frame)
                 return
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error",
                                  "Route numbers must be numbers and can not contain "
-                                 "letters", parent=frame)
+                                 "letters",
+                                 parent=frame)
             return
     route_input = routes_adj(nc_route.get())  # call routes adj to shorten routes that don't need 5 digits
     if route_input == "0000":
@@ -13448,7 +13673,8 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
     if carrier in name_set:
         ok = messagebox.askokcancel("New Carrier Input Warning",
                                     "This carrier name is already in the database.\n"
-                                    "Did you want to proceed?", parent=frame)
+                                    "Did you want to proceed?",
+                                    parent=frame)
         if ok:
             for pair in results:
                 if pair[0] == carrier and pair[1] == str(datetime(year.get(), month.get(), day.get(), 00, 00, 00)):
@@ -13682,7 +13908,8 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
     g_range = i_range
     if station == "undefined":
         messagebox.showerror("Investigation station setting",
-                             'Please select a station.', parent=frame)
+                             'Please select a station.',
+                             parent=frame)
         return
     # error check for valid date
     date = ""  # reference before assignment
@@ -13765,7 +13992,8 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
         ns_code["fri"] = "Fri"
     else:
         messagebox.showerror("Investigation date/range",
-                             'The date entered is not valid.', parent=frame)
+                             'The date entered is not valid.',
+                             parent=frame)
         return
     g_station = station
     if frame != "None":
@@ -13783,11 +14011,11 @@ def main_frame():
                width=macadj(13, 13)).pack(side=LEFT)
         Button(c1, text="Multi Input", command=lambda dd="Sat", ss="name": mass_input(f, dd, ss),
                width=macadj(13, 13)).pack(side=LEFT)
-        Button(c1, text="Report", command=lambda: output_tab(f, carrier_list),
+        Button(c1, text="Auto Data Entry", command=lambda: call_indexers(f),
                width=macadj(12, 12)).pack(side=LEFT)
         r_rings = "x"
         Button(c1, text="Spreadsheet", width=macadj(13, 13),
-               command=lambda: spreadsheet(carrier_list, r_rings)).pack(side=LEFT)
+               command=lambda: spreadsheet(f, carrier_list, r_rings)).pack(side=LEFT)
         Button(c1, text="Quit", width=macadj(13, 13), command=root.destroy).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
@@ -13812,8 +14040,10 @@ def main_frame():
     basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(f))
     basic_menu.add_command(label="Multiple Input", command=lambda dd="Sat", ss="name": mass_input(f, dd, ss))
     basic_menu.add_command(label="Report Summary", command=lambda: output_tab(f, carrier_list))
-    basic_menu.add_command(label="Mandates Spreadsheet", command=lambda: spreadsheet(carrier_list, r_rings))
-    basic_menu.add_command(label="Over Max Spreadsheet", command=lambda r_rings="x": overmax_spreadsheet(carrier_list))
+    basic_menu.add_command(label="Mandates Spreadsheet",
+                           command=lambda: spreadsheet(f, carrier_list, r_rings))
+    basic_menu.add_command(label="Over Max Spreadsheet",
+                           command=lambda r_rings="x": overmax_spreadsheet(f,carrier_list))
     if gs_day == "x":
         basic_menu.entryconfig(2, state=DISABLED)
         basic_menu.entryconfig(3, state=DISABLED)
@@ -13840,17 +14070,17 @@ def main_frame():
     automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(f))
     automated_menu.add_command(label="Weekly Availability", command=lambda: wkly_avail(f))
     automated_menu.add_separator()
-    automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter())
+    automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(f))
     automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(f))
     menubar.add_cascade(label="Readers", menu=automated_menu)
     # reports menu
     reports_menu = Menu(menubar, tearoff=0)
-    reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(carrier_list))
-    reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(carrier_list))
-    reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(carrier_list))
+    reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(f, carrier_list))
+    reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(f, carrier_list))
+    reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(f, carrier_list))
     reports_menu.add_command(label="Carrier by List", command=lambda: rpt_carrier_by_list(f, carrier_list))
     reports_menu.add_command(label="Carrier Status History", command=lambda: rpt_find_carriers(f, g_station))
-    # reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(carrier_list))
+    # reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(f, carrier_list))
     reports_menu.add_separator()
     reports_menu.add_command(label="Clock Rings Summary", command=lambda: database_rings_report(f, g_station))
     reports_menu.add_separator()
@@ -13879,17 +14109,17 @@ def main_frame():
     reportsarchive_menu.add_separator()
     cleararchive = Menu(reportsarchive_menu, tearoff=0)
     cleararchive.add_command(label="Mandates Spreadsheet",
-                             command=lambda: remove_file_var(dir_path('spreadsheets')))
+                             command=lambda: remove_file_var(f, dir_path('spreadsheets')))
     cleararchive.add_command(label="Over Max Spreadsheet",
-                             command=lambda: remove_file_var(dir_path('over_max_spreadsheet')))
+                             command=lambda: remove_file_var(f, dir_path('over_max_spreadsheet')))
     cleararchive.add_command(label="Over Max Finder",
-                             command=lambda: remove_file_var(dir_path('over_max')))
+                             command=lambda: remove_file_var(f, dir_path('over_max')))
     cleararchive.add_command(label="Everything Report",
-                             command=lambda: remove_file_var(dir_path('ee_reader')))
+                             command=lambda: remove_file_var(f, dir_path('ee_reader')))
     cleararchive.add_command(label="Weekly Availability",
-                             command=lambda: remove_file_var(dir_path('weekly_availability')))
+                             command=lambda: remove_file_var(f, dir_path('weekly_availability')))
     cleararchive.add_command(label="Pay Period Guide",
-                             command=lambda: remove_file_var(dir_path('pp_guide')))
+                             command=lambda: remove_file_var(f, dir_path('pp_guide')))
     reportsarchive_menu.add_cascade(label="Clear Archive", menu=cleararchive)
     menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
     # management menu
@@ -14001,7 +14231,7 @@ def main_frame():
             grid(row=0, column=1, pady=5)
         Button(ff, text="Informal C", width=30, command=lambda: informalc(f)).grid(row=1, column=1, pady=5)
         Button(ff, text="Quit", width=30, command=lambda: root.destroy()).grid(row=2, column=1, pady=5)
-        Label(ff, text="", width=20).grid(row=0, column=0)  # spacer
+        Label(ff, text="", width=macadj(20,16)).grid(row=0, column=0)  # spacer
     else:
         if g_range == "week":
             sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
@@ -14373,6 +14603,11 @@ if __name__ == "__main__":
     size_y = 600
     root.title("KLUSTERBOX version {}".format(version))
     titlebar_icon(root)  # place icon in titlebar
+    if sys.platform == "darwin" and platform == "py":  #  put icon in doc for mac
+        try:  #
+            root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
+        except:
+            pass
     root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
     if len(list_of_stations) < 2:  # if there are no stations in the stations list
         start_up()
