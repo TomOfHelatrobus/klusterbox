@@ -30,7 +30,7 @@ kb_install
 Pipfile
 Pipfile.lock
 
-# ignore DS Store files
+# ignore all DS Store files
 
 .DS_Store
 

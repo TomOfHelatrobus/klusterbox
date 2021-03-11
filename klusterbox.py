@@ -9310,7 +9310,7 @@ def about_klusterbox(frame):  # gives information about the program
 def apply_startup(switch, station, frame):
     global list_of_stations
     if switch == "enter":
-        if station.get().strip() == "":
+        if station.get().strip() == "" or station.get().strip == "x":
             messagebox.showerror("Prohibited Action",
                                  "You can not enter a blank entry for a station.",
                                  parent=frame)
@@ -9929,7 +9929,7 @@ def tolerances(frame):
 def apply_station(switch, station, frame):
     global list_of_stations
     if switch == "enter":
-        if station.get().strip() == "":
+        if station.get().strip() == "" or station.get().strip() == "x":
             messagebox.showerror("Prohibited Action",
                                  "You can not enter a blank entry for a station.",
                                  parent=frame)
@@ -9960,8 +9960,6 @@ def apply_station(switch, station, frame):
             database_clean_rings()
             if g_station == station:
                 reset("none")
-            else:
-                return
     # access list of stations from database
     sql = "SELECT * FROM stations ORDER BY station"
     results = inquire(sql)
@@ -9979,7 +9977,9 @@ def station_update_apply(frame, old_station, new_station):
                              "Please select a station.",
                              parent=frame)
         return
-    if new_station.get().strip() == "" or new_station.get() == "enter a new station name":
+    if new_station.get().strip() == "" or \
+            new_station.get() == "enter a new station name" or \
+            new_station.get().strip() == "x":
         messagebox.showerror("Prohibited Action",
                              "You can not enter a blank entry for a station.",
                              parent=frame)
@@ -13123,8 +13123,10 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
 
 def name_change(name, c_name, frame):
     c_name = c_name.get().strip().lower()
-    if messagebox.askokcancel("Name Change", "This will change the name {} to {} in all records. "
-                                             "Are you sure?".format(name, c_name)):
+    if messagebox.askokcancel("Name Change",
+                              "This will change the name {} to {} in all records. "
+                              "Are you sure?".format(name, c_name),
+                              parent=frame):
         if len(c_name) > 42:
             messagebox.showerror("Name input error", "Names must not exceed 42 characters.", parent=frame)
             return
