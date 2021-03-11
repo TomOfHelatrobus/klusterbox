@@ -78,8 +78,7 @@ def inquire(sql):
     except:
         messagebox.showerror("Database Error",
                              "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql),
-                             parent=root)
+                             "\n Attempted Query: {}".format(sql))
     db.close()
 
 
@@ -102,8 +101,7 @@ def commit(sql):
     except:
         messagebox.showerror("Database Error",
                              "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql),
-                             parent=root)
+                             "\n Attempted Query: {}".format(sql))
 
 
 def dt_converter(string):  # converts a string of a datetime to an actual datetime
@@ -1834,13 +1832,11 @@ def clean_rings3_table():  # database maintenance
               % (type, time)
         commit(sql)
         messagebox.showinfo("Clean Rings",
-                            "Rings table has been cleared of NULL values in leave type and leave time columns.",
-                            parent=root)
+                            "Rings table has been cleared of NULL values in leave type and leave time columns.")
     else:
         messagebox.showinfo("Clean Rings",
                             "No NULL values in leave type and leave time columns were found in the Rings3 "
-                            "table of the database. No action taken.",
-                            parent=root)
+                            "table of the database. No action taken.")
     return
 
 
