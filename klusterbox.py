@@ -36,7 +36,7 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 
 # version variables
 version = "4.001"
-release_date = "February 11, 2021"
+release_date = "March 11, 2021"
 
 """
  _   _ _                             _
@@ -10139,15 +10139,16 @@ def apply_mi(frame, array_var, ls, ns, station, route, date):  # enter changes f
     sql = "SELECT * FROM ns_configuration"
     ns_results = inquire(sql)
     ns_dict = {}  # build dictionary for ns days
-    days = ("sat", "mon", "tue", "wed", "thu", "fri")
     for r in ns_results:  # build dictionary for rotating ns days
         ns_dict[r[2]] = r[0]
-    for d in days:  # expand dictionary for fixed days
-        ns_dict[d] = "fixed: " + d
     ns_dict["none"] = "none"  # add "none" to dictionary
     for i in range(len(array_var)):  # loop through all received data
-        passed_ns = ns[i].get().split("  ")  # break apart the day/color_code
-        ns[i].set(ns_dict[passed_ns[1]])  # match color_code to proper color_code in dict and set
+        if "fixed: " not in ns[i].get():
+            passed_ns = ns[i].get().split("  ")  # break apart the day/color_code
+            ns[i].set(ns_dict[passed_ns[1]])  # match color_code to proper color_code in dict and set
+        else:
+            passed_ns = ns[i].get().split("  ") # do not subject the fixed to the dictionary
+            ns[i].set(passed_ns[1])
         # if there is a differance, then put the new record in the database
         if array_var[i][2] != ls[i].get() or array_var[i][3] != ns[i].get() or array_var[i][5] != station[i].get():
             apply(year, month, day, array_var[i][1], ls[i], ns[i], route[i], station[i], frame)

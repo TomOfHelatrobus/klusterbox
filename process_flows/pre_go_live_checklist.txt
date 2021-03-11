@@ -5,25 +5,25 @@ PRE GO LIVE CHECKLIST
 IDE____ APP____
 win mac win mac   
 xxx xxx ___ ___  Before starting the program, make sure the KB icon appears in the start 
-		menu or for the .exe file (if appropriate).
+		 menu or for the .exe file (if appropriate).
 
-	    	Start Klusterbox.
+	    	 Start Klusterbox.
 
 ___ ___ ___ ___  from the IDE or Start Menu/Launch Pad
-___ ___ ___ ___  from the Applications folder (mac) or Explorer (win).
+xxx xxx ___ ___  from the Applications folder (mac) or Explorer (win).
 ___ ___ ___ ___  Make sure the KB icon appears on the title bar
 xxx ___ ___ ___  Make sure the KB icon appears on the task bar.
 ___ ___ ___ ___  Make sure the correct version number appears in the title bar
 
-	    	Navigate to the About Page: 
+	    	 Navigate to the About Page: 
 
 ___ ___ ___ ___  make sure the version number, release date and contact 
-		information is correct.
+		 information is correct.
 ___ ___ ___ ___  make sure the image appears.
 ___ ___ ___ ___  make sure the hyper links work
 ___ ___ ___ ___  make sure the buttons under Project Documentation work. 
 
-	    	Navigate to the Location Function: 
+	    	 Navigate to the Location Function: 
 
 ___ ___ ___ ___  confirm the program, database and archive are in the correct locations. 
 
@@ -35,7 +35,7 @@ ___ ___ ___ ___  confirm the program, database and archive are in the correct lo
 
 IDE____ APP____
 win mac win mac
-___ ___ ___ ___  make sure a database is generated when Klusterbox starts. 
+___ ___ ___ ___  Navigate to Management > Database. Press the red "reset" button. Make sure a 				 database is generated. 
 
 
 ********************************** Core Functionality  *********************************
@@ -46,32 +46,32 @@ ___ ___ ___ ___  create a new station
 ___ ___ ___ ___  set the investigation range
 ___ ___ ___ ___  create four new carriers, one of each NL,WAL, OTDL and AUX. 
 
-		aaa, a NL, yellow, rte 1111
-		bbb, b, WAL, blue, rte 1112
-		ccc, c OTDL, green, rte 1113/1114/11015/11116/11117
-		ddd, d AUX, - , - 
-		eee, e PTF, - , -
+		 aaa, a NL, yellow, rte 1111
+		 bbb, b, WAL, fixed:mon, rte 1112
+		 ccc, c OTDL, green, rte 1113/1114/11015/11116/11117
+		 ddd, d AUX, - , - 
+		 eee, e PTF, - , -
 
 ___ ___ ___ ___  edit the new carrier
 ___ ___ ___ ___  change the carrier attributes though Status Change History
 
-		Enter the following information for the carriers:
-		NL 5200: 14.00, RS 20.00, mv off 11.50, mv on 12.50, rte 1111
-		WAL 5200: 15.00, RS 21.00, mv off 13.50, mv on 14.00, rte 1122
+		 Enter the following information for the carriers:
+		 NL 5200: 14.00, RS 20.00, mv off 11.50, mv on 12.50, rte 1111
+		 WAL 5200: 15.00, RS 21.00, mv off 13.50, mv on 14.00, rte 1122
 				   mv off 14.50, mv on 15.00, rte 1133
-		OTDL 5200: 8.00, RS 16.00
-		AUX 5200: lv type annual, lv time 8.00
+		 OTDL 5200: 8.00, RS 16.00
+		 AUX 5200: lv type annual, lv time 8.00
 
 ___ ___ ___ ___  make sure the multi input function works
 ___ ___ ___ ___  make sure the reports function works
 
-            	Spreadsheet
+            	 Spreadsheet
 
 ___ ___ ___ ___  make sure the run the spreadsheet to make sure it generates
 ___ ___ ___ ___  check to see if that there are no errors with the formulas
 ___ ___ ___ ___  check that the station, date and pay period are correct
 
-            	Over Max Spreadsheet
+            	 Over Max Spreadsheet
 
 ___ ___ ___ ___  make sure the run the over max spreadsheet to make sure it generates
 ___ ___ ___ ___  check to see if that there are no errors with the formulas
@@ -84,15 +84,15 @@ Reports
 
 IDE____ APP____
 win mac win mac
-___ ___ ___ ___ generate Carrier Route and NS Day
-___ ___ ___ ___ generate Carrier Route
-___ ___ ___ ___ generate Carrier NS Day
-___ ___ ___ ___ generate Carrier by List 
-___ ___ ___ ___ generate Clock Rings Summary
+___ ___ ___ ___  generate Carrier Route and NS Day
+___ ___ ___ ___  generate Carrier Route
+___ ___ ___ ___  generate Carrier NS Day
+___ ___ ___ ___  generate Carrier by List 
+___ ___ ___ ___  generate Clock Rings Summary
 
-           	Pay Period Generator
-
-___ ___ ___ ___ generate a guide for a random year
+               	 Pay Period Generator
+ 
+___ ___ ___ ___  generate a guide for a random year
 
 
 
@@ -101,21 +101,21 @@ ___ ___ ___ ___ generate a guide for a random year
 IDE____ APP____
 win mac win mac
 ___ ___ ___ ___  Navigate to PDF Converter Settings and set "Error Report" an "Raw 
-		Output Report" to "on".
+		 Output Report" to "on".
 ___ ___ ___ ___  Run "PDF Converter" 
 ___ ___ ___ ___  make sure the PDF Converter completes successfully and gives the "The 
-		PDF Conversion is complete" message when finished.
+		 PDF Conversion is complete" message when finished.
 ___ ___ ___ ___  using Explorer/Finder, make sure that a csv file with "..._kbpc" at the 
-		end of the file name exist next to the converted pdf.
+		 end of the file name exist next to the converted pdf.
 ___ ___ ___ ___  review the Raw Output Report for any obvious errors.
 ___ ___ ___ ___  compare the Error Report with the Employee Everything Report to make sure 
-		all carriers were included. 
+		 all carriers were included. 
 ___ ___ ___ ___  compare the Error Report with the Employee Everything Report to make sure
-		that the station was properly recorded. 
+		 that the station was properly recorded. 
 ___ ___ ___ ___  open and check the end of the csv file and compare it with the Employee 
-		Everything Report to ensure all carriers are accounted for. 
+		 Everything Report to ensure all carriers are accounted for. 
 
-		Splitter
+		 Splitter
 
 ___ ___ ___ ___  Make a copy of a pdf and split it. Verify that it works properly. 
 
@@ -134,38 +134,38 @@ ___ ___ ___ ___  Run Weekly Availability
 
 IDE____ APP____
 win mac win mac
-		For this section, select two Employee Everything reports for two 
-		different weeks. One earlier and one later. 
+		 For this section, select two Employee Everything reports for two 
+		 different weeks. One earlier and one later. 
 ___ ___ ___ ___  Run the ADE using, selecting the earlier EE report. 
 ___ ___ ___ ___  Verify correct operation for the Station Pairing Screen. 
 ___ ___ ___ ___  Verify correct operation for Search for Name Matches #1 and #2
 ___ ___ ___ ___  Enter invalid inputs for the route field. Verify correct operation 
-		of error handling. 
+		 of error handling. 
 ___ ___ ___ ___  Verify correct operation for Input New Carriers
 ___ ___ ___ ___  Verify correct operation for Carriers No Longer at Station
 ___ ___ ___ ___  Opt to enter clock rings. Check for progress bar and the return to 
-		the main screen. 
+		 the main screen. 
 ___ ___ ___ ___  Generate a spreadsheet to verify that the clock rings were properly 
-		entered into the database. 
+		 entered into the database. 
 ___ ___ ___ ___  Generate a clock rings summary to verify that the clock rings were 
-		properly entered into the database.
- 
-		Change the ns day, route and station status of a few carriers using
-		multi-input or edit carrier (this will create discrepancies).
+		 properly entered into the database.
+  
+		 Change the ns day, route and station status of a few carriers using
+		 multi-input or edit carrier (this will create discrepancies).
  
 ___ ___ ___ ___  Run the ADE using, selecting the later EE report. 
 
-		Navigate through screens until you get to the Discrepancy Resolution 
-		Screen. 
+		 Navigate through screens until you get to the Discrepancy Resolution 
+		 Screen. 
 
 ___ ___ ___ ___  Enter invalid inputs for the route field. Verify correct operation.
 ___ ___ ___ ___  Look for the discrepancies you created and resolve them. 
 ___ ___ ___ ___  Navigate through the ADE and opt to enter clock rings. Check for 
-		progress bar and the return to the main screen. 
+		 progress bar and the return to the main screen. 
 
 ___ ___ ___ ___  Generate Clock Rings Summary from Management > Database. Ensure
-		clock rings were entered. There should be two weeks plus one 
-		days worth. 
+		 clock rings were entered. There should be two weeks plus one 
+		 days worth. 
  
 
 ***************************************  Archives  *************************************
