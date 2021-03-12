@@ -856,6 +856,8 @@ def database_clean_rings():
     pb_root.update()
     sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
     commit(sql)
+    sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_type ='%s'" % ("", 'none', '0.0')
+    commit(sql)
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
     pb.destroy()
@@ -12603,7 +12605,6 @@ def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time,
                     d_mm[i].append(format(float(field1), '.2f'))
                     d_mm[i].append(format(float(field2), '.2f'))
                     d_mm[i].append(routes_adj(each.get()))
-
                 field1 = ""
                 field2 = ""
             ii += 1
@@ -12614,30 +12615,32 @@ def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time,
         if x.replace(',', '') == "":
             x = ""
         all_moves.append(x)
-    updates = []  # sort rings and moves and execute sql
+    if g_range == "week":
+        xserts = [0, 1, 2, 3, 4, 5, 6, ]  # seven inserts for a week and one for a day
+    else:
+        xserts = [0]
     for i in range(len(dates)):
         for each in results:
-            if str(dates[i]) == each[0]:
-                updates.append(i)
-                sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type = '%s',leave_time = '%s'" \
-                      "WHERE rings_date = '%s' and carrier_name = '%s'" \
-                      % (ttotal[i], r_rs[i], code[i].get(),
-                         all_moves[i], lv_type[i].get(), llv_time[i], dates[i], carrier[1])
-                commit(sql)
-    if g_range == "week":
-        inserts = [0, 1, 2, 3, 4, 5, 6, ]  # seven inserts for a week and one for a day
-    else:
-        inserts = [0]
-    for num in updates:
-        if num in inserts:
-            inserts.remove(num)
-    for i in inserts:  # for each day, insert the information
-        sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time )" \
-              "VALUES('%s','%s','%s','%s','%s','%s','%s','%s') " \
-              % (dates[i], carrier[1], ttotal[i], r_rs[i], code[i].get(), all_moves[i], lv_type[i].get(), llv_time[i])
-        commit(sql)
-    sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_time ='%s'" % ("", 'none', 'none')
-    commit(sql)
+            if str(dates[i]) == each[0]:  # if there is a match
+                # updates.append(i)  # add the number of the iteration to the array
+                xserts.remove(i)
+                if ttotal[i] == "" and code[i].get() and llv_time[i] == "":
+                    sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
+                    % (dates[i], carrier[1])
+                else:
+                    sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type = '%s'," \
+                          "leave_time = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" \
+                          % (ttotal[i], r_rs[i], code[i].get(),
+                             all_moves[i], lv_type[i].get(), llv_time[i], dates[i], carrier[1])
+                commit(sql)  # commit / update the rings
+    for i in xserts:
+        if ttotal[i] == "" and code[i].get() and llv_time[i] == "":
+            pass
+        else:
+            sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time )" \
+                  "VALUES('%s','%s','%s','%s','%s','%s','%s','%s') " \
+                  % (dates[i], carrier[1], ttotal[i], r_rs[i], code[i].get(), all_moves[i], lv_type[i].get(), llv_time[i])
+            commit(sql)
     # destroy the old rings entry window
     if go_return == "no_return":
         frame.destroy()
