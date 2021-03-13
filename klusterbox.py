@@ -36,7 +36,7 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 
 # version variables
 version = "4.001"
-release_date = "March 11, 2021"
+release_date = "March 13, 2021"
 
 """
  _   _ _                             _
@@ -12622,7 +12622,6 @@ def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time,
     for i in range(len(dates)):
         for each in results:
             if str(dates[i]) == each[0]:  # if there is a match
-                # updates.append(i)  # add the number of the iteration to the array
                 xserts.remove(i)
                 if ttotal[i] == "" and code[i].get() and llv_time[i] == "":
                     sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
@@ -14244,6 +14243,7 @@ def main_frame():
                   " FROM carriers WHERE effective_date <= '%s'" \
                   "ORDER BY carrier_name, effective_date desc" % d_date
         results = inquire(sql)
+        # print(results)
         # initialize arrays for data sorting
         carrier_list = []
         candidates = []

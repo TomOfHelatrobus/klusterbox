@@ -1,192 +1,205 @@
 Checklist for running pyinstaller for klusterbox
 
-1. in the source code - klusterbox.py, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
+w64
+___  1. in the source code - klusterbox.py, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
 
 2. navigate to the klusterbox project folder and open readme.txt.
-	a. update the "most recent version" and "released" near the top of the page. 
-	b. make any other changes to the readme.txt file that might be relevant.
-	c. save the changes.
+___  	a. update the "most recent version" and "released" near the top of the page. 
+___  	b. make any other changes to the readme.txt file that might be relevant.
+___  	c. save the changes.
 
 3. navigate to and open history.txt 
-	a. update the history, add changes made for the lastest version. 
-	b. save the changes. 
+___  	a. update the history, add changes made for the lastest version. 
+___  	b. save the changes. 
 
 4. upload the most recent version to git hub
-	a. open windows powershell
-	b. navigate to the project folder
-	c. type: git add .
-	d. type: git commit -m "your comments"
-	e. type: git push origin <branch>
+___  	a. open windows powershell
+___  	b. navigate to the project folder
+___  	c. type: git add .
+___  	d. type: git commit -m "your comments"
+___  	e. type: git push origin <branch>
 
 (optional) merge any branches that need to be merged with the following commands:
-	1. type: git remote <branch> eg git remote update
-	2. type: git merge <branch> eg git merge origin/mac
-	3. open docs where there is a conflict and resolve.
-	4. save resolved docs.
-	5. use add/commit/push to push resolved version to git master branch.
+___  	1. type: git remote <branch> eg git remote update
+___  	2. type: git merge <branch> eg git merge origin/mac
+___  	3. open docs where there is a conflict and resolve.
+___  	4. save resolved docs.
+___  	5. use add/commit/push to push resolved version to git master branch.
 
 (optional)
  to delete the branch 
-	6. go to computer with the non-master branch
-`	7. type git checkout master
-	8. type: git branch -D <branch>
-	9. type: git push origin --delete <branch>
-	10. type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive.
+___  	6. go to computer with the non-master branch
+___  `	7. type git checkout master
+___  	8. type: git branch -D <branch>
+___  	9. type: git push origin --delete <branch>
+___  	10. type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive.
 
 -------------------------------------------------------------------------------------------
 
 if the klusterbox project folder is not installed on your hard drive.
 
-1. Install git on your computer if it is not already installed. 
+w64 w32 mac
+___ ___ ___  1. Install git on your computer if it is not already installed. 
 
-2. Open powershell/terminal if not already opened and navigate to where you want the project folder to be placed. 
+___ ___ ___  2. Open powershell/terminal if not already opened and navigate to where you want the project folder to be placed. 
 
-3. Go to github.com, click the "code" button, find the url in the clone section and copy that to clipboard.
+___ ___ ___  3. Go to github.com, click the "code" button, find the url in the clone section and copy that to clipboard.
 
-4. In powershell/terminal type: git clone <github repo url>.
+___ ___ ___  4. In powershell/terminal type: git clone <github repo url>.
 
 -------------------------------------------------------------------------------------------
 
 use these alternate commands in git if the klusterbox project folder is already on the hard drive but is not current with the git repo. 
 
-1. open windows power shell or terminal.
+w64 w32 mac
+___ ___ ___  1. open windows power shell or terminal.
 
-2. navigate to the klusterbox project folder.
+___ ___ ___  2. navigate to the klusterbox project folder.
 
-3. use type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive. 
+___ ___ ___  3. use type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive. 
 
 -------------------------------------------------------------------------------------------
- 
-5. make sure the kb_install folder is inside the klusterbox 
+
+w64 w32 mac 
+___ ___ ___  5. make sure the kb_install folder is inside the klusterbox 
 project folder. If not, then create it. If it does exist, empty any contents.
 
-6. copy and paste the most resent version of klusterbox.py into the kb_install folder.
+___ ___ ___  6. copy and paste the most resent version of klusterbox.py into the kb_install folder.
 
-7. copy and paste the kb_sub folder into the kb_install folder.	
+___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.	
 	
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
-		1. /kb_sub/mandates.sqlite
-		2. /kb_sub/ee_reader
-		3. /kb_sub/infc_grv
-		3. /kb_sub/over_max
-		5. /kb_sub/over_max_spreadsheet
-		4. /kb_sub/pp_guide
-		5. /kb_sub/spreadsheets
-		6. /kb_sub/weekly_availability
+
+		w64 w32 mac
+		___ ___ ___  1. /kb_sub/mandates.sqlite
+		___ ___ ___  2. /kb_sub/ee_reader
+		___ ___ ___  3. /kb_sub/infc_grv
+		___ ___ ___  4. /kb_sub/over_max
+		___ ___ ___  5. /kb_sub/over_max_spreadsheet
+		___ ___ ___  6. /kb_sub/pp_guide
+		___ ___ ___  7. /kb_sub/spreadsheets
+		___ ___ ___  8. /kb_sub/weekly_availability
 		
 	b. only the following files should be in the kb_sub/kb_images folder. make sure the kb_images folder is present and contains the following files:
-		1. kb_about.jpg
-		2. kb_icon1.icns
-		3. kb_icon2.gif
-		4. kb_icon2.ico
-		5. kb_icon2.jpg
-		6. kb_icon2.xpm (optional)
-		7. .DS_Store (ignore this. Leave it alone if it's there)
+		___ ___ ___  1. kb_about.jpg
+		___ ___ ___  2. kb_icon1.icns
+		___ ___ ___  3. kb_icon2.gif
+		___ ___ ___  4. kb_icon2.ico
+		___ ___ ___  5. kb_icon2.jpg
+		___ ___ ___  6. kb_icon2.xpm (optional)
+		___ ___ ___  7. .DS_Store (ignore this. Leave it alone if it's there)
 
 	c. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
-		1. license.txt
-		2. readme.txt
-		3. history.txt
-		4. klusterbox.py (source code)
-		5. requirements.txt (list of necessary libraries for running klusterbox.py)
+		___ ___ ___  1. license.txt
+		___ ___ ___  2. readme.txt
+		___ ___ ___  3. history.txt
+		___ ___ ___  4. klusterbox.py (source code)
+		___ ___ ___  5. requirements.txt (list of necessary libraries for running klusterbox.py)
 
-8. make sure the klusterwin.spec or klustermac.spec files are included in the kb_install folder if you are going to run pyinstaller using those spec files.
+___ ___ ___  8. make sure the klusterwin.spec or klustermac.spec files are included in the kb_install folder if you are going to run pyinstaller using those spec files.
 	
 		
-9. in terminal/ powershell, navigate to the klusterbox folder.
+___ ___ ___  9. in terminal/ powershell, navigate to the klusterbox folder.
 
-10. verify that the virtual environment is installed by entering "pipenv shell" or "python -m pipenv shell". if the virtual environment is not installed, create it. 
-	a. delete Pipfile if it exist in the directory
-	b. delete Pipfile.lock if it exist in the directory
-	c. enter: "pip3 install pipenv" or "pip install --user pipenv"
-	d. start virtual environment with "pipenv shell"
+___ ___ ___  10. verify that the virtual environment is installed by entering "pipenv shell" or "python -m pipenv shell". if the virtual environment is not installed, create it.
+ 
+	w64 w32 mac
+	___ ___ ___  a. delete Pipfile if it exist in the directory
+	___ ___ ___  b. delete Pipfile.lock if it exist in the directory
+	___ ___ ___  c. enter: "pip3 install pipenv" or "pip install --user pipenv"
+	___ ___ ___  d. start virtual environment with "pipenv shell"
 
-12. check the installed modules by entering: pip list
+___ ___ ___  12. check the installed modules by entering: pip list
 
-13. if the listed modules do not match those in the requirements list then install them. 
-	a. ensure the requirements file from the klusterbox project folder is present.
-	a. enter: pipenv install -r requirements.txt
+___ ___ ___  13. if the listed modules do not match those in the requirements list then install them. 
+	___ ___ ___  a. ensure the requirements file from the klusterbox project folder is present.
+	___ ___ ___  a. enter: pipenv install -r requirements.txt
 
 14. make sure that pyinstaller is installed inside the virtual environment (pyinstaller should be included in requirements.txt). 
-	a type: pyinstaller --version
-	b. if pyinstaller is not installed use:
+	___ ___ ___  a type: pyinstaller --version
+	___ ___ ___  b. if pyinstaller is not installed use:
 		type: pip install pyinstaller 
 		or type pip3 install pyinstaller. 
 
 15. navigate to the kb_install folder
 
 -------------------------------------------------------------------------------------------
+
 if you are creating a klusterbox.exe to be used WITHOUT an installer:
 
-1. enter the following in the command line:
+w64 w32
+___ ___  1. enter the following in the command line:
 	
 	pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
 	
-2. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
+___ ___  2. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
 
-3. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
+___ ___  3. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
-4. Optional - rename the klusterbox.exe file to show the current version number. e.g. klusterbox_v3.006.exe.
+___ ___  4. Optional - rename the klusterbox.exe file to show the current version number. e.g. klusterbox_v3.006.exe.
 
-5. delete the following folders/files from the kb_install folder:
-	a. build
-	b. dist
-	c. klusterbox.spec 
+___ ___  5. delete the following folders/files from the kb_install folder:
+	___ ___  a. build
+	___ ___  b. dist
+	___ ___  c. klusterbox.spec 
 
-6. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
+___ __  6. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
-7. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
+___ ___  7. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
-8. The compressed folder is ready for distribution. 
+___ ___  8. The compressed folder is ready for distribution. 
 
 -------------------------------------------------------------------------------------------
+
 if you are creating an app bundle to be installed by a NSIS installer for windows: 
 
-1. enter the following in the command line: 
+w64 w32
+___ ___  1. enter the following in the command line: 
 
 	pyinstaller klusterwin.spec
 
-2. Make sure NSIS and NISedit is installed on your computer. 
+___ ___  2. Make sure NSIS and NISedit is installed on your computer. 
 
-3. Open NIS edit. 
+___ ___  3. Open NIS edit. 
 
-4. Load the kb_nsis_script.nsi file.
+___ ___  4. Load the kb_nsis_script.nsi file.
 
-5. Change the value of the PRODUCT_VERSION variable to the current version.
+___ ___  5. Change the value of the PRODUCT_VERSION variable to the current version.
 
-3. Open the NSIS program.
+___ ___  3. Open the NSIS program.
 
-3. Under "Compiler" select "Compile NSI scripts".
+___ ___  3. Under "Compiler" select "Compile NSI scripts".
 
-4. The "Make NSISW" window should appear. Select the "Load Script" icon below the menu bar.  
+___ ___  4. The "Make NSISW" window should appear. Select the "Load Script" icon below the menu bar.  
 
-5. navigate to the klusterbox project folder and select the "kb_nsis_script.nsi" file. This should load the script and create the set up file. 
+___ ___  5. navigate to the klusterbox project folder and select the "kb_nsis_script.nsi" file. This should load the script and create the set up file. 
 
 optional: press "Test Installer" to make sure the installer functions properly.
 
-6. Close the "Make NSISW" and exit the NSIS program. 
+___ ___  6. Close the "Make NSISW" and exit the NSIS program. 
 
-7. In explorer, navigate to the klusterbox program file to find the Setup_klusterbox.exe file.
+___ ___  7. In explorer, navigate to the klusterbox program file to find the Setup_klusterbox.exe file.
 
-8 select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
+___ ___  8 select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
 
-9. This is ready for distribution. 
+___ ___ ___  9. This is ready for distribution. 
 
 -------------------------------------------------------------------------------------------
+
 if you are creating a distribution for mac OS. 
 
-1. enter the following in the command line: 
+mac
+___  1. enter the following in the command line: 
 
 	pyinstaller klustermac.spec
  
-2. In Finder, navigate to the /kb_install/dist folder. 
+___  2. In Finder, navigate to the /kb_install/dist folder. 
 
-3. Find the klusterbox app inside and right click on the file. 
+___  3. Find the klusterbox app inside and right click on the file. 
 
-4. Select "Compress "klusterbox"" from the menu. 
-
-5. A klusterbox.zip file will appear in the folder.
+___  4. Select "Compress "klusterbox"" from the menu. 
+___  5. A klusterbox.zip file will appear in the folder.
  
-6. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
+___  6. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
-7. The compressed folder is ready for distribution.
+___  7. The compressed folder is ready for distribution.

@@ -24,6 +24,7 @@
 # ignore the kb_install folder
 
 kb_install
+playground
 
 # ignore pip files
 
