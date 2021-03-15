@@ -2475,7 +2475,7 @@ def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spread
             total = total + t
             grandtotal = grandtotal + t + l
 
-        if grandtotal > 60 or daily_violation == True:
+        if grandtotal > 60 or daily_violation is True:
             row_count += 1
             # output to the gui
             violations.row_dimensions[i].height = 10  # adjust all row height
@@ -3293,7 +3293,7 @@ def pdf_to_text(frame, filepath):  # Called by pdf_converter() to read pdfs with
                 .grid(row=0, column=0, columnspan=2, sticky="w")
             pb_label = Label(pb_root, text="Reading PDF: ")  # make label for progress bar
             pb_label.grid(row=1, column=0,sticky="w")
-            pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+            pb = ttk.Progressbar(pb_root, length=350, mode="determinate")  # create progress bar
             pb.grid(row=1, column=1,sticky="w")
             pb_text = Label(pb_root, text="", anchor="w")
             pb_text.grid(row=2, column=0, columnspan=2, sticky="w")
@@ -3578,12 +3578,20 @@ def pdf_converter(frame):
                 station = station.split('\n')[0]
         except:
             break
+        # get the pay period
         try:
             result = re.search("YrPPWk:\nSub-Unit:\n\n(.*)\n", a)
             yyppwk = result.group(1)
         except:
-            result = re.search("YrPPWk:\n\n(.*)\n\nFin. #:", a)
-            yyppwk = result.group(1)
+            try:
+                result = re.search("YrPPWk:\n\n(.*)\n\nFin. #:", a)
+                yyppwk = result.group(1)
+            except:
+                try:
+                    result = re.findall(r'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9]', text)
+                    yyppwk = result[-1]
+                except:
+                    pass
         if saved_pp != yyppwk:
             exploded = yyppwk.split("-")  # break up the year/pp string from the ee rpt pdf
             year = exploded[0]  # get the year
@@ -8126,7 +8134,6 @@ def auto_skimmer(frame, file_path):
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         mv_codes = ("BT", "MV", "ET")
         carrier = []
-        # proto_array = []
         pb_root = Tk()  # create a window for the progress bar
         pb_root.title("Entering Carrier Rings")
         titlebar_icon(pb_root)  # place icon in titlebar
@@ -8158,8 +8165,6 @@ def auto_skimmer(frame, file_path):
                 if cc != 0:
                     if good_id != line[4] and good_id != "no":  # if new carrier or employee
                         auto_weekly_analysis(carrier)  # trigger analysis
-                        # proto_rings = auto_weekly_analysis(carrier)  # trigger analysis
-                        # proto_array.append(proto_rings)
                         del carrier[:]  # empty array
                         good_id = "no"  # reset trigger
                     # find first line of specific carrier
@@ -9151,7 +9156,10 @@ def open_docs(frame, doc):  # opens docs in the about_klusterbox() function
     try:
         if sys.platform == "win32":
             if platform == "py":
-                os.startfile(doc)
+                try:
+                    os.startfile(doc)  # in IDE the files are in the project folder
+                except:
+                    os.startfile('kb_sub\\' + doc)  # in KB legacy the files are in the kb_sub folder
             if platform == "winapp":
                 os.startfile(os.getcwd() + "\\" + doc)
         if sys.platform == "linux":
@@ -14199,6 +14207,8 @@ def main_frame():
         station.set(g_station)
     stations_minus_outofstation = list_of_stations[:]
     stations_minus_outofstation.remove("out of station")
+    if len(stations_minus_outofstation) == 0:
+        stations_minus_outofstation.append("undefined")
     om = OptionMenu(pre_f, station, *stations_minus_outofstation)
     om.config(width=macadj(40, 34))
     om.grid(row=2, column=2, columnspan=5, sticky=W)
@@ -14243,7 +14253,6 @@ def main_frame():
                   " FROM carriers WHERE effective_date <= '%s'" \
                   "ORDER BY carrier_name, effective_date desc" % d_date
         results = inquire(sql)
-        # print(results)
         # initialize arrays for data sorting
         carrier_list = []
         candidates = []

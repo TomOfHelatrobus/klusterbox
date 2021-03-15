@@ -1,14 +1,16 @@
 Checklist for running pyinstaller for klusterbox
 
+Update version and docs. Final git push.
+
 w64
 ___  1. in the source code - klusterbox.py, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
 
-2. navigate to the klusterbox project folder and open readme.txt.
+___  2. navigate to the klusterbox project folder and open readme.txt.
 ___  	a. update the "most recent version" and "released" near the top of the page. 
 ___  	b. make any other changes to the readme.txt file that might be relevant.
 ___  	c. save the changes.
 
-3. navigate to and open history.txt 
+___  3. navigate to and open history.txt 
 ___  	a. update the history, add changes made for the lastest version. 
 ___  	b. save the changes. 
 
@@ -38,31 +40,33 @@ ___  	10. type: git pull -p or git pull --prune to pull the most recent master b
 
 if the klusterbox project folder is not installed on your hard drive.
 
-w64 w32 mac
-___ ___ ___  1. Install git on your computer if it is not already installed. 
+w32 mac
+___ ___  1. Install git on your computer if it is not already installed. 
 
-___ ___ ___  2. Open powershell/terminal if not already opened and navigate to where you want the project folder to be placed. 
+___ ___  2. Open powershell/terminal if not already opened and navigate to where you want the project folder to be placed. 
 
-___ ___ ___  3. Go to github.com, click the "code" button, find the url in the clone section and copy that to clipboard.
+___ ___  3. Go to github.com, click the "code" button, find the url in the clone section and copy that to clipboard.
 
-___ ___ ___  4. In powershell/terminal type: git clone <github repo url>.
+___ ___  4. In powershell/terminal type: git clone <github repo url>.
 
 -------------------------------------------------------------------------------------------
 
 use these alternate commands in git if the klusterbox project folder is already on the hard drive but is not current with the git repo. 
 
-w64 w32 mac
-___ ___ ___  1. open windows power shell or terminal.
+w32 mac
+___ ___  1. open windows power shell or terminal.
 
-___ ___ ___  2. navigate to the klusterbox project folder.
+___ ___  2. navigate to the klusterbox project folder.
 
-___ ___ ___  3. use type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive. 
+___ ___  3. use type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive. 
 
 -------------------------------------------------------------------------------------------
 
+Set up folders with updated/necessary files
+
 w64 w32 mac 
 ___ ___ ___  5. make sure the kb_install folder is inside the klusterbox 
-project folder. If not, then create it. If it does exist, empty any contents.
+project folder. If not, then create it. If it does exist, empty any contents except kb_sub.
 
 ___ ___ ___  6. copy and paste the most resent version of klusterbox.py into the kb_install folder.
 
@@ -125,70 +129,84 @@ ___ ___ ___  13. if the listed modules do not match those in the requirements li
 
 -------------------------------------------------------------------------------------------
 
+Runing Pyinstaller and creating distro for Klusterbox Legacy version for Windows
+
 if you are creating a klusterbox.exe to be used WITHOUT an installer:
 
 w64 w32
-___ ___  1. enter the following in the command line:
+___ ___  1. make sure you are in the kb_install folder.
+___ ___  2. enter the following in the command line:
 	
 	pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py
 	
-___ ___  2. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
+___ ___  3. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
 
-___ ___  3. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
+___ ___  4. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
-___ ___  4. Optional - rename the klusterbox.exe file to show the current version number. e.g. klusterbox_v3.006.exe.
+___ ___  5. Optional - rename the klusterbox.exe file to show the current version number. e.g. klusterbox_v3.006.exe.
 
-___ ___  5. delete the following folders/files from the kb_install folder:
+6. delete the following folders/files from the kb_install folder:
 	___ ___  a. build
 	___ ___  b. dist
 	___ ___  c. klusterbox.spec 
 
-___ __  6. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
+___ ___  7. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
-___ ___  7. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
+___ ___  8. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
-___ ___  8. The compressed folder is ready for distribution. 
+___ ___  9. The compressed folder is ready for distribution. 
 
 -------------------------------------------------------------------------------------------
+
+Running pyinstaller and creating app bundle for Windows.
 
 if you are creating an app bundle to be installed by a NSIS installer for windows: 
 
 w64 w32
-___ ___  1. enter the following in the command line: 
+___ ___  1. make sure you are in the kb_install folder in powershell.
+
+___ ___  2. enter the following in the command line: 
 
 	pyinstaller klusterwin.spec
 
-___ ___  2. Make sure NSIS and NISedit is installed on your computer. 
+___ ___  3. wait for pyinstaller to run. When it has finished, you should get a prompt.
 
-___ ___  3. Open NIS edit. 
+___ ___  4. Make sure NSIS and NISedit is installed on your computer. 
 
-___ ___  4. Load the kb_nsis_script.nsi file.
+___ ___  5. Open NIS edit. 
 
-___ ___  5. Change the value of the PRODUCT_VERSION variable to the current version.
+___ ___  6. Load the kb_nsis_script.nsi file.
 
-___ ___  3. Open the NSIS program.
+___ ___  7. Change the value of the PRODUCT_VERSION variable to the current version.
 
-___ ___  3. Under "Compiler" select "Compile NSI scripts".
+___ ___  8. Save changes and close NS Edit.
 
-___ ___  4. The "Make NSISW" window should appear. Select the "Load Script" icon below the menu bar.  
+___ ___  9. Open the NSIS program.
 
-___ ___  5. navigate to the klusterbox project folder and select the "kb_nsis_script.nsi" file. This should load the script and create the set up file. 
+___ ___  10. Under "Compiler" select "Compile NSI scripts".
+
+___ ___  11. The "Make NSISW" window should appear. Select the "Load Script" icon below the menu bar.  
+
+___ ___  12. navigate to the klusterbox project folder and select the "kb_nsis_script.nsi" file. This should load the script and create the set up file. 
 
 optional: press "Test Installer" to make sure the installer functions properly.
 
-___ ___  6. Close the "Make NSISW" and exit the NSIS program. 
+___ ___  13. Close the "Make NSISW" and exit the NSIS program. 
 
-___ ___  7. In explorer, navigate to the klusterbox program file to find the Setup_klusterbox.exe file.
+___ ___  14. In explorer, navigate to the klusterbox program file to find the Setup_klusterbox.exe file.
 
-___ ___  8 select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
+___ ___  15. select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
 
-___ ___ ___  9. This is ready for distribution. 
+___ ___  16. This is ready for distribution. 
 
 -------------------------------------------------------------------------------------------
+
+Running pyinstaller and making app bundle.
 
 if you are creating a distribution for mac OS. 
 
 mac
+___  0. make sure you are in the kb_install folder
 ___  1. enter the following in the command line: 
 
 	pyinstaller klustermac.spec
@@ -203,3 +221,5 @@ ___  5. A klusterbox.zip file will appear in the folder.
 ___  6. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
 ___  7. The compressed folder is ready for distribution.
+
+___  8. run the create_dmg checklist in the process_flows folder to make a dmg. 
