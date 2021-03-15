@@ -1,7 +1,12 @@
 # ignore all sqlite files
 
 *.sqlite
+
+# ignore all exe and dmg setup files
+
 *.exe
+*.dmg
+*.zip
 
 # ignore kb generated dirs and files from kb_sub dir
 

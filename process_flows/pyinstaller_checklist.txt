@@ -94,11 +94,11 @@ ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.
 		___ ___ ___  7. .DS_Store (ignore this. Leave it alone if it's there)
 
 	c. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
-		___ ___ ___  1. license.txt
-		___ ___ ___  2. readme.txt
-		___ ___ ___  3. history.txt
-		___ ___ ___  4. klusterbox.py (source code)
-		___ ___ ___  5. requirements.txt (list of necessary libraries for running klusterbox.py)
+		___ ___  1. license.txt
+		___ ___  2. readme.txt
+		___ ___  3. history.txt
+		___ ___  4. klusterbox.py (source code)
+		___ ___  5. requirements.txt (list of necessary libraries for running klusterbox.py)
 
 ___ ___ ___  8. make sure the klusterwin.spec or klustermac.spec files are included in the kb_install folder if you are going to run pyinstaller using those spec files.
 	
@@ -142,8 +142,6 @@ ___ ___  2. enter the following in the command line:
 ___ ___  3. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
 
 ___ ___  4. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
-
-___ ___  5. Optional - rename the klusterbox.exe file to show the current version number. e.g. klusterbox_v3.006.exe.
 
 6. delete the following folders/files from the kb_install folder:
 	___ ___  a. build
@@ -206,20 +204,27 @@ Running pyinstaller and making app bundle.
 if you are creating a distribution for mac OS. 
 
 mac
-___  0. make sure you are in the kb_install folder
-___  1. enter the following in the command line: 
+___  1. make sure you are in the kb_install folder
+
+___  2. enter the following in the command line: 
 
 	pyinstaller klustermac.spec
+  
+
+If making a dmg installer:
+
+	___  1. Run the "create dmg" checklist. 
+
+If creating a zip file for distribution:
+
+	___  1. In Finder, navigate to the /kb_install/dist folder.
+		
+	___  2. Find the klusterbox app inside and right click on the file. 
+
+	___  3. Select "Compress "klusterbox"" from the menu. 
+
+	___  4. A klusterbox.zip file will appear in the folder.
  
-___  2. In Finder, navigate to the /kb_install/dist folder. 
+	___  5. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
 
-___  3. Find the klusterbox app inside and right click on the file. 
-
-___  4. Select "Compress "klusterbox"" from the menu. 
-___  5. A klusterbox.zip file will appear in the folder.
- 
-___  6. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
-
-___  7. The compressed folder is ready for distribution.
-
-___  8. run the create_dmg checklist in the process_flows folder to make a dmg. 
+	___  6. The compressed folder is ready for distribution.

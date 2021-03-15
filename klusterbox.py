@@ -3393,20 +3393,19 @@ def pdf_converter(frame):
         short_file_name = pdf_converter_short_name(new_file_path)
         # if the file path already exist - ask for confirmation
         if os.path.exists(new_file_path):
-            proceed = messagebox.askokcancel("Possible File Name Discrepancy",
+            if not messagebox.askokcancel("Possible File Name Discrepancy",
                                              "There is already a file named {}. "
                                              "If you proceed, the file will be overwritten. "
                                              "Did you want to proceed?".format(short_file_name),
-                                             parent=frame)
-            if not proceed:
+                                             parent=frame):
                 return
         # warn user that the process can take several minutes
-        proceed = messagebox.askokcancel("PDF Converter", "This process will take several minutes. "
+        if not messagebox.askokcancel("PDF Converter", "This process will take several minutes. "
                                                           "Did you want to proceed?",
-                                                          parent=frame)
-        if not proceed:
+                                                          parent=frame):
             return
-        text = pdf_to_text(frame, file_path)  # read the pdf with pdfminer
+        else:
+            text = pdf_to_text(frame, file_path)  # read the pdf with pdfminer
     else:  # user opts to read from text file
         path = dir_filedialog()
         file_path = filedialog.askopenfilename(initialdir=path,
