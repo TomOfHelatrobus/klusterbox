@@ -1,0 +1,62 @@
+
+Create NSIS script with NIS Edit Wizard
+
+___ 1. Open HM NIS Edit. 
+
+___ 2. Click on the NIS Script Wizard icon (second from the left on the top).
+
+___ 3. Click "Next".
+
+4. Fill out the required fields:
+	___ a. Application Name: klusterbox # all lowercase!
+	___ b. Application version: 
+	___ c. Application Publisher: Thomas Weeks
+	___ d. Application website: klusterbox.com
+	___ e. Click Next.
+
+5. Accept defaults on Setup options dialog. Click Next.
+
+6. In Application directory and license:
+	____ a. Unclick "Allow user to change the application directory"
+	____ b. Under License file, click the "..." button
+	____ c. Navigate to the project folder and select LICENSE.txt
+	____ d. Click Open.
+	____ e. Leave all other settings as default.
+
+7. In the Application Files dialog:
+	____ a. Delete the examples by selecting them and hitting the Remove Directory(X) button. 
+	____ b. Click the "Add Directory Tree" button. 
+	____ c. In the EditDirectory dialog press the "..." button next to SelectDirectory. 
+	____ d. Navigate to the klusterbox directory in the dist directory created by pyinstaller. thomas > klusterbox > kb_install > dist > klusterbox
+	____ e. Select klusterbox and press OK. 
+	____ f. In the EditDirectory dialog, leave all other settings as default. 
+	____ g. Press OK. 
+	____ h. Press Next in the Application Files dialog. 
+
+8. In the Application Icon dialog
+	____ a. uncheck the "create an internet shortcut in the start menu folder"
+	____ b. leave all other settings as default. 
+	____ c. click Next. 
+
+____ 9. In Execute after setup dialog, don't make any changes and press "Next".
+
+____ 10. In Uninstaller dialog, don't make any changes and press "Next".
+
+____ 11. In Wizard finished dialog, don't make any changes and click "Finish".
+
+____ 12. Once back in the NIS Edit, the script should appear. Press the "Save" button. 
+
+____ 13. In the "Save As" dialog, save the file in the project folder 
+
+____ 14. You can now close NIS Edit, open NSIS and load the script. 
+
+15. Commit changes to the git repo
+	____  	a. open windows powershell
+	____  	b. navigate to the project folder
+	____ 	c. type: git add .
+	____  	d. type: git commit -m "your comments"
+	____  	e. type: git push origin <branch>
+
+ 
+
+
