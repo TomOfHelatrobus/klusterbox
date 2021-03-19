@@ -13,7 +13,7 @@ six = "==1.14.0"
 sortedcontainers = "==2.1.0"
 et_xmlfile = "==1.0.1"
 PyPDF2 = "==1.26.0"
-Pillow = "==8.0.1"
+Pillow = "==8.1.1"
 
 [dev-packages]
 
