@@ -232,6 +232,204 @@ def dir_filedialog():
     return path
 
 
+def get_carrier_list():  # get a weekly or daily carrier list
+    c_list = []
+    if g_range == "day":
+        start_date = d_date
+        end_date = d_date
+    else:
+        start_date = g_date[0]
+        end_date = g_date[6]
+    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' AND effective_date <= '%s' " \
+          % (g_station, end_date)
+    distinct = inquire(sql)  # call function to access database
+    for carrier in distinct:
+        if g_range == "day":
+            sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
+                  "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
+                  % (carrier[0], start_date)
+            daily_rec = inquire(sql)
+            if daily_rec[0][5] == g_station:
+                c_list.append(daily_rec[0])
+        else:
+            sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' AND '%s' " \
+                  "ORDER BY effective_date DESC" \
+                  % (carrier[0], start_date, end_date)
+            rec = inquire(sql)
+            sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
+                  "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
+                  "ORDER BY effective_date DESC" \
+                  % (carrier[0], start_date - timedelta(days=1))
+            before_range = inquire(sql)
+            #  append before_range if there is no record for saturday or invest range is daily
+            add_it = True
+            if len(rec) > 0:
+                for r in rec:
+                    if r[0] == str(start_date):
+                        add_it = False
+            if add_it:
+                rec.append(before_range[0])
+            #  filter out record sets with no station matches
+            station_anchor = False
+            for r in rec:
+                if r[5] == g_station:
+                    station_anchor = True
+            rec_set = []  # initialize array to put record sets into carrier list
+            #  filter out any consecutive duplicate records
+            if station_anchor:
+                last_rec = ["xxx","xxx","xxx","xxx","xxx","xxx"]
+                for r in reversed(rec):
+                    if r[2] != last_rec[2] or r[3] != last_rec[3] or r[4] != last_rec[4] or r[5] != last_rec[5]:
+                        last_rec = r
+                        rec_set.insert(0, r)  # add to the front of the list
+                c_list.append(rec_set)
+    return c_list
+
+
+def speed_cheatsheet():
+    pass
+
+
+def speed_to_spread():
+    pass
+
+
+def speed_input():
+    pass
+
+
+def speed_precheck():
+    pass
+
+
+def speed_gen_carrier():
+    pass
+
+
+def speed_gen_all(frame):
+    # Named styles for workbook
+    bd = Side(style='thin', color="80808080")  # defines borders
+    ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+    list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+    col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                            alignment=Alignment(horizontal='right'))
+    date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+    date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                alignment=Alignment(horizontal='right'))
+    input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                            border=Border(left=bd, top=bd, right=bd, bottom=bd))
+    input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                         border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                         alignment=Alignment(horizontal='right'))
+
+    ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
+    ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
+                 "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
+    ws_array = ["emp_id_array", "a_array", "b_array", "cd_array", "efg_array", "h_array", "ijk_array", "m_array",
+                "nop_array", "qr_array", "s_array", "tuv_array", "w_array", "xyz_array"]
+    for i in range(len(ws_list)):
+        ws_array[i] = []
+    # first get a carrier list
+    carriers = get_carrier_list()
+    for c in carriers:
+        sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % (c[0][1])
+        result = inquire(sql)
+        if len(result) == 1:
+            ws_array[0].append(c)  # add to emp id array
+        else:
+            if c[0][1][0] == "a":
+                ws_array[1].append(c)
+    wb = Workbook()  # define the workbook
+    ws_list[0] = wb.active  # create first worksheet
+    ws_list[0].title = ws_titles[0]  # title first worksheet
+    for i in range(1,len(ws_list)):  # loop to create all other worksheets
+        ws_list[i] = wb.create_sheet(ws_titles[i])
+    for i in range(len(ws_list)):
+        # format cell widths
+        ws_list[i].oddFooter.center.text = "&A"
+        ws_list[i].column_dimensions["A"].width = 14
+        ws_list[i].column_dimensions["B"].width = 5
+        ws_list[i].column_dimensions["C"].width = 6
+        ws_list[i].column_dimensions["D"].width = 6
+        ws_list[i].column_dimensions["E"].width = 6
+        ws_list[i].column_dimensions["F"].width = 6
+        ws_list[i].column_dimensions["G"].width = 6
+        ws_list[i].column_dimensions["H"].width = 6
+        ws_list[i].column_dimensions["I"].width = 6
+        ws_list[i].column_dimensions["J"].width = 6
+        ws_list[i].column_dimensions["K"].width = 6
+        cell = ws_list[i]['A1']
+        cell.value = "Speedsheet - All Inclusive"
+        cell.style = ws_header
+        ws_list[i].merge_cells('A1:E1')
+        cell = ws_list[i]['A3']
+        cell.value = "Date:  "  # create date/ pay period/ station header
+        cell.style = date_dov_title
+        cell = ws_list[i]['B3']
+        if g_range == "day":
+            cell.value = format(d_date, "%A  %m/%d/%y")
+        else:
+            cell.value = "{} through {}".format(g_date[0].strftime("%A  %m/%d/%y"), g_date[6].strftime("%A  %m/%d/%y"))
+        cell.style = date_dov
+        ws_list[i].merge_cells('B3:G3')
+        cell = ws_list[i]['E4']
+        cell.value = "Pay Period:  "
+        cell.style = date_dov_title
+        ws_list[i].merge_cells('E4:F4')
+        cell = ws_list[i]['G4']
+        cell.value = pay_period
+        cell.style = date_dov
+        ws_list[i].merge_cells('G4:H4')
+        cell = ws_list[i]['A4']
+        cell.value = "Station:  "
+        cell.style = date_dov_title
+        cell = ws_list[i]['B4']
+        cell.value = g_station
+        cell.style = date_dov
+        ws_list[i].merge_cells('B4:D4')
+
+        
+
+    # name the excel file
+    if g_range == "day":
+        r = "_d"
+        date = d_date
+    else:
+        r = "_w"
+        date = g_date[0]
+    xl_filename = "kb" + str(format(date, "_%y_%m_%d")) + r + "spdall" + ".xlsx"
+    if messagebox.askokcancel("Speedsheet generator",
+                              "Do you want to generate a speedsheet?",
+                              parent=frame):
+        try:
+            wb.save(dir_path('speedsheets') + xl_filename)
+            messagebox.showinfo("Speedsheet generator",
+                                "Your speedsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=frame)
+        except:
+            messagebox.showerror("Speedsheet generator",
+                                 "The speedsheet was not generated. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named speedsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=frame)
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('speedsheets') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('speedsheets') + xl_filename])
+        except:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not opened. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=frame)
+
+
 def get_custom_nsday():  # get ns day color configurations from dbase and make dictionary
     sql = "SELECT * FROM ns_configuration"
     ns_results = inquire(sql)
@@ -7616,6 +7814,7 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
     c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
+
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
@@ -8194,7 +8393,6 @@ def auto_skimmer(frame, file_path):
     else:
         frame.destroy()
         main_frame()
-
 
 
 def auto_weekly_analysis(array):
@@ -14057,6 +14255,7 @@ def main_frame():
         basic_menu.entryconfig(3, state=DISABLED)
         basic_menu.entryconfig(4, state=DISABLED)
         basic_menu.entryconfig(5, state=DISABLED)
+    if gs_day == "x" or g_range == "day":
         basic_menu.entryconfig(6, state=DISABLED)
     basic_menu.add_separator()
     basic_menu.add_command(label="Informal C", command=lambda: informalc(f))
@@ -14070,6 +14269,23 @@ def main_frame():
     basic_menu.add_separator()
     basic_menu.add_command(label="Quit", command=lambda: root.destroy())
     menubar.add_cascade(label="Basic", menu=basic_menu)
+    # speedsheeet menu
+    speed_menu = Menu(menubar, tearoff=0)
+    speed_menu.add_command(label="Generate All", command=lambda: speed_gen_all(f))
+    speed_menu.add_command(label="Generate Carrier", command=lambda: speed_gen_carrier())
+    speed_menu.add_command(label="Pre-check", command=lambda: speed_precheck())
+    speed_menu.add_command(label="Input", command=lambda: speed_input())
+    if gs_day == "x":
+        speed_menu.entryconfig(0, state=DISABLED)
+        speed_menu.entryconfig(1, state=DISABLED)
+        speed_menu.entryconfig(2, state=DISABLED)
+        speed_menu.entryconfig(3, state=DISABLED)
+        # speed_menu.entryconfig(4, state = DISABLED)
+    speed_menu.add_separator()
+    speed_menu.add_command(label="Speed to Spreadsheet", command=lambda: speed_to_spread())
+    speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
+    basic_menu.add_separator()
+    menubar.add_cascade(label="Speedsheet", menu=speed_menu)
     # automated menu
     automated_menu = Menu(menubar, tearoff=0)
     automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(f))
@@ -14106,6 +14322,8 @@ def main_frame():
                                     command=lambda: file_dialogue(dir_path('spreadsheets')))
     reportsarchive_menu.add_command(label="Over Max Spreadsheet",
                                     command=lambda: file_dialogue(dir_path('over_max_spreadsheet')))
+    reportsarchive_menu.add_command(label="Speedsheets",
+                                    command=lambda: file_dialogue(dir_path('speedsheets')))
     reportsarchive_menu.add_command(label="Over Max Finder",
                                     command=lambda: file_dialogue(dir_path('over_max')))
     reportsarchive_menu.add_command(label="Everything Report",
@@ -14244,11 +14462,11 @@ def main_frame():
         Label(ff, text="", width=macadj(20,16)).grid(row=0, column=0)  # spacer
     else:
         if g_range == "week":
-            sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+            sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
                   " FROM carriers WHERE effective_date <= '%s'" \
                   "ORDER BY carrier_name, effective_date desc" % (g_date[6])
         if g_range == "day":
-            sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+            sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
                   " FROM carriers WHERE effective_date <= '%s'" \
                   "ORDER BY carrier_name, effective_date desc" % d_date
         results = inquire(sql)
