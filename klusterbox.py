@@ -249,8 +249,10 @@ def get_carrier_list():  # get a weekly or daily carrier list
                   "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
                   % (carrier[0], start_date)
             daily_rec = inquire(sql)
+            rec_set = []
             if daily_rec[0][5] == g_station:
-                c_list.append(daily_rec[0])
+                rec_set.append(daily_rec[0])  # since all weekly rings are in a rec_set, be consistant
+                c_list.append(rec_set)
         else:
             sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' AND '%s' " \
                   "ORDER BY effective_date DESC" \
@@ -306,39 +308,107 @@ def speed_gen_carrier():
     pass
 
 
+class SpeedArray:  # accepts multidimensional arrays with emp ids and records
+    def __init__ (self, id_recset):
+        self.id_recset = id_recset
+
+    def order_by_id(self):  # order id_recset by employee id
+        ordered_recs = []
+        for rec in self.id_recset:
+            if rec[0] != "":
+                ordered_recs.append(rec)
+        ordered_recs.sort(key=itemgetter(0))
+        return ordered_recs
+
+    def order_by_abc(self):  # sort multidimensional array
+        abc_recset = ["a_array", "b_array", "cd_array", "efg_array", "h_array", "ijk_array", "m_array",
+                    "nop_array", "qr_array", "s_array", "tuv_array", "w_array", "xyz_array"]
+        for i in range(len(abc_recset)):
+            abc_recset[i] = []
+        for rec in self.id_recset:
+            if rec[0] == "":
+                if rec[1][0][1][0] == "a":  # sort names without emp ids into lettered arrays
+                    abc_recset[0].append(rec)
+                elif rec[1][0][1][0] == "b":
+                    abc_recset[1].append(rec)
+                elif rec[1][0][1][0] == "rec" or rec[1][0][1][0] == "d":
+                    abc_recset[2].append(rec)
+                elif rec[1][0][1][0] == "e" or rec[1][0][1][0] == "f" or rec[1][0][1][0] == "g":
+                    abc_recset[3].append(rec)
+                elif rec[1][0][1][0] == "h":
+                    abc_recset[4].append(rec)
+                elif rec[1][0][1][0] == "i" or rec[1][0][1][0] == "j" or rec[1][0][1][0] == "k":
+                    abc_recset[5].append(rec)
+                elif rec[1][0][1][0] == "m":
+                    abc_recset[6].append(rec)
+                elif rec[1][0][1][0] == "n" or rec[1][0][1][0] == "o" or rec[1][0][1][0] == "p":
+                    abc_recset[7].append(rec)
+                elif rec[1][0][1][0] == "q" or rec[1][0][1][0] == "r":
+                    abc_recset[8].append(rec)
+                elif rec[1][0][1][0] == "s":
+                    abc_recset[9].append(rec)
+                elif rec[1][0][1][0] == "t" or rec[1][0][1][0] == "u" or rec[1][0][1][0] == "v":
+                    abc_recset[10].append(rec)
+                elif rec[1][0][1][0] == "w":
+                    abc_recset[11].append(rec)
+                else:
+                    abc_recset[12].append(rec)
+        return abc_recset
+
+
+class SpeedCarrier:  # accepts carrier records
+    def __init__ (self, recset):
+        self.recset = recset
+        self.carrier = recset[0][1]
+
+    def add_id(self):  # put the employee id and carrier records together in a list
+        sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % self.carrier
+        result = inquire(sql)
+        if len(result) == 1:
+            addthis = (result[0][0], self.recset)
+        else:
+            addthis = ("", self.recset)
+        return addthis
+
+
 def speed_gen_all(frame):
+    if g_range == "day":
+        day_array = (str(d_date.strftime("%a")).lower(),)
+    else:
+        day_array = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
+    # first get a carrier list
+    carriers = get_carrier_list()  # get carrier list
+    id_recset = []
+    for c in carriers:
+        id_recset.append(SpeedCarrier(c).add_id())  # merge carriers with emp id
+    car_recs = [SpeedArray(id_recset).order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
+    order_abc = SpeedArray(id_recset).order_by_abc()  # sort the id_recset without emp id alphabetically
+    for abc in order_abc:
+        car_recs.append(abc)
     # Named styles for workbook
     bd = Side(style='thin', color="80808080")  # defines borders
     ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
     list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
-    col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                            alignment=Alignment(horizontal='right'))
     date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
     date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                 alignment=Alignment(horizontal='right'))
+    car_col_header = NamedStyle(name="car_col_header", font=Font(bold=True, name='Arial', size=8),
+                                fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                                border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                alignment=Alignment(horizontal='left'))
+    col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                            border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                            alignment=Alignment(horizontal='left'))
+    # yellow: faf818, blue: 18fafa, green: 18fa20, grey: ababab
     input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                            fill=PatternFill(fgColor='18fafa', fill_type='solid'),
                             border=Border(left=bd, top=bd, right=bd, bottom=bd))
     input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
                          border=Border(left=bd, top=bd, right=bd, bottom=bd),
                          alignment=Alignment(horizontal='right'))
-
     ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
     ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
                  "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
-    ws_array = ["emp_id_array", "a_array", "b_array", "cd_array", "efg_array", "h_array", "ijk_array", "m_array",
-                "nop_array", "qr_array", "s_array", "tuv_array", "w_array", "xyz_array"]
-    for i in range(len(ws_list)):
-        ws_array[i] = []
-    # first get a carrier list
-    carriers = get_carrier_list()
-    for c in carriers:
-        sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % (c[0][1])
-        result = inquire(sql)
-        if len(result) == 1:
-            ws_array[0].append(c)  # add to emp id array
-        else:
-            if c[0][1][0] == "a":
-                ws_array[1].append(c)
     wb = Workbook()  # define the workbook
     ws_list[0] = wb.active  # create first worksheet
     ws_list[0].title = ws_titles[0]  # title first worksheet
@@ -347,50 +417,142 @@ def speed_gen_all(frame):
     for i in range(len(ws_list)):
         # format cell widths
         ws_list[i].oddFooter.center.text = "&A"
-        ws_list[i].column_dimensions["A"].width = 14
-        ws_list[i].column_dimensions["B"].width = 5
-        ws_list[i].column_dimensions["C"].width = 6
-        ws_list[i].column_dimensions["D"].width = 6
-        ws_list[i].column_dimensions["E"].width = 6
-        ws_list[i].column_dimensions["F"].width = 6
-        ws_list[i].column_dimensions["G"].width = 6
-        ws_list[i].column_dimensions["H"].width = 6
-        ws_list[i].column_dimensions["I"].width = 6
-        ws_list[i].column_dimensions["J"].width = 6
-        ws_list[i].column_dimensions["K"].width = 6
+        ws_list[i].column_dimensions["A"].width = 8
+        ws_list[i].column_dimensions["B"].width = 8
+        ws_list[i].column_dimensions["C"].width = 8
+        ws_list[i].column_dimensions["D"].width = 8
+        ws_list[i].column_dimensions["E"].width = 8
+        ws_list[i].column_dimensions["F"].width = 8
+        ws_list[i].column_dimensions["G"].width = 8
+        ws_list[i].column_dimensions["H"].width = 8
+        ws_list[i].column_dimensions["I"].width = 8
+        ws_list[i].column_dimensions["J"].width = 8
+        ws_list[i].column_dimensions["K"].width = 8
         cell = ws_list[i]['A1']
         cell.value = "Speedsheet - All Inclusive"
         cell.style = ws_header
         ws_list[i].merge_cells('A1:E1')
-        cell = ws_list[i]['A3']
-        cell.value = "Date:  "  # create date/ pay period/ station header
+        # create date/ pay period/ station header
+        cell = ws_list[i]['A2']  # date label
+        cell.value = "Date:  "
         cell.style = date_dov_title
-        cell = ws_list[i]['B3']
+        cell = ws_list[i]['B2']  # date
         if g_range == "day":
-            cell.value = format(d_date, "%A  %m/%d/%y")
+            cell.value = "{}".format(d_date, "%A  %m/%d/%y")
         else:
             cell.value = "{} through {}".format(g_date[0].strftime("%A  %m/%d/%y"), g_date[6].strftime("%A  %m/%d/%y"))
         cell.style = date_dov
-        ws_list[i].merge_cells('B3:G3')
-        cell = ws_list[i]['E4']
-        cell.value = "Pay Period:  "
+        ws_list[i].merge_cells('B2:E2')
+        cell = ws_list[i]['F2']  # pay period label
+        cell.value = "PP:  "
         cell.style = date_dov_title
-        ws_list[i].merge_cells('E4:F4')
-        cell = ws_list[i]['G4']
+        cell = ws_list[i]['G2']  # pay period
         cell.value = pay_period
         cell.style = date_dov
-        ws_list[i].merge_cells('G4:H4')
-        cell = ws_list[i]['A4']
+        cell = ws_list[i]['H2']  # station label
         cell.value = "Station:  "
         cell.style = date_dov_title
-        cell = ws_list[i]['B4']
+        cell = ws_list[i]['I2']  # station
         cell.value = g_station
         cell.style = date_dov
+        ws_list[i].merge_cells('I2:J2')
+        # apply title - show how carriers are sorted
+        cell = ws_list[i]['A3']
+        if i == 0:
+            cell.value = "Carriers listed by Employee ID"
+        else:
+            cell.value = "Carriers listed Alphabetically: {}".format(ws_titles[i])
+        cell.style = list_header
+        ws_list[i].merge_cells('A3:G3')
+        # Headers for Carrier List
+        cell = ws_list[i]['A4']  # header day
+        cell.value = "Days"
+        cell.style = car_col_header
+        cell = ws_list[i]['B4']  # header carrier name
+        cell.value = "Carrier Name"
+        cell.style = car_col_header
         ws_list[i].merge_cells('B4:D4')
-
-        
-
-    # name the excel file
+        cell = ws_list[i]['E4']  # header list type
+        cell.value = "List"
+        cell.style = car_col_header
+        cell = ws_list[i]['F4']  # header ns day
+        cell.value = "NS Day"
+        cell.style = car_col_header
+        cell = ws_list[i]['G4']  # header route
+        cell.value = "Route/s"
+        cell.style = car_col_header
+        ws_list[i].merge_cells('G4:J4')
+        # Headers for Rings
+        cell = ws_list[i]['A5']  # header day
+        cell.value = "Day"
+        cell.style = col_header
+        cell = ws_list[i]['B5']  # header 5200
+        cell.value = "5200"
+        cell.style = col_header
+        cell = ws_list[i]['C5']  # header MOVES
+        cell.value = "MOVES"
+        cell.style = col_header
+        ws_list[i].merge_cells('C5:F5')
+        cell = ws_list[i]['G5']  # header RS
+        cell.value = "RS"
+        cell.style = col_header
+        cell = ws_list[i]['H5']  # header codes
+        cell.value = "CODE"
+        cell.style = col_header
+        cell = ws_list[i]['I5']  # header leave type
+        cell.value = "LV type"
+        cell.style = col_header
+        cell = ws_list[i]['J5']  # header leave time
+        cell.value = "LV time"
+        cell.style = col_header
+        # freeze panes
+        ws_list[i].freeze_panes = ws_list[i]['A6']
+        row = 6
+        # for carrier in ws_array[i]:
+        for carrier in car_recs[i]:
+            cell = ws_list[i]['A' + str(row)]  # carrier
+            cell.value = carrier[0]
+            cell.style = input_name
+            cell = ws_list[i]['B'+ str(row)]  # carrier name
+            cell.value = carrier[1][0][1]
+            cell.style = input_name
+            ws_list[i].merge_cells('B' + str(row) + ':' + 'D' + str(row))
+            cell = ws_list[i]['E' + str(row)]  # carrier list status
+            cell.value = carrier[1][0][2]
+            cell.style = input_name
+            cell = ws_list[i]['F' + str(row)]  # carrier ns day
+            cell.value = carrier[1][0][3]
+            cell.style = input_name
+            cell = ws_list[i]['G' + str(row)]  # carrier ns day
+            cell.value = carrier[1][0][4]
+            cell.style = input_name
+            ws_list[i].merge_cells('G' + str(row) + ':' + 'J' + str(row))
+            row += 1
+            for day in day_array:
+                cell = ws_list[i]['A' + str(row)]  # rings day
+                cell.value = day
+                cell.style = input_s
+                cell = ws_list[i]['B' + str(row)]  # rings 5200
+                cell.value = ""
+                cell.style = input_s
+                cell = ws_list[i]['C' + str(row)]  # rings moves
+                cell.value = ""
+                cell.style = input_s
+                ws_list[i].merge_cells('C' + str(row) + ':' + 'F' + str(row))
+                cell = ws_list[i]['G' + str(row)]  # rings RS
+                cell.value = ""
+                cell.style = input_s
+                cell = ws_list[i]['H' + str(row)]  # rings code
+                cell.value = ""
+                cell.style = input_s
+                cell = ws_list[i]['I' + str(row)]  # rings lv type
+                cell.value = ""
+                cell.style = input_s
+                cell = ws_list[i]['J' + str(row)]  # rings lv time
+                cell.value = ""
+                cell.style = input_s
+                row += 1
+        # name the excel file
     if g_range == "day":
         r = "_d"
         date = d_date
