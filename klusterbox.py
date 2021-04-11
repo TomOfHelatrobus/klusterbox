@@ -21,7 +21,8 @@ import webbrowser  # for hyper link at about_klusterbox()
 from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
 from openpyxl import Workbook
-from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill
+from openpyxl.styles import colors
+from openpyxl.styles import NamedStyle, Font, Color, Border, Side, Alignment, PatternFill
 from openpyxl.worksheet.pagebreak import Break
 # PDF Converter Libraries
 import chardet
@@ -288,6 +289,19 @@ def get_carrier_list():  # get a weekly or daily carrier list
     return c_list
 
 
+def get_rings(carrier):  # return a set of rings for the investigation day or week
+    if g_range == "day":
+        days = (d_date,)
+    else:
+        days = (g_date[0], g_date[1], g_date[2], g_date[3], g_date[4], g_date[5], g_date[6])
+    rings = []
+    for d in days:
+        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (carrier, d)
+        result = inquire(sql)
+        rings.append(result)
+    return rings
+
+
 def speed_cheatsheet():
     pass
 
@@ -327,39 +341,77 @@ class SpeedArray:  # accepts multidimensional arrays with emp ids and records
             abc_recset[i] = []
         for rec in self.id_recset:
             if rec[0] == "":
-                if rec[1][0][1][0] == "a":  # sort names without emp ids into lettered arrays
+                if rec[1][1][0] == "a":  # sort names without emp ids into lettered arrays
                     abc_recset[0].append(rec)
-                elif rec[1][0][1][0] == "b":
+                elif rec[1][1][0] == "b":
                     abc_recset[1].append(rec)
-                elif rec[1][0][1][0] == "rec" or rec[1][0][1][0] == "d":
+                elif rec[1][1][0] == "rec" or rec[1][1][0] == "d":
                     abc_recset[2].append(rec)
-                elif rec[1][0][1][0] == "e" or rec[1][0][1][0] == "f" or rec[1][0][1][0] == "g":
+                elif rec[1][1][0] == "e" or rec[1][1][0] == "f" or rec[1][1][0] == "g":
                     abc_recset[3].append(rec)
-                elif rec[1][0][1][0] == "h":
+                elif rec[1][1][0] == "h":
                     abc_recset[4].append(rec)
-                elif rec[1][0][1][0] == "i" or rec[1][0][1][0] == "j" or rec[1][0][1][0] == "k":
+                elif rec[1][1][0] == "i" or rec[1][1][0] == "j" or rec[1][1][0] == "k":
                     abc_recset[5].append(rec)
-                elif rec[1][0][1][0] == "m":
+                elif rec[1][1][0] == "m":
                     abc_recset[6].append(rec)
-                elif rec[1][0][1][0] == "n" or rec[1][0][1][0] == "o" or rec[1][0][1][0] == "p":
+                elif rec[1][1][0] == "n" or rec[1][1][0] == "o" or rec[1][1][0] == "p":
                     abc_recset[7].append(rec)
-                elif rec[1][0][1][0] == "q" or rec[1][0][1][0] == "r":
+                elif rec[1][1][0] == "q" or rec[1][1][0] == "r":
                     abc_recset[8].append(rec)
-                elif rec[1][0][1][0] == "s":
+                elif rec[1][1][0] == "s":
                     abc_recset[9].append(rec)
-                elif rec[1][0][1][0] == "t" or rec[1][0][1][0] == "u" or rec[1][0][1][0] == "v":
+                elif rec[1][1][0] == "t" or rec[1][1][0] == "u" or rec[1][1][0] == "v":
                     abc_recset[10].append(rec)
-                elif rec[1][0][1][0] == "w":
+                elif rec[1][1][0] == "w":
                     abc_recset[11].append(rec)
                 else:
                     abc_recset[12].append(rec)
         return abc_recset
 
 
-class SpeedCarrier:  # accepts carrier records
+class GetCarrier:  # accepts carrier records from get_carrier_list()
     def __init__ (self, recset):
         self.recset = recset
         self.carrier = recset[0][1]
+        self.nsday = recset[0][3]
+        self.route = recset[0][4]
+        self.station = recset[0][5]
+
+    def filter_nonlist_recs(self):  # filters out any records were the list status hasn't changed.
+        filtered_set = []
+        last_rec = ["xxx", "xxx", "xxx", "xxx", "xxx", "xxx"]
+        for r in reversed(self.recset):
+            if r[2] != last_rec[2]:
+                last_rec = r
+                filtered_set.insert(0, r)  # add to the front of the list
+        return filtered_set
+
+    def condense_recs(self):  # condense multiple recs into format used by speedsheets
+        date_str = ""
+        list_str = ""
+        i = 1
+        for rec in reversed(self.recset):
+            if i == 1:
+                date_str = ""
+            else:
+                date_str = date_str + dt_converter(rec[0]).strftime('%a').lower()
+            list_str = list_str + rec[2]
+            if i != len(self.recset):
+                if i == 1:
+                    date_str = ""
+                else:
+                    date_str = date_str + ","
+                list_str = list_str + ","
+            i += 1
+        ns = ns_code[self.nsday].lower()
+        return date_str, self.carrier, list_str, ns, self.route, self.station
+
+
+class GetSpeedCarrier:  # accepts carrier records from GetCarrier class
+    def __init__(self, recset):
+        self.recset = recset
+        self.carrier = recset[1]
 
     def add_id(self):  # put the employee id and carrier records together in a list
         sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % self.carrier
@@ -372,15 +424,21 @@ class SpeedCarrier:  # accepts carrier records
 
 
 def speed_gen_all(frame):
+    minrows_empid = 10
+    minrows_abc = 5
     if g_range == "day":
         day_array = (str(d_date.strftime("%a")).lower(),)
+        datetime_array = (d_date,)
     else:
-        day_array = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
+        day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        datetime_array = (g_date[0], g_date[1], g_date[2], g_date[3], g_date[4], g_date[5], g_date[6])
     # first get a carrier list
     carriers = get_carrier_list()  # get carrier list
     id_recset = []
     for c in carriers:
-        id_recset.append(SpeedCarrier(c).add_id())  # merge carriers with emp id
+        cc = GetCarrier(c).filter_nonlist_recs()  # filter out any recs where list status is unchanged
+        ccc = GetCarrier(cc).condense_recs()  # condense multiple recs into format used by speedsheets
+        id_recset.append(GetSpeedCarrier(ccc).add_id())  # merge carriers with emp id
     car_recs = [SpeedArray(id_recset).order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
     order_abc = SpeedArray(id_recset).order_by_abc()  # sort the id_recset without emp id alphabetically
     for abc in order_abc:
@@ -400,10 +458,16 @@ def speed_gen_all(frame):
                             border=Border(left=bd, top=bd, right=bd, bottom=bd),
                             alignment=Alignment(horizontal='left'))
     # yellow: faf818, blue: 18fafa, green: 18fa20, grey: ababab
+    bold_name = NamedStyle(name="bold_name", font=Font(name='Arial', size=8, bold=True),
+                            fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                            border=Border(left=bd, top=bd, right=bd, bottom=bd))
     input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
                             fill=PatternFill(fgColor='18fafa', fill_type='solid'),
                             border=Border(left=bd, top=bd, right=bd, bottom=bd))
     input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                         border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                         alignment=Alignment(horizontal='right'))
+    input_ns = NamedStyle(name="input_ns", font=Font(bold=True, name='Arial', size=8, color='ff0000'),
                          border=Border(left=bd, top=bd, right=bd, bottom=bd),
                          alignment=Alignment(horizontal='right'))
     ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
@@ -481,7 +545,10 @@ def speed_gen_all(frame):
         cell = ws_list[i]['G4']  # header route
         cell.value = "Route/s"
         cell.style = car_col_header
-        ws_list[i].merge_cells('G4:J4')
+        ws_list[i].merge_cells('G4:I4')
+        cell = ws_list[i]['J4']  # header emp id
+        cell.value = "Emp id"
+        cell.style = car_col_header
         # Headers for Rings
         cell = ws_list[i]['A5']  # header day
         cell.value = "Day"
@@ -507,49 +574,89 @@ def speed_gen_all(frame):
         cell.style = col_header
         # freeze panes
         ws_list[i].freeze_panes = ws_list[i]['A6']
+        if i == 0:
+            rowcount = minrows_empid
+        else:
+            rowcount = minrows_abc
+        rowcounter = max(rowcount, len(car_recs[i]))
         row = 6
-        # for carrier in ws_array[i]:
-        for carrier in car_recs[i]:
-            cell = ws_list[i]['A' + str(row)]  # carrier
-            cell.value = carrier[0]
+        for r in range(rowcounter):
+            if r < len(car_recs[i]):  # if the carrier records are not exhausted
+                eff_date = car_recs[i][r][1][0]  # carrier effective date
+                car_name = car_recs[i][r][1][1]  # carrier name
+                car_list = car_recs[i][r][1][2]  # carrier list status
+                car_ns = car_recs[i][r][1][3]  # carrier ns day
+                car_route = car_recs[i][r][1][4]  # carrier route
+                car_empid = car_recs[i][r][0]  # carrier employee id number
+            else:
+                eff_date = ""  # enter blanks once records are exhausted
+                car_name = ""
+                car_list = ""
+                car_ns = ""
+                car_route = ""
+                car_empid = ""
+            cell = ws_list[i]['A' + str(row)]  # carrier effective date
+            cell.value = eff_date
             cell.style = input_name
             cell = ws_list[i]['B'+ str(row)]  # carrier name
-            cell.value = carrier[1][0][1]
-            cell.style = input_name
+            cell.value = car_name
+            cell.style = bold_name
             ws_list[i].merge_cells('B' + str(row) + ':' + 'D' + str(row))
             cell = ws_list[i]['E' + str(row)]  # carrier list status
-            cell.value = carrier[1][0][2]
+            cell.value = car_list
             cell.style = input_name
             cell = ws_list[i]['F' + str(row)]  # carrier ns day
-            cell.value = carrier[1][0][3]
+            cell.value = car_ns
             cell.style = input_name
-            cell = ws_list[i]['G' + str(row)]  # carrier ns day
-            cell.value = carrier[1][0][4]
+            cell = ws_list[i]['G' + str(row)]  # carrier route
+            cell.value = car_route
             cell.style = input_name
-            ws_list[i].merge_cells('G' + str(row) + ':' + 'J' + str(row))
+            ws_list[i].merge_cells('G' + str(row) + ':' + 'I' + str(row))
+            cell = ws_list[i]['J' + str(row)]  # carrier emp id
+            cell.value = car_empid
+            cell.style = input_name
             row += 1
-            for day in day_array:
+            if r < len(car_recs[i]):  # if the carrier records are not exhausted
+                ring_recs = get_rings(car_name)
+            for d in range(len(day_array)):
+                if r < len(car_recs[i]) and ring_recs[d] != []:  # if the carrier records are not exhausted
+                    ring_5200 = ring_recs[d][0][2]  # rings 5200
+                    ring_move = ring_recs[d][0][5]  # rings MOVES
+                    ring_rs = ring_recs[d][0][3]  # rings RS
+                    ring_code = ring_recs[d][0][4]  # rings CODES
+                    ring_lvty = ring_recs[d][0][6]  # rings LEAVE TYPE
+                    ring_lvtm = ring_recs[d][0][7]  # rings LEAVE TIME
+                else:
+                    ring_5200 = ""  # rings 5200
+                    ring_move = ""  # rings MOVES
+                    ring_rs = ""  # rings RS
+                    ring_code = ""  # rings CODES
+                    ring_lvty = ""  # rings LEAVE TYPE
+                    ring_lvtm = ""  # rings LEAVE TIME
                 cell = ws_list[i]['A' + str(row)]  # rings day
-                cell.value = day
-                cell.style = input_s
+                cell.value = day_array[d]
+                if day_array[d] == car_ns:
+                    cell.style = input_ns  # if it is the nsday
+                else:
+                    cell.style = input_s
                 cell = ws_list[i]['B' + str(row)]  # rings 5200
-                cell.value = ""
+                cell.value = ring_5200
                 cell.style = input_s
                 cell = ws_list[i]['C' + str(row)]  # rings moves
-                cell.value = ""
+                cell.value = ring_move
                 cell.style = input_s
                 ws_list[i].merge_cells('C' + str(row) + ':' + 'F' + str(row))
                 cell = ws_list[i]['G' + str(row)]  # rings RS
-                cell.value = ""
+                cell.value = ring_rs
                 cell.style = input_s
                 cell = ws_list[i]['H' + str(row)]  # rings code
-                cell.value = ""
+                cell.value = ring_code
                 cell.style = input_s
                 cell = ws_list[i]['I' + str(row)]  # rings lv type
-                cell.value = ""
+                cell.value = ring_lvty
                 cell.style = input_s
                 cell = ws_list[i]['J' + str(row)]  # rings lv time
-                cell.value = ""
+                cell.value = ring_lvtm
                 cell.style = input_s
                 row += 1
         # name the excel file
