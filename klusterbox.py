@@ -178,6 +178,27 @@ def titlebar_icon(root):  # place icon in titlebar
             pass
 
 
+class Convert:
+    def __init__(self, data):
+        self.data = data
+
+    def str_to_bool(self):
+        if self.data == 'True':
+            return True
+        else:
+            return False
+
+
+class Window:
+    def __init__(self, frame):  # accepts the frame
+        self.frame = frame
+
+    def fill(self, last, count):  # fill bottom of screen to for scrolling.
+        for i in range(count):
+            Label(self.frame, text="").grid(row=last+i)
+        Label(self.frame, text="kluster end", fg="lightgrey", anchor="w").grid(row=last+count+1, sticky="w")
+
+
 def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
     if sys.platform == "darwin":
         if platform == "macapp":
@@ -302,6 +323,147 @@ def get_rings(carrier):  # return a set of rings for the investigation day or we
     return rings
 
 
+class SpeedSettings:
+    def __init__(self):
+        sql = "SELECT tolerance FROM tolerances"
+        results = inquire(sql)  # get spreadsheet settings from database
+        self.abc_breakdown = Convert(results[15][0]).str_to_bool()
+        self.min_empid = int(results[16][0])
+        self.min_alpha = int(results[17][0])
+        self.min_abc = int(results[18][0])
+
+
+def speedsheet_setting_preset(frame, order):
+    if order == "default":
+        min_empid = "100"
+        min_alpha = "100"
+        min_abc = "30"
+    if order == "high":
+        min_empid = "250"
+        min_alpha = "250"
+        min_abc = "40"
+    if order == "low":
+        min_empid = "50"
+        min_alpha = "50"
+        min_abc = "10"
+    #  abc breakdown in false in all cases
+    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
+    commit(sql)
+    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (min_empid, "min_spd_empid")
+    commit(sql)
+    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (min_alpha, "min_spd_alpha")
+    commit(sql)
+    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (min_abc, "min_spd_abc")
+    commit(sql)
+    speedsheet_settings(frame)
+
+
+def speedsheet_settings_apply(frame, value, setting):
+    if setting != "abc_breakdown":
+        if not isint(value):
+            text = "You must enter a number with no decimals. "
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=frame)
+            return
+        if value.strip() == "":
+            text = "You must enter a numeric value for tolerances"
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=frame)
+            return
+        if float(value) < 10:
+            text = "Values must be equal to or greater than ten."
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=frame)
+
+            return
+        if setting == "min_spd_abc":
+            if float(value) > 200:
+                text = "You must enter a value less than two hundred."
+                messagebox.showerror("Tolerance value entry error",
+                                     text,
+                                     parent=frame)
+                return
+        else:
+            if float(value) > 999:
+                text = "You must enter a value less than one thousand."
+                messagebox.showerror("Tolerance value entry error",
+                                     text,
+                                     parent=frame)
+                return
+    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (value, setting)
+    commit(sql)
+    speedsheet_settings(frame)
+
+
+def speedsheet_settings(frame):
+    setting = SpeedSettings()  # retrieve settings from tolerance table in dbase
+    wd = front_window(frame)
+    Label(wd[3], text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
+        .grid(row=0, sticky="w", columnspan=4)
+    Label(wd[3], text=" ").grid(row=1, column=0)
+    Label(wd[3], text="Minimum rows for SpeedSheets", width=30, anchor="w") \
+        .grid(row=2, column=0, ipady=5, sticky="w")
+    abc_breakdown = StringVar(wd[3])  # create stringvars
+    min_empid = StringVar(wd[3])
+    min_alpha = StringVar(wd[3])
+    min_abc = StringVar(wd[3])
+    abc_breakdown.set(str(setting.abc_breakdown))  # convert to str, else you get a 0 or 1
+    min_empid.set(setting.min_empid)
+    min_alpha.set(setting.min_alpha)
+    min_abc.set(setting.min_abc)
+    Label(wd[3], text="Alphabetical Breakdown (multiple tabs)", width=40, anchor="w")\
+        .grid(row=3, column=0, ipady=5, sticky="w")
+    opt_breakdown = OptionMenu(wd[3], abc_breakdown, "True", "False")
+    opt_breakdown.config(width=9, anchor="w")
+    opt_breakdown.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
+    Button(wd[3], width=5, text="change",
+           command=lambda: speedsheet_settings_apply(wd[0], abc_breakdown.get(), "abc_breakdown")) \
+        .grid(row=3, column=3, padx=4)
+    Label(wd[3], text="Minimum rows for Employee ID tab", width=40, anchor="w") \
+        .grid(row=4, column=0, ipady=5, sticky="w")
+    Entry(wd[3], width=5, textvariable=min_empid).grid(row=4, column=1, padx=4)
+    Button(wd[3], width=5, text="change",
+           command=lambda: speedsheet_settings_apply(wd[0], min_empid.get(), "min_spd_empid")) \
+        .grid(row=4, column=2, padx=4)
+    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_spd_empid")) \
+        .grid(row=4, column=3, padx=4)
+    Label(wd[3], text="Minimum rows for Alphabetically tab", width=40, anchor="w") \
+        .grid(row=5, column=0, ipady=5, sticky="w")
+    Entry(wd[3], width=5, textvariable=min_alpha).grid(row=5, column=1, padx=4)
+    Button(wd[3], width=5, text="change",
+           command=lambda: speedsheet_settings_apply(wd[0], min_alpha.get(), "min_spd_alpha")) \
+        .grid(row=5, column=2, padx=4)
+    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_spd_alpha")) \
+        .grid(row=5, column=3, padx=4)
+    Label(wd[3], text="Minimum rows for Alphabetical breakdown tabs", width=40, anchor="w") \
+        .grid(row=6, column=0, ipady=5, sticky="w")
+    Entry(wd[3], width=5, textvariable=min_abc).grid(row=6, column=1, padx=4)
+    Button(wd[3], width=5, text="change",
+           command=lambda: speedsheet_settings_apply(wd[0], min_abc.get(), "min_spd_abc")) \
+        .grid(row=6, column=2, padx=4)
+    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_spd_abc")) \
+        .grid(row=6, column=3, padx=4)
+    Label(wd[3], text="________________________________________________________________________________________",
+          pady=5) \
+        .grid(row=7, columnspan=5, sticky="w")
+    Label(wd[3], text="Restore Defaults").grid(row=8, column=0, ipady=5, sticky="w")
+    Button(wd[3], width=5, text="set", command=lambda: speedsheet_setting_preset(wd[0], "default")) \
+        .grid(row=8, column=3)
+    Label(wd[3], text="High Settings").grid(row=9, column=0, ipady=5, sticky="w")
+    Button(wd[3], width=5, text="set", command=lambda: speedsheet_setting_preset(wd[0], "high")) \
+        .grid(row=9, column=3)
+    Label(wd[3], text="Low Settings").grid(row=10, column=0, ipady=5, sticky="w")
+    Button(wd[3], width=5, text="set", command=lambda: speedsheet_setting_preset(wd[0], "low")) \
+        .grid(row=10, column=3)
+    Window(wd[3]).fill(11, 20)  # fill the bottom of the window for scrolling
+    Button(wd[4], text="Go Back", width=20, anchor="w",
+           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+    rear_window(wd)
+
+
 def speed_cheatsheet():
     pass
 
@@ -323,18 +485,26 @@ def speed_gen_carrier():
 
 
 class SpeedArray:  # accepts multidimensional arrays with emp ids and records
-    def __init__ (self, id_recset):
+    def __init__(self, id_recset):
         self.id_recset = id_recset
 
     def order_by_id(self):  # order id_recset by employee id
         ordered_recs = []
-        for rec in self.id_recset:
-            if rec[0] != "":
-                ordered_recs.append(rec)
-        ordered_recs.sort(key=itemgetter(0))
+        for rec in self.id_recset:  # loop through the carrier list
+            if rec[0] != "":  # if the item for employee id is not empty
+                ordered_recs.append(rec)  # add the record set to the array
+        ordered_recs.sort(key=itemgetter(0))  # sort the array by the employee id
         return ordered_recs
 
-    def order_by_abc(self):  # sort multidimensional array
+    def order_alphabetically(self):  # order id recset alphabetically into one tab
+        alpha_recset = ["alpha_array",]
+        alpha_recset[0] = []
+        for rec in self.id_recset:
+            if rec[0] == "":
+                alpha_recset[0].append(rec)
+        return alpha_recset
+
+    def order_by_abc_breakdown(self):  # sort id recset alphabetically into multiple tabs
         abc_recset = ["a_array", "b_array", "cd_array", "efg_array", "h_array", "ijk_array", "m_array",
                     "nop_array", "qr_array", "s_array", "tuv_array", "w_array", "xyz_array"]
         for i in range(len(abc_recset)):
@@ -423,15 +593,90 @@ class GetSpeedCarrier:  # accepts carrier records from GetCarrier class
         return addthis
 
 
+class MvTriad:  # pulls in triad sets from database - rings3 table moves column
+    def __init__(self, trset):
+        self.trset = trset  # triad set
+
+    def mv_to_speed(self):
+        if self.trset == "":
+            return self.trset
+        else:
+            return self.mv_format()
+
+    def mv_format(self):  # format mv triads for output to speedsheets
+        mv_array = self.trset.split(",")  # split by commas
+        mv_str = ""
+        i = 1  # initiate counter
+        for mv in mv_array:
+            mv_str += mv
+            if i%3 != 0:
+                mv_str += "+"
+            elif i%3 == 0 and i != len(mv_array):
+                mv_str += "/"
+            else:
+                mv_str += ""
+            i += 1  # increment counter
+        return mv_str
+
+
+class SpeedCell:
+    def __init__(self, m_array, abc_breakdown, min_empid, min_abc, min_alpha):
+        self.m_array = m_array
+        self.abc_breakdown = abc_breakdown
+        self.min_empid = min_empid
+        self.min_abc = min_abc
+        self.min_alpha = min_alpha
+
+    def minrow_array(self):
+        minrow_array = [self.min_empid, ]
+        if not self.abc_breakdown:
+            minrow_array.append(self.min_alpha)
+        else:
+            for i in range(len(self.m_array)-1):
+                minrow_array.append(self.min_abc)
+        return minrow_array
+
+    def car_recs(self):
+        car_recs = [len(self.m_array[0]),]
+        if not self.abc_breakdown:
+            car_recs.append(len(self.m_array[1]))
+        else:
+            for i in range(1, len(self.m_array)):
+                car_recs.append(len(self.m_array[i]))
+        return car_recs
+
+    def count(self):
+        speedcell_count = 0
+        minrows = self.minrow_array()
+        print(minrows)
+        carrecs = self.car_recs()
+        print(carrecs)
+        for i in range(len(minrows)):
+            speedcell_count += max(minrows[i], carrecs[i])
+        return speedcell_count
+
+
 def speed_gen_all(frame):
-    minrows_empid = 10
-    minrows_abc = 5
+    pb_root = Tk()  # create a window for the progress bar
+    pb_root.title("Generating Speedsheet")
+    titlebar_icon(pb_root)  # place icon in titlebar
+    pb_label = Label(pb_root, text="Working : ")  # make label for progress bar
+    pb_label.grid(row=0, column=0, sticky="w")
+    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+    pb.grid(row=1, column=0, sticky="w")
+    pb_text = Label(pb_root, text="", anchor="w")
+    pb_text.grid(row=2, column=0, sticky="w")
+    # initialize variables
+    db = SpeedSettings()
+    print(db.abc_breakdown)
+    print(db.min_empid)
+    print(db.min_alpha)
+    print(db.min_abc)
+
     if g_range == "day":
         day_array = (str(d_date.strftime("%a")).lower(),)
-        datetime_array = (d_date,)
     else:
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
-        datetime_array = (g_date[0], g_date[1], g_date[2], g_date[3], g_date[4], g_date[5], g_date[6])
     # first get a carrier list
     carriers = get_carrier_list()  # get carrier list
     id_recset = []
@@ -440,9 +685,17 @@ def speed_gen_all(frame):
         ccc = GetCarrier(cc).condense_recs()  # condense multiple recs into format used by speedsheets
         id_recset.append(GetSpeedCarrier(ccc).add_id())  # merge carriers with emp id
     car_recs = [SpeedArray(id_recset).order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
-    order_abc = SpeedArray(id_recset).order_by_abc()  # sort the id_recset without emp id alphabetically
+    if not db.abc_breakdown:
+        order_abc = SpeedArray(id_recset).order_alphabetically()  # sort the id_recset alphabetically
+    else:
+        order_abc = SpeedArray(id_recset).order_by_abc_breakdown()  # sort the id_recset w/o emp id by abc breakdown
     for abc in order_abc:
         car_recs.append(abc)
+    speedcell_count = SpeedCell(car_recs, db.abc_breakdown, db.min_empid, db.min_abc, db.min_alpha).count()
+    pi = 0
+    empty_sc = 0
+    pb["maximum"] = speedcell_count  # set length of progress bar
+    pb.start()
     # Named styles for workbook
     bd = Side(style='thin', color="80808080")  # defines borders
     ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
@@ -470,9 +723,13 @@ def speed_gen_all(frame):
     input_ns = NamedStyle(name="input_ns", font=Font(bold=True, name='Arial', size=8, color='ff0000'),
                          border=Border(left=bd, top=bd, right=bd, bottom=bd),
                          alignment=Alignment(horizontal='right'))
-    ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
-    ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
-                 "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
+    if not db.abc_breakdown:
+        ws_list = ["emp_id", "alphabet"]
+        ws_titles = ["by employee id", "alphabetically"]
+    else:
+        ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
+        ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
+                     "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
     wb = Workbook()  # define the workbook
     ws_list[0] = wb.active  # create first worksheet
     ws_list[0].title = ws_titles[0]  # title first worksheet
@@ -502,7 +759,7 @@ def speed_gen_all(frame):
         cell.style = date_dov_title
         cell = ws_list[i]['B2']  # date
         if g_range == "day":
-            cell.value = "{}".format(d_date, "%A  %m/%d/%y")
+            cell.value = "{}".format(d_date.strftime("%A  %m/%d/%y"))
         else:
             cell.value = "{} through {}".format(g_date[0].strftime("%A  %m/%d/%y"), g_date[6].strftime("%A  %m/%d/%y"))
         cell.style = date_dov
@@ -575,11 +832,13 @@ def speed_gen_all(frame):
         # freeze panes
         ws_list[i].freeze_panes = ws_list[i]['A6']
         if i == 0:
-            rowcount = minrows_empid
+            rowcount = db.min_empid  # get minimum speedcell count for employee id tab
+        elif i != 0 and not db.abc_breakdown:
+            rowcount = db.min_alpha  # get minimum speedcell count for alphabetical tab
         else:
-            rowcount = minrows_abc
+            rowcount = db.min_abc  # get minimum speedcell count for each abc breakdown tab
         rowcounter = max(rowcount, len(car_recs[i]))
-        row = 6
+        row = 6  # start at row 6 after the page header display
         for r in range(rowcounter):
             if r < len(car_recs[i]):  # if the carrier records are not exhausted
                 eff_date = car_recs[i][r][1][0]  # carrier effective date
@@ -588,6 +847,8 @@ def speed_gen_all(frame):
                 car_ns = car_recs[i][r][1][3]  # carrier ns day
                 car_route = car_recs[i][r][1][4]  # carrier route
                 car_empid = car_recs[i][r][0]  # carrier employee id number
+                pb["value"] = pi  # increment progress bar
+                pb_text.config(text="Formatting Speedcell for {}".format(car_name))
             else:
                 eff_date = ""  # enter blanks once records are exhausted
                 car_name = ""
@@ -595,6 +856,11 @@ def speed_gen_all(frame):
                 car_ns = ""
                 car_route = ""
                 car_empid = ""
+                pb["value"] = pi  # increment progress bar
+                empty_sc += 1 # increment counter for empty speedcells
+                pb_text.config(text="Formatting empty Speedcell #{}".format(empty_sc))
+            pb_root.update()
+            pi += 1
             cell = ws_list[i]['A' + str(row)]  # carrier effective date
             cell.value = eff_date
             cell.style = input_name
@@ -621,7 +887,7 @@ def speed_gen_all(frame):
             for d in range(len(day_array)):
                 if r < len(car_recs[i]) and ring_recs[d] != []:  # if the carrier records are not exhausted
                     ring_5200 = ring_recs[d][0][2]  # rings 5200
-                    ring_move = ring_recs[d][0][5]  # rings MOVES
+                    ring_move = MvTriad(ring_recs[d][0][5]).mv_to_speed()  # format rings MOVES
                     ring_rs = ring_recs[d][0][3]  # rings RS
                     ring_code = ring_recs[d][0][4]  # rings CODES
                     ring_lvty = ring_recs[d][0][6]  # rings LEAVE TYPE
@@ -660,6 +926,10 @@ def speed_gen_all(frame):
                 cell.style = input_s
                 row += 1
         # name the excel file
+    pb.stop()  # stop and destroy the progress bar
+    pb_label.destroy()  # destroy the label for the progress bar
+    pb.destroy()
+    pb_root.destroy()
     if g_range == "day":
         r = "_d"
         date = d_date
@@ -3420,22 +3690,22 @@ def ns_config_apply(frame, text_array, color_array):
                                  "Names must not be shorter than 1 character.",
                                  parent=frame)
             return
-    colors = ("yellow", "blue", "green", "brown", "red", "black")
+    color = ("yellow", "blue", "green", "brown", "red", "black")
     for i in range(6):
-        sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (text_array[i].get(), colors[i])
+        sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (text_array[i].get(), color[i])
         commit(sql)
-        sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (color_array[i].get(), colors[i])
+        sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (color_array[i].get(), color[i])
         commit(sql)
     ns_config(frame)
 
 
 def ns_config_reset(frame):  # reset ns day configurations from Non-Scheduled Day Configurations page
     fill = ("gold", "navy", "forest green", "saddle brown", "red3", "gray10")
-    colors = ("yellow", "blue", "green", "brown", "red", "black")
+    color = ("yellow", "blue", "green", "brown", "red", "black")
     for i in range(6):
-        sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (colors[i], colors[i])
+        sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (color[i], color[i])
         commit(sql)
-        sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (fill[i], colors[i])
+        sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (fill[i], color[i])
         commit(sql)
     ns_config(frame)
 
@@ -10282,6 +10552,18 @@ def tolerance_info(frame, switch):
         text = "Sets the minimum number of rows for the " \
                "12 and 60 Hour Violations spreadsheet. \n\n" \
                "Enter a value between 0 and 100"
+    if switch == "min_spd_empid":
+        text = "Sets the minimum number of rows for the " \
+               "Employee Id tab of the All Inclusive Speedsheet. \n\n" \
+               "Enter a value between 9 and 1000"
+    if switch == "min_spd_alpha":
+        text = "Sets the minimum number of rows for the " \
+               "Alphabetical tab of the All Inclusive Speedsheet. \n\n" \
+               "Enter a value between 9 and 1000"
+    if switch == "min_spd_abc":
+        text = "Sets the minimum number of rows for the " \
+               "Alphabetical breakdown tabs of the All Inclusive Speedsheet. \n\n" \
+               "Enter a value between 9 and 200"
     messagebox.showinfo("About Tolerances", text, parent=frame)
 
 
@@ -14627,6 +14909,7 @@ def main_frame():
     management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(f))
     if gs_day == "x":
         management_menu.entryconfig(5, state=DISABLED)
+    management_menu.add_command(label="Speedsheet Settings", command=lambda: speedsheet_settings(f))
     management_menu.add_separator()
     management_menu.add_command(label="Auto Data Entry Settings", command=lambda: auto_data_entry_settings(f))
     management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(f))
@@ -14914,35 +15197,43 @@ def setup_database():
     pb_root.update()
     sql = 'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (0,"ot_own_rt", .25)'
+    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (0, "ot_own_rt", .25)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (1,"ot_tol", .25)'
+    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (1, "ot_tol", .25)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (2,"av_tol", .25)'
+    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (2, "av_tol", .25)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (3,"min_ss_nl", 25)'
+    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (3, "min_ss_nl", 25)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (4,"min_ss_wal", 25)'
+    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (4, "min_ss_wal", 25)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (5,"min_ss_otdl", 25)'
+    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (5, "min_ss_otdl", 25)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (6,"min_ss_aux", 25)'
+    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (6, "min_ss_aux", 25)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(7,"allow_zero_top","False")'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(7, "allow_zero_top", "False")'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(8,"allow_zero_bottom","True")'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(8, "allow_zero_bottom", "True")'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(9,"pdf_error_rpt","off")'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(9, "pdf_error_rpt", "off")'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(10,"pdf_raw_rpt","off")'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(10, "pdf_raw_rpt", "off")'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(11,"pdf_text_reader","off")'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(11, "pdf_text_reader", "off")'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(12,"ns_auto_pref","rotation")'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(12, "ns_auto_pref", "rotation")'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(13,"mousewheel", -1)'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(13, "mousewheel", -1)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(14,"min_ss_overmax", 30)'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(14, "min_ss_overmax", 30)'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(15, "abc_breakdown", "False")'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(16, "min_spd_empid", 100)'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(17, "min_spd_alpha", 100)'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(18, "min_spd_abc", 30)'
     commit(sql)
     pb_counter += 1  # increment progress bar
     pb["value"] = pb_counter
