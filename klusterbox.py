@@ -17,9 +17,11 @@ import io
 from io import StringIO  # change from cStringIO to io for py 3x
 import time
 import webbrowser  # for hyper link at about_klusterbox()
+from threading import *  # run load workbook while progress bar runs
 # Pillow Library
 from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
+from openpyxl import load_workbook
 from openpyxl import Workbook
 from openpyxl.styles import colors
 from openpyxl.styles import NamedStyle, Font, Color, Border, Side, Alignment, PatternFill
@@ -151,6 +153,33 @@ def rear_window(wd):  # This closes the window created by front_window()
     root.update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
+
+
+class ProgressBarIn:
+    def __init__(self, title="", label="", text=""):
+        self.title = title
+        self.label = label
+        self.text = text
+        self.pb_root = Tk()  # create a window for the progress bar
+        self.pb_label = Label(self.pb_root, text=self.label)  # make label for progress bar
+        self.pb = ttk.Progressbar(self.pb_root, length=400, mode="indeterminate")  # create progress bar
+        self.pb_text = Label(self.pb_root, text=self.text, anchor="w")
+
+    def start_up(self):
+        titlebar_icon(self.pb_root)  # place icon in titlebar
+        self.pb_root.title(self.title)
+        self.pb_label.grid(row=0, column=0, sticky="w")
+        self.pb.grid(row=1, column=0, sticky="w")
+        self.pb_text.grid(row=2, column=0, sticky="w")
+        self.pb.start()
+        self.pb_root.mainloop()
+
+    def stop(self, task):
+        self.pb.stop()  # stop and destroy the progress bar
+        self.pb_label.destroy()  # destroy the label for the progress bar
+        self.pb.destroy()
+        self.pb_root.destroy()
+
 
 
 def titlebar_icon(root):  # place icon in titlebar
@@ -476,8 +505,69 @@ def speed_input():
     pass
 
 
-def speed_precheck():
-    pass
+class LoadWorkBook(Thread):
+    def __init__(self, frame, pb, path):
+        Thread.__init__(self)
+        self.frame = frame
+        self.pb = pb
+        self.path = path
+        self.obj = ""
+
+    def run(self):
+        self.obj = load_workbook(self.path)
+        self.pb.stop(self.obj)
+        speed_precheck_loaded(self.frame, self.obj)
+
+
+class SpeedWorkBookGet:
+    def get_filepath(self):
+        if platform == "macapp" or platform == "winapp":
+            return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
+        else:
+            return os.path.sep, 'kb_sub\\' + 'speedsheets'
+
+    def get_file(self):
+        path = self.get_filepath()
+        file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.xlsx")])
+        if file_path[-5:].lower() == ".xlsx":
+            return file_path
+        elif file_path == "":
+            return "no selection"
+        else:
+            return "invalid selection"
+
+    def open_file(self, frame):
+        file_path = self.get_file()
+        if file_path == "no selection":
+            return
+        elif file_path == "invalid selection":
+            messagebox.showerror("Report Generator",
+                                 "The file you have selected is not an .xlsx file. "
+                                 "You must select a file with a .xlsx extension.",
+                                 parent=frame)
+            return
+        else:
+            pb = ProgressBarIn(title="hey now", label="hold on", text="hello there")
+            wb = LoadWorkBook(frame, pb, file_path)
+            wb.start()
+            pb.start_up()
+
+
+def speed_precheck(frame):
+    SpeedWorkBookGet().open_file(frame)
+
+
+def speed_precheck_loaded(frame, obj):
+    # # ws = wb["alphabetically"]
+    # # print(ws['B6'].value)  # carrier name
+    # # print(ws['E6'].value)  # carrier list
+    # # print(ws['F6'].value)  # carrier nsday
+    # # print(ws['G6'].value)  # carrier route
+    # # print(ws['J6'].value)  # carrier emp id
+    sheets = obj.sheetnames
+    for s in sheets:
+        print(s)
+    print(len(sheets))
 
 
 def speed_gen_carrier():
@@ -619,7 +709,7 @@ class MvTriad:  # pulls in triad sets from database - rings3 table moves column
         return mv_str
 
 
-class SpeedCell:
+class SpeedCell:  # accepts minimum row information and carrier records for Speedsheets
     def __init__(self, m_array, abc_breakdown, min_empid, min_abc, min_alpha):
         self.m_array = m_array
         self.abc_breakdown = abc_breakdown
@@ -627,7 +717,7 @@ class SpeedCell:
         self.min_abc = min_abc
         self.min_alpha = min_alpha
 
-    def minrow_array(self):
+    def minrow_array(self):  # gets a count of minimum row info for each SpeedSheet tab
         minrow_array = [self.min_empid, ]
         if not self.abc_breakdown:
             minrow_array.append(self.min_alpha)
@@ -636,7 +726,7 @@ class SpeedCell:
                 minrow_array.append(self.min_abc)
         return minrow_array
 
-    def car_recs(self):
+    def car_recs(self):  # gets a count of carrier records for each SpeedSheet tab
         car_recs = [len(self.m_array[0]),]
         if not self.abc_breakdown:
             car_recs.append(len(self.m_array[1]))
@@ -645,12 +735,10 @@ class SpeedCell:
                 car_recs.append(len(self.m_array[i]))
         return car_recs
 
-    def count(self):
+    def count(self):  # compare the minimum row and carrier records arrays to get the number of SpeedCells
         speedcell_count = 0
         minrows = self.minrow_array()
-        print(minrows)
         carrecs = self.car_recs()
-        print(carrecs)
         for i in range(len(minrows)):
             speedcell_count += max(minrows[i], carrecs[i])
         return speedcell_count
@@ -668,11 +756,6 @@ def speed_gen_all(frame):
     pb_text.grid(row=2, column=0, sticky="w")
     # initialize variables
     db = SpeedSettings()
-    print(db.abc_breakdown)
-    print(db.min_empid)
-    print(db.min_alpha)
-    print(db.min_abc)
-
     if g_range == "day":
         day_array = (str(d_date.strftime("%a")).lower(),)
     else:
@@ -14824,12 +14907,12 @@ def main_frame():
     speed_menu = Menu(menubar, tearoff=0)
     speed_menu.add_command(label="Generate All", command=lambda: speed_gen_all(f))
     speed_menu.add_command(label="Generate Carrier", command=lambda: speed_gen_carrier())
-    speed_menu.add_command(label="Pre-check", command=lambda: speed_precheck())
+    speed_menu.add_command(label="Pre-check", command=lambda: speed_precheck(f))
     speed_menu.add_command(label="Input", command=lambda: speed_input())
     if gs_day == "x":
         speed_menu.entryconfig(0, state=DISABLED)
         speed_menu.entryconfig(1, state=DISABLED)
-        speed_menu.entryconfig(2, state=DISABLED)
+        # speed_menu.entryconfig(2, state=DISABLED)
         speed_menu.entryconfig(3, state=DISABLED)
         # speed_menu.entryconfig(4, state = DISABLED)
     speed_menu.add_separator()
