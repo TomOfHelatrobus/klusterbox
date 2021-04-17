@@ -174,7 +174,7 @@ class ProgressBarIn:
         self.pb.start()
         self.pb_root.mainloop()
 
-    def stop(self, task):
+    def stop(self):
         self.pb.stop()  # stop and destroy the progress bar
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
@@ -508,15 +508,14 @@ def speed_input():
 class LoadWorkBook(Thread):
     def __init__(self, frame, pb, path):
         Thread.__init__(self)
-        self.frame = frame
-        self.pb = pb
-        self.path = path
-        self.obj = ""
+        self.frame = frame  # initialize the frame object
+        self.pb = pb  # initialize the progress bar object
+        self.path = path  # initialize the path to the .xlsx doc
 
     def run(self):
-        self.obj = load_workbook(self.path)
-        self.pb.stop(self.obj)
-        speed_precheck_loaded(self.frame, self.obj)
+        wb = load_workbook(self.path)  # load xlsx doc with openpyxl
+        self.pb.stop()  # terminate the progress bar object
+        speed_precheck_loaded(self.frame, wb)  # pass the frame and workbook object to a new function
 
 
 class SpeedWorkBookGet:
@@ -524,7 +523,7 @@ class SpeedWorkBookGet:
         if platform == "macapp" or platform == "winapp":
             return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
         else:
-            return os.path.sep, 'kb_sub\\' + 'speedsheets'
+            return os.path.join(os.path.sep, 'kb_sub', 'speedsheets')
 
     def get_file(self):
         path = self.get_filepath()
@@ -553,21 +552,65 @@ class SpeedWorkBookGet:
             pb.start_up()
 
 
-def speed_precheck(frame):
-    SpeedWorkBookGet().open_file(frame)
+class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
+    def __init__(self, name, day, list_stat, nsday, route, empid):
+        self.name = name
+        self.day = day
+        self.list_stat = list_stat
+        self.nsday = nsday
+        self.route = route
+        self.empid = empid
+
+    def check(self):
+        print(self.name, " ", self.day, " ", self.list_stat, " ", self.nsday, " ", self.route, " ", self.empid)
 
 
-def speed_precheck_loaded(frame, obj):
-    # # ws = wb["alphabetically"]
-    # # print(ws['B6'].value)  # carrier name
-    # # print(ws['E6'].value)  # carrier list
-    # # print(ws['F6'].value)  # carrier nsday
-    # # print(ws['G6'].value)  # carrier route
-    # # print(ws['J6'].value)  # carrier emp id
-    sheets = obj.sheetnames
-    for s in sheets:
-        print(s)
-    print(len(sheets))
+class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
+    def __init__(self, day, hours, moves, rs, codes, lv_type, lv_time):
+        self.day = day
+        self.hours = hours
+        self.moves = moves
+        self.rs = rs
+        self.codes = codes
+        self.lv_type = lv_type
+        self.lv_time = lv_time
+
+    def check(self):
+        print(self.day, " ", self.hours, " ", self.moves, " ", self.rs, " ", self.codes, " ", self.lv_type,
+              " ", self.lv_time)
+
+
+def speed_precheck_loaded(frame, wb):
+    is_name = False  # initialize bool for speedcell name
+    sheets = wb.sheetnames  # get the names of the worksheets
+    sheet_count = len(sheets) # get the number of worksheets
+    for i in range(sheet_count):
+        print(sheets[i], " ", wb[sheets[i]].max_row)
+        ws = wb[sheets[i]]  # assign the worksheet object
+        row_count = ws.max_row  # get the total amount of rows in the worksheet
+        for ii in range(6,row_count):  # loop through all rows
+            if (ii+2) % 8 == 0:  # if the row is a carrier record
+                if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
+                    is_name = True  # bool: the speedcell has a name
+                    day = ws.cell(row=ii, column=1).value
+                    name = ws.cell(row=ii, column=2).value
+                    list_stat = ws.cell(row=ii, column=5).value
+                    nsday = ws.cell(row=ii, column=6).value
+                    route = ws.cell(row=ii, column=7).value
+                    empid = ws.cell(row=ii, column=10).value
+                    SpeedCarrierCheck(name, day, list_stat, nsday, route, empid).check()
+                else:
+                    is_name = False  # the speedcell does not have a name
+            else:
+                if is_name:  # if the speedcell has a name, get the rings
+                    day = ws.cell(row=ii, column=1).value
+                    hours = ws.cell(row=ii, column=2).value
+                    moves = ws.cell(row=ii, column=3).value
+                    rs = ws.cell(row=ii, column=7).value
+                    codes = ws.cell(row=ii, column=8).value
+                    lv_type = ws.cell(row=ii, column=9).value
+                    lv_time = ws.cell(row=ii, column=10).value
+                    SpeedRingCheck(day, hours, moves, rs, codes, lv_type, lv_time).check()
 
 
 def speed_gen_carrier():
@@ -11347,6 +11390,7 @@ def spreadsheet(frame, list_carrier, r_rings):
         ws_list[i].column_dimensions["J"].width = 6
         ws_list[i].column_dimensions["K"].width = 6
         cell = ws_list[i]['A1']
+        # cell = ws_list[i](row=1, column=1)
         cell.value = "Improper Mandate Worksheet"
         cell.style = ws_header
         ws_list[i].merge_cells('A1:E1')
@@ -11447,6 +11491,7 @@ def spreadsheet(frame, list_carrier, r_rings):
                         move_count = (int(len(s_moves) / 3))  # find the number of sets of moves
                         # output to the gui
                         cell = ws_list[i]['A' + str(oi)]
+                        # cell = ws_list[i](row=oi, column=1)
                         cell.value = each[1]  # name
                         cell.style = input_name
                         if each[4] == "none":
@@ -14907,7 +14952,7 @@ def main_frame():
     speed_menu = Menu(menubar, tearoff=0)
     speed_menu.add_command(label="Generate All", command=lambda: speed_gen_all(f))
     speed_menu.add_command(label="Generate Carrier", command=lambda: speed_gen_carrier())
-    speed_menu.add_command(label="Pre-check", command=lambda: speed_precheck(f))
+    speed_menu.add_command(label="Pre-check", command=lambda: SpeedWorkBookGet().open_file(f))
     speed_menu.add_command(label="Input", command=lambda: speed_input())
     if gs_day == "x":
         speed_menu.entryconfig(0, state=DISABLED)
