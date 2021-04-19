@@ -52,7 +52,7 @@ release_date = "March 13, 2021"
 Klusterbox
 Copyright 2019 Thomas Weeks
 
-Caution: To ensure proper operation of Klusterbox outside Program Files (Windows) or Applications (mac OS),
+Caution: To ensure proper operation of Legacy Klusterbox outside Program Files (Windows) or Applications (mac OS),
 make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.
 
 For the newest version of Klusterbox, visit www.klusterbox.com/download.
@@ -155,6 +155,110 @@ def rear_window(wd):  # This closes the window created by front_window()
     mainloop()
 
 
+class RouteChecker:
+    def __init__(self, route):
+        self.route = route
+        self.routearray = self.route.split("/")
+
+    def check_numeric(self):  # is the route numeric?
+        if self.route == "":
+            return True
+        for r in self.routearray:
+            if not r.isnumeric():
+                return False
+        return True
+
+    def check_array(self):  # are there 1 or 5 items in the route string
+        if len(self.routearray) == 1:
+            return True
+        elif len(self.routearray) == 5:
+            return True
+        else:
+            return False
+
+    def check_length(self):  # are the routes 4 or 5 digits long
+        if self.route == "":
+            return True
+        for r in self.routearray:
+            if len(r) < 4 or len(r) > 5:
+                return False
+        return True
+
+    def check_all(self):  # do all checks, return False if any fail.
+        if not self.check_numeric():
+            return False
+        if not self.check_array():
+            return False
+        if not self.check_length():
+            return False
+        return True
+
+
+class NsDayDict:
+    def __init__(self, date):
+        self.date = date  # is a datetime object
+        self.pat = ("blue", "green", "brown", "red", "black", "yellow")  # define color sequence tuple
+
+    def get_sat_range(self):  # calculate the n/s day of sat/first day of investigation range
+        sat_range = self.date  # saturday range, first day of the investigation range
+        wkdy_name = self.date.strftime("%a")
+        while wkdy_name != "Sat":  # while date enter is not a saturday
+            sat_range -= timedelta(days=1)  # walk back the date until it is a saturday
+            wkdy_name = sat_range.strftime("%a")
+        return sat_range
+
+    def get(self):
+        sat_range = self.get_sat_range()  # calculate the n/s day of sat/first day of investigation range
+        end_date = sat_range + timedelta(days=-1)
+        cdate = datetime(2017, 1, 7)  #
+        x = 0  # x is the index of self.pattern
+        if sat_range > cdate:
+            while cdate < end_date:
+                if x > 0:
+                    x -= 1
+                    cdate += timedelta(days=7)
+                else:
+                    x = 5
+                    cdate += timedelta(days=7)
+        else:
+            # IN REVERSE
+            while cdate > sat_range:
+                if x < 5:
+                    x += 1
+                    cdate -= timedelta(days=7)
+                else:
+                    x = 0
+                    cdate -= timedelta(days=7)
+        # find ns day for each day in range
+        date = sat_range
+        ns_xlate = {}  # ns translate dictionary
+        for i in range(7):
+            if i == 0:
+                ns_xlate[self.pat[x]] = date.strftime("%a")
+                date += timedelta(days=1)
+            elif i == 1:
+                date += timedelta(days=1)
+                if x > 4:
+                    x = 0
+                else:
+                    x += 1
+            else:
+                ns_xlate[self.pat[x]] = date.strftime("%a")
+                date += timedelta(days=1)
+                if x > 4:
+                    x = 0
+                else:
+                    x += 1
+        ns_xlate["none"] = "  "  # if there is no ns day, such as auxiliary assistance
+        ns_xlate["sat"] = "Sat"  # if there are fixed ns days
+        ns_xlate["mon"] = "Mon"
+        ns_xlate["tue"] = "Tue"
+        ns_xlate["wed"] = "Wed"
+        ns_xlate["thu"] = "Thu"
+        ns_xlate["fri"] = "Fri"
+        return ns_xlate
+
+
 class ReportName:  # returns a file name which is stamped with the datetime
     def __init__(self, filename):
         self.filename = filename
@@ -229,6 +333,29 @@ class Convert:
         date = self.data.split("/")
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
         return dt_converter(string)
+
+
+class Handler:
+    def __init__(self, data):
+        self.data = data
+
+    def nonetype(self):
+        if self.data is None:
+            return str("")
+        else:
+            return self.data
+
+    def ns_nonetype(self):
+        if self.data is None:
+            return str("  ")
+        else:
+            return self.data
+
+    def nsblank2none(self):
+        if self.data.strip() == "":
+            return str("none")
+        else:
+            return self.data
 
 
 class Window:
@@ -352,7 +479,7 @@ class CarrierRecSet:
                         rec_set.insert(0, r)  # add to the front of the list
                 return rec_set
             else:
-                return
+                return  # will return None - NoneType
 
 
 class CarrierList:
@@ -367,66 +494,10 @@ class CarrierList:
               % (self.station, self.end)
         distinct = inquire(sql)  # call function to access database
         for carrier in distinct:
-            rec_set = CarrierRecSet(carrier, self.start, self.end, self.station).get()  # get rec set per carrier
+            rec_set = CarrierRecSet(carrier[0], self.start, self.end, self.station).get()  # get rec set per carrier
             if rec_set is not None:  # only add rec sets if there is something there
                 c_list.append(rec_set)
         return c_list
-
-
-def get_carrier_list():  # get a weekly or daily carrier list
-    c_list = []
-    if g_range == "day":
-        start_date = d_date
-        end_date = d_date
-    else:
-        start_date = g_date[0]
-        end_date = g_date[6]
-    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' AND effective_date <= '%s' " \
-          % (g_station, end_date)
-    distinct = inquire(sql)  # call function to access database
-    for carrier in distinct:
-        if g_range == "day":
-            sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
-                  "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
-                  % (carrier[0], start_date)
-            daily_rec = inquire(sql)
-            rec_set = []
-            if daily_rec[0][5] == g_station:
-                rec_set.append(daily_rec[0])  # since all weekly rings are in a rec_set, be consistant
-                c_list.append(rec_set)
-        else:
-            sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' AND '%s' " \
-                  "ORDER BY effective_date DESC" \
-                  % (carrier[0], start_date, end_date)
-            rec = inquire(sql)
-            sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
-                  "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
-                  "ORDER BY effective_date DESC" \
-                  % (carrier[0], start_date - timedelta(days=1))
-            before_range = inquire(sql)
-            #  append before_range if there is no record for saturday or invest range is daily
-            add_it = True
-            if len(rec) > 0:
-                for r in rec:
-                    if r[0] == str(start_date):
-                        add_it = False
-            if add_it:
-                rec.append(before_range[0])
-            #  filter out record sets with no station matches
-            station_anchor = False
-            for r in rec:
-                if r[5] == g_station:
-                    station_anchor = True
-            rec_set = []  # initialize array to put record sets into carrier list
-            #  filter out any consecutive duplicate records
-            if station_anchor:
-                last_rec = ["xxx", "xxx", "xxx", "xxx", "xxx", "xxx"]
-                for r in reversed(rec):
-                    if r[2] != last_rec[2] or r[3] != last_rec[3] or r[4] != last_rec[4] or r[5] != last_rec[5]:
-                        last_rec = r
-                        rec_set.insert(0, r)  # add to the front of the list
-                c_list.append(rec_set)
-    return c_list
 
 
 def get_rings(carrier):  # return a set of rings for the investigation day or week
@@ -454,16 +525,16 @@ class SpeedSettings:
 
 def speedsheet_setting_preset(frame, order):
     if order == "default":
-        min_empid = "100"
-        min_alpha = "100"
-        min_abc = "30"
-    if order == "high":
-        min_empid = "250"
-        min_alpha = "250"
-        min_abc = "40"
-    if order == "low":
         min_empid = "50"
         min_alpha = "50"
+        min_abc = "10"
+    if order == "high":
+        min_empid = "150"
+        min_alpha = "150"
+        min_abc = "40"
+    if order == "low":
+        min_empid = "10"
+        min_alpha = "10"
         min_abc = "10"
     #  abc breakdown in false in all cases
     sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
@@ -591,21 +662,19 @@ def speed_to_spread():
     pass
 
 
-def speed_input():
-    pass
-
-
 class LoadWorkBook(Thread):
-    def __init__(self, frame, pb, path):
+    def __init__(self, frame, pb, path, interject):
         Thread.__init__(self)
         self.frame = frame  # initialize the frame object
         self.pb = pb  # initialize the progress bar object
         self.path = path  # initialize the path to the .xlsx doc
+        self.interject = interject
 
     def run(self):
         wb = load_workbook(self.path)  # load xlsx doc with openpyxl
         self.pb.stop()  # terminate the progress bar object
-        speed_precheck_loaded(self.frame, wb)  # pass the frame and workbook object to a new function
+        # pass the frame and workbook object to a new function
+        speed_precheck_loaded(self.frame, wb, self.path, self.interject)
 
 
 class SpeedWorkBookGet:
@@ -617,7 +686,7 @@ class SpeedWorkBookGet:
             return os.path.join(os.path.sep, 'kb_sub', 'speedsheets')
 
     def get_file(self):
-        path = self.get_filepath()
+        path = self.get_filepath(self)
         file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.xlsx")])
         if file_path[-5:].lower() == ".xlsx":
             return file_path
@@ -626,7 +695,7 @@ class SpeedWorkBookGet:
         else:
             return "invalid selection"
 
-    def open_file(self, frame):
+    def open_file(self, frame, interject):
         file_path = self.get_file()
         if file_path == "no selection":
             return
@@ -637,15 +706,19 @@ class SpeedWorkBookGet:
                                  parent=frame)
             return
         else:
-            pb = ProgressBarIn(title="hey now", label="hold on", text="hello there")
-            wb = LoadWorkBook(frame, pb, file_path)
+            pb = ProgressBarIn(title="SpeedSheeets Workbook", label="hold on",
+                               text="Reading and loading workbook. This could take a minute")
+            wb = LoadWorkBook(frame, pb, file_path, interject)
             wb.start()
             pb.start_up()
 
 
 class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
-    def __init__(self, sheet, row, name, day, list_stat, nsday, route, empid, report, start_date, end_date, station):
-        self.sheet = sheet
+    def __init__(self, interject, wb, sheet, row, name, day, list_stat, nsday, route, empid, report, start_date,
+                 end_date, station, ns_xlate):
+        self.interject = interject
+        self.wb = wb
+        self.sheet = sheet  # input here is coming directly from the speedcell
         self.row = str(row)
         self.name = name
         self.day = day
@@ -653,7 +726,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.nsday = nsday.lower()
         self.route = route
         self.empid = empid
-        sql = "SELECT * FROM name_index WHERE kb_name = '%s'" % self.name
+        sql = "SELECT * FROM name_index WHERE kb_name = '%s'" % self.name  # access dbase to check emp id
         result = inquire(sql)
         if result:
             self.tacs_name = result[0][0]
@@ -663,57 +736,134 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.tacs_name = ""
             self.kb_name = ""
             self.index_id = ""
-        self.report = report
-        self.start_date = start_date
+        self.report = report  # pass the report object
+        self.start_date = start_date  # pass the investigation range from the speedsheet
         self.end_date = end_date
         self.station = station
+        self.ns_xlate = ns_xlate
+        # access dbase to get the carrier information
         self.recset = CarrierRecSet(self.name, self.start_date, self.end_date, self.station).get()
-        self.ns_dict = {"s":"sat", "m":"mon", "tu":"tue", "u":"tue", "w":"wed", "th":"thu", "h":"thu", "f":"fri"}
+        if self.recset is not None:
+            for r in reversed(self.recset):  # get last item in recset - use reversed()
+                self.firstrec = r  # get the earliest record of the rec set
+                self.firstdate = r[0]
+                self.firstlist = r[2]
+                self.firstnsday = r[3]
+                self.firstroute = r[4]
+                break  # break after first iteration
+        else:
+            self.firstrec = ""  # if there are no carrier records, fill with empty strings
+            self.firstdate = ""
+            self.firstlist = ""
+            self.firstnsday = ""
+            self.firstroute = ""
+        self.ns_dict = {"s": "sat", "m": "mon", "tu": "tue", "u": "tue", "w": "wed", "th": "thu",
+                        "h": "thu", "f": "fri"}
+        self.addlist = ""
+        self.addnsday = ""
+        self.addroute = ""
+        self.addempid = ""
+        self.allowaddrecs = True
+        self.error_array = []  # arrays for error, fyi and add reports
+        self.fyi_array = []
+        self.add_array = []
+
+    def check_route(self):
+        if self.route == self.firstroute:
+            return
+        else:
+            if not RouteChecker(self.route).check_all():
+                error = "ERROR: improper route formatting\n"  # report
+                self.error_array.append(error)
+                self.allowaddrecs = False  # do not allow speedcell to be input into dbase
+                return
+            else:
+                fyi = "FYI: route can be input into database\n"
+                self.fyi_array.append(fyi)
+                self.addroute = self.route  # save to input to dbase
 
     def check_ns(self):
-        filtered = GetCarrier(self.recset).filter_nonlist_recs()
-        # go with first record in recset since ns day changes are not allowed midweek
+        ns = "none"  # initialize ns variable
         if self.nsday in ("sat", "mon", "tue", "wed", "thu", "fri"):
             ns = self.nsday
         elif self.nsday in ("s", "m", "tu", "u", "w", "th", "h", "f"):
             ns = self.ns_dict[self.nsday]
+        elif self.nsday == "  ":
+            ns = "  "
         else:
-            self.report.write("sheet:{} row: {}. no such nsday\n".format(self.sheet, self.row))
+            error = "ERROR: no such nsday\n"  # report
+            self.error_array.append(error)
+            self.allowaddrecs = False  # do not allow speedcell to be input into dbase
             return
-        if filtered[0][3] != ns:
-            self.report.write("sheet:{} row: {}. update nsday\n".format(self.sheet, self.row))
+        if self.ns_xlate[self.firstrec[3]].lower() != ns:
+            fyi = "FYI: nsday can be input into database. change dbase value: {} to speedcell value: {}.\n".format(
+                self.ns_xlate[self.firstrec[3]].lower(), Handler(ns).nsblank2none())  #report
+            self.fyi_array.append(fyi)
+            self.addnsday = ns
 
-    def check_name_index(self):
-        if self.empid is None:  # allow NoneTypes
+    def check_name_index(self):  # verifies the employee id
+        if self.empid == "":  # allow NoneTypes
             pass
         elif str(self.empid).isnumeric():  # allow integers and numeric strings
             pass
         else:  # don't allow anything else
-            self.report.write("sheet:{} row: {}. value is not numeric\n".format(self.sheet, self.row))
+            error = "ERROR: employee id is not numeric\n"  # report
+            self.error_array.append(error)
+            self.allowaddrecs = False
             return
-        if self.index_id == "" and self.empid is None:  # if both emp id and name index are blank
-            self.report.write("sheet:{} row: {}. no values\n".format(self.sheet, self.row))
-        elif self.index_id != "" and self.empid is None:  # if value in name index but spdcell is blank
-            self.report.write("sheet:{} row: {}. employee id can not be deleted from "
-                              "speedsheet\n".format(self.sheet, self.row))
+        if self.index_id == "" and self.empid == "":  # if both emp id and name index are blank
+            pass
+        elif self.index_id != "" and self.empid == "":  # if value in name index but spdcell is blank
+            fyi = "FYI: employee id can not be deleted from speedsheet\n"  # report
+            self.fyi_array.append(fyi)
+            return
         elif self.index_id == self.empid:  # if the emp id from the name index and the speedsheet match
-            self.report.write("sheet:{} row: {}. verified match\n".format(self.sheet, self.row))
-        elif self.index_id == "" and self.empid is not None:  # if name index blank and spd cell has a value
-            self.add_empid()
+            pass
+        elif self.index_id == "" and self.empid != "":  # if name index blank and spd cell has a value
+            self.addempid = self.empid
+            if not self.interject:
+                fyi = "FYI: new emp id will be added\n"  # report
+                self.fyi_array.append(fyi)
         else:
-            self.report.write("sheet:{} row: {}. contridiction\n".format(self.sheet, self.row))
+            error = "ERROR: employee id contridiction. you can not change employee id with speedsheet\n"  # report
+            self.error_array.append(error)
 
-    def add_empid(self):
-        sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
-              % ("", self.name, str(self.empid).zfill(8))
-        commit(sql)
-        self.report.write("{} sheet:{} row: {}. added to name index\n".format(self.name, self.sheet, self.row))
+    def add_recs(self):
+        if not self.allowaddrecs:
+            return
+        if self.addnsday != "":
+            add = "INPUT: nsday added to database\n"  # report
+            self.add_array.append(add)
+        if self.addroute != "":
+            add = "INPUT: route added to database\n"  # report
+            self.add_array.append(add)
+        if self.addempid != "":
+            # sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
+            #       % ("", self.name, str(self.empid).zfill(8))
+            # commit(sql)
+            add = "INPUT: employee id added to database\n"  # report
+            self.add_array.append(add)
+
+    def generate_report(self):  # generate a report
+        if not self.interject:
+            master_array = self.error_array + self.fyi_array
+        else:
+            master_array = self.error_array + self.add_array
+        if len(master_array) > 0:
+            self.report.write("\n{}\n".format(self.name))
+            self.report.write(">>>sheet: {} row: {}\n".format(self.sheet, self.row))
+            if not self.allowaddrecs:
+                self.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors noted on Error Report\n")
+            for rpt in master_array:
+                self.report.write(rpt)
 
     def check(self):
-        # print(self.name, " ", self.day, " ", self.list_stat, " ", self.nsday, " ", self.route, " ", self.empid)
-        self.report.write("{} \n".format(self.name))
         self.check_name_index()
-        print(self.recset)
+        self.check_ns()
+        self.check_route()
+        if self.interject:
+            self.add_recs()
+        self.generate_report()
 
 
 class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
@@ -732,10 +882,10 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         pass
 
 
-def speed_precheck_loaded(frame, wb):
-    filename = ReportName("speedsheet_precheck").create()
-    report = open(dir_path('report') + filename, "w")
-    report.write("\nSpeedSheet Pre-Check\n\n\n")
+def speed_precheck_loaded(frame, wb, path, interject):
+    filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
+    report = open(dir_path('report') + filename, "w")  # open the report
+    report.write("\nSpeedSheet Pre-Check Report \n")
     is_name = False  # initialize bool for speedcell name
     sheets = wb.sheetnames  # get the names of the worksheets
     sheet_count = len(sheets)  # get the number of worksheets
@@ -747,6 +897,7 @@ def speed_precheck_loaded(frame, wb):
         d = datecell.split(" through ")  # split the date into two
         start_date = Convert(d[0]).backslashdate_to_datetime()  # convert formatted date to datetime
         end_date = Convert(d[1]).backslashdate_to_datetime()
+    ns_xlate = NsDayDict(start_date).get()
     station = wb[sheets[0]].cell(row=2, column=9).value  # get the date or range of dates
     for i in range(sheet_count):
         ws = wb[sheets[i]]  # assign the worksheet object
@@ -755,14 +906,14 @@ def speed_precheck_loaded(frame, wb):
             if (ii + 2) % 8 == 0:  # if the row is a carrier record
                 if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
                     is_name = True  # bool: the speedcell has a name
-                    day = ws.cell(row=ii, column=1).value
-                    name = ws.cell(row=ii, column=2).value
-                    list_stat = ws.cell(row=ii, column=5).value
-                    nsday = ws.cell(row=ii, column=6).value
-                    route = ws.cell(row=ii, column=7).value
-                    empid = ws.cell(row=ii, column=10).value
-                    SpeedCarrierCheck(sheets[i], ii, name, day, list_stat, nsday, route, empid, report, start_date,
-                                      end_date, station).check()
+                    day = Handler(ws.cell(row=ii, column=1).value).nonetype()
+                    name = Handler(ws.cell(row=ii, column=2).value).nonetype()
+                    list_stat = Handler(ws.cell(row=ii, column=5).value).nonetype()
+                    nsday = Handler(ws.cell(row=ii, column=6).value).ns_nonetype()
+                    route = Handler(ws.cell(row=ii, column=7).value).nonetype()
+                    empid = Handler(ws.cell(row=ii, column=10).value).nonetype()
+                    SpeedCarrierCheck(interject, wb, sheets[i], ii, name, day, list_stat, nsday, route, empid,
+                                      report, start_date, end_date, station, ns_xlate).check()
                 else:
                     is_name = False  # the speedcell does not have a name
             else:
@@ -844,13 +995,16 @@ class SpeedArray:  # accepts multidimensional arrays with emp ids and records
         return abc_recset
 
 
-class GetCarrier:  # accepts carrier records from get_carrier_list()
+class GetCarrier:  # accepts carrier records from CarrierList().get()
     def __init__(self, recset):
         self.recset = recset
-        self.carrier = recset[0][1]
-        self.nsday = recset[0][3]
-        self.route = recset[0][4]
-        self.station = recset[0][5]
+        for r in reversed(recset):  # get the earliest record in the recset. use reversed()
+            lastrec = r
+            break
+        self.carrier = lastrec[1]
+        self.nsday = lastrec[3]
+        self.route = lastrec[4]
+        self.station = lastrec[5]
 
     def filter_nonlist_recs(self):  # filters out any records were the list status hasn't changed.
         filtered_set = []
@@ -975,7 +1129,7 @@ def speed_gen_all(frame):
     else:
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
     # first get a carrier list
-    carriers = get_carrier_list()  # get carrier list
+    carriers = CarrierList(g_date[0], g_date[6], g_station).get()
     id_recset = []
     for c in carriers:
         cc = GetCarrier(c).filter_nonlist_recs()  # filter out any recs where list status is unchanged
@@ -15123,14 +15277,11 @@ def main_frame():
     speed_menu = Menu(menubar, tearoff=0)
     speed_menu.add_command(label="Generate All", command=lambda: speed_gen_all(f))
     speed_menu.add_command(label="Generate Carrier", command=lambda: speed_gen_carrier())
-    speed_menu.add_command(label="Pre-check", command=lambda: SpeedWorkBookGet().open_file(f))
-    speed_menu.add_command(label="Input", command=lambda: speed_input())
+    speed_menu.add_command(label="Pre-check", command=lambda: SpeedWorkBookGet().open_file(f, False))
+    speed_menu.add_command(label="Input", command=lambda: SpeedWorkBookGet().open_file(f, True))
     if gs_day == "x":
         speed_menu.entryconfig(0, state=DISABLED)
         speed_menu.entryconfig(1, state=DISABLED)
-        # speed_menu.entryconfig(2, state=DISABLED)
-        speed_menu.entryconfig(3, state=DISABLED)
-        # speed_menu.entryconfig(4, state = DISABLED)
     speed_menu.add_separator()
     speed_menu.add_command(label="Speed to Spreadsheet", command=lambda: speed_to_spread())
     speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
@@ -15528,11 +15679,11 @@ def setup_database():
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(15, "abc_breakdown", "False")'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(16, "min_spd_empid", 100)'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(16, "min_spd_empid", 50)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(17, "min_spd_alpha", 100)'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(17, "min_spd_alpha", 50)'
     commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(18, "min_spd_abc", 30)'
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(18, "min_spd_abc", 10)'
     commit(sql)
     pb_counter += 1  # increment progress bar
     pb["value"] = pb_counter
