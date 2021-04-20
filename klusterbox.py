@@ -155,6 +155,41 @@ def rear_window(wd):  # This closes the window created by front_window()
     mainloop()
 
 
+class NameChecker:
+    def __init__(self, name):
+        self.name = name.lower()
+
+    def check_characters(self):  # checks if characters in name are in approved tuple
+        for char in self.name:
+            if char in ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
+                        "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "-", "'", ".", ","):
+                pass
+            else:
+                return False
+        return True
+
+    def check_length(self):  # checks that the name is not too long
+        if len(self.name) < 29:
+            return True
+        else:
+            return False
+
+    def check_comma(self):  # checks if there is a comma in the name
+        s_name = self.name.split(",")
+        if len(s_name) == 2:
+            return True
+        else:
+            return False
+
+    def check_initial(self):  # checks if theres is an initial in the variable
+        s_name = self.name.split(",")
+        if len(s_name) > 1:
+            if len(s_name[1].strip()) == 1:
+                return True
+        else:
+            return False
+
+
 class RouteChecker:
     def __init__(self, route):
         self.route = route
@@ -726,39 +761,41 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.nsday = nsday.lower()
         self.route = route
         self.empid = empid
+        self.tacs_name = ""
+        self.kb_name = ""
+        self.index_id = ""
         sql = "SELECT * FROM name_index WHERE kb_name = '%s'" % self.name  # access dbase to check emp id
         result = inquire(sql)
         if result:
             self.tacs_name = result[0][0]
             self.kb_name = result[0][1]
             self.index_id = result[0][2]
-        else:
-            self.tacs_name = ""
-            self.kb_name = ""
-            self.index_id = ""
+        sql = "SELECT value FROM tolerances WHERE category = '%s'" % "speedcell_ns_rotate_mode"
+        self.speedcell_ns_rotate_mode = Convert(inquire(sql)).str_to_bool()
+        sql = "SELECT value FROM tolerances WHERE category = '%s'" % "speedcell_bypass_initial"
+        self.speedcell_bypass_initial = Convert(inquire(sql)).str_to_bool()
         self.report = report  # pass the report object
         self.start_date = start_date  # pass the investigation range from the speedsheet
         self.end_date = end_date
         self.station = station
         self.ns_xlate = ns_xlate
+        self.firstrec = ""  # if there are no carrier records, fill with empty strings
+        self.firstdate = ""
+        self.firstname = ""
+        self.firstlist = ""
+        self.firstnsday = "none"
+        self.firstroute = ""
         # access dbase to get the carrier information
         self.recset = CarrierRecSet(self.name, self.start_date, self.end_date, self.station).get()
         if self.recset is not None:
             for r in reversed(self.recset):  # get last item in recset - use reversed()
                 self.firstrec = r  # get the earliest record of the rec set
                 self.firstdate = r[0]
+                self.firstname = r[0]
                 self.firstlist = r[2]
                 self.firstnsday = r[3]
                 self.firstroute = r[4]
                 break  # break after first iteration
-        else:
-            self.firstrec = ""  # if there are no carrier records, fill with empty strings
-            self.firstdate = ""
-            self.firstlist = ""
-            self.firstnsday = ""
-            self.firstroute = ""
-        self.ns_dict = {"s": "sat", "m": "mon", "tu": "tue", "u": "tue", "w": "wed", "th": "thu",
-                        "h": "thu", "f": "fri"}
         self.addlist = ""
         self.addnsday = ""
         self.addroute = ""
@@ -767,6 +804,103 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.error_array = []  # arrays for error, fyi and add reports
         self.fyi_array = []
         self.add_array = []
+        self.ns_dict = \
+            {"s": "sat", "m": "mon", "tu": "tue", "u": "tue", "w": "wed", "th": "thu", "h": "thu", "f": "fri",
+             "fs": "sat", "fm": "mon", "ftu": "tue", "fu": "tue", "fw": "wed", "fth": "thu", "fh": "thu", "ff": "fri",
+             "rs": "sat", "rm": "mon", "rtu": "tue", "ru": "tue", "rw": "wed", "rth": "thu", "rh": "thu", "rf": "fri",
+             "sat": "sat", "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri",
+             "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
+             "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri"}
+        self.ns_r_notes = ("rsat", "rmon", "rtue", "rwed", "rthu", "rfri",
+                           "rs", "rm", "rtu", "ru", "rw", "rth", "rh", "rf")
+        self.ns_f_notes = ("fsat", "fmon", "ftue", "fwed", "fthu", "ffri",
+                           "fs", "fm", "ftu", "fu", "fw", "fth", "fh", "ff")
+
+    def check_name(self):
+        if self.name == self.firstname:
+            return
+        if not NameChecker(self.name).check_characters():
+            error = "Carrier name can not contain numbers or most special characters"
+            self.error_array.append(error)
+            self.allowaddrecs = False  # do not allow this speedcell be be input into database
+        if not NameChecker(self.name).check_length():
+            error = "Carrier name must not exceed 42 characters"
+            self.error_array.append(error)
+            self.allowaddrecs = False  # do not allow this speedcell be be input into database
+        if not NameChecker(self.name).check_comma():
+            error = "Carrier name must contain one comma to separate last name and first initial"
+            self.error_array.append(error)
+            self.allowaddrecs = False  # do not allow this speedcell be be input into database
+        if not NameChecker(self.name).check_initial():
+            fyi = "Carrier name should must contain one initial ideally, \n" \
+                  "unless more are needed to create a distinct carrier name."
+            self.fyi_array.append(fyi)
+
+    def check_employee_id_situation(self):
+        if self.index_id == "" and self.empid == "":  # if both emp id and name index are blank
+            pass
+        elif self.index_id == self.empid:  # if the emp id from the name index and the speedsheet match
+            pass
+        elif self.index_id != "" and self.empid == "":  # if value in name index but spdcell is blank
+            fyi = "FYI: employee id can not be deleted from speedsheet\n"  # report
+            self.fyi_array.append(fyi)
+            return
+        elif self.index_id == "" and self.empid != "":  # if name index blank and spd cell has a value
+            self.addempid = self.empid
+            fyi = "FYI: new employee id will be added\n"  # report
+            self.fyi_array.append(fyi)
+        else:
+            error = "ERROR: employee id contridiction. you can not change employee id with speedsheet\n"  # report
+            self.error_array.append(error)
+            self.allowaddrecs = False  # do not allow this speedcell be be input into database
+
+    def check_employee_id_format(self):  # verifies the employee id
+        if self.empid == "":  # allow empty strings
+            pass
+        elif str(self.empid).isnumeric():  # allow integers and numeric strings
+            pass
+        else:  # don't allow anything else
+            error = "ERROR: employee id is not numeric\n"  # report
+            self.error_array.append(error)
+            self.allowaddrecs = False
+            return
+
+    def check_employee_id_use(self):  # make sure the employee id is not being used by another carrier
+        kb_name = ""
+        emp_id = ""
+        if self.empid != "":
+            sql = "SELECT * FROM name_index WHERE emp_id = '%s'" % self.empid
+            result = inquire(sql)
+            if result:
+                kb_name = result[0][1]
+                emp_id = result[0][2]
+        if emp_id == "":
+            return
+        elif kb_name == self.name:
+            pass
+        else:
+            error = "ERROR: employee id is in use by another carrier"
+            self.error_array.append(error)
+            self.allowaddrecs = False
+
+    def check_ns(self):
+        ns = "none"  # initialize ns variable
+        if self.nsday in ("sat", "mon", "tue", "wed", "thu", "fri"):
+            ns = self.nsday
+        elif self.nsday in ("s", "m", "tu", "u", "w", "th", "h", "f"):
+            ns = self.ns_dict[self.nsday]
+        elif self.nsday == "  ":
+            ns = "  "
+        else:
+            error = "ERROR: No such nsday\n"  # report
+            self.error_array.append(error)
+            self.allowaddrecs = False  # do not allow speedcell to be input into dbase
+            return
+        if self.ns_xlate[self.firstnsday].lower() != ns:
+            fyi = "FYI: nsday can be input into database. change dbase value: {} to speedcell value: {}.\n".format(
+                self.ns_xlate[self.firstnsday].lower(), Handler(ns).nsblank2none())  #report
+            self.fyi_array.append(fyi)
+            self.addnsday = ns
 
     def check_route(self):
         if self.route == self.firstroute:
@@ -781,52 +915,6 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 fyi = "FYI: route can be input into database\n"
                 self.fyi_array.append(fyi)
                 self.addroute = self.route  # save to input to dbase
-
-    def check_ns(self):
-        ns = "none"  # initialize ns variable
-        if self.nsday in ("sat", "mon", "tue", "wed", "thu", "fri"):
-            ns = self.nsday
-        elif self.nsday in ("s", "m", "tu", "u", "w", "th", "h", "f"):
-            ns = self.ns_dict[self.nsday]
-        elif self.nsday == "  ":
-            ns = "  "
-        else:
-            error = "ERROR: no such nsday\n"  # report
-            self.error_array.append(error)
-            self.allowaddrecs = False  # do not allow speedcell to be input into dbase
-            return
-        if self.ns_xlate[self.firstrec[3]].lower() != ns:
-            fyi = "FYI: nsday can be input into database. change dbase value: {} to speedcell value: {}.\n".format(
-                self.ns_xlate[self.firstrec[3]].lower(), Handler(ns).nsblank2none())  #report
-            self.fyi_array.append(fyi)
-            self.addnsday = ns
-
-    def check_name_index(self):  # verifies the employee id
-        if self.empid == "":  # allow NoneTypes
-            pass
-        elif str(self.empid).isnumeric():  # allow integers and numeric strings
-            pass
-        else:  # don't allow anything else
-            error = "ERROR: employee id is not numeric\n"  # report
-            self.error_array.append(error)
-            self.allowaddrecs = False
-            return
-        if self.index_id == "" and self.empid == "":  # if both emp id and name index are blank
-            pass
-        elif self.index_id != "" and self.empid == "":  # if value in name index but spdcell is blank
-            fyi = "FYI: employee id can not be deleted from speedsheet\n"  # report
-            self.fyi_array.append(fyi)
-            return
-        elif self.index_id == self.empid:  # if the emp id from the name index and the speedsheet match
-            pass
-        elif self.index_id == "" and self.empid != "":  # if name index blank and spd cell has a value
-            self.addempid = self.empid
-            if not self.interject:
-                fyi = "FYI: new emp id will be added\n"  # report
-                self.fyi_array.append(fyi)
-        else:
-            error = "ERROR: employee id contridiction. you can not change employee id with speedsheet\n"  # report
-            self.error_array.append(error)
 
     def add_recs(self):
         if not self.allowaddrecs:
@@ -846,19 +934,22 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
 
     def generate_report(self):  # generate a report
         if not self.interject:
-            master_array = self.error_array + self.fyi_array
+            master_array = self.error_array + self.fyi_array  # use these reports for precheck
         else:
-            master_array = self.error_array + self.add_array
+            master_array = self.error_array + self.add_array  # use these reports for input
         if len(master_array) > 0:
             self.report.write("\n{}\n".format(self.name))
             self.report.write(">>>sheet: {} row: {}\n".format(self.sheet, self.row))
             if not self.allowaddrecs:
                 self.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors noted on Error Report\n")
-            for rpt in master_array:
+            for rpt in master_array:  # write all reports that have been keep in arrays. 
                 self.report.write(rpt)
 
     def check(self):
-        self.check_name_index()
+        self.check_name()
+        self.check_employee_id_situation()
+        self.check_employee_id_format()
+        self.check_employee_id_use()
         self.check_ns()
         self.check_route()
         if self.interject:
@@ -1200,7 +1291,8 @@ def speed_gen_all(frame):
         ws_list[i].column_dimensions["I"].width = 8
         ws_list[i].column_dimensions["J"].width = 8
         ws_list[i].column_dimensions["K"].width = 8
-        cell = ws_list[i]['A1']
+        # cell = ws_list[i]['A1']
+        cell = ws_list[i].cell(column=1, row=1)
         cell.value = "Speedsheet - All Inclusive"
         cell.style = ws_header
         ws_list[i].merge_cells('A1:E1')
@@ -15684,6 +15776,10 @@ def setup_database():
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(17, "min_spd_alpha", 50)'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(18, "min_spd_abc", 10)'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(19, "speedcell_ns_rotate_mode", "True")'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(20, "speedcell_bypass_initial", "False")'
     commit(sql)
     pb_counter += 1  # increment progress bar
     pb["value"] = pb_counter
