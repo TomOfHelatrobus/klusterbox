@@ -293,6 +293,32 @@ class NsDayDict:
         ns_xlate["fri"] = "Fri"
         return ns_xlate
 
+    def ssn_ns(self, rotation):  # SpreadSheet Notation NS Day dictionary
+        ssn_ns_code = {}
+        # rotation is boolean -
+        dic = self.get()
+        if rotation:
+            for p in self.pat:
+                ssn_ns_code[p] = dic[p]
+            ssn_ns_code["none"] = "  "  # if there is no ns day, such as auxiliary assistance
+            ssn_ns_code["sat"] = "fSat"  # if there are fixed ns days
+            ssn_ns_code["mon"] = "fMon"
+            ssn_ns_code["tue"] = "fTue"
+            ssn_ns_code["wed"] = "fWed"
+            ssn_ns_code["thu"] = "fThu"
+            ssn_ns_code["fri"] = "fFri"
+        else:
+            for p in self.pat:
+                ssn_ns_code[p] = "r{}".format(dic[p])
+            ssn_ns_code["none"] = "  "  # if there is no ns day, such as auxiliary assistance
+            ssn_ns_code["sat"] = "Sat"  # if there are fixed ns days
+            ssn_ns_code["mon"] = "Mon"
+            ssn_ns_code["tue"] = "Tue"
+            ssn_ns_code["wed"] = "Wed"
+            ssn_ns_code["thu"] = "Thu"
+            ssn_ns_code["fri"] = "Fri"
+        return ssn_ns_code
+
 
 class ReportName:  # returns a file name which is stamped with the datetime
     def __init__(self, filename):
@@ -690,7 +716,8 @@ def speedsheet_settings(frame):
 
 
 def speed_cheatsheet():
-    pass
+    ssn_ns_code = NsDayDict(g_date[0]).ssn_ns(False)
+    print(ssn_ns_code)
 
 
 def speed_to_spread():
@@ -709,7 +736,8 @@ class LoadWorkBook(Thread):
         wb = load_workbook(self.path)  # load xlsx doc with openpyxl
         self.pb.stop()  # terminate the progress bar object
         # pass the frame and workbook object to a new function
-        speed_precheck_loaded(self.frame, wb, self.path, self.interject)
+        # speed_precheck_loaded(self.frame, wb, self.path, self.interject)
+        SpeedSheetCheck(self.frame, wb, self.path, self.interject).check()
 
 
 class SpeedWorkBookGet:
@@ -742,17 +770,89 @@ class SpeedWorkBookGet:
             return
         else:
             pb = ProgressBarIn(title="SpeedSheeets Workbook", label="hold on",
-                               text="Reading and loading workbook. This could take a minute")
+                               text="Loading and reading workbook. This could take a minute")
             wb = LoadWorkBook(frame, pb, file_path, interject)
             wb.start()
             pb.start_up()
 
 
-class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
-    def __init__(self, interject, wb, sheet, row, name, day, list_stat, nsday, route, empid, report, start_date,
-                 end_date, station, ns_xlate):
-        self.interject = interject
+class SpeedSheetCheck:
+    def __init__(self, frame, wb, path, interject):
+        self.frame = frame
         self.wb = wb
+        self.path = path
+        self.interject = interject
+        self.carrier_count = 0
+        self.fatal_rpt = 0
+        self.fyi_rpt = 0
+        self.add_rpt = 0
+
+    def check(self):
+        filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
+        report = open(dir_path('report') + filename, "w")  # open the report
+        report.write("\nSpeedSheet Pre-Check Report \n")
+        is_name = False  # initialize bool for speedcell name
+        sheets = self.wb.sheetnames  # get the names of the worksheets
+        sheet_count = len(sheets)  # get the number of worksheets
+        datecell = self.wb[sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
+        if len(datecell) < 12:  # if the investigation range is daily
+            start_date = Convert(datecell).backslashdate_to_datetime()  # convert formatted date to datetime
+            end_date = start_date  # since daily, dates are the same
+        else:  # if the investigation range is weekly
+            d = datecell.split(" through ")  # split the date into two
+            start_date = Convert(d[0]).backslashdate_to_datetime()  # convert formatted date to datetime
+            end_date = Convert(d[1]).backslashdate_to_datetime()
+        ns_xlate = NsDayDict(start_date).get()
+        station = self.wb[sheets[0]].cell(row=2, column=9).value  # get the date or range of dates
+        for i in range(sheet_count):
+            ws = self.wb[sheets[i]]  # assign the worksheet object
+            row_count = ws.max_row  # get the total amount of rows in the worksheet
+            for ii in range(6, row_count):  # loop through all rows
+                if (ii + 2) % 8 == 0:  # if the row is a carrier record
+                    if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
+                        self.carrier_count += 1
+                        is_name = True  # bool: the speedcell has a name
+                        day = Handler(ws.cell(row=ii, column=1).value).nonetype()
+                        name = Handler(ws.cell(row=ii, column=2).value).nonetype()
+                        list_stat = Handler(ws.cell(row=ii, column=5).value).nonetype()
+                        nsday = Handler(ws.cell(row=ii, column=6).value).ns_nonetype()
+                        route = Handler(ws.cell(row=ii, column=7).value).nonetype()
+                        empid = Handler(ws.cell(row=ii, column=10).value).nonetype()
+                        SpeedCarrierCheck(self, sheets[i], ii, name, day, list_stat, nsday, route,
+                                          empid, report, start_date, end_date, station, ns_xlate).check_all()
+                    else:
+                        is_name = False  # the speedcell does not have a name
+                else:
+                    if is_name:  # if the speedcell has a name, get the rings
+                        day = ws.cell(row=ii, column=1).value
+                        hours = ws.cell(row=ii, column=2).value
+                        moves = ws.cell(row=ii, column=3).value
+                        rs = ws.cell(row=ii, column=7).value
+                        codes = ws.cell(row=ii, column=8).value
+                        lv_type = ws.cell(row=ii, column=9).value
+                        lv_time = ws.cell(row=ii, column=10).value
+                        SpeedRingCheck(day, hours, moves, rs, codes, lv_type, lv_time).check()
+        report.write("\n\n--------------------------------------------------------------------")
+        report.write("\n\nSpeedSheet Carrier Check Complete.\n\n")
+        report.write('{:>6}  {:<40}\n'.format(self.carrier_count, "carriers checked"))
+        report.write('{:>6}  {:<40}\n'.format(self.fatal_rpt, "fatal error(s) found"))
+        if self.interject:
+            report.write('{:>6}  {:<40}\n'.format(self.add_rpt, "add reports(s) found"))
+        else:
+            report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, "fyi reports(s) found"))
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+
+class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
+    def __init__(self, parent, sheet, row, name, day, list_stat, nsday, route, empid, report, start_date,
+                 end_date, station, ns_xlate):
+        self.parent = parent  # get objects from SpeedSheetCheck
         self.sheet = sheet  # input here is coming directly from the speedcell
         self.row = str(row)
         self.name = name
@@ -770,15 +870,16 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.tacs_name = result[0][0]
             self.kb_name = result[0][1]
             self.index_id = result[0][2]
-        sql = "SELECT value FROM tolerances WHERE category = '%s'" % "speedcell_ns_rotate_mode"
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "speedcell_ns_rotate_mode"
         self.speedcell_ns_rotate_mode = Convert(inquire(sql)).str_to_bool()
-        sql = "SELECT value FROM tolerances WHERE category = '%s'" % "speedcell_bypass_initial"
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "speedcell_bypass_initial"
         self.speedcell_bypass_initial = Convert(inquire(sql)).str_to_bool()
         self.report = report  # pass the report object
         self.start_date = start_date  # pass the investigation range from the speedsheet
         self.end_date = end_date
         self.station = station
         self.ns_xlate = ns_xlate
+        # self.checker = checker
         self.firstrec = ""  # if there are no carrier records, fill with empty strings
         self.firstdate = ""
         self.firstname = ""
@@ -820,20 +921,20 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if self.name == self.firstname:
             return
         if not NameChecker(self.name).check_characters():
-            error = "Carrier name can not contain numbers or most special characters"
+            error = "ERROR: Carrier name can not contain numbers or most special characters\n"
             self.error_array.append(error)
             self.allowaddrecs = False  # do not allow this speedcell be be input into database
         if not NameChecker(self.name).check_length():
-            error = "Carrier name must not exceed 42 characters"
+            error = "ERROR: Carrier name must not exceed 42 characters\n"
             self.error_array.append(error)
             self.allowaddrecs = False  # do not allow this speedcell be be input into database
         if not NameChecker(self.name).check_comma():
-            error = "Carrier name must contain one comma to separate last name and first initial"
+            error = "ERROR: Carrier name must contain one comma to separate last name and first initial\n"
             self.error_array.append(error)
             self.allowaddrecs = False  # do not allow this speedcell be be input into database
         if not NameChecker(self.name).check_initial():
-            fyi = "Carrier name should must contain one initial ideally, \n" \
-                  "unless more are needed to create a distinct carrier name."
+            fyi = "FYI: Carrier name should must contain one initial ideally, \n" \
+                  "     unless more are needed to create a distinct carrier name.\n"
             self.fyi_array.append(fyi)
 
     def check_employee_id_situation(self):
@@ -847,10 +948,11 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             return
         elif self.index_id == "" and self.empid != "":  # if name index blank and spd cell has a value
             self.addempid = self.empid
-            fyi = "FYI: new employee id will be added\n"  # report
+            fyi = "FYI: Possible new employee id\n"  # report
             self.fyi_array.append(fyi)
         else:
-            error = "ERROR: employee id contridiction. you can not change employee id with speedsheet\n"  # report
+            error = "ERROR: Employee id contridiction. " \
+                    "       You can not change employee id with speedsheet\n"  # report
             self.error_array.append(error)
             self.allowaddrecs = False  # do not allow this speedcell be be input into database
 
@@ -879,7 +981,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         elif kb_name == self.name:
             pass
         else:
-            error = "ERROR: employee id is in use by another carrier"
+            error = "ERROR: employee id is in use by another carrier\n"
             self.error_array.append(error)
             self.allowaddrecs = False
 
@@ -897,8 +999,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.allowaddrecs = False  # do not allow speedcell to be input into dbase
             return
         if self.ns_xlate[self.firstnsday].lower() != ns:
-            fyi = "FYI: nsday can be input into database. change dbase value: {} to speedcell value: {}.\n".format(
-                self.ns_xlate[self.firstnsday].lower(), Handler(ns).nsblank2none())  #report
+            fyi = "FYI: New or updated nsday: {}.\n"\
+                .format(Handler(ns).nsblank2none())  #report
             self.fyi_array.append(fyi)
             self.addnsday = ns
 
@@ -907,12 +1009,12 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             return
         else:
             if not RouteChecker(self.route).check_all():
-                error = "ERROR: improper route formatting\n"  # report
+                error = "ERROR: Improper route formatting\n"  # report
                 self.error_array.append(error)
                 self.allowaddrecs = False  # do not allow speedcell to be input into dbase
                 return
             else:
-                fyi = "FYI: route can be input into database\n"
+                fyi = "FYI: New or updated route\n"
                 self.fyi_array.append(fyi)
                 self.addroute = self.route  # save to input to dbase
 
@@ -920,39 +1022,43 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if not self.allowaddrecs:
             return
         if self.addnsday != "":
-            add = "INPUT: nsday added to database\n"  # report
+            add = "INPUT: Nsday added or updated to database\n"  # report
             self.add_array.append(add)
         if self.addroute != "":
-            add = "INPUT: route added to database\n"  # report
+            add = "INPUT: Route added or updated to database\n"  # report
             self.add_array.append(add)
         if self.addempid != "":
             # sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
             #       % ("", self.name, str(self.empid).zfill(8))
             # commit(sql)
-            add = "INPUT: employee id added to database\n"  # report
+            add = "INPUT: Employee id added or updated to database\n"  # report
             self.add_array.append(add)
 
     def generate_report(self):  # generate a report
-        if not self.interject:
+        self.parent.fatal_rpt += len(self.error_array)
+        self.parent.add_rpt += len(self.add_array)
+        self.parent.fyi_rpt += len(self.fyi_array)
+        if not self.parent.interject:
             master_array = self.error_array + self.fyi_array  # use these reports for precheck
         else:
             master_array = self.error_array + self.add_array  # use these reports for input
         if len(master_array) > 0:
             self.report.write("\n{}\n".format(self.name))
-            self.report.write(">>>sheet: {} row: {}\n".format(self.sheet, self.row))
+            self.report.write("   sheet and row: >>> {} --> {} <<<\n".format(self.sheet, self.row))
             if not self.allowaddrecs:
-                self.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors noted on Error Report\n")
-            for rpt in master_array:  # write all reports that have been keep in arrays. 
+                self.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
+                # self.parent.fatal_rpt += 1
+            for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.report.write(rpt)
 
-    def check(self):
+    def check_all(self):
         self.check_name()
         self.check_employee_id_situation()
         self.check_employee_id_format()
         self.check_employee_id_use()
         self.check_ns()
         self.check_route()
-        if self.interject:
+        if self.parent.interject:
             self.add_recs()
         self.generate_report()
 
@@ -971,59 +1077,6 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         # print(self.day, " ", self.hours, " ", self.moves, " ", self.rs, " ", self.codes, " ", self.lv_type,
         #       " ", self.lv_time)
         pass
-
-
-def speed_precheck_loaded(frame, wb, path, interject):
-    filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
-    report = open(dir_path('report') + filename, "w")  # open the report
-    report.write("\nSpeedSheet Pre-Check Report \n")
-    is_name = False  # initialize bool for speedcell name
-    sheets = wb.sheetnames  # get the names of the worksheets
-    sheet_count = len(sheets)  # get the number of worksheets
-    datecell = wb[sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
-    if len(datecell) < 12:  # if the investigation range is daily
-        start_date = Convert(datecell).backslashdate_to_datetime()  # convert formatted date to datetime
-        end_date = start_date  # since daily, dates are the same
-    else:  # if the investigation range is weekly
-        d = datecell.split(" through ")  # split the date into two
-        start_date = Convert(d[0]).backslashdate_to_datetime()  # convert formatted date to datetime
-        end_date = Convert(d[1]).backslashdate_to_datetime()
-    ns_xlate = NsDayDict(start_date).get()
-    station = wb[sheets[0]].cell(row=2, column=9).value  # get the date or range of dates
-    for i in range(sheet_count):
-        ws = wb[sheets[i]]  # assign the worksheet object
-        row_count = ws.max_row  # get the total amount of rows in the worksheet
-        for ii in range(6, row_count):  # loop through all rows
-            if (ii + 2) % 8 == 0:  # if the row is a carrier record
-                if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
-                    is_name = True  # bool: the speedcell has a name
-                    day = Handler(ws.cell(row=ii, column=1).value).nonetype()
-                    name = Handler(ws.cell(row=ii, column=2).value).nonetype()
-                    list_stat = Handler(ws.cell(row=ii, column=5).value).nonetype()
-                    nsday = Handler(ws.cell(row=ii, column=6).value).ns_nonetype()
-                    route = Handler(ws.cell(row=ii, column=7).value).nonetype()
-                    empid = Handler(ws.cell(row=ii, column=10).value).nonetype()
-                    SpeedCarrierCheck(interject, wb, sheets[i], ii, name, day, list_stat, nsday, route, empid,
-                                      report, start_date, end_date, station, ns_xlate).check()
-                else:
-                    is_name = False  # the speedcell does not have a name
-            else:
-                if is_name:  # if the speedcell has a name, get the rings
-                    day = ws.cell(row=ii, column=1).value
-                    hours = ws.cell(row=ii, column=2).value
-                    moves = ws.cell(row=ii, column=3).value
-                    rs = ws.cell(row=ii, column=7).value
-                    codes = ws.cell(row=ii, column=8).value
-                    lv_type = ws.cell(row=ii, column=9).value
-                    lv_time = ws.cell(row=ii, column=10).value
-                    SpeedRingCheck(day, hours, moves, rs, codes, lv_type, lv_time).check()
-    report.close()
-    if sys.platform == "win32":  # open the text document
-        os.startfile(dir_path('report') + filename)
-    if sys.platform == "linux":
-        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-    if sys.platform == "darwin":
-        subprocess.call(["open", dir_path('report') + filename])
 
 
 def speed_gen_carrier():

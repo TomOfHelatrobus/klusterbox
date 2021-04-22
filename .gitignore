@@ -35,6 +35,8 @@ __pycache__
 
 kb_install
 playground
+env
+.vs
 
 # ignore pip files
 
