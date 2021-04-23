@@ -242,7 +242,7 @@ class NsDayDict:
             wkdy_name = sat_range.strftime("%a")
         return sat_range
 
-    def get(self):
+    def get(self):  # Dictionary of NS days
         sat_range = self.get_sat_range()  # calculate the n/s day of sat/first day of investigation range
         end_date = sat_range + timedelta(days=-1)
         cdate = datetime(2017, 1, 7)  #
@@ -298,7 +298,7 @@ class NsDayDict:
         # rotation is boolean -
         dic = self.get()
         if rotation:
-            for p in self.pat:
+            for p in self.pat:  # if rotation is True, annotate fixed ns days
                 ssn_ns_code[p] = dic[p]
             ssn_ns_code["none"] = "  "  # if there is no ns day, such as auxiliary assistance
             ssn_ns_code["sat"] = "fSat"  # if there are fixed ns days
@@ -308,7 +308,7 @@ class NsDayDict:
             ssn_ns_code["thu"] = "fThu"
             ssn_ns_code["fri"] = "fFri"
         else:
-            for p in self.pat:
+            for p in self.pat:  # if rotation is false, annotate rotating nsdays
                 ssn_ns_code[p] = "r{}".format(dic[p])
             ssn_ns_code["none"] = "  "  # if there is no ns day, such as auxiliary assistance
             ssn_ns_code["sat"] = "Sat"  # if there are fixed ns days
@@ -318,6 +318,33 @@ class NsDayDict:
             ssn_ns_code["thu"] = "Thu"
             ssn_ns_code["fri"] = "Fri"
         return ssn_ns_code
+
+    def get_rev(self, rotation):  # Dictionary NS days - keys/values reversed
+        dic = self.get()
+        rev_rotate_dic = {}
+        rev_fixed_dic = {}
+        for (key, value) in dic.items():
+            if key in self.pat:
+                rev_rotate_dic[value.lower()] = key
+            else:
+                rev_fixed_dic[value.lower()] = key
+        if rotation:
+            return rev_rotate_dic
+        else:
+            return rev_fixed_dic
+
+    @staticmethod
+    def custom_config(self):  # shows custom ns day configurations for print out / reports
+        sql = "SELECT * FROM ns_configuration"
+        ns_results = inquire(sql)
+        custom_ns_dict = {}  # build dictionary for ns days
+        days = ("sat", "mon", "tue", "wed", "thu", "fri")
+        for r in ns_results:  # build dictionary for rotating ns days
+            custom_ns_dict[r[0]] = "rotating: " + r[2]
+        for d in days:  # expand dictionary for fixed days
+            custom_ns_dict[d] = "fixed: " + d
+        custom_ns_dict["none"] = "none"  # add "none" to dictionary
+        return custom_ns_dict
 
 
 class ReportName:  # returns a file name which is stamped with the datetime
@@ -582,6 +609,7 @@ class SpeedSettings:
         self.min_empid = int(results[16][0])
         self.min_alpha = int(results[17][0])
         self.min_abc = int(results[18][0])
+        self.ns_rotate_mode = Convert(results[19][0]).str_to_bool()
 
 
 def speedsheet_setting_preset(frame, order):
@@ -716,8 +744,15 @@ def speedsheet_settings(frame):
 
 
 def speed_cheatsheet():
-    ssn_ns_code = NsDayDict(g_date[0]).ssn_ns(False)
-    print(ssn_ns_code)
+    if g_range == "x":
+        print("you must enter an investigation range.")
+    else:
+        nsdays = NsDayDict(g_date[0]).get()
+        print(nsdays)
+        ssn_ns_code = NsDayDict(g_date[0]).ssn_ns(True)
+        print(ssn_ns_code)
+        rev_rotate_ns = NsDayDict(g_date[0]).get_rev(True)
+        print(rev_rotate_ns)
 
 
 def speed_to_spread():
@@ -786,11 +821,42 @@ class SpeedSheetCheck:
         self.fatal_rpt = 0
         self.fyi_rpt = 0
         self.add_rpt = 0
+        self.ns_xlate = {}
+        self.ns_rotate_mode = True
+        self.ns_true_rev = {}
+        self.ns_false_rev = {}
+        self.ns_custom = {}
+        self.filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
+        self.report = open(dir_path('report') + self.filename, "w")  # open the report
 
     def check(self):
-        filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
-        report = open(dir_path('report') + filename, "w")  # open the report
-        report.write("\nSpeedSheet Pre-Check Report \n")
+        rotation = self.wb["by employee id"].cell(row=3, column=10).value  # get the ns day mode preference.
+        self.ns_rotate_mode = self.ns_pref_finder(rotation)
+        if self.ns_rotate_mode is not None:
+            self.checking()
+
+    def ns_pref_finder(self, rotation):
+        if rotation.lower() not in ("r", "f"):
+            error = "FATAL ERROR: \n" \
+                    "             sheet and row: >>> by employee id --> 3 <<<\n" \
+                    "             \n" \
+                    "             The ns day preference must be r or f.\n" \
+                    "             Enter \"r\" for rotating  or \"f\" for fixed.\n" \
+                    "             It is best practice to set the ns day preference\n" \
+                    "             in Klusterbox with:\n" \
+                    "             Management > SpeedSheet Settings > NS Preferences,\n" \
+                    "             Then re-generate the SpeedSheet."
+            self.report.write("\nSpeedSheet Pre-Check Report \n")
+            self.report.write("\n\n{}".format(error))
+            self.reporter()
+            return
+        elif rotation == "r":
+            return True
+        else:
+            return False
+
+    def checking(self):
+        self.report.write("\nSpeedSheet Pre-Check Report \n")
         is_name = False  # initialize bool for speedcell name
         sheets = self.wb.sheetnames  # get the names of the worksheets
         sheet_count = len(sheets)  # get the number of worksheets
@@ -802,8 +868,12 @@ class SpeedSheetCheck:
             d = datecell.split(" through ")  # split the date into two
             start_date = Convert(d[0]).backslashdate_to_datetime()  # convert formatted date to datetime
             end_date = Convert(d[1]).backslashdate_to_datetime()
-        ns_xlate = NsDayDict(start_date).get()
-        station = self.wb[sheets[0]].cell(row=2, column=9).value  # get the date or range of dates
+        ns_obj = NsDayDict(start_date)  # get the ns day object
+        self.ns_xlate = ns_obj.get()  # get ns day dictionary
+        self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
+        self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
+        self.ns_custom = ns_obj.custom_config(ns_obj)
+        station = self.wb[sheets[0]].cell(row=2, column=9).value  # get the station.
         for i in range(sheet_count):
             ws = self.wb[sheets[i]]  # assign the worksheet object
             row_count = ws.max_row  # get the total amount of rows in the worksheet
@@ -819,7 +889,7 @@ class SpeedSheetCheck:
                         route = Handler(ws.cell(row=ii, column=7).value).nonetype()
                         empid = Handler(ws.cell(row=ii, column=10).value).nonetype()
                         SpeedCarrierCheck(self, sheets[i], ii, name, day, list_stat, nsday, route,
-                                          empid, report, start_date, end_date, station, ns_xlate).check_all()
+                                          empid, start_date, end_date, station).check_all()
                     else:
                         is_name = False  # the speedcell does not have a name
                 else:
@@ -832,26 +902,29 @@ class SpeedSheetCheck:
                         lv_type = ws.cell(row=ii, column=9).value
                         lv_time = ws.cell(row=ii, column=10).value
                         SpeedRingCheck(day, hours, moves, rs, codes, lv_type, lv_time).check()
-        report.write("\n\n--------------------------------------------------------------------")
-        report.write("\n\nSpeedSheet Carrier Check Complete.\n\n")
-        report.write('{:>6}  {:<40}\n'.format(self.carrier_count, "carriers checked"))
-        report.write('{:>6}  {:<40}\n'.format(self.fatal_rpt, "fatal error(s) found"))
+        self.reporter()
+
+    def reporter(self):
+        self.report.write("\n\n--------------------------------------------------------------------")
+        self.report.write("\n\nSpeedSheet Carrier Check Complete.\n\n")
+        self.report.write('{:>6}  {:<40}\n'.format(self.carrier_count, "carriers checked"))
+        self.report.write('{:>6}  {:<40}\n'.format(self.fatal_rpt, "fatal error(s) found"))
         if self.interject:
-            report.write('{:>6}  {:<40}\n'.format(self.add_rpt, "add reports(s) found"))
+            self.report.write('{:>6}  {:<40}\n'.format(self.add_rpt, "add reports(s) found"))
         else:
-            report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, "fyi reports(s) found"))
-        report.close()
+            self.report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, "fyi reports(s) found"))
+        self.report.close()
         if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
+            os.startfile(dir_path('report') + self.filename)
         if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+            subprocess.call(["xdg-open", 'kb_sub/report/' + self.filename])
         if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
+            subprocess.call(["open", dir_path('report') + self.filename])
 
 
 class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
-    def __init__(self, parent, sheet, row, name, day, list_stat, nsday, route, empid, report, start_date,
-                 end_date, station, ns_xlate):
+    def __init__(self, parent, sheet, row, name, day, list_stat, nsday, route, empid, start_date,
+                 end_date, station):
         self.parent = parent  # get objects from SpeedSheetCheck
         self.sheet = sheet  # input here is coming directly from the speedcell
         self.row = str(row)
@@ -859,7 +932,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.day = day
         self.list_stat = list_stat
         self.nsday = nsday.lower()
-        self.route = route
+        self.route = str(route)
         self.empid = empid
         self.tacs_name = ""
         self.kb_name = ""
@@ -870,15 +943,9 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.tacs_name = result[0][0]
             self.kb_name = result[0][1]
             self.index_id = result[0][2]
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "speedcell_ns_rotate_mode"
-        self.speedcell_ns_rotate_mode = Convert(inquire(sql)).str_to_bool()
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "speedcell_bypass_initial"
-        self.speedcell_bypass_initial = Convert(inquire(sql)).str_to_bool()
-        self.report = report  # pass the report object
         self.start_date = start_date  # pass the investigation range from the speedsheet
         self.end_date = end_date
         self.station = station
-        self.ns_xlate = ns_xlate
         # self.checker = checker
         self.firstrec = ""  # if there are no carrier records, fill with empty strings
         self.firstdate = ""
@@ -912,10 +979,6 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
              "sat": "sat", "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri",
              "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
              "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri"}
-        self.ns_r_notes = ("rsat", "rmon", "rtue", "rwed", "rthu", "rfri",
-                           "rs", "rm", "rtu", "ru", "rw", "rth", "rh", "rf")
-        self.ns_f_notes = ("fsat", "fmon", "ftue", "fwed", "fthu", "ffri",
-                           "fs", "fm", "ftu", "fu", "fw", "fth", "fh", "ff")
 
     def check_name(self):
         if self.name == self.firstname:
@@ -985,24 +1048,39 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.error_array.append(error)
             self.allowaddrecs = False
 
+    def ns_baseready(self, ns, mode):  # formats provided ns day into a fixed or rotating ns day for database input
+        baseready = self.parent.ns_true_rev[ns]  # if True is passed use rotate mode
+        if not mode:  # if False is passed use fixed mode
+            baseready = self.parent.ns_false_rev[ns]
+        return baseready
+
     def check_ns(self):
+        #  self.parent.ns_rotate_mode: True for rotate, False for fixed
         ns = "none"  # initialize ns variable
         if self.nsday in ("sat", "mon", "tue", "wed", "thu", "fri"):
-            ns = self.nsday
+            baseready = self.ns_baseready(self.nsday, self.parent.ns_rotate_mode)  # format for dbase input
         elif self.nsday in ("s", "m", "tu", "u", "w", "th", "h", "f"):
-            ns = self.ns_dict[self.nsday]
+            ns = self.ns_dict[self.nsday]  # translate the notation
+            baseready = self.ns_baseready(ns, self.parent.ns_rotate_mode)
         elif self.nsday == "  ":
-            ns = "  "
+            baseready = "none"
+        elif self.nsday in ("rsat", "rmon", "rtue", "rwed", "rthu", "rfri",
+                            "rs", "rm", "rtu", "ru", "rw", "rth", "rh", "rf"):
+            ns = self.ns_dict[self.nsday]
+            baseready = self.ns_baseready(ns, True)
+        elif self.nsday in ("fsat", "fmon", "ftue", "fwed", "fthu", "ffri",
+                           "fs", "fm", "ftu", "fu", "fw", "fth", "fh", "ff"):
+            ns = self.ns_dict[self.nsday]
+            baseready = self.ns_baseready(ns, False)
         else:
-            error = "ERROR: No such nsday\n"  # report
+            error = "ERROR: No such nsday: \"{}\"\n".format(self.nsday)  # report
             self.error_array.append(error)
             self.allowaddrecs = False  # do not allow speedcell to be input into dbase
             return
-        if self.ns_xlate[self.firstnsday].lower() != ns:
-            fyi = "FYI: New or updated nsday: {}.\n"\
-                .format(Handler(ns).nsblank2none())  #report
+        if self.firstnsday != baseready:
+            fyi = "FYI: New or updated nsday: {}.\n".format(self.parent.ns_custom[baseready])  #report
             self.fyi_array.append(fyi)
-            self.addnsday = ns
+            self.addnsday = baseready
 
     def check_route(self):
         if self.route == self.firstroute:
@@ -1043,13 +1121,13 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         else:
             master_array = self.error_array + self.add_array  # use these reports for input
         if len(master_array) > 0:
-            self.report.write("\n{}\n".format(self.name))
-            self.report.write("   sheet and row: >>> {} --> {} <<<\n".format(self.sheet, self.row))
+            self.parent.report.write("\n{}\n".format(self.name))
+            self.parent.report.write("   sheet and row: >>> {} --> {} <<<\n".format(self.sheet, self.row))
             if not self.allowaddrecs:
-                self.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
+                self.parent.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
                 # self.parent.fatal_rpt += 1
             for rpt in master_array:  # write all reports that have been keep in arrays.
-                self.report.write(rpt)
+                self.parent.report.write(rpt)
 
     def check_all(self):
         self.check_name()
@@ -1159,7 +1237,8 @@ class GetCarrier:  # accepts carrier records from CarrierList().get()
                 filtered_set.insert(0, r)  # add to the front of the list
         return filtered_set
 
-    def condense_recs(self):  # condense multiple recs into format used by speedsheets
+    def condense_recs(self, ns_rotate_mode):  # condense multiple recs into format used by speedsheets
+        ns_dic = NsDayDict(g_date[0]).ssn_ns(ns_rotate_mode)  # get speedsheet notation for nsdays
         date_str = ""
         list_str = ""
         i = 1
@@ -1176,7 +1255,7 @@ class GetCarrier:  # accepts carrier records from CarrierList().get()
                     date_str = date_str + ","
                 list_str = list_str + ","
             i += 1
-        ns = ns_code[self.nsday].lower()
+        ns = ns_dic[self.nsday]  # ns day is given with speedsheet notation for nsdays
         return date_str, self.carrier, list_str, ns, self.route, self.station
 
 
@@ -1272,12 +1351,17 @@ def speed_gen_all(frame):
         day_array = (str(d_date.strftime("%a")).lower(),)
     else:
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+    rotate_mode = db.ns_rotate_mode  # NS day mode preference: rotating or fixed
+    if rotate_mode:
+        ns_pref = "r"
+    else:
+        ns_pref = "f"
     # first get a carrier list
     carriers = CarrierList(g_date[0], g_date[6], g_station).get()
     id_recset = []
     for c in carriers:
         cc = GetCarrier(c).filter_nonlist_recs()  # filter out any recs where list status is unchanged
-        ccc = GetCarrier(cc).condense_recs()  # condense multiple recs into format used by speedsheets
+        ccc = GetCarrier(cc).condense_recs(db.ns_rotate_mode)  # condense multiple recs into format used by speedsheets
         id_recset.append(GetSpeedCarrier(ccc).add_id())  # merge carriers with emp id
     car_recs = [SpeedArray(id_recset).order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
     if not db.abc_breakdown:
@@ -1344,89 +1428,96 @@ def speed_gen_all(frame):
         ws_list[i].column_dimensions["I"].width = 8
         ws_list[i].column_dimensions["J"].width = 8
         ws_list[i].column_dimensions["K"].width = 8
-        # cell = ws_list[i]['A1']
         cell = ws_list[i].cell(column=1, row=1)
         cell.value = "Speedsheet - All Inclusive"
         cell.style = ws_header
         ws_list[i].merge_cells('A1:E1')
         # create date/ pay period/ station header
-        cell = ws_list[i]['A2']  # date label
+        cell = ws_list[i].cell(row=2, column=1)  # date label
         cell.value = "Date:  "
         cell.style = date_dov_title
-        cell = ws_list[i]['B2']  # date
+        cell = ws_list[i].cell(row=2, column=2)  # date
         if g_range == "day":
             cell.value = "{}".format(d_date.strftime("%A  %m/%d/%y"))
         else:
             cell.value = "{} through {}".format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y"))
         cell.style = date_dov
         ws_list[i].merge_cells('B2:E2')
-        cell = ws_list[i]['F2']  # pay period label
+        cell = ws_list[i].cell(row=2, column=6)  # pay period label
         cell.value = "PP:  "
         cell.style = date_dov_title
-        cell = ws_list[i]['G2']  # pay period
+        cell = ws_list[i].cell(row=2, column=7)  # pay period
         cell.value = pay_period
         cell.style = date_dov
-        cell = ws_list[i]['H2']  # station label
+        cell = ws_list[i].cell(row=2, column=8)  # station label
         cell.value = "Station:  "
         cell.style = date_dov_title
-        cell = ws_list[i]['I2']  # station
+        cell = ws_list[i].cell(row=2, column=9)  # station
         cell.value = g_station
         cell.style = date_dov
         ws_list[i].merge_cells('I2:J2')
         # apply title - show how carriers are sorted
-        cell = ws_list[i]['A3']
+        cell = ws_list[i].cell(row=3, column=1)
         if i == 0:
             cell.value = "Carriers listed by Employee ID"
         else:
             cell.value = "Carriers listed Alphabetically: {}".format(ws_titles[i])
         cell.style = list_header
-        ws_list[i].merge_cells('A3:G3')
+        ws_list[i].merge_cells('A3:E3')
+        if i == 0:  # only execute on the first sheet of the workbook
+            cell = ws_list[i].cell(row=3, column=6)  #
+            cell.value = "ns day preference (r=rotating/f=fixed): "  # ns day preference
+            cell.style = date_dov_title
+            ws_list[i].merge_cells('F3:I3')
+            cell = ws_list[i].cell(row=3, column=10)  #
+            cell.value = ns_pref
+            cell.style = date_dov
         # Headers for Carrier List
-        cell = ws_list[i]['A4']  # header day
+        cell = ws_list[i].cell(row=4, column=1)  # header day
         cell.value = "Days"
         cell.style = car_col_header
-        cell = ws_list[i]['B4']  # header carrier name
+        cell = ws_list[i].cell(row=4, column=2)  # header carrier name
         cell.value = "Carrier Name"
         cell.style = car_col_header
         ws_list[i].merge_cells('B4:D4')
-        cell = ws_list[i]['E4']  # header list type
+        cell = ws_list[i].cell(row=4, column=5)  # header list type
         cell.value = "List"
         cell.style = car_col_header
-        cell = ws_list[i]['F4']  # header ns day
+        cell = ws_list[i].cell(row=4, column=6)  # header ns day
         cell.value = "NS Day"
         cell.style = car_col_header
-        cell = ws_list[i]['G4']  # header route
+        cell = ws_list[i].cell(row=4, column=7)  # header route
         cell.value = "Route/s"
         cell.style = car_col_header
         ws_list[i].merge_cells('G4:I4')
-        cell = ws_list[i]['J4']  # header emp id
+        cell = ws_list[i].cell(row=4, column=10)  # header emp id
         cell.value = "Emp id"
         cell.style = car_col_header
         # Headers for Rings
-        cell = ws_list[i]['A5']  # header day
+        cell = ws_list[i].cell(row=5, column=1)  # header day
         cell.value = "Day"
         cell.style = col_header
-        cell = ws_list[i]['B5']  # header 5200
+        cell = ws_list[i].cell(row=5, column=2)  # header 5200
         cell.value = "5200"
         cell.style = col_header
-        cell = ws_list[i]['C5']  # header MOVES
+        cell = ws_list[i].cell(row=5, column=3)  # header MOVES
         cell.value = "MOVES"
         cell.style = col_header
         ws_list[i].merge_cells('C5:F5')
-        cell = ws_list[i]['G5']  # header RS
+        cell = ws_list[i].cell(row=5, column=7)  # header RS
         cell.value = "RS"
         cell.style = col_header
-        cell = ws_list[i]['H5']  # header codes
+        cell = ws_list[i].cell(row=5, column=8)  # header codes
         cell.value = "CODE"
         cell.style = col_header
-        cell = ws_list[i]['I5']  # header leave type
+        cell = ws_list[i].cell(row=5, column=9)  # header leave type
         cell.value = "LV type"
         cell.style = col_header
-        cell = ws_list[i]['J5']  # header leave time
+        cell = ws_list[i].cell(row=5, column=10)  # header leave time
         cell.value = "LV time"
         cell.style = col_header
         # freeze panes
-        ws_list[i].freeze_panes = ws_list[i]['A6']
+        ws_list[i].freeze_panes = ws_list[i].cell(row=6, column=1)  # ['A6']
         if i == 0:
             rowcount = db.min_empid  # get minimum speedcell count for employee id tab
         elif i != 0 and not db.abc_breakdown:
