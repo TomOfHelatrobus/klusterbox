@@ -120,6 +120,70 @@ def macadj(win, mac):  # switch between variables depending on platform
     return arg
 
 
+def titlebar_icon(root):  # place icon in titlebar
+    if sys.platform == "win32" and platform == "py":
+        try:
+            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except:
+            pass
+    if sys.platform == "win32" and platform == "winapp":
+        try:
+            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
+        except:
+            pass
+    if sys.platform == "darwin" and platform == "py":
+        try:
+            root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
+        except:
+            pass
+    if sys.platform == "linux":
+        try:
+            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
+            root.tk.call('wm', 'iconphoto', root._w, img)
+        except:
+            pass
+
+
+class MakeWindow:
+    def __init__(self):
+        self.topframe = Frame(root)
+        self.buttons = Canvas(self.topframe)  # button bar
+        self.s = Scrollbar(self.topframe)
+        self.c = Canvas(self.topframe, width=1600)
+        self.body = Frame(self.c)
+
+    def create(self, frame):
+        if frame != "none":
+            frame.destroy()  # close out the previous frame
+        self.topframe.pack(fill=BOTH, side=LEFT)
+        self.buttons.pack(fill=BOTH, side=BOTTOM)
+        # link up the canvas and scrollbar
+        self.s.pack(side=RIGHT, fill=BOTH)
+        self.c.pack(side=LEFT, fill=BOTH)
+        self.s.configure(command=self.c.yview, orient="vertical")
+        self.c.configure(yscrollcommand=self.s.set)
+        # link the mousewheel - implementation varies by platform
+        if sys.platform == "win32":
+            self.c.bind_all\
+                ('<MouseWheel>', lambda event: self.c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        elif sys.platform == "darwin":
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll(int(mousewheel * event.delta), "units"))
+        elif sys.platform == "linux":
+            self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
+            self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        self.c.create_window((0, 0), window=self.body, anchor=NW)
+
+    def finish(self):  # This closes the window created by front_window()
+        root.update()
+        self.c.config(scrollregion=self.c.bbox("all"))
+        mainloop()
+
+    def fill(self, last, count):  # fill bottom of screen to for scrolling.
+        for i in range(count):
+            Label(self.body, text="").grid(row=last + i)
+        Label(self.body, text="kluster end", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
+
+
 def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
     if frame != "none":
         frame.destroy()  # close out the previous frame
@@ -346,6 +410,31 @@ class NsDayDict:
         custom_ns_dict["none"] = "none"  # add "none" to dictionary
         return custom_ns_dict
 
+    @staticmethod
+    def get_custom_nsday(self):  # get ns day color configurations from dbase and make dictionary
+        sql = "SELECT * FROM ns_configuration"
+        ns_results = inquire(sql)
+        ns_dict = {}  # build dictionary for ns days
+        days = ("sat", "mon", "tue", "wed", "thu", "fri")
+        for r in ns_results:  # build dictionary for rotating ns days
+            ns_dict[r[0]] = r[2]  # build dictionary for ns fill colors
+        for d in days:  # expand dictionary for fixed days
+            ns_dict[d] = "fixed: " + d
+        ns_dict["none"] = "none"  # add "none" to dictionary
+        return ns_dict
+
+    @staticmethod
+    def gen_rev_ns_dict(self):  # creates full day/color ns day dictionary
+        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        colors = ("blue", "green", "brown", "red", "black", "yellow")
+        code_ns = {}
+        for d in days:
+            for c in colors:
+                if d[:3] == ns_code[c]:
+                    code_ns[d] = c
+        code_ns["None"] = "none"
+        return code_ns
+
 
 class ReportName:  # returns a file name which is stamped with the datetime
     def __init__(self, filename):
@@ -380,31 +469,6 @@ class ProgressBarIn:
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
-
-
-def titlebar_icon(root):  # place icon in titlebar
-    if sys.platform == "win32" and platform == "py":
-        try:
-            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except:
-            pass
-    if sys.platform == "win32" and platform == "winapp":
-        try:
-            # root.iconbitmap('C:\\Program Files (x86)\\klusterbox\\kb_icon2.ico')
-            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
-        except:
-            pass
-    if sys.platform == "darwin" and platform == "py":
-        try:
-            root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
-        except:
-            pass
-    if sys.platform == "linux":
-        try:
-            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
-            root.tk.call('wm', 'iconphoto', root._w, img)
-        except:
-            pass
 
 
 class Convert:
@@ -444,16 +508,6 @@ class Handler:
             return str("none")
         else:
             return self.data
-
-
-class Window:
-    def __init__(self, frame):  # accepts the frame
-        self.frame = frame
-
-    def fill(self, last, count):  # fill bottom of screen to for scrolling.
-        for i in range(count):
-            Label(self.frame, text="").grid(row=last + i)
-        Label(self.frame, text="kluster end", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
 def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
@@ -609,7 +663,7 @@ class SpeedSettings:
         self.min_empid = int(results[16][0])
         self.min_alpha = int(results[17][0])
         self.min_abc = int(results[18][0])
-        self.ns_rotate_mode = Convert(results[19][0]).str_to_bool()
+        self.speedcell_ns_rotate_mode = Convert(results[19][0]).str_to_bool()
 
 
 def speedsheet_setting_preset(frame, order):
@@ -638,7 +692,14 @@ def speedsheet_setting_preset(frame, order):
 
 
 def speedsheet_settings_apply(frame, value, setting):
-    if setting != "abc_breakdown":
+    if setting == "abc_breakdown":  # make no changes to abc_breakdown
+        pass
+    elif setting == "speedcell_ns_rotate_mode":  # switch ns preference to a boolean
+        if value == "rotating":
+            value = True
+        else:
+            value = False
+    else:  # check values for minimum rows
         if not isint(value):
             text = "You must enter a number with no decimals. "
             messagebox.showerror("Tolerance value entry error",
@@ -678,81 +739,88 @@ def speedsheet_settings_apply(frame, value, setting):
 
 
 def speedsheet_settings(frame):
+    #  topframe, s, c, body, buttons
     setting = SpeedSettings()  # retrieve settings from tolerance table in dbase
-    wd = front_window(frame)
-    Label(wd[3], text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
+    win = MakeWindow()
+    win.create(frame)
+    Label(win.body, text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
         .grid(row=0, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=1, column=0)
-    Label(wd[3], text="Minimum rows for SpeedSheets", width=30, anchor="w") \
-        .grid(row=2, column=0, ipady=5, sticky="w")
-    abc_breakdown = StringVar(wd[3])  # create stringvars
-    min_empid = StringVar(wd[3])
-    min_alpha = StringVar(wd[3])
-    min_abc = StringVar(wd[3])
+    Label(win.body, text=" ").grid(row=1, column=0)
+    ns_mode = StringVar(win.body)
+    abc_breakdown = StringVar(win.body)  # create stringvars
+    min_empid = StringVar(win.body)
+    min_alpha = StringVar(win.body)
+    min_abc = StringVar(win.body)
+    if setting.speedcell_ns_rotate_mode:
+        ns_mode.set("rotating")
+    else:
+        ns_mode.set("fixed")
     abc_breakdown.set(str(setting.abc_breakdown))  # convert to str, else you get a 0 or 1
     min_empid.set(setting.min_empid)
     min_alpha.set(setting.min_alpha)
     min_abc.set(setting.min_abc)
-    Label(wd[3], text="Alphabetical Breakdown (multiple tabs)", width=40, anchor="w")\
+    Label(win.body, text="NS Day Preferred Mode: ", width=40, anchor="w") \
         .grid(row=3, column=0, ipady=5, sticky="w")
-    opt_breakdown = OptionMenu(wd[3], abc_breakdown, "True", "False")
-    opt_breakdown.config(width=9, anchor="w")
-    opt_breakdown.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
-    Button(wd[3], width=5, text="change",
-           command=lambda: speedsheet_settings_apply(wd[0], abc_breakdown.get(), "abc_breakdown")) \
+    ns_pref = OptionMenu(win.body, ns_mode, "rotating", "fixed")
+    ns_pref.config(width=9, anchor="w")
+    ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
+    Button(win.body, width=5, text="change",
+           command=lambda: speedsheet_settings_apply(win.topframe, ns_mode.get(), "speedcell_ns_rotate_mode")) \
         .grid(row=3, column=3, padx=4)
-    Label(wd[3], text="Minimum rows for Employee ID tab", width=40, anchor="w") \
+    Label(win.body, text="Minimum rows for SpeedSheets", width=30, anchor="w") \
         .grid(row=4, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_empid).grid(row=4, column=1, padx=4)
-    Button(wd[3], width=5, text="change",
-           command=lambda: speedsheet_settings_apply(wd[0], min_empid.get(), "min_spd_empid")) \
-        .grid(row=4, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_spd_empid")) \
-        .grid(row=4, column=3, padx=4)
-    Label(wd[3], text="Minimum rows for Alphabetically tab", width=40, anchor="w") \
+    Label(win.body, text="Alphabetical Breakdown (multiple tabs)", width=40, anchor="w")\
         .grid(row=5, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_alpha).grid(row=5, column=1, padx=4)
-    Button(wd[3], width=5, text="change",
-           command=lambda: speedsheet_settings_apply(wd[0], min_alpha.get(), "min_spd_alpha")) \
-        .grid(row=5, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_spd_alpha")) \
+    opt_breakdown = OptionMenu(win.body, abc_breakdown, "True", "False")
+    opt_breakdown.config(width=9, anchor="w")
+    opt_breakdown.grid(row=5, column=1, columnspan=2, sticky="w", padx=4)
+    Button(win.body, width=5, text="change",
+           command=lambda: speedsheet_settings_apply(win.topframe, abc_breakdown.get(), "abc_breakdown")) \
         .grid(row=5, column=3, padx=4)
-    Label(wd[3], text="Minimum rows for Alphabetical breakdown tabs", width=40, anchor="w") \
+    Label(win.body, text="Minimum rows for Employee ID tab", width=40, anchor="w") \
         .grid(row=6, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_abc).grid(row=6, column=1, padx=4)
-    Button(wd[3], width=5, text="change",
-           command=lambda: speedsheet_settings_apply(wd[0], min_abc.get(), "min_spd_abc")) \
+    Entry(win.body, width=5, textvariable=min_empid).grid(row=6, column=1, padx=4)
+    Button(win.body, width=5, text="change",
+           command=lambda: speedsheet_settings_apply(win.topframe, min_empid.get(), "min_spd_empid")) \
         .grid(row=6, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_spd_abc")) \
+    Button(win.body, width=5, text="info", command=lambda: tolerance_info(win.topframe, "min_spd_empid")) \
         .grid(row=6, column=3, padx=4)
-    Label(wd[3], text="________________________________________________________________________________________",
-          pady=5) \
-        .grid(row=7, columnspan=5, sticky="w")
-    Label(wd[3], text="Restore Defaults").grid(row=8, column=0, ipady=5, sticky="w")
-    Button(wd[3], width=5, text="set", command=lambda: speedsheet_setting_preset(wd[0], "default")) \
-        .grid(row=8, column=3)
-    Label(wd[3], text="High Settings").grid(row=9, column=0, ipady=5, sticky="w")
-    Button(wd[3], width=5, text="set", command=lambda: speedsheet_setting_preset(wd[0], "high")) \
-        .grid(row=9, column=3)
-    Label(wd[3], text="Low Settings").grid(row=10, column=0, ipady=5, sticky="w")
-    Button(wd[3], width=5, text="set", command=lambda: speedsheet_setting_preset(wd[0], "low")) \
+    Label(win.body, text="Minimum rows for Alphabetically tab", width=40, anchor="w") \
+        .grid(row=7, column=0, ipady=5, sticky="w")
+    Entry(win.body, width=5, textvariable=min_alpha).grid(row=7, column=1, padx=4)
+    Button(win.body, width=5, text="change",
+           command=lambda: speedsheet_settings_apply(win.topframe, min_alpha.get(), "min_spd_alpha")) \
+        .grid(row=7, column=2, padx=4)
+    Button(win.body, width=5, text="info", command=lambda: tolerance_info(win.topframe, "min_spd_alpha")) \
+        .grid(row=7, column=3, padx=4)
+    Label(win.body, text="Minimum rows for Alphabetical breakdown tabs", width=40, anchor="w") \
+        .grid(row=8, column=0, ipady=5, sticky="w")
+    Entry(win.body, width=5, textvariable=min_abc).grid(row=8, column=1, padx=4)
+    Button(win.body, width=5, text="change",
+           command=lambda: speedsheet_settings_apply(win.topframe, min_abc.get(), "min_spd_abc")) \
+        .grid(row=8, column=2, padx=4)
+    Button(win.body, width=5, text="info", command=lambda: tolerance_info(win.topframe, "min_spd_abc")) \
+        .grid(row=8, column=3, padx=4)
+    Label(win.body, text="________________________________________________________________________________________",
+          pady=5).grid(row=9, columnspan=5, sticky="w")
+    Label(win.body, text="Restore Defaults").grid(row=10, column=0, ipady=5, sticky="w")
+    Button(win.body, width=5, text="set", command=lambda: speedsheet_setting_preset(win.topframe, "default")) \
         .grid(row=10, column=3)
-    Window(wd[3]).fill(11, 20)  # fill the bottom of the window for scrolling
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
-    rear_window(wd)
+    Label(win.body, text="High Settings").grid(row=11, column=0, ipady=5, sticky="w")
+    Button(win.body, width=5, text="set", command=lambda: speedsheet_setting_preset(win.topframe, "high")) \
+        .grid(row=11, column=3)
+    Label(win.body, text="Low Settings").grid(row=12, column=0, ipady=5, sticky="w")
+    Button(win.body, width=5, text="set", command=lambda: speedsheet_setting_preset(win.topframe, "low")) \
+        .grid(row=12, column=3)
+    # Window(win.body).fill(11, 20)
+    win.fill(11, 20)  # fill the bottom of the window for scrolling
+    Button(win.buttons, text="Go Back", width=20, anchor="w",
+           command=lambda: (win.topframe.destroy(), main_frame())).pack(side=LEFT)
+    win.finish()
 
 
 def speed_cheatsheet():
-    if g_range == "x":
-        print("you must enter an investigation range.")
-    else:
-        nsdays = NsDayDict(g_date[0]).get()
-        print(nsdays)
-        ssn_ns_code = NsDayDict(g_date[0]).ssn_ns(True)
-        print(ssn_ns_code)
-        rev_rotate_ns = NsDayDict(g_date[0]).get_rev(True)
-        print(rev_rotate_ns)
+    pass
 
 
 def speed_to_spread():
@@ -857,6 +925,7 @@ class SpeedSheetCheck:
 
     def checking(self):
         self.report.write("\nSpeedSheet Pre-Check Report \n")
+        self.report.write(">>> {}\n".format(self.path))
         is_name = False  # initialize bool for speedcell name
         sheets = self.wb.sheetnames  # get the names of the worksheets
         sheet_count = len(sheets)  # get the number of worksheets
@@ -932,7 +1001,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.day = day
         self.list_stat = list_stat
         self.nsday = nsday.lower()
-        self.route = str(route)
+        self.route = route
         self.empid = empid
         self.tacs_name = ""
         self.kb_name = ""
@@ -1083,6 +1152,12 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.addnsday = baseready
 
     def check_route(self):
+        self.route = str(self.route)
+        self.route = self.route.strip()
+        if self.route == "":
+            pass
+        if 4 > len(self.route) > 0:
+            self.route = self.route.zfill(4)
         if self.route == self.firstroute:
             return
         else:
@@ -1092,7 +1167,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 self.allowaddrecs = False  # do not allow speedcell to be input into dbase
                 return
             else:
-                fyi = "FYI: New or updated route\n"
+                fyi = "FYI: New or updated route: {}\n".format(self.route)
                 self.fyi_array.append(fyi)
                 self.addroute = self.route  # save to input to dbase
 
@@ -1351,7 +1426,7 @@ def speed_gen_all(frame):
         day_array = (str(d_date.strftime("%a")).lower(),)
     else:
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
-    rotate_mode = db.ns_rotate_mode  # NS day mode preference: rotating or fixed
+    rotate_mode = db.speedcell_ns_rotate_mode  # NS day mode preference: rotating or fixed
     if rotate_mode:
         ns_pref = "r"
     else:
@@ -1361,7 +1436,7 @@ def speed_gen_all(frame):
     id_recset = []
     for c in carriers:
         cc = GetCarrier(c).filter_nonlist_recs()  # filter out any recs where list status is unchanged
-        ccc = GetCarrier(cc).condense_recs(db.ns_rotate_mode)  # condense multiple recs into format used by speedsheets
+        ccc = GetCarrier(cc).condense_recs(db.speedcell_ns_rotate_mode)  # condense multiple recs into format used by speedsheets
         id_recset.append(GetSpeedCarrier(ccc).add_id())  # merge carriers with emp id
     car_recs = [SpeedArray(id_recset).order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
     if not db.abc_breakdown:
@@ -1654,19 +1729,6 @@ def speed_gen_all(frame):
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=frame)
-
-
-def get_custom_nsday():  # get ns day color configurations from dbase and make dictionary
-    sql = "SELECT * FROM ns_configuration"
-    ns_results = inquire(sql)
-    ns_dict = {}  # build dictionary for ns days
-    days = ("sat", "mon", "tue", "wed", "thu", "fri")
-    for r in ns_results:  # build dictionary for rotating ns days
-        ns_dict[r[0]] = r[2]  # build dictionary for ns fill colors
-    for d in days:  # expand dictionary for fixed days
-        ns_dict[d] = "fixed: " + d
-    ns_dict["none"] = "none"  # add "none" to dictionary
-    return ns_dict
 
 
 def gui_config_apply(frame, wheel_selection):  # set mousewheel orientation
@@ -3071,7 +3133,7 @@ def rpt_carrier(frame, carrier_list):  # Generate and display a report of carrie
             unique_names.append(car[1])
         else:
             reoccurring_names.append(car[1])
-    ns_dict = get_custom_nsday()  # get the ns day names from the dbase
+    ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
     filename = "report_carrier_route_nsday" + "_" + stamp + ".txt"
     try:
@@ -3175,7 +3237,7 @@ def rpt_carrier_nsday(frame, carrier_list):  # Generate and display a report of 
             unique_names.append(car[1])
         else:
             reoccurring_names.append(car[1])
-    ns_dict = get_custom_nsday()  # get the ns day names from the dbase
+    ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "report_carrier_nsday" + "_" + stamp + ".txt"
     try:
@@ -9156,18 +9218,6 @@ def apply_auto_indexer_4(frame, buttons, file_path, to_addname, carrier_name, l_
         return
 
 
-def gen_rev_ns_dict():  # creates full day/color ns day dictionary
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    colors = ("blue", "green", "brown", "red", "black", "yellow")
-    code_ns = {}
-    for d in days:
-        for c in colors:
-            if d[:3] == ns_code[c]:
-                code_ns[d] = c
-    code_ns["None"] = "none"
-    return code_ns
-
-
 def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     if len(check_these) == 0: auto_indexer_6(frame, file_path)
     check_these.sort(key=itemgetter(1))  # sort the incoming tacs information
@@ -9200,7 +9250,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
         result = inquire(sql)
         carrier_list.append(list(result[0]))
     carrier_list.sort(key=itemgetter(1))  # resort carrier list after additions
-    code_ns = gen_rev_ns_dict()  # generate reverse ns code dictionary
+    code_ns = NsDayDict.gen_rev_ns_dict(NsDayDict)  # generate reverse ns code dictionary
     wd = front_window("none")  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     header = Frame(wd[3])
     header.grid(row=0, columnspan=6, sticky="w")
