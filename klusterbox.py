@@ -666,157 +666,210 @@ class SpeedSettings:
         self.speedcell_ns_rotate_mode = Convert(results[19][0]).str_to_bool()
 
 
-def speedsheet_setting_preset(frame, order):
-    if order == "default":
-        min_empid = "50"
-        min_alpha = "50"
-        min_abc = "10"
-    if order == "high":
-        min_empid = "150"
-        min_alpha = "150"
-        min_abc = "40"
-    if order == "low":
-        min_empid = "10"
-        min_alpha = "10"
-        min_abc = "10"
-    #  abc breakdown in false in all cases
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (min_empid, "min_spd_empid")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (min_alpha, "min_spd_alpha")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (min_abc, "min_spd_abc")
-    commit(sql)
-    speedsheet_settings(frame)
+class SpeedConfigGui:
+    def __init__(self, frame):
+        self.frame = frame
+        self.win = MakeWindow()
+        self.ns_mode = StringVar(self.win.body)
+        self.abc_breakdown = StringVar(self.win.body)  # create stringvars
+        self.min_empid = StringVar(self.win.body)
+        self.min_alpha = StringVar(self.win.body)
+        self.min_abc = StringVar(self.win.body)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        
+    def create(self):
+        self.win.create(self.frame)
+        Label(self.win.body, text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=0, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=1, column=0)
+        self.set_stringvars()
+        Label(self.win.body, text="NS Day Preferred Mode: ", width=40, anchor="w") \
+            .grid(row=3, column=0, ipady=5, sticky="w")
+        ns_pref = OptionMenu(self.win.body, self.ns_mode, "rotating", "fixed")
+        ns_pref.config(width=9, anchor="w")
+        ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
+        Button(self.win.body, width=5, text="change",
+            command=lambda: self.apply_ns_mode()).grid(row=3, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for SpeedSheets", width=30, anchor="w") \
+            .grid(row=4, column=0, ipady=5, sticky="w")
+        Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=40, anchor="w") \
+            .grid(row=5, column=0, ipady=5, sticky="w")
+        opt_breakdown = OptionMenu(self.win.body, self.abc_breakdown, "True", "False")
+        opt_breakdown.config(width=9, anchor="w")
+        opt_breakdown.grid(row=5, column=1, columnspan=2, sticky="w", padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_abc_breakdown()).grid(row=5, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for Employee ID tab", width=40, anchor="w") \
+            .grid(row=6, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_empid).grid(row=6, column=1, padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_min_empid()).grid(row=6, column=2, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: self.info("min_spd_empid")) \
+            .grid(row=6, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for Alphabetically tab", width=40, anchor="w") \
+            .grid(row=7, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_alpha).grid(row=7, column=1, padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_min_alpha()).grid(row=7, column=2, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: self.info("min_spd_alpha")) \
+            .grid(row=7, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for Alphabetical breakdown tabs", width=40, anchor="w") \
+            .grid(row=8, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_abc).grid(row=8, column=1, padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_min_abc()) \
+            .grid(row=8, column=2, padx=4)
+        Button(self.win.body, width=5, text="info", command=lambda: self.info("min_spd_abc")) \
+            .grid(row=8, column=3, padx=4)
+        Label(self.win.body,
+              text="________________________________________________________________________________________",
+              pady=5).grid(row=9, columnspan=5, sticky="w")
+        Label(self.win.body, text="Restore Defaults").grid(row=10, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.preset_default()).grid(row=10, column=3)
+        Label(self.win.body, text="High Settings").grid(row=11, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.preset_high()).grid(row=11, column=3)
+        Label(self.win.body, text="Low Settings").grid(row=12, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.preset_low()).grid(row=12, column=3)
+        self.win.fill(11, 20)  # fill the bottom of the window for scrolling
+        Button(self.win.buttons, text="Go Back", width=20, anchor="w",
+               command=lambda: (self.win.topframe.destroy(), main_frame())).pack(side=LEFT)
+        self.status_update.pack(side=LEFT)
+        self.win.finish()
 
-
-def speedsheet_settings_apply(frame, value, setting):
-    if setting == "abc_breakdown":  # make no changes to abc_breakdown
-        pass
-    elif setting == "speedcell_ns_rotate_mode":  # switch ns preference to a boolean
-        if value == "rotating":
+    def apply_ns_mode(self):
+        if self.ns_mode.get() == "rotating":
             value = True
         else:
             value = False
-    else:  # check values for minimum rows
+        msg = "NS Day Preferred Mode updated: {}".format(self.ns_mode.get())
+        self.commit_to_base(value, "speedcell_ns_rotate_mode", msg)
+
+    def apply_abc_breakdown(self):
+        msg = "Alphabetical Breakdown (multiple tabs) updated: {}".format(self.abc_breakdown.get())
+        self.commit_to_base(self.abc_breakdown.get(), "abc_breakdown", msg)
+
+    def apply_min_empid(self):
+        if self.check(self.min_empid.get()) is None:
+            msg = "Minimum rows for Employee ID tab updated: {}".format(self.min_empid.get())
+            self.commit_to_base(self.min_empid.get(), "min_spd_empid", msg)
+
+    def apply_min_alpha(self):
+        if self.check(self.min_alpha.get()) is None:
+            msg = "Minimum rows for Alphabetically tab updated: {}".format(self.min_alpha.get())
+            self.commit_to_base(self.min_alpha.get(), "min_spd_alpha", msg)
+
+    def apply_min_abc(self):
+        if self.check(self.min_abc.get()) is None:
+            if self.check_abc(self.min_abc.get()) is None:
+                msg = "Minimum rows for Alphabetical breakdown tabs updated: {}".format(self.min_abc.get())
+                self.commit_to_base(self.min_abc.get(), "min_spd_abc", msg)
+
+    def commit_to_base(self, value, setting, msg):
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % \
+              (value, setting)
+        commit(sql)
+        self.set_stringvars()
+        self.status_update.config(text="{}".format(msg))
+
+    def check(self, value):  # check values for minimum rows
         if not isint(value):
             text = "You must enter a number with no decimals. "
             messagebox.showerror("Tolerance value entry error",
                                  text,
-                                 parent=frame)
-            return
+                                 parent=self.win.topframe)
+            return False
         if value.strip() == "":
             text = "You must enter a numeric value for tolerances"
             messagebox.showerror("Tolerance value entry error",
                                  text,
-                                 parent=frame)
-            return
-        if float(value) < 10:
-            text = "Values must be equal to or greater than ten."
+                                 parent=self.win.topframe)
+            return False
+        if float(value) < 5:
+            text = "Values must be equal to or greater than five."
             messagebox.showerror("Tolerance value entry error",
                                  text,
-                                 parent=frame)
+                                 parent=self.win.topframe)
 
-            return
-        if setting == "min_spd_abc":
-            if float(value) > 200:
-                text = "You must enter a value less than two hundred."
-                messagebox.showerror("Tolerance value entry error",
-                                     text,
-                                     parent=frame)
-                return
+            return False
+        if float(value) > 500:
+            text = "You must enter a value less five hundred."
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=self.win.topframe)
+            return False
+
+    def check_abc(self, value):
+        if float(value) > 50:
+            text = "You must enter a value less than fifty."
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=self.win.topframe)
+            return False
+
+    def preset_default(self):
+        empid = "50"
+        alpha = "50"
+        abc = "10"
+        self.preset_to_base(self, empid, alpha, abc)
+        self.status_update.config(text="Default Minimum Row Settings Restored")
+
+    def preset_high(self):
+        empid = "150"
+        alpha = "150"
+        abc = "40"
+        self.preset_to_base(self, empid, alpha, abc)
+        self.status_update.config(text="High Minimum Row Settings Enabled")
+
+    def preset_low(self):
+        empid = "10"
+        alpha = "10"
+        abc = "5"
+        self.preset_to_base(self, empid, alpha, abc)
+        self.status_update.config(text="Low Minimum Row Settings Enabled")
+
+    @staticmethod
+    def preset_to_base(self, empid, alpha, abc):
+        #  abc breakdown is false in all cases
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
+        commit(sql)
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (empid, "min_spd_empid")
+        commit(sql)
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (alpha, "min_spd_alpha")
+        commit(sql)
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (abc, "min_spd_abc")
+        commit(sql)
+        self.set_stringvars()
+
+    def set_stringvars(self):
+        setting = SpeedSettings()  # retrieve settings from tolerance table in dbase
+        if setting.speedcell_ns_rotate_mode:
+            self.ns_mode.set("rotating")
         else:
-            if float(value) > 999:
-                text = "You must enter a value less than one thousand."
-                messagebox.showerror("Tolerance value entry error",
-                                     text,
-                                     parent=frame)
-                return
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (value, setting)
-    commit(sql)
-    speedsheet_settings(frame)
+            self.ns_mode.set("fixed")
+        self.abc_breakdown.set(str(setting.abc_breakdown))  # convert to str, else you get a 0 or 1
+        self.min_empid.set(setting.min_empid)
+        self.min_alpha.set(setting.min_alpha)
+        self.min_abc.set(setting.min_abc)
 
-
-def speedsheet_settings(frame):
-    #  topframe, s, c, body, buttons
-    setting = SpeedSettings()  # retrieve settings from tolerance table in dbase
-    win = MakeWindow()
-    win.create(frame)
-    Label(win.body, text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=0, sticky="w", columnspan=4)
-    Label(win.body, text=" ").grid(row=1, column=0)
-    ns_mode = StringVar(win.body)
-    abc_breakdown = StringVar(win.body)  # create stringvars
-    min_empid = StringVar(win.body)
-    min_alpha = StringVar(win.body)
-    min_abc = StringVar(win.body)
-    if setting.speedcell_ns_rotate_mode:
-        ns_mode.set("rotating")
-    else:
-        ns_mode.set("fixed")
-    abc_breakdown.set(str(setting.abc_breakdown))  # convert to str, else you get a 0 or 1
-    min_empid.set(setting.min_empid)
-    min_alpha.set(setting.min_alpha)
-    min_abc.set(setting.min_abc)
-    Label(win.body, text="NS Day Preferred Mode: ", width=40, anchor="w") \
-        .grid(row=3, column=0, ipady=5, sticky="w")
-    ns_pref = OptionMenu(win.body, ns_mode, "rotating", "fixed")
-    ns_pref.config(width=9, anchor="w")
-    ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
-    Button(win.body, width=5, text="change",
-           command=lambda: speedsheet_settings_apply(win.topframe, ns_mode.get(), "speedcell_ns_rotate_mode")) \
-        .grid(row=3, column=3, padx=4)
-    Label(win.body, text="Minimum rows for SpeedSheets", width=30, anchor="w") \
-        .grid(row=4, column=0, ipady=5, sticky="w")
-    Label(win.body, text="Alphabetical Breakdown (multiple tabs)", width=40, anchor="w")\
-        .grid(row=5, column=0, ipady=5, sticky="w")
-    opt_breakdown = OptionMenu(win.body, abc_breakdown, "True", "False")
-    opt_breakdown.config(width=9, anchor="w")
-    opt_breakdown.grid(row=5, column=1, columnspan=2, sticky="w", padx=4)
-    Button(win.body, width=5, text="change",
-           command=lambda: speedsheet_settings_apply(win.topframe, abc_breakdown.get(), "abc_breakdown")) \
-        .grid(row=5, column=3, padx=4)
-    Label(win.body, text="Minimum rows for Employee ID tab", width=40, anchor="w") \
-        .grid(row=6, column=0, ipady=5, sticky="w")
-    Entry(win.body, width=5, textvariable=min_empid).grid(row=6, column=1, padx=4)
-    Button(win.body, width=5, text="change",
-           command=lambda: speedsheet_settings_apply(win.topframe, min_empid.get(), "min_spd_empid")) \
-        .grid(row=6, column=2, padx=4)
-    Button(win.body, width=5, text="info", command=lambda: tolerance_info(win.topframe, "min_spd_empid")) \
-        .grid(row=6, column=3, padx=4)
-    Label(win.body, text="Minimum rows for Alphabetically tab", width=40, anchor="w") \
-        .grid(row=7, column=0, ipady=5, sticky="w")
-    Entry(win.body, width=5, textvariable=min_alpha).grid(row=7, column=1, padx=4)
-    Button(win.body, width=5, text="change",
-           command=lambda: speedsheet_settings_apply(win.topframe, min_alpha.get(), "min_spd_alpha")) \
-        .grid(row=7, column=2, padx=4)
-    Button(win.body, width=5, text="info", command=lambda: tolerance_info(win.topframe, "min_spd_alpha")) \
-        .grid(row=7, column=3, padx=4)
-    Label(win.body, text="Minimum rows for Alphabetical breakdown tabs", width=40, anchor="w") \
-        .grid(row=8, column=0, ipady=5, sticky="w")
-    Entry(win.body, width=5, textvariable=min_abc).grid(row=8, column=1, padx=4)
-    Button(win.body, width=5, text="change",
-           command=lambda: speedsheet_settings_apply(win.topframe, min_abc.get(), "min_spd_abc")) \
-        .grid(row=8, column=2, padx=4)
-    Button(win.body, width=5, text="info", command=lambda: tolerance_info(win.topframe, "min_spd_abc")) \
-        .grid(row=8, column=3, padx=4)
-    Label(win.body, text="________________________________________________________________________________________",
-          pady=5).grid(row=9, columnspan=5, sticky="w")
-    Label(win.body, text="Restore Defaults").grid(row=10, column=0, ipady=5, sticky="w")
-    Button(win.body, width=5, text="set", command=lambda: speedsheet_setting_preset(win.topframe, "default")) \
-        .grid(row=10, column=3)
-    Label(win.body, text="High Settings").grid(row=11, column=0, ipady=5, sticky="w")
-    Button(win.body, width=5, text="set", command=lambda: speedsheet_setting_preset(win.topframe, "high")) \
-        .grid(row=11, column=3)
-    Label(win.body, text="Low Settings").grid(row=12, column=0, ipady=5, sticky="w")
-    Button(win.body, width=5, text="set", command=lambda: speedsheet_setting_preset(win.topframe, "low")) \
-        .grid(row=12, column=3)
-    # Window(win.body).fill(11, 20)
-    win.fill(11, 20)  # fill the bottom of the window for scrolling
-    Button(win.buttons, text="Go Back", width=20, anchor="w",
-           command=lambda: (win.topframe.destroy(), main_frame())).pack(side=LEFT)
-    win.finish()
+    def info(self, switch):
+        if switch == "min_spd_empid":
+            text = "Sets the minimum number of rows for the " \
+                   "Employee Id tab of the All Inclusive Speedsheet. \n\n" \
+                   "Enter a value between 5 and 500"
+        if switch == "min_spd_alpha":
+            text = "Sets the minimum number of rows for the " \
+                   "Alphabetical tab of the All Inclusive Speedsheet. \n\n" \
+                   "Enter a value between 5 and 500"
+        if switch == "min_spd_abc":
+            text = "Sets the minimum number of rows for the " \
+                   "Alphabetical breakdown tabs of the All Inclusive Speedsheet. \n\n" \
+                   "Enter a value between 5 and 50"
+        messagebox.showinfo("SpeedSheet Minimum Rows", text, parent=self.win.topframe)
 
 
 def speed_cheatsheet():
@@ -839,7 +892,6 @@ class LoadWorkBook(Thread):
         wb = load_workbook(self.path)  # load xlsx doc with openpyxl
         self.pb.stop()  # terminate the progress bar object
         # pass the frame and workbook object to a new function
-        # speed_precheck_loaded(self.frame, wb, self.path, self.interject)
         SpeedSheetCheck(self.frame, wb, self.path, self.interject).check()
 
 
@@ -11287,18 +11339,6 @@ def tolerance_info(frame, switch):
         text = "Sets the minimum number of rows for the " \
                "12 and 60 Hour Violations spreadsheet. \n\n" \
                "Enter a value between 0 and 100"
-    if switch == "min_spd_empid":
-        text = "Sets the minimum number of rows for the " \
-               "Employee Id tab of the All Inclusive Speedsheet. \n\n" \
-               "Enter a value between 9 and 1000"
-    if switch == "min_spd_alpha":
-        text = "Sets the minimum number of rows for the " \
-               "Alphabetical tab of the All Inclusive Speedsheet. \n\n" \
-               "Enter a value between 9 and 1000"
-    if switch == "min_spd_abc":
-        text = "Sets the minimum number of rows for the " \
-               "Alphabetical breakdown tabs of the All Inclusive Speedsheet. \n\n" \
-               "Enter a value between 9 and 200"
     messagebox.showinfo("About Tolerances", text, parent=frame)
 
 
@@ -15645,7 +15685,7 @@ def main_frame():
     management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(f))
     if gs_day == "x":
         management_menu.entryconfig(5, state=DISABLED)
-    management_menu.add_command(label="Speedsheet Settings", command=lambda: speedsheet_settings(f))
+    management_menu.add_command(label="Speedsheet Settings", command=lambda: SpeedConfigGui(f).create())
     management_menu.add_separator()
     management_menu.add_command(label="Auto Data Entry Settings", command=lambda: auto_data_entry_settings(f))
     management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(f))
@@ -15972,8 +16012,6 @@ def setup_database():
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(18, "min_spd_abc", 10)'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(19, "speedcell_ns_rotate_mode", "True")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(20, "speedcell_bypass_initial", "False")'
     commit(sql)
     pb_counter += 1  # increment progress bar
     pb["value"] = pb_counter
