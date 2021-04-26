@@ -426,10 +426,10 @@ class NsDayDict:
     @staticmethod
     def gen_rev_ns_dict(self):  # creates full day/color ns day dictionary
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-        colors = ("blue", "green", "brown", "red", "black", "yellow")
+        color_pat = ("blue", "green", "brown", "red", "black", "yellow")
         code_ns = {}
         for d in days:
-            for c in colors:
+            for c in color_pat:
                 if d[:3] == ns_code[c]:
                     code_ns[d] = c
         code_ns["None"] = "none"
@@ -445,7 +445,7 @@ class ReportName:  # returns a file name which is stamped with the datetime
         return self.filename + "_" + stamp + ".txt"
 
 
-class ProgressBarIn:
+class ProgressBarIn:  # Indeterminate Progress Bar
     def __init__(self, title="", label="", text=""):
         self.title = title
         self.label = label
@@ -944,7 +944,9 @@ class SpeedSheetCheck:
         self.ns_xlate = {}
         self.ns_rotate_mode = True
         self.ns_true_rev = {}
+        print(self.ns_true_rev)
         self.ns_false_rev = {}
+        print(self.ns_false_rev)
         self.ns_custom = {}
         self.filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
         self.report = open(dir_path('report') + self.filename, "w")  # open the report
@@ -993,6 +995,8 @@ class SpeedSheetCheck:
         self.ns_xlate = ns_obj.get()  # get ns day dictionary
         self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
         self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
+        print(self.ns_true_rev)
+        print(self.ns_false_rev)
         self.ns_custom = ns_obj.custom_config(ns_obj)
         station = self.wb[sheets[0]].cell(row=2, column=9).value  # get the station.
         for i in range(sheet_count):
@@ -1049,13 +1053,13 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.parent = parent  # get objects from SpeedSheetCheck
         self.sheet = sheet  # input here is coming directly from the speedcell
         self.row = str(row)
-        self.name = name
+        self.name = name  # get information passed from SpeedCell
         self.day = day
         self.list_stat = list_stat
         self.nsday = nsday.lower()
         self.route = route
         self.empid = empid
-        self.tacs_name = ""
+        self.tacs_name = ""  # get names and employee id numbers from name index
         self.kb_name = ""
         self.index_id = ""
         sql = "SELECT * FROM name_index WHERE kb_name = '%s'" % self.name  # access dbase to check emp id
@@ -1067,29 +1071,18 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.start_date = start_date  # pass the investigation range from the speedsheet
         self.end_date = end_date
         self.station = station
-        # self.checker = checker
-        self.firstrec = ""  # if there are no carrier records, fill with empty strings
-        self.firstdate = ""
-        self.firstname = ""
-        self.firstlist = ""
-        self.firstnsday = "none"
-        self.firstroute = ""
-        # access dbase to get the carrier information
-        self.recset = CarrierRecSet(self.name, self.start_date, self.end_date, self.station).get()
-        if self.recset is not None:
-            for r in reversed(self.recset):  # get last item in recset - use reversed()
-                self.firstrec = r  # get the earliest record of the rec set
-                self.firstdate = r[0]
-                self.firstname = r[0]
-                self.firstlist = r[2]
-                self.firstnsday = r[3]
-                self.firstroute = r[4]
-                break  # break after first iteration
+        self.filtered_recset = ""
+        self.onrec_date = ""  # get carrier information "on record" from the database
+        self.onrec_name = ""
+        self.onrec_list = ""
+        self.onrec_nsday = ""
+        self.onrec_route = ""
+        self.addday = ""  # checked input formatted for entry into database
         self.addlist = ""
         self.addnsday = ""
         self.addroute = ""
         self.addempid = ""
-        self.allowaddrecs = True
+        self.allowaddrecs = True  # if False, records will not be added to database
         self.error_array = []  # arrays for error, fyi and add reports
         self.fyi_array = []
         self.add_array = []
@@ -1101,8 +1094,18 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
              "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
              "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri"}
 
+    def get_carrec(self):
+        carrec = CarrierRecSet(self.name, self.start_date, self.end_date, self.station).get()
+        self.filtered_recset = GetCarrier(carrec, self.start_date).filter_nonlist_recs()
+        carrec = GetCarrier(self.filtered_recset, self.start_date).condense_recs_ns()
+        self.onrec_date = carrec[0]
+        self.onrec_name = carrec[1]
+        self.onrec_list = carrec[2]
+        self.onrec_nsday = carrec[3]
+        self.onrec_route = carrec[4]
+
     def check_name(self):
-        if self.name == self.firstname:
+        if self.name == self.onrec_name:
             return
         if not NameChecker(self.name).check_characters():
             error = "ERROR: Carrier name can not contain numbers or most special characters\n"
@@ -1169,6 +1172,127 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.error_array.append(error)
             self.allowaddrecs = False
 
+    def check_list_status(self):
+        self.list_stat = str(self.list_stat)
+        self.list_stat = self.list_stat.strip()
+        if self.list_stat == "":
+            return
+        dlsn_array = []
+        if self.list_stat != "":
+            dlsn_array = self.list_stat.split(",")
+        if len(dlsn_array) > 6:  # check number of list status changes
+            error = "ERROR: More than six changes in list status are not allowed\n"
+            self.error_array.append(error)
+            self.allowaddrecs = False
+            return
+        for ls in dlsn_array:  # check for any input that does not conform with list status notation
+            ls = ls.strip()  # strip any whitespace
+            ls = ls.lower()  # make lowercase
+            if ls in ("n", "w", "o", "a", "p", "c"):  # acceptable values
+                pass
+            elif ls in ("nl", "wal", "otdl", "odl", "aux", "cca", "ptf"):  # acceptable values
+                pass
+            else:
+                error = "ERROR: No such list status or list status notation {}\n".format(ls)
+                self.error_array.append(error)
+                self.allowaddrecs = False
+                return
+        dlsn_array = self.dlsn_baseready(self, dlsn_array)  # format the list status/es for database
+        # check days
+        self.day = str(self.day)
+        self.day = self.day.strip()
+        dlsn_day_array = []
+        if self.day != "":
+            dlsn_day_array = self.day.split(",")
+        if len(dlsn_day_array) > 7:
+            error = "ERROR: More than seven changes in days are not allowed\n"
+            self.error_array.append(error)
+            self.allowaddrecs = False
+        if len(dlsn_day_array) == 0 and len(dlsn_array) == 0:
+            return
+        elif len(dlsn_day_array) + 1 > len(dlsn_array):
+            error = "ERROR: Too many days compared to the list status {}\n" \
+                    "       (hint: SpeedCell notation does not mention the \n" \
+                    "       first day.) \n".format(self.day)
+            self.error_array.append(error)
+            self.allowaddrecs = False
+            return
+        elif len(dlsn_day_array) + 1 < len(dlsn_array):
+            error = "ERROR: Too many list statuses compared to days {}\n" \
+                    "       (SpeedCell notation requires that list status \n" \
+                    "       changes be accompanied by the day of the change.) \n".format(self.day)
+            self.error_array.append(error)
+            self.allowaddrecs = False
+            return
+        else:
+            pass
+        for d in dlsn_day_array:
+            d = d.strip()  # strip any whitespace
+            d = d.lower()  # make lowercase
+            if d in ("s", "m", "tu", "u", "w", "th", "h", "f"):
+                pass
+            elif d in ("sat", "mon", "tue", "wed", "thu", "fri"):
+                pass
+            else:
+                error = "ERROR: No such day or day notation {}\n".format(d)
+                self.error_array.append(error)
+                self.allowaddrecs = False
+                return
+        dlsn_day_array = self.day_baseready(self, dlsn_day_array)  # format the day/s for the database
+        if self.check_day_sequence(dlsn_day_array) is False:  # check days for correct sequence
+            return
+        self.addlist = dlsn_array
+        self.addday = dlsn_day_array
+
+    @staticmethod
+    def dlsn_baseready(self, array):  # format dynamic list status notation into database ready
+        new = []
+        for ls in array:  # for each list status
+            if ls in ("nl", "n"):
+                new.append("nl")
+            if ls in ("wal", "w"):
+                new.append("wal")
+            if ls in ("otdl", "odl", "o"):
+                new.append("otdl")
+            if ls in ("aux", "a", "cca", "c"):
+                new.append("aux")
+            if ls in ("ptf", "p"):
+                new.append("ptf")
+        return new
+        
+    def check_day_sequence(self, array):  # check the day/s for correct sequence
+        sequence = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        past = []
+        for a in array:
+            if a in past:
+                error = "ERROR: Days are out of sequence {}\n".format(self.day)
+                self.error_array.append(error)
+                self.allowaddrecs = False
+                return False
+            for s in sequence:
+                if s == a:
+                    past.append(s)
+                    break
+                past.append(s)
+
+    @staticmethod
+    def day_baseready(self, array):  # format dynamic list status notation into database ready
+        new = []
+        for d in array:
+            if d in ("sat", "s"):
+                new.append("sat")
+            if d in ("mon", "m"):
+                new.append("mon")
+            if d in ("tue", "tu", "u"):
+                new.append("tue")
+            if d in ("wed", "w"):
+                new.append("wed")
+            if d in ("thu", "th", "h"):
+                new.append("thu")
+            if d in ("fri", "f"):
+                new.append("fri")
+        return new
+
     def ns_baseready(self, ns, mode):  # formats provided ns day into a fixed or rotating ns day for database input
         baseready = self.parent.ns_true_rev[ns]  # if True is passed use rotate mode
         if not mode:  # if False is passed use fixed mode
@@ -1198,7 +1322,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.error_array.append(error)
             self.allowaddrecs = False  # do not allow speedcell to be input into dbase
             return
-        if self.firstnsday != baseready:
+        if self.onrec_nsday != baseready:
             fyi = "FYI: New or updated nsday: {}.\n".format(self.parent.ns_custom[baseready])  #report
             self.fyi_array.append(fyi)
             self.addnsday = baseready
@@ -1208,9 +1332,9 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.route = self.route.strip()
         if self.route == "":
             pass
-        if 4 > len(self.route) > 0:
+        elif 4 > len(self.route) > 0:
             self.route = self.route.zfill(4)
-        if self.route == self.firstroute:
+        if self.route == self.onrec_route:
             return
         else:
             if not RouteChecker(self.route).check_all():
@@ -1257,10 +1381,12 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 self.parent.report.write(rpt)
 
     def check_all(self):
+        self.get_carrec()
         self.check_name()
         self.check_employee_id_situation()
         self.check_employee_id_format()
         self.check_employee_id_use()
+        self.check_list_status()
         self.check_ns()
         self.check_route()
         if self.parent.interject:
@@ -1345,11 +1471,12 @@ class SpeedArray:  # accepts multidimensional arrays with emp ids and records
 
 
 class GetCarrier:  # accepts carrier records from CarrierList().get()
-    def __init__(self, recset):
+    def __init__(self, recset, startdate):
         self.recset = recset
         for r in reversed(recset):  # get the earliest record in the recset. use reversed()
             lastrec = r
             break
+        self.startdate = startdate
         self.carrier = lastrec[1]
         self.nsday = lastrec[3]
         self.route = lastrec[4]
@@ -1365,7 +1492,7 @@ class GetCarrier:  # accepts carrier records from CarrierList().get()
         return filtered_set
 
     def condense_recs(self, ns_rotate_mode):  # condense multiple recs into format used by speedsheets
-        ns_dic = NsDayDict(g_date[0]).ssn_ns(ns_rotate_mode)  # get speedsheet notation for nsdays
+        ns_dic = NsDayDict(self.startdate).ssn_ns(ns_rotate_mode)  # get speedsheet notation for nsdays
         date_str = ""
         list_str = ""
         i = 1
@@ -1384,6 +1511,25 @@ class GetCarrier:  # accepts carrier records from CarrierList().get()
             i += 1
         ns = ns_dic[self.nsday]  # ns day is given with speedsheet notation for nsdays
         return date_str, self.carrier, list_str, ns, self.route, self.station
+
+    def condense_recs_ns(self):  # condense multiple recs into format used by speedsheets
+        date_str = ""
+        list_str = ""
+        i = 1
+        for rec in reversed(self.recset):
+            if i == 1:
+                date_str = ""
+            else:
+                date_str = date_str + dt_converter(rec[0]).strftime('%a').lower()
+            list_str = list_str + rec[2]
+            if i != len(self.recset):
+                if i == 1:
+                    date_str = ""
+                else:
+                    date_str = date_str + ","
+                list_str = list_str + ","
+            i += 1
+        return date_str, self.carrier, list_str, self.nsday, self.route, self.station
 
 
 class GetSpeedCarrier:  # accepts carrier records from GetCarrier class
@@ -1487,8 +1633,8 @@ def speed_gen_all(frame):
     carriers = CarrierList(g_date[0], g_date[6], g_station).get()
     id_recset = []
     for c in carriers:
-        cc = GetCarrier(c).filter_nonlist_recs()  # filter out any recs where list status is unchanged
-        ccc = GetCarrier(cc).condense_recs(db.speedcell_ns_rotate_mode)  # condense multiple recs into format used by speedsheets
+        cc = GetCarrier(c, g_date[0]).filter_nonlist_recs()  # filter out any recs where list status is unchanged
+        ccc = GetCarrier(cc, g_date[0]).condense_recs(db.speedcell_ns_rotate_mode)  # condense multiple recs into format used by speedsheets
         id_recset.append(GetSpeedCarrier(ccc).add_id())  # merge carriers with emp id
     car_recs = [SpeedArray(id_recset).order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
     if not db.abc_breakdown:
