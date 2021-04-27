@@ -486,6 +486,43 @@ class Convert:
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
         return dt_converter(string)
 
+    def array_to_string(self):  # make an array into a string (with commas)
+        string = ""
+        for i in range(len(self.data)):
+            string += self.data[i]
+            if i != len(self.data)-1:
+                string += ","
+        return string
+
+    def string_to_array(self):  # make string into array, remove whitespace
+        new_array = []
+        array = self.data.split(",")
+        for a in array:
+            a = a.strip()
+            new_array.append(a)
+        return new_array
+
+    def day_to_datetime_str(self, sat_range):
+        if self.data == sat_range.strftime("%a").lower():  # saturday
+            return str(sat_range)
+        sat_range += timedelta(days=1)
+        if self.data == sat_range.strftime("%a").lower():  # sunday
+            return str(sat_range)
+        sat_range += timedelta(days=1)
+        if self.data == sat_range.strftime("%a").lower():  # monday
+            return str(sat_range)
+        sat_range += timedelta(days=1)
+        if self.data == sat_range.strftime("%a").lower():  # tueday
+            return str(sat_range)
+        sat_range += timedelta(days=1)
+        if self.data == sat_range.strftime("%a").lower():  # wednesday
+            return str(sat_range)
+        sat_range += timedelta(days=1)
+        if self.data == sat_range.strftime("%a").lower():  # thursday
+            return str(sat_range)
+        sat_range += timedelta(days=1)
+        if self.data == sat_range.strftime("%a").lower():  # friday
+            return str(sat_range)
 
 class Handler:
     def __init__(self, data):
@@ -944,9 +981,7 @@ class SpeedSheetCheck:
         self.ns_xlate = {}
         self.ns_rotate_mode = True
         self.ns_true_rev = {}
-        print(self.ns_true_rev)
         self.ns_false_rev = {}
-        print(self.ns_false_rev)
         self.ns_custom = {}
         self.filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
         self.report = open(dir_path('report') + self.filename, "w")  # open the report
@@ -995,8 +1030,6 @@ class SpeedSheetCheck:
         self.ns_xlate = ns_obj.get()  # get ns day dictionary
         self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
         self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
-        print(self.ns_true_rev)
-        print(self.ns_false_rev)
         self.ns_custom = ns_obj.custom_config(ns_obj)
         station = self.wb[sheets[0]].cell(row=2, column=9).value  # get the station.
         for i in range(sheet_count):
@@ -1077,8 +1110,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.onrec_list = ""
         self.onrec_nsday = ""
         self.onrec_route = ""
-        self.addday = ""  # checked input formatted for entry into database
-        self.addlist = ""
+        self.addday = []  # checked input formatted for entry into database
+        self.addlist = []
         self.addnsday = ""
         self.addroute = ""
         self.addempid = ""
@@ -1179,7 +1212,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             return
         dlsn_array = []
         if self.list_stat != "":
-            dlsn_array = self.list_stat.split(",")
+            dlsn_array = Convert(self.list_stat).string_to_array()
         if len(dlsn_array) > 6:  # check number of list status changes
             error = "ERROR: More than six changes in list status are not allowed\n"
             self.error_array.append(error)
@@ -1203,7 +1236,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.day = self.day.strip()
         dlsn_day_array = []
         if self.day != "":
-            dlsn_day_array = self.day.split(",")
+            dlsn_day_array = Convert(self.day).string_to_array()
         if len(dlsn_day_array) > 7:
             error = "ERROR: More than seven changes in days are not allowed\n"
             self.error_array.append(error)
@@ -1241,8 +1274,19 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         dlsn_day_array = self.day_baseready(self, dlsn_day_array)  # format the day/s for the database
         if self.check_day_sequence(dlsn_day_array) is False:  # check days for correct sequence
             return
-        self.addlist = dlsn_array
-        self.addday = dlsn_day_array
+        print(self.onrec_date, " vs ", Convert(dlsn_day_array).array_to_string(), " // ",
+              self.onrec_list, " vs ", Convert(dlsn_array).array_to_string())
+        if self.filtered_recset == []:  # if the carrier is new
+            self.addlist = dlsn_array
+            self.addday = dlsn_day_array
+        elif self.onrec_date != Convert(dlsn_day_array).array_to_string():  # if the days have changed
+            self.addlist = dlsn_array
+            self.addday = dlsn_day_array
+        elif self.onrec_list != Convert(dlsn_array).array_to_string():  # if the list has changed
+            self.addlist = dlsn_array
+            self.addday = dlsn_day_array
+        else:  # if there has been no change, do not change add___ vars.
+            pass
 
     @staticmethod
     def dlsn_baseready(self, array):  # format dynamic list status notation into database ready
@@ -1264,6 +1308,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         sequence = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         past = []
         for a in array:
+
             if a in past:
                 error = "ERROR: Days are out of sequence {}\n".format(self.day)
                 self.error_array.append(error)
@@ -1348,20 +1393,78 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 self.addroute = self.route  # save to input to dbase
 
     def add_recs(self):
+        chg_these = []
+        list_place = []
+        ns_place = ""
+        route_place = ""
+        print("self.filtered_recset: ", self.filtered_recset)
+        print("self.onrec_date: ", self.onrec_date) # get carrier information "on record" from the database
+        print("self.onrec_name: ", self.onrec_name)
+        print("self.onrec_list: ", self.onrec_list)
+        print("self.onrec_nsday: ",self.onrec_nsday )
+        print("self.onrec_route: ", self.onrec_route)
+        print("self.addday: ", self.addday)  # checked input formatted for entry into database
+        print("self.addlist: ", self.addlist)
+        print("self.addnsday: ", self.addnsday)
+        print("self.addroute: ", self.addroute)
+        print("self.addempid: ", self.addempid)
         if not self.allowaddrecs:
             return
+        if len(self.addlist) != 0:
+            add = "INPUT: List Status added or updated to database >>{}\n"\
+                .format(Convert(self.addlist).array_to_string())  # report
+            self.add_array.append(add)
+            chg_these.append("list")
+            list_place = self.addlist
+        else:
+            list_place = Convert(self.onrec_list).string_to_array()
         if self.addnsday != "":
-            add = "INPUT: Nsday added or updated to database\n"  # report
+            add = "INPUT: Nsday added or updated to database >>{}\n".format(self.addnsday)  # report
             self.add_array.append(add)
+            chg_these.append("ns")
+            ns_place = self.addnsday
+        else:
+            ns_place = self.onrec_nsday
         if self.addroute != "":
-            add = "INPUT: Route added or updated to database\n"  # report
+            add = "INPUT: Route added or updated to database >>{}\n".format(self.addroute)  # report
             self.add_array.append(add)
+            chg_these.append("route")
+            route_place = self.addroute
+        else:
+            route_place = self.onrec_route
         if self.addempid != "":
             # sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
             #       % ("", self.name, str(self.empid).zfill(8))
             # commit(sql)
-            add = "INPUT: Employee id added or updated to database\n"  # report
+            add = "INPUT: Employee id added or updated to database >>{}\n".format(self.addempid)  # report
             self.add_array.append(add)
+        # is the earliest car rec a Relevent Preceeding Record or a sat range:
+        rpr = True  # Relevent Preceeding Record
+        if self.filtered_recset != []:
+            lastrec = self.filtered_recset.pop()
+            if lastrec[0] == str(self.start_date):
+                rpr = False
+        if len(chg_these) != 0:
+            # build the first rec
+            first_rec = (str(self.start_date), self.name, list_place[0], ns_place, route_place, self.station)
+            print("base ready: ", first_rec)
+            if rpr:
+                # insert the first rec
+                pass
+            else:
+                #update the first rec to replace pre existing record.
+                pass
+        if len(self.addlist) > 1:
+            for i in range(len(self.addlist)):
+                if i == 0:
+                    pass
+                else:
+                    date = Convert(self.addday[i-1]).day_to_datetime_str(self.start_date)
+                    next_rec = (date, self.name, list_place[i], ns_place, route_place, self.station)
+                    print("base ready: ", next_rec)
+
+
+
 
     def generate_report(self):  # generate a report
         self.parent.fatal_rpt += len(self.error_array)
@@ -1472,15 +1575,23 @@ class SpeedArray:  # accepts multidimensional arrays with emp ids and records
 
 class GetCarrier:  # accepts carrier records from CarrierList().get()
     def __init__(self, recset, startdate):
-        self.recset = recset
-        for r in reversed(recset):  # get the earliest record in the recset. use reversed()
-            lastrec = r
-            break
-        self.startdate = startdate
-        self.carrier = lastrec[1]
-        self.nsday = lastrec[3]
-        self.route = lastrec[4]
-        self.station = lastrec[5]
+        self.recset = []  # initialize vars as empty for new carriers
+        self.startdate = ""
+        self.carrier = ""
+        self.nsday = ""
+        self.route = ""
+        self.station = ""
+        if recset is not None:  # handle carriers who are not new carriers
+            if len(recset) != 0:  # new carriers can appear as NoneType or an empty list
+                self.recset = recset
+                for r in reversed(recset):  # get the earliest record in the recset. use reversed()
+                    lastrec = r
+                    break
+                self.startdate = startdate
+                self.carrier = lastrec[1]
+                self.nsday = lastrec[3]
+                self.route = lastrec[4]
+                self.station = lastrec[5]
 
     def filter_nonlist_recs(self):  # filters out any records were the list status hasn't changed.
         filtered_set = []
