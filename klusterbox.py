@@ -1398,16 +1398,16 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         ns_place = ""
         route_place = ""
         print("self.filtered_recset: ", self.filtered_recset)
-        print("self.onrec_date: ", self.onrec_date) # get carrier information "on record" from the database
-        print("self.onrec_name: ", self.onrec_name)
-        print("self.onrec_list: ", self.onrec_list)
-        print("self.onrec_nsday: ",self.onrec_nsday )
-        print("self.onrec_route: ", self.onrec_route)
-        print("self.addday: ", self.addday)  # checked input formatted for entry into database
-        print("self.addlist: ", self.addlist)
-        print("self.addnsday: ", self.addnsday)
-        print("self.addroute: ", self.addroute)
-        print("self.addempid: ", self.addempid)
+        # print("self.onrec_date: ", self.onrec_date) # get carrier information "on record" from the database
+        # print("self.onrec_name: ", self.onrec_name)
+        # print("self.onrec_list: ", self.onrec_list)
+        # print("self.onrec_nsday: ",self.onrec_nsday )
+        # print("self.onrec_route: ", self.onrec_route)
+        # print("self.addday: ", self.addday)  # checked input formatted for entry into database
+        # print("self.addlist: ", self.addlist)
+        # print("self.addnsday: ", self.addnsday)
+        # print("self.addroute: ", self.addroute)
+        # print("self.addempid: ", self.addempid)
         if not self.allowaddrecs:
             return
         if len(self.addlist) != 0:
@@ -1433,38 +1433,47 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         else:
             route_place = self.onrec_route
         if self.addempid != "":
-            # sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
-            #       % ("", self.name, str(self.empid).zfill(8))
+            sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
+                  % ("", self.name, str(self.empid).zfill(8))
             # commit(sql)
+            print(sql)
             add = "INPUT: Employee id added or updated to database >>{}\n".format(self.addempid)  # report
             self.add_array.append(add)
         # is the earliest car rec a Relevent Preceeding Record or a sat range:
         rpr = True  # Relevent Preceeding Record
-        if self.filtered_recset != []:
-            lastrec = self.filtered_recset.pop()
-            if lastrec[0] == str(self.start_date):
-                rpr = False
-        if len(chg_these) != 0:
-            # build the first rec
-            first_rec = (str(self.start_date), self.name, list_place[0], ns_place, route_place, self.station)
-            print("base ready: ", first_rec)
-            if rpr:
-                # insert the first rec
-                pass
-            else:
-                #update the first rec to replace pre existing record.
-                pass
+        if self.filtered_recset:
+            lastrec = self.filtered_recset.pop()  # get the earliest rec from rec set
+            if lastrec[0] == str(self.start_date):  # if last rec is the saturday in range
+                rpr = False  # then there is no RPR
+        if len(chg_these) != 0:  # build the first rec
+            if rpr:  # insert the first rec
+                sql = "INSERT INTO carriers(effective_date, carrier_name, list_status, ns_day, route_s, station) \
+                      VALUES('%s','%s','%s','%s','%s','%s')" \
+                      % (self.start_date, self.name, list_place[0], ns_place, route_place, self.station)
+                # commit(sql)
+            else:  # update the first rec to replace pre existing record.
+                sql = "UPDATE carriers SET list_status = '%s', ns_day = '%s', route_s = '%s', station = '%s'" \
+                      "WHERE carrier_name = '%s' and effective_date = '%s'" \
+                      % (list_place[0], ns_place, route_place, self.station, self.carrier, self.start_date)
+                # commit(sql)
+            print(sql)
         if len(self.addlist) > 1:
+            second_date = self.start_date + timedelta(days=1)
+            seventh_date = self.end_date
+            sql = "DELETE FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' and '%s'" % \
+                  (self.name, second_date, seventh_date)
+            # commit(sql)  # delete any records in investigation range except saturday
+            print(sql)
             for i in range(len(self.addlist)):
                 if i == 0:
-                    pass
+                    pass  # the first rec has already been entered
                 else:
                     date = Convert(self.addday[i-1]).day_to_datetime_str(self.start_date)
-                    next_rec = (date, self.name, list_place[i], ns_place, route_place, self.station)
-                    print("base ready: ", next_rec)
-
-
-
+                    sql = "INSERT INTO carriers(effective_date, carrier_name, list_status, ns_day, route_s, station) \
+                          VALUES('%s','%s','%s','%s','%s','%s')" \
+                          % (date, self.name, list_place[i], ns_place, route_place, self.station)
+                    # commit(sql)
+                    print(sql)
 
     def generate_report(self):  # generate a report
         self.parent.fatal_rpt += len(self.error_array)
