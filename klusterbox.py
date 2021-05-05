@@ -219,6 +219,18 @@ def rear_window(wd):  # This closes the window created by front_window()
     mainloop()
 
 
+class SaturdayInRange:  # recieves a datetime object
+    def __init__(self, dt):
+        self.dt = dt
+
+    def get(self):  # returns the sat range
+        wkdy_name = self.dt.strftime("%a")
+        while wkdy_name != "Sat":  # while date enter is not a saturday
+            self.dt -= timedelta(days=1)  # walk back the date until it is a saturday
+            wkdy_name = self.dt.strftime("%a")
+        return self.dt
+
+
 class NameChecker:
     def __init__(self, name):
         self.name = name.lower()
@@ -291,6 +303,44 @@ class RouteChecker:
         if not self.check_length():
             return False
         return True
+
+
+class RingTimeChecker:
+    def __init__(self, ring):
+        self.ring = ring
+
+    def check_numeric(self):  # is the route numeric?
+        if self.ring == "":
+            return True
+        if not self.ring.isnumeric():
+            return False
+        return True
+
+    def over_24(self):  # is the time greater than 24 hours
+        if float(self.ring) > 24:
+            return False
+        return True
+
+    def over_8(self):  # is the time greater than 24 hours
+        if float(self.ring) > 8:
+            return False
+        return True
+
+    def less_than_zero(self):  # disappear here
+        if float(self.ring) < 0:
+            return False
+        return True
+
+    def count_decimals_place(self):  # limit time to two decimal places
+        return round(self.ring,2) == self.ring
+
+
+class MovesChecker:
+    def __init__(self, moves):
+        self.moves = moves
+
+    def length(self):  # return False if not a multiple of three
+        return len(self.moves) % 3 == 0
 
 
 class NsDayDict:
@@ -512,6 +562,7 @@ class Convert:
             new_array.append(a)
         return new_array
 
+    # takes day (eg "mon","wed") and converts to datetime. needs saturday in range
     def day_to_datetime_str(self, sat_range):
         if self.data == sat_range.strftime("%a").lower():  # saturday
             return str(sat_range)
@@ -688,6 +739,37 @@ class CarrierList:
             if rec_set is not None:  # only add rec sets if there is something there
                 c_list.append(rec_set)
         return c_list
+
+
+class Rings:
+    def __init__(self, name, date):
+        self.name = name
+        self.date = date  # provide any date in investigation range
+        self.ring_recs = []  # put all results in an array
+        print("ring recs: ", self.ring_recs)
+
+    def get(self, day):
+        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (self.name, day)
+        return inquire(sql)
+
+    def get_for_day(self):
+        ring = self.get(self.date)
+        if not ring:  # if the results are empty
+            self.ring_recs.append(ring)  # return empty list
+        else:  # if results are not empty
+            self.ring_recs.append(ring[0])  # return first result of list
+        return self.ring_recs
+
+    def get_for_week(self):
+        sat_range = SaturdayInRange(self.date).get()
+        for i in range(7):
+            ring = self.get(sat_range)
+            if not ring:  # if the results are empty
+                self.ring_recs.append(ring)  # return empty list
+            else:  # if results are not empty
+                self.ring_recs.append(ring[0])  # return first result of list
+            sat_range += timedelta(days=1)
+        return self.ring_recs
 
 
 def get_rings(carrier):  # return a set of rings for the investigation day or week
@@ -933,12 +1015,13 @@ class SpeedLoadThread(Thread):
     def __init__(self, path):
         Thread.__init__(self)
         self.path = path
+        self.workbook = ""
 
     def run(self):
-        global workbook  # this holds the loaded workbook
+        # global workbook  # this holds the loaded workbook
         global pb_flag  # this will signal when the thread has ended to end the progress bar
         wb = load_workbook(self.path)  # load xlsx doc with openpyxl
-        workbook = wb
+        self.workbook = wb
         pb_flag = False
 
 
@@ -973,7 +1056,6 @@ class SpeedWorkBookGet:
                                  parent=frame)
             return
         else:
-            print(active_count())
             pb = ProgressBarIn(title="SpeedSheeets Workbook", label="hold on",
                                text="Loading and reading workbook. This could take a minute")
             wb = SpeedLoadThread(file_path)  # open workbook in separate thread
@@ -981,7 +1063,7 @@ class SpeedWorkBookGet:
             pb.start_up()  # start progress bar
             wb.join()  # wait for loading workbook to finish
             pb.stop()  # stop the progress bar and destroy the object
-            SpeedSheetCheck(frame, workbook, file_path, interject).check()  # check the speedsheet
+            SpeedSheetCheck(frame, wb.workbook, file_path, interject).check()  # check the speedsheet
 
 
 class SpeedSheetCheck:
@@ -991,9 +1073,13 @@ class SpeedSheetCheck:
         self.path = path
         self.interject = interject
         self.carrier_count = 0
+        self.rings_count = 0
         self.fatal_rpt = 0
         self.fyi_rpt = 0
         self.add_rpt = 0
+        self.rings_fatal_rpt = 0
+        self.rings_fyi_rpt = 0
+        self.rings_add_rpt = 0
         self.ns_xlate = {}
         self.ns_rotate_mode = True
         self.ns_true_rev = {}
@@ -1005,6 +1091,7 @@ class SpeedSheetCheck:
         self.i_range = "week"
         self.start_date = datetime(1, 1, 1, 0, 0, 0)
         self.end_date = datetime(1, 1, 1, 0, 0, 0)
+        self.name = ""
         self.allowaddrecs = True
 
     def check(self):
@@ -1067,12 +1154,14 @@ class SpeedSheetCheck:
                     if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
                         self.carrier_count += 1
                         is_name = True  # bool: the speedcell has a name
+                        # Handler().nonetype will convert any nonetypes to empty stings
                         day = Handler(ws.cell(row=ii, column=1).value).nonetype()
                         name = Handler(ws.cell(row=ii, column=2).value).nonetype()
                         list_stat = Handler(ws.cell(row=ii, column=5).value).nonetype()
                         nsday = Handler(ws.cell(row=ii, column=6).value).ns_nonetype()
                         route = Handler(ws.cell(row=ii, column=7).value).nonetype()
                         empid = Handler(ws.cell(row=ii, column=10).value).nonetype()
+                        self.name = name
                         SpeedCarrierCheck(self, sheets[i], ii, name, day, list_stat, nsday, route,
                                           empid).check_all()
                     else:
@@ -1080,17 +1169,20 @@ class SpeedSheetCheck:
                 else:
                     # if the speedcell has a name and passed carrier test, get the rings
                     if is_name and self.allowaddrecs:
-                        day = ws.cell(row=ii, column=1).value
-                        hours = ws.cell(row=ii, column=2).value
-                        moves = ws.cell(row=ii, column=3).value
-                        rs = ws.cell(row=ii, column=7).value
-                        codes = ws.cell(row=ii, column=8).value
-                        lv_type = ws.cell(row=ii, column=9).value
-                        lv_time = ws.cell(row=ii, column=10).value
-                        SpeedRingCheck(day, hours, moves, rs, codes, lv_type, lv_time).check()
+                        self.rings_count += 1
+                        # Handler().nonetype will convert any nonetypes to empty stings
+                        day = Handler(ws.cell(row=ii, column=1).value).nonetype()
+                        hours = Handler(ws.cell(row=ii, column=2).value).nonetype()
+                        moves = Handler(ws.cell(row=ii, column=3).value).nonetype()
+                        rs = Handler(ws.cell(row=ii, column=7).value).nonetype()
+                        codes = Handler(ws.cell(row=ii, column=8).value).nonetype()
+                        lv_type = Handler(ws.cell(row=ii, column=9).value).nonetype()
+                        lv_time = Handler(ws.cell(row=ii, column=10).value).nonetype()
+                        SpeedRingCheck(self, sheets[i], ii, day, hours, moves, rs, codes, lv_type, lv_time).check()
 
     def reporter(self):
         self.report.write("\n\n--------------------------------------------------------------------")
+        # build report summary for carrier checks
         self.report.write("\n\nSpeedSheet Carrier Check Complete.\n\n")
         self.report.write('{:>6}  {:<40}\n'.format(self.carrier_count, "carriers checked"))
         self.report.write('{:>6}  {:<40}\n'.format(self.fatal_rpt, "fatal error(s) found"))
@@ -1098,6 +1190,15 @@ class SpeedSheetCheck:
             self.report.write('{:>6}  {:<40}\n'.format(self.add_rpt, "add reports(s) found"))
         else:
             self.report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, "fyi reports(s) found"))
+        # build report summary for rings checks
+        self.report.write("\n\nSpeedSheet Rings Check Complete.\n\n")
+        self.report.write('{:>6}  {:<40}\n'.format(self.rings_count, "rings checked"))
+        self.report.write('{:>6}  {:<40}\n'.format(self.rings_fatal_rpt, "fatal error(s) found"))
+        if self.interject:
+            self.report.write('{:>6}  {:<40}\n'.format(self.rings_add_rpt, "add reports(s) found"))
+        else:
+            self.report.write('{:>6}  {:<40}\n'.format(self.rings_fyi_rpt, "fyi reports(s) found"))
+        # close out the report and open in notepad
         self.report.close()
         if sys.platform == "win32":  # open the text document
             os.startfile(dir_path('report') + self.filename)
@@ -1233,7 +1334,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.list_stat = self.list_stat.strip()
         if self.list_stat == "":
             return
-        dlsn_array = []
+        dlsn_array = []  # dynamic list status notation array
         if self.list_stat != "":
             dlsn_array = Convert(self.list_stat).string_to_array()
         if len(dlsn_array) > 6:  # check number of list status changes
@@ -1329,7 +1430,6 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         sequence = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         past = []
         for a in array:
-
             if a in past:
                 error = "ERROR: Days are out of sequence {}\n".format(self.day)
                 self.error_array.append(error)
@@ -1468,7 +1568,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             print(sql)
         if len(self.addlist) > 1:
             second_date = self.parent.start_date + timedelta(days=1)
-            seventh_date = self.parent.end_date
+            seventh_date = self.parent.end_date  # delete all dates in service week except sat range
             sql = "DELETE FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' and '%s'" % \
                   (self.name, second_date, seventh_date)
             commit(sql)  # delete any records in investigation range except saturday
@@ -1516,7 +1616,10 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
 
 
 class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
-    def __init__(self, day, hours, moves, rs, codes, lv_type, lv_time):
+    def __init__(self, parent, sheet, row, day, hours, moves, rs, codes, lv_type, lv_time):
+        self.parent = parent
+        self.sheet = sheet
+        self.row = row
         self.day = day
         self.hours = hours
         self.moves = moves
@@ -1526,46 +1629,356 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.lv_time = lv_time
         self.allowaddrings = True
         self.error_array = []
+        self.fyi_array = []
+        self.add_array = []
+        self.datetime = datetime(1, 1, 1, 0, 0)
+        self.onrec_list = ""  # get carrier information "on record" from the database
+        self.onrec_nsday = ""
+        self.onrec_route = ""
+        self.onrec_date = ""  # get rings information "on record" from the database
+        self.onrec_name = ""
+        self.onrec_5200 = ""
+        self.onrec_rs = ""
+        self.onrec_codes = ""
+        self.onrec_moves = ""
+        self.onrec_leave_type = ""
+        self.onrec_leave_time = ""
+        self.adddate = "empty"  # checked input formatted for entry into database
+        self.add5200 = "empty"
+        self.addrs = "empty"
+        self.addcode = "empty"
+        self.addmoves = "empty"
+        self.addlvtype = "empty"
+        self.addlvtime = "empty"
+
+    def get_day_as_datetime(self):  # get the datetime object for the day in use
+        day = Convert(self.day).day_to_datetime_str(self.parent.start_date)
+        self.adddate = day
+        return day
+
+    def get_onrecs(self):
+        carrec = CarrierRecSet(self.parent.name, self.parent.start_date, self.parent.end_date,
+                               self.parent.station).get()
+        self.onrec_list = carrec[0][2]  # get carrier information "on record" from the database
+        self.onrec_nsday = carrec[0][3]
+        self.onrec_route = carrec[0][4]
+        ringrec = Rings(self.parent.name, self.get_day_as_datetime()).get_for_day()
+        print(ringrec)
+        if ringrec[0]:
+            self.onrec_date = ringrec[0][0]  # get rings information "on record" from the database
+            self.onrec_name = ringrec[0][1]
+            self.onrec_5200 = ringrec[0][2]
+            self.onrec_rs = ringrec[0][3]
+            self.onrec_codes = ringrec[0][4]
+            self.onrec_moves = ringrec[0][5]
+            self.onrec_leave_type = ringrec[0][6]
+            self.onrec_leave_time = ringrec[0][7]
 
     def check_day(self):
         days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
-        if self.day.strip() not in days:
-            error = "ERROR: Rings day is not correctly formatted.\n"  # report
-            self.error_array.append(error)
-            self.allowaddrings = False  # do not allow speedcell to be input into dbase
-            return
-
-    def check_time(self, ring):
-        if not ring.isnumeric():
-            error = "ERROR: 5200 time must be a number .\n"  # report
-            self.error_array.append(error)
-            self.allowaddrings = False  # do not allow speedcell to be input into dbase
-            return
-        if float(ring) > 24:
-            error = "ERROR: 5200 time can not be greater than 24 hours .\n"  # report
-            self.error_array.append(error)
-            self.allowaddrings = False  # do not allow speedcell to be input into dbase
-            return
-        if float(ring) <= 0:
-            error = "ERROR: Values less than or equal to 0 are not accepted for 5200 .\n"  # report
+        self.day = self.day.strip()
+        self.day = str(self.day)
+        self.day = self.day.lower()
+        if self.day not in days:
+            error = "ERROR: Rings day is not correctly formatted. Got instead \"{}\": \n".format(self.day)
             self.error_array.append(error)
             self.allowaddrings = False  # do not allow speedcell to be input into dbase
             return
 
     def check_5200(self):
-        self.check_time(self.hours)
+        self.hours = str(self.hours)
+        self.hours = self.hours.strip()
+        if self.hours != "":
+            if not RingTimeChecker(self.hours).check_numeric():
+                error = "ERROR: 5200 time is not a number. Got instead \"{}\": \n".format(self.hours)
+                self.error_array.append(error)
+                self.allowaddrings = False
+                return
+            if not RingTimeChecker(self.hours).over_24():
+                error = "ERROR: 5200 time can not exceed 24.00. Got instead \"{}\": \n".format(self.hours)
+                self.error_array.append(error)
+                self.allowaddrings = False
+                return
+            if not RingTimeChecker(self.hours).less_than_zero():
+                error = "ERROR: 5200 time can not be negative. Got instead \"{}\": \n".format(self.hours)
+                self.error_array.append(error)
+                self.allowaddrings = False
+                return
+            if not RingTimeChecker(self.hours).count_decimals_place():
+                error = "ERROR 5200 time can have no more than two decimal places. Got instead \"{}\": \n"\
+                    .format(self.hours)
+                self.error_array.append(error)
+                self.allowaddrings = False
+                return
+        if self.hours != self.onrec_5200:  # compare 5200 time against 5200 from database,
+            self.add5200 = self.hours  # if different, the add
+            fyi = "FYI: New or updated 5200 time: {}\n".format(self.hours)
+            self.fyi_array.append(fyi)
+
+    def add_rs(self):
+        if self.rs != self.onrec_rs:  # compare 5200 time against 5200 from database,
+            self.addrs = self.rs  # if different, the add
+            fyi = "FYI: New or updated return to station: {}\n".format(self.rs)
+            self.fyi_array.append(fyi)
 
     def check_rs(self):
-        self.check_time(self.hours)
+        self.rs = str(self.rs)
+        self.rs = self.rs.strip()
+        if self.rs == "" or float(self.rs) == 0:
+            self.add_rs()
+            return
+        if not RingTimeChecker(self.rs).check_numeric():
+            error = "ERROR: RS time is not a number. Got instead \"{}\": \n".format(self.rs)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.rs).over_24():
+            error = "ERROR: RS time can not exceed 24.00. Got instead \"{}\": \n".format(self.rs)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.rs).less_than_zero():
+            error = "ERROR: RS time can not be negative. Got instead \"{}\": \n".format(self.rs)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.rs).count_decimals_place():
+            error = "ERROR: RS time can have no more than two decimal places. Got instead \"{}\": \n".format(self.rs)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        self.add_rs()
+
+    def check_moves(self):
+        self.moves = str(self.moves)
+        self.moves = self.moves.strip()
+        if self.moves == "":
+            return
+        self.moves = self.moves.replace("+", ",").replace("/", ",").replace("//", ",")\
+            .replace("-", ",").replace("*", ",")  # replace all delimiters with commas
+        moves_array = Convert(self.moves).string_to_array()  # convert the moves string to an array
+        if not MovesChecker(moves_array).length():
+            error = "ERROR: Moves must be given in multiples of three. Got instead \"{}\": \n"\
+                .format(len(moves_array))
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        for i in range(len(moves_array)):
+            if i % 3 == 0 or (i + 2) % 3 == 0:  # check the time components of the moves triad
+                if not RingTimeChecker(moves_array[i]).check_numeric():
+                    error = "ERROR: Move times must be a number. Got instead \"{}\": \n".format(moves_array[i])
+                    self.error_array.append(error)
+                    self.allowaddrings = False
+                    return
+                if not RingTimeChecker(moves_array[i]).over_24():
+                    error = "ERROR: Move time can not exceed 24.00. Got instead \"{}\": ".format(moves_array[i])
+                    self.error_array.append(error)
+                    self.allowaddrings = False
+                    return
+                if not RingTimeChecker(moves_array[i]).less_than_zero():
+                    error = "ERROR: Move time can not be negative. Got instead \"{}\": \n".format(moves_array[i])
+                    self.error_array.append(error)
+                    self.allowaddrings = False
+                    return
+                if not RingTimeChecker(moves_array[i]).count_decimals_place():
+                    error = "ERROR: Move time can have no more than two decimal places. Got instead \"{}\": \n"\
+                        .format(moves_array[i])
+                    self.error_array.append(error)
+                    self.allowaddrings = False
+                    return
+            if (i + 1) % 3 == 0:  # check the route component of the move triad
+                if not RouteChecker(moves_array[i]).check_numeric():
+                    error = "ERROR: Routes in move triads must be numeric. Got instead \"{}\": \n" \
+                        .format(moves_array[i])
+                    self.error_array.append(error)
+                    self.allowaddrings = False
+                    return
+                if not RouteChecker(moves_array[i]).check_length():
+                    error = "ERROR: Routes in move triads must have 4 or 5 digits. Got instead \"{}\": \n" \
+                        .format(moves_array[i])
+                    self.error_array.append(error)
+                    self.allowaddrings = False
+                    return
+        for i in range(0, len(moves_array), 3):
+            if moves_array[i] > moves_array[i + 1]:
+                error = "error: first value \"{}\" must be lesser than the second value \"{}\" in " \
+                        "moves.\n".format(moves_array[i], moves_array[i + 1])
+                self.error_array.append(error)
+                self.allowaddrings = False
+                return
+        baseready = Convert(moves_array).array_to_string()  # convert the moves array to a baseready string
+        if baseready != self.onrec_moves:  # if the moves are different from on record moves from dbase,
+            self.addmoves = baseready  # add the moves
+            fyi = "FYI: New or updated moves: {}\n".format(baseready)
+            self.fyi_array.append(fyi)
+
+    def add_codes(self):
+        if self.codes != self.onrec_codes:  # compare 5200 time against 5200 from database,
+            self.addcode = self.codes  # if different, the add
+            fyi = "FYI: New or updated code/note: {}\n".format(self.codes)
+            self.fyi_array.append(fyi)
 
     def check_codes(self):
-        ot_aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
-        lv_options = ("none", "annual", "sick", "holiday", "other")
+        all_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
+        self.codes = self.codes.strip()
+        self.codes = str(self.codes)
+        self.codes = self.codes.lower()
+        if self.codes == "":
+            self.add_codes()
+            return
+        if self.codes not in all_codes:
+            error = "ERROR: There is no such code/note. Got instead: \"{}\" \n" \
+                .format(self.codes)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if self.onrec_list in ("nl", "wal"):
+            if self.codes in ("no call", "light", "sch chg", "annual", "sick", "excused"):
+                fyi = "FYI: The code/note you entered is not consistant with the list status for the day.\n" \
+                      "     Only \"none\" and \"ns day\" are useful for {} carriers. \n" \
+                      "     Got instead: {}\n".format(self.onrec_list, self.codes)  # report
+                self.fyi_array.append(fyi)
+        if self.onrec_list in ("otdl", "aux", "ptf"):
+            if self.codes in ("ns day",):
+                fyi = "FYI: The code/note you entered is not consistant with the list status for the day.\n" \
+                      "     Only \"none\", \"no call\", \"light\", \"sch chg\", \"annual\", \"sick\", \"excused\" " \
+                      "     are useful for {} carriers. Got instead: {}\n".format(self.onrec_list, self.codes)
+                self.fyi_array.append(fyi)
+        self.add_codes()
+
+    def check_leave_type(self):
+        all_codes = ("none", "annual", "sick", "holiday", "other")
+        self.lv_type = self.lv_type.strip()
+        self.lv_type = str(self.lv_type)
+        self.lv_type = self.lv_type.lower()
+        if self.lv_type != "":
+            if self.lv_type not in all_codes:
+                error = "ERROR: There is no such leave type. Acceptable types are: \"none\", \"annual\", \n" \
+                        "\"sick\", \"holiday\", \"other\" Got instead: \"{}\"\n".format(self.codes)
+                self.error_array.append(error)
+                self.allowaddrings = False
+                return
+        if self.lv_type != self.onrec_leave_type:  # compare 5200 time against 5200 from database,
+            self.addlvtype = self.lv_type  # if different, the add
+            fyi = "FYI: New or updated leave type: {}\n".format(self.lv_type)
+            self.fyi_array.append(fyi)
+
+    def add_leave_time(self):
+        if self.lv_time != self.onrec_leave_time:  # compare 5200 time against 5200 from database,
+            self.addlvtime = self.lv_time  # if different, the add
+            fyi = "FYI: New or updated leave time: {}\n".format(self.lv_time)
+            self.fyi_array.append(fyi)
+
+    def check_leave_time(self):
+        self.lv_time = str(self.lv_time)
+        self.lv_time = self.lv_time.strip()
+        if self.lv_time == "":
+            self.add_leave_time()
+            return
+        if not RingTimeChecker(self.lv_time).check_numeric():
+            error = "ERROR: Leave time is not a number. Got instead \"{}\": \n".format(self.lv_time)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.lv_time).over_8():
+            error = "ERROR: Leave time can not exceed 8.00. Got instead \"{}\": \n".format(self.lv_time)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.lv_time).less_than_zero():
+            error = "ERROR: Leave time can not be negative. Got instead \"{}\": \n".format(self.lv_time)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.lv_time).count_decimals_place():
+            error = "ERROR Leave time can have no more than two decimal places. Got instead \"{}\": \n" \
+                .format(self.lv_time)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        self.add_leave_time()
+
+    def add_recs(self):
+        chg_these = []
+        hours_place = ""
+        rs_place = ""
+        code_place = ""
+        moves_place = ""
+        lv_type_place = ""
+        lv_time_place = ""
+        if not self.parent.allowaddrings:
+            return
+        # contruct the sql command to commit to the database.
+        if self.add5200 != "empty":  # 5200 place of sql command
+            add = "INPUT: 5200 time added or updated to database >>{}\n".format(self.add5200)  # report
+            self.add_array.append(add)
+            chg_these.append("hours")
+            hours_place = self.add5200
+        else:
+            hours_place = self.onrec_5200
+        if self.addrs != "empty":  # rs place of sql command
+            add = "INPUT: RS time added or updated to database >>{}\n".format(self.addrs)  # report
+            self.add_array.append(add)
+            chg_these.append("rs")
+            rs_place = self.add5200
+        else:
+            rs_place = self.onrec_rs
+        if self.addcode != "empty":  # code place of sql command
+            add = "INPUT: Code/note added or updated to database >>{}\n".format(self.addcode)  # report
+            self.add_array.append(add)
+            chg_these.append("code")
+            code_place = self.addcode
+        else:
+            code_place = self.onrec_codes
+        if self.addmoves != "empty":  # moves place of sql command
+            add = "INPUT: Moves added or updated to database >>{}\n".format(self.addmoves)  # report
+            self.add_array.append(add)
+            chg_these.append("moves")
+            moves_place = self.addmoves
+        else:
+            moves_place = self.onrec_moves
+        if self.addlvtype != "empty":  # lv type place of sql command
+            add = "INPUT: Leave type added or updated to database >>{}\n".format(self.addlvtype)  # report
+            self.add_array.append(add)
+            chg_these.append("lv type")
+            lv_type_place_place = self.addlvtype
+        else:
+            lv_type_place = self.onrec_leave_type
+        if self.addlvtime != "empty":  # lv time place of sql command
+            add = "INPUT: Leave time added or updated to database >>{}\n".format(self.addlvtime)  # report
+            self.add_array.append(add)
+            chg_these.append("lv time")
+            lv_time_place = self.addlvtime
+        else:
+            lv_time_place = self.onrec_leave_time
+        # if there are items to change, construct the sql command
+        if chg_these:
+            sql = (self.adddate, self.parent.name, hours_place, rs_place, code_place, moves_place,
+                   lv_type_place, lv_time_place)
+
+    def generate_report(self):  # generate a report
+        self.parent.rings_fatal_rpt += len(self.error_array)
+        self.parent.rings_add_rpt += len(self.add_array)
+        self.parent.rings_fyi_rpt += len(self.fyi_array)
+        if not self.parent.interject:
+            master_array = self.error_array + self.fyi_array  # use these reports for precheck
+        else:
+            master_array = self.error_array + self.add_array  # use these reports for input
+        if len(master_array) > 0:
+            self.parent.report.write("\n{}\n".format(self.parent.name))
+            self.parent.report.write("   sheet and row: >>> {} --> {} <<<\n".format(self.sheet, self.row))
+            if not self.parent.allowaddrecs:
+                self.parent.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
+                # self.parent.fatal_rpt += 1
+            for rpt in master_array:  # write all reports that have been keep in arrays.
+                self.parent.report.write(rpt)
 
     def check(self):
-        self.check_day()
-        self.check_5200()
-        self.check_rs()
+        if self.check_day():
+            self.get_onrecs()
+            self.check_5200()
+            self.check_rs()
+            self.check_codes()
 
 
 def speed_gen_carrier():
@@ -1714,17 +2127,17 @@ class GetSpeedCarrier:  # accepts carrier records from GetCarrier class
 
 
 class MvTriad:  # pulls in triad sets from database - rings3 table moves column
-    def __init__(self, trset):
-        self.trset = trset  # triad set
+    def __init__(self, triset):
+        self.triset = triset  # triad set
 
     def mv_to_speed(self):
-        if self.trset == "":
-            return self.trset
+        if self.triset == "":
+            return self.triset
         else:
             return self.mv_format()
 
     def mv_format(self):  # format mv triads for output to speedsheets
-        mv_array = self.trset.split(",")  # split by commas
+        mv_array = self.triset.split(",")  # split by commas
         mv_str = ""
         i = 1  # initiate counter
         for mv in mv_array:
@@ -16438,7 +16851,7 @@ if __name__ == "__main__":
     global allow_zero_bottom
     global skippers
     global current_tab
-    global workbook
+    # global workbook
     global pb_flag
     # initialize arrays for multiple move functionality
     sat_mm = []
