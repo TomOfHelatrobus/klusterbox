@@ -309,9 +309,14 @@ class RingTimeChecker:
     def __init__(self, ring):
         self.ring = ring
 
+    def make_float(self):
+        try:
+            self.ring = float(self.ring)
+            return self.ring
+        except ValueError:
+            return False
+
     def check_numeric(self):  # is the route numeric?
-        if self.ring == "":
-            return True
         if not self.ring.isnumeric():
             return False
         return True
@@ -332,7 +337,7 @@ class RingTimeChecker:
         return True
 
     def count_decimals_place(self):  # limit time to two decimal places
-        return round(self.ring,2) == self.ring
+        return round(float(self.ring),2) == float(self.ring)
 
 
 class MovesChecker:
@@ -524,6 +529,48 @@ class ProgressBarIn:  # Indeterminate Progress Bar
         self.pb_root.destroy()
 
 
+class ProgressBarDe:  # determinate Progress Bar
+    def __init__(self, title="Klusterbox", label="working", text="Stand by..."):
+        self.title = title
+        self.label = label
+        self.text = text
+        self.pb_root = Tk()  # create a window for the progress bar
+        self.pb_label = Label(self.pb_root, text=self.label)  # make label for progress bar
+        self.pb = ttk.Progressbar(self.pb_root, length=400, mode="determinate")  # create progress bar
+        self.pb_text = Label(self.pb_root, text=self.text, anchor="w")
+
+    def delete(self):  # self destruct the progress bar object for keyerror exceptions
+        self.pb_root.update_idletasks()
+        self.pb_root.update()
+        self.pb_root.destroy()
+        del self.pb_root
+
+    def max_count(self, maxx):  # set length of progress bar
+        self.pb["maximum"] = maxx
+
+    def start_up(self):
+        titlebar_icon(self.pb_root)  # place icon in titlebar
+        self.pb_root.title(self.title)
+        self.pb_label.grid(row=0, column=0, sticky="w")
+        self.pb.grid(row=1, column=0, sticky="w")
+        self.pb_text.grid(row=2, column=0, sticky="w")
+
+    def move_count(self, count):  # changes the count of the progress bar
+        self.pb['value'] = count
+        root.update()
+
+    def change_text(self, text):  # changes the text of the progress bar
+        self.pb_text.config(text="{}".format(text))
+        root.update()
+
+    def stop(self):
+        self.pb.stop()  # stop and destroy the progress bar
+        self.pb_text.destroy()
+        self.pb_label.destroy()  # destroy the label for the progress bar
+        self.pb.destroy()
+        self.pb_root.destroy()
+
+
 class Convert:
     def __init__(self, data):
         self.data = data
@@ -607,6 +654,12 @@ class Handler:
             return str("none")
         else:
             return self.data
+
+    def plurals(self):  # put an "s" on the end of words to make them plural
+        if self.data == 1:
+            return ""
+        else:
+            return "s"
 
 
 def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
@@ -746,7 +799,6 @@ class Rings:
         self.name = name
         self.date = date  # provide any date in investigation range
         self.ring_recs = []  # put all results in an array
-        print("ring recs: ", self.ring_recs)
 
     def get(self, day):
         sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (self.name, day)
@@ -1031,7 +1083,7 @@ class SpeedWorkBookGet:
         if platform == "macapp" or platform == "winapp":
             return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
         else:
-            return os.path.join(os.path.sep, 'kb_sub', 'speedsheets')
+            return 'kb_sub/speedsheets'
 
     def get_file(self):
         path = self.get_filepath(self)
@@ -1093,18 +1145,36 @@ class SpeedSheetCheck:
         self.end_date = datetime(1, 1, 1, 0, 0, 0)
         self.name = ""
         self.allowaddrecs = True
+        self.name_mentioned = False
+        self.pb = ProgressBarDe(title="SpeedSheet Check", label="working: ", text="Stand by...")
+        self.sheets = []
+        self.sheet_count = 0
+        self.sheet_rowcount = []
 
     def check(self):
-        date_array = [1, 1, 1]
-        rotation = self.wb["by employee id"].cell(row=3, column=10).value  # get the ns day mode preference.
-        self.ns_rotate_mode = self.ns_pref_finder(rotation)
-        if self.ns_rotate_mode is not None:
-            self.checking()
-            self.reporter()
-            date_array = Convert(self.start_date).datetime_separation()
-            set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, self.frame)
+        try:
+            date_array = [1, 1, 1]
+            rotation = self.wb["by employee id"].cell(row=3, column=10).value  # get the ns day mode preference.
+            self.ns_rotate_mode = self.ns_pref_finder(rotation)  # are ns day preferences rotating or fixed?
+            if self.ns_rotate_mode is not None:
+                self.checking()
+                self.reporter()
+                date_array = Convert(self.start_date).datetime_separation()  # get the date to reset globals
+                set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, self.frame)
+            else:
+                self.pb.delete()  # stop and destroy progress bar
+        except KeyError:  # if wrong type of file is selected, there will be an error
+            self.pb.delete()  # stop and destroy progress bar
+            messagebox.showerror("Klusterbox SpeedSheets",
+                                 "SpeedSheets Precheck or Input has failed. \n"
+                                 "Either you have selected a spreadsheet that is not \n"
+                                 "a SpeedSheet or your Speedsheet is corrupted. \n"
+                                 "Suggestion: Verify that the file you are selecting \n "
+                                 "is a SpeedSheet. \n"
+                                 "Suggestion: Try re-generating the SpeedSheet.",
+                                 parent=self.frame)
 
-    def ns_pref_finder(self, rotation):
+    def ns_pref_finder(self, rotation):  # are ns day preferences rotating or fixed?
         if rotation.lower() not in ("r", "f"):
             error = "FATAL ERROR: \n" \
                     "             sheet and row: >>> by employee id --> 3 <<<\n" \
@@ -1120,17 +1190,30 @@ class SpeedSheetCheck:
             self.reporter()
             return
         elif rotation == "r":
-            return True
+            return True  # return True for rotating ns day preference
         else:
-            return False
+            return False  # return False for fixed ns day preference
+
+    def row_count(self):  # get a count of all rows for all sheets - need for progress bar
+        total_rows = 0
+        self.sheets = self.wb.sheetnames  # get the names of the worksheets as a list
+        self.sheet_count = len(self.sheets)  # get the number of worksheets
+        for i in range(self.sheet_count):
+            ws = self.wb[self.sheets[i]]  # assign the worksheet object
+            row_count = ws.max_row  # get the total amount of rows in the worksheet
+            self.sheet_rowcount.append(row_count)
+            total_rows += row_count
+        return total_rows
 
     def checking(self):
         self.report.write("\nSpeedSheet Pre-Check Report \n")
         self.report.write(">>> {}\n".format(self.path))
         is_name = False  # initialize bool for speedcell name
-        sheets = self.wb.sheetnames  # get the names of the worksheets
-        sheet_count = len(sheets)  # get the number of worksheets
-        datecell = self.wb[sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
+        count_diff = self.sheet_count * 6  # subtract top six rows from the row count
+        self.pb.max_count(self.row_count() - count_diff)  # get total count of rows for the progress bar
+        self.pb.start_up()  # start up the progress bar
+        pb_counter = 0  # initialize the progress bar counter
+        datecell = self.wb[self.sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
         if len(datecell) < 12:  # if the investigation range is daily
             self.start_date = Convert(datecell).backslashdate_to_datetime()  # convert formatted date to datetime
             self.end_date = self.start_date  # since daily, dates are the same
@@ -1144,15 +1227,17 @@ class SpeedSheetCheck:
         self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
         self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
         self.ns_custom = ns_obj.custom_config(ns_obj)
-        station = self.wb[sheets[0]].cell(row=2, column=9).value  # get the station.
+        station = self.wb[self.sheets[0]].cell(row=2, column=9).value  # get the station.
         self.station = station
-        for i in range(sheet_count):
-            ws = self.wb[sheets[i]]  # assign the worksheet object
+        for i in range(self.sheet_count):
+            ws = self.wb[self.sheets[i]]  # assign the worksheet object
             row_count = ws.max_row  # get the total amount of rows in the worksheet
             for ii in range(6, row_count):  # loop through all rows, start with row 6 until the end
+                self.pb.move_count(pb_counter)
                 if (ii + 2) % 8 == 0:  # if the row is a carrier record
                     if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
-                        self.carrier_count += 1
+                        self.name_mentioned = False  # keeps names from being repeated in reports
+                        self.carrier_count += 1  # get a count of the carriers for reports
                         is_name = True  # bool: the speedcell has a name
                         # Handler().nonetype will convert any nonetypes to empty stings
                         day = Handler(ws.cell(row=ii, column=1).value).nonetype()
@@ -1162,10 +1247,12 @@ class SpeedSheetCheck:
                         route = Handler(ws.cell(row=ii, column=7).value).nonetype()
                         empid = Handler(ws.cell(row=ii, column=10).value).nonetype()
                         self.name = name
-                        SpeedCarrierCheck(self, sheets[i], ii, name, day, list_stat, nsday, route,
+                        self.pb.change_text("Reading Speedcell: {}".format(name))  # update text for progress bar
+                        SpeedCarrierCheck(self, self.sheets[i], ii, name, day, list_stat, nsday, route,
                                           empid).check_all()
                     else:
                         is_name = False  # the speedcell does not have a name
+                        self.pb.change_text("Detected empty Speedcell.")  # update text for progress bar
                 else:
                     # if the speedcell has a name and passed carrier test, get the rings
                     if is_name and self.allowaddrecs:
@@ -1178,26 +1265,36 @@ class SpeedSheetCheck:
                         codes = Handler(ws.cell(row=ii, column=8).value).nonetype()
                         lv_type = Handler(ws.cell(row=ii, column=9).value).nonetype()
                         lv_time = Handler(ws.cell(row=ii, column=10).value).nonetype()
-                        SpeedRingCheck(self, sheets[i], ii, day, hours, moves, rs, codes, lv_type, lv_time).check()
+                        SpeedRingCheck(self, self.sheets[i], ii, day, hours, moves, rs, codes, lv_type, lv_time).check()
+                pb_counter += 1
+        self.pb.stop()
 
     def reporter(self):
-        self.report.write("\n\n--------------------------------------------------------------------")
+        self.report.write("\n\n----------------------------------")
         # build report summary for carrier checks
         self.report.write("\n\nSpeedSheet Carrier Check Complete.\n\n")
-        self.report.write('{:>6}  {:<40}\n'.format(self.carrier_count, "carriers checked"))
-        self.report.write('{:>6}  {:<40}\n'.format(self.fatal_rpt, "fatal error(s) found"))
+        msg = "carrier{} checked".format(Handler(self.carrier_count).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.carrier_count, msg))
+        msg = "fatal error{} found".format(Handler(self.fatal_rpt).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.fatal_rpt, msg))
         if self.interject:
-            self.report.write('{:>6}  {:<40}\n'.format(self.add_rpt, "add reports(s) found"))
+            msg = "addition{} made".format(Handler(self.add_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.add_rpt, msg))
         else:
-            self.report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, "fyi reports(s) found"))
+            msg = "fyi notification{}".format(Handler(self.fyi_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, msg))
         # build report summary for rings checks
         self.report.write("\n\nSpeedSheet Rings Check Complete.\n\n")
-        self.report.write('{:>6}  {:<40}\n'.format(self.rings_count, "rings checked"))
-        self.report.write('{:>6}  {:<40}\n'.format(self.rings_fatal_rpt, "fatal error(s) found"))
+        msg = "ring{} checked".format(Handler(self.rings_count).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.rings_count, msg))
+        msg = "fatal error{} found".format(Handler(self.rings_fatal_rpt).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.rings_fatal_rpt, msg))
         if self.interject:
-            self.report.write('{:>6}  {:<40}\n'.format(self.rings_add_rpt, "add reports(s) found"))
+            msg = "addition{} made".format(Handler(self.rings_add_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.rings_add_rpt, msg))
         else:
-            self.report.write('{:>6}  {:<40}\n'.format(self.rings_fyi_rpt, "fyi reports(s) found"))
+            msg = "fyi notification{}".format(Handler(self.rings_fyi_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.rings_fyi_rpt, msg))
         # close out the report and open in notepad
         self.report.close()
         if sys.platform == "win32":  # open the text document
@@ -1235,13 +1332,14 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.onrec_nsday = ""
         self.onrec_route = ""
         self.addday = []  # checked input formatted for entry into database
-        self.addlist = []
-        self.addnsday = ""
-        self.addroute = ""
+        self.addlist = ["empty"]
+        self.addnsday = "empty"
+        self.addroute = "empty"
         self.addempid = ""
         self.parent.allowaddrecs = True  # if False, records will not be added to database
         self.error_array = []  # arrays for error, fyi and add reports
         self.fyi_array = []
+        self.attn_array = []
         self.add_array = []
         self.ns_dict = \
             {"s": "sat", "m": "mon", "tu": "tue", "u": "tue", "w": "wed", "th": "thu", "h": "thu", "f": "fri",
@@ -1265,21 +1363,21 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if self.name == self.onrec_name:
             return
         if not NameChecker(self.name).check_characters():
-            error = "ERROR: Carrier name can not contain numbers or most special characters\n"
+            error = "     ERROR: Carrier name can not contain numbers or most special characters\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
         if not NameChecker(self.name).check_length():
-            error = "ERROR: Carrier name must not exceed 42 characters\n"
+            error = "     ERROR: Carrier name must not exceed 42 characters\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
         if not NameChecker(self.name).check_comma():
-            error = "ERROR: Carrier name must contain one comma to separate last name and first initial\n"
+            error = "     ERROR: Carrier name must contain one comma to separate last name and first initial\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
         if not NameChecker(self.name).check_initial():
-            fyi = "FYI: Carrier name should must contain one initial ideally, \n" \
-                  "     unless more are needed to create a distinct carrier name.\n"
-            self.fyi_array.append(fyi)
+            attn = "     ATTENTION: Carrier name should must contain one initial ideally, \n" \
+                   "                unless more are needed to create a distinct carrier name.\n"
+            self.attn_array.append(attn)
 
     def check_employee_id_situation(self):
         if self.index_id == "" and self.empid == "":  # if both emp id and name index are blank
@@ -1287,16 +1385,16 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         elif self.index_id == self.empid:  # if the emp id from the name index and the speedsheet match
             pass
         elif self.index_id != "" and self.empid == "":  # if value in name index but spdcell is blank
-            fyi = "FYI: employee id can not be deleted from speedsheet\n"  # report
-            self.fyi_array.append(fyi)
+            attn = "     ATTENTION: employee id can not be deleted from speedsheet\n"
+            self.attn_array.append(attn)  # place this on "addition" report for user's information
             return
         elif self.index_id == "" and self.empid != "":  # if name index blank and spd cell has a value
             self.addempid = self.empid
-            fyi = "FYI: Possible new employee id\n"  # report
-            self.fyi_array.append(fyi)
+            attn = "     ATTENTION: Possible new employee id\n"  # report
+            self.attn_array.append(attn)
         else:
-            error = "ERROR: Employee id contridiction. " \
-                    "       You can not change employee id with speedsheet\n"  # report
+            error = "     ERROR: Employee id contridiction. \n" \
+                    "            You can not change employee id with speedsheet\n"  # report
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
 
@@ -1306,7 +1404,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         elif str(self.empid).isnumeric():  # allow integers and numeric strings
             pass
         else:  # don't allow anything else
-            error = "ERROR: employee id is not numeric\n"  # report
+            error = "     ERROR: employee id is not numeric\n"  # report
             self.error_array.append(error)
             self.parent.allowaddrecs = False
             return
@@ -1325,20 +1423,34 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         elif kb_name == self.name:
             pass
         else:
-            error = "ERROR: employee id is in use by another carrier\n"
+            error = "     ERROR: employee id is in use by another carrier\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False
+
+    def add_list_status(self, dlsn_array, dlsn_day_array):
+        if not self.filtered_recset:  # if the carrier is new
+            self.addlist = dlsn_array
+            self.addday = dlsn_day_array
+        elif self.onrec_date != Convert(dlsn_day_array).array_to_string():  # if the days have changed
+            self.addlist = dlsn_array
+            self.addday = dlsn_day_array
+        elif self.onrec_list != Convert(dlsn_array).array_to_string():  # if the list has changed
+            self.addlist = dlsn_array
+            self.addday = dlsn_day_array
+        else:  # if there has been no change, do not change add___ vars.
+            pass
 
     def check_list_status(self):
         self.list_stat = str(self.list_stat)
         self.list_stat = self.list_stat.strip()
         if self.list_stat == "":
+            self.add_list_status(["nl"],[])
             return
         dlsn_array = []  # dynamic list status notation array
         if self.list_stat != "":
             dlsn_array = Convert(self.list_stat).string_to_array()
         if len(dlsn_array) > 6:  # check number of list status changes
-            error = "ERROR: More than six changes in list status are not allowed\n"
+            error = "     ERROR: More than six changes in list status are not allowed\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False
             return
@@ -1350,7 +1462,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             elif ls in ("nl", "wal", "otdl", "odl", "aux", "cca", "ptf"):  # acceptable values
                 pass
             else:
-                error = "ERROR: No such list status or list status notation {}\n".format(ls)
+                error = "     ERROR: No such list status or list status notation {}\n".format(ls)
                 self.error_array.append(error)
                 self.parent.allowaddrecs = False
                 return
@@ -1362,22 +1474,22 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if self.day != "":
             dlsn_day_array = Convert(self.day).string_to_array()
         if len(dlsn_day_array) > 7:
-            error = "ERROR: More than seven changes in days are not allowed\n"
+            error = "     ERROR: More than seven changes in days are not allowed\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False
         if len(dlsn_day_array) == 0 and len(dlsn_array) == 0:
             return
         elif len(dlsn_day_array) + 1 > len(dlsn_array):
-            error = "ERROR: Too many days compared to the list status {}\n" \
-                    "       (hint: SpeedCell notation does not mention the \n" \
-                    "       first day.) \n".format(self.day)
+            error = "     ERROR: Too many days compared to the list status {}\n" \
+                    "            (hint: SpeedCell notation does not mention the \n" \
+                    "            first day.) \n".format(self.day)
             self.error_array.append(error)
             self.parent.allowaddrecs = False
             return
         elif len(dlsn_day_array) + 1 < len(dlsn_array):
-            error = "ERROR: Too many list statuses compared to days {}\n" \
-                    "       (SpeedCell notation requires that list status \n" \
-                    "       changes be accompanied by the day of the change.) \n".format(self.day)
+            error = "     ERROR: Too many list statuses compared to days {}\n" \
+                    "            (SpeedCell notation requires that list status \n" \
+                    "            changes be accompanied by the day of the change.) \n".format(self.day)
             self.error_array.append(error)
             self.parent.allowaddrecs = False
             return
@@ -1391,24 +1503,14 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             elif d in ("sat", "mon", "tue", "wed", "thu", "fri"):
                 pass
             else:
-                error = "ERROR: No such day or day notation {}\n".format(d)
+                error = "     ERROR: No such day or day notation {}\n".format(d)
                 self.error_array.append(error)
                 self.parent.allowaddrecs = False
                 return
         dlsn_day_array = self.day_baseready(self, dlsn_day_array)  # format the day/s for the database
         if self.check_day_sequence(dlsn_day_array) is False:  # check days for correct sequence
             return
-        if not self.filtered_recset:  # if the carrier is new
-            self.addlist = dlsn_array
-            self.addday = dlsn_day_array
-        elif self.onrec_date != Convert(dlsn_day_array).array_to_string():  # if the days have changed
-            self.addlist = dlsn_array
-            self.addday = dlsn_day_array
-        elif self.onrec_list != Convert(dlsn_array).array_to_string():  # if the list has changed
-            self.addlist = dlsn_array
-            self.addday = dlsn_day_array
-        else:  # if there has been no change, do not change add___ vars.
-            pass
+        self.add_list_status(dlsn_array, dlsn_day_array)
 
     @staticmethod
     def dlsn_baseready(self, array):  # format dynamic list status notation into database ready
@@ -1431,7 +1533,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         past = []
         for a in array:
             if a in past:
-                error = "ERROR: Days are out of sequence {}\n".format(self.day)
+                error = "     ERROR: Days are out of sequence {}\n".format(self.day)
                 self.error_array.append(error)
                 self.parent.allowaddrecs = False
                 return False
@@ -1465,53 +1567,63 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             baseready = self.parent.ns_false_rev[ns]
         return baseready
 
+    def add_ns(self, baseready):
+        if self.onrec_nsday == baseready:
+            pass  # keep value of addnsday var as "empty"
+        else:
+            fyi = "     FYI: New or updated nsday: {}.\n".format(self.parent.ns_custom[baseready])  # report
+            self.fyi_array.append(fyi)
+            self.addnsday = baseready
+
     def check_ns(self):
         #  self.parent.ns_rotate_mode: True for rotate, False for fixed
         ns = "none"  # initialize ns variable
+        if not self.nsday:  # if string is empty
+            self.add_ns(ns)  # ns day is "none"
         if self.nsday in ("sat", "mon", "tue", "wed", "thu", "fri"):
             baseready = self.ns_baseready(self.nsday, self.parent.ns_rotate_mode)  # format for dbase input
         elif self.nsday in ("s", "m", "tu", "u", "w", "th", "h", "f"):
             ns = self.ns_dict[self.nsday]  # translate the notation
             baseready = self.ns_baseready(ns, self.parent.ns_rotate_mode)
-        elif self.nsday == "  ":
-            baseready = "none"
+        elif self.nsday == "  ":  # if the string is almost empty
+            baseready = ns  # ns day is "none"
         elif self.nsday in ("rsat", "rmon", "rtue", "rwed", "rthu", "rfri",
                             "rs", "rm", "rtu", "ru", "rw", "rth", "rh", "rf"):
-            ns = self.ns_dict[self.nsday]
-            baseready = self.ns_baseready(ns, True)
+            ns = self.ns_dict[self.nsday]  # use dictionary to get the day
+            baseready = self.ns_baseready(ns, True)  # use ns rotate mode to get correct dictionary for day
         elif self.nsday in ("fsat", "fmon", "ftue", "fwed", "fthu", "ffri",
                             "fs", "fm", "ftu", "fu", "fw", "fth", "fh", "ff"):
             ns = self.ns_dict[self.nsday]
-            baseready = self.ns_baseready(ns, False)
+            baseready = self.ns_baseready(ns, False)  # use ns rotate mode to get correct dictionary for day
         else:
-            error = "ERROR: No such nsday: \"{}\"\n".format(self.nsday)  # report
+            error = "     ERROR: No such nsday: \"{}\"\n".format(self.nsday)  # report
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow speedcell to be input into dbase
             return
-        if self.onrec_nsday != baseready:
-            fyi = "FYI: New or updated nsday: {}.\n".format(self.parent.ns_custom[baseready])  # report
+        self.add_ns(baseready)
+
+    def add_route(self):
+        if self.route == self.onrec_route:
+            pass  # retain "empty" value for addroute variable
+        else:
+            fyi = "     FYI: New or updated route: {}\n".format(self.route)
             self.fyi_array.append(fyi)
-            self.addnsday = baseready
+            self.addroute = self.route  # save to input to dbase
 
     def check_route(self):
         self.route = str(self.route)
         self.route = self.route.strip()
         if self.route == "":
-            pass
-        elif 4 > len(self.route) > 0:
+            self.add_route()
+        elif 4 > len(self.route) > 0:  # zero fill any inputs with between 0 and 4 digits
             self.route = self.route.zfill(4)
-        if self.route == self.onrec_route:
+        if not RouteChecker(self.route).check_all():
+            error = "     ERROR: Improper route formatting\n"  # report
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow speedcell to be input into dbase
             return
         else:
-            if not RouteChecker(self.route).check_all():
-                error = "ERROR: Improper route formatting\n"  # report
-                self.error_array.append(error)
-                self.parent.allowaddrecs = False  # do not allow speedcell to be input into dbase
-                return
-            else:
-                fyi = "FYI: New or updated route: {}\n".format(self.route)
-                self.fyi_array.append(fyi)
-                self.addroute = self.route  # save to input to dbase
+            self.add_route()
 
     def add_recs(self):
         chg_these = []
@@ -1520,23 +1632,23 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         route_place = ""
         if not self.parent.allowaddrecs:
             return
-        if len(self.addlist) != 0:
-            add = "INPUT: List Status added or updated to database >>{}\n" \
+        if self.addlist != ["empty"]:
+            add = "     INPUT: List Status added or updated to database >>{}\n" \
                 .format(Convert(self.addlist).array_to_string())  # report
             self.add_array.append(add)
             chg_these.append("list")
             list_place = self.addlist
         else:
             list_place = Convert(self.onrec_list).string_to_array()
-        if self.addnsday != "":
-            add = "INPUT: Nsday added or updated to database >>{}\n".format(self.addnsday)  # report
+        if self.addnsday != "empty":
+            add = "     INPUT: Nsday added or updated to database >>{}\n".format(self.addnsday)  # report
             self.add_array.append(add)
             chg_these.append("ns")
             ns_place = self.addnsday
         else:
             ns_place = self.onrec_nsday
-        if self.addroute != "":
-            add = "INPUT: Route added or updated to database >>{}\n".format(self.addroute)  # report
+        if self.addroute != "empty":
+            add = "     INPUT: Route added or updated to database >>{}\n".format(self.addroute)  # report
             self.add_array.append(add)
             chg_these.append("route")
             route_place = self.addroute
@@ -1546,8 +1658,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
                   % ("", self.name, str(self.empid).zfill(8))
             commit(sql)
-            print(sql)
-            add = "INPUT: Employee id added or updated to database >>{}\n".format(self.addempid)  # report
+            add = "     INPUT: Employee id added or updated to database >>{}\n".format(self.addempid)  # report
             self.add_array.append(add)
         # is the earliest car rec a Relevent Preceeding Record or a sat range:
         rpr = True  # Relevent Preceeding Record
@@ -1565,7 +1676,6 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                       "WHERE carrier_name = '%s' and effective_date = '%s'" \
                       % (list_place[0], ns_place, route_place, self.parent.station, self.name, self.parent.start_date)
             commit(sql)
-            print(sql)
         if len(self.addlist) > 1:
             second_date = self.parent.start_date + timedelta(days=1)
             seventh_date = self.parent.end_date  # delete all dates in service week except sat range
@@ -1589,14 +1699,16 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.parent.add_rpt += len(self.add_array)
         self.parent.fyi_rpt += len(self.fyi_array)
         if not self.parent.interject:
-            master_array = self.error_array + self.fyi_array  # use these reports for precheck
+            master_array = self.error_array + self.attn_array + self.fyi_array  # use these reports for precheck
         else:
-            master_array = self.error_array + self.add_array  # use these reports for input
+            master_array = self.error_array + self.attn_array + self.add_array  # use these reports for input
         if len(master_array) > 0:
-            self.parent.report.write("\n{}\n".format(self.name))
-            self.parent.report.write("   sheet and row: >>> {} --> {} <<<\n".format(self.sheet, self.row))
+            if not self.parent.name_mentioned:
+                self.parent.report.write("\n{}\n".format(self.name))
+                self.parent.name_mentioned = True
+            self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\"  <<<\n".format(self.sheet, self.row))
             if not self.parent.allowaddrecs:
-                self.parent.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
+                self.parent.report.write("     SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
                 # self.parent.fatal_rpt += 1
             for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.parent.report.write(rpt)
@@ -1630,8 +1742,8 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.allowaddrings = True
         self.error_array = []
         self.fyi_array = []
+        self.attn_array = []
         self.add_array = []
-        self.datetime = datetime(1, 1, 1, 0, 0)
         self.onrec_list = ""  # get carrier information "on record" from the database
         self.onrec_nsday = ""
         self.onrec_route = ""
@@ -1663,8 +1775,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.onrec_nsday = carrec[0][3]
         self.onrec_route = carrec[0][4]
         ringrec = Rings(self.parent.name, self.get_day_as_datetime()).get_for_day()
-        print(ringrec)
-        if ringrec[0]:
+        if ringrec[0]:  # if there is a result for clock rings on that day
             self.onrec_date = ringrec[0][0]  # get rings information "on record" from the database
             self.onrec_name = ringrec[0][1]
             self.onrec_5200 = ringrec[0][2]
@@ -1680,142 +1791,178 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.day = str(self.day)
         self.day = self.day.lower()
         if self.day not in days:
-            error = "ERROR: Rings day is not correctly formatted. Got instead \"{}\": \n".format(self.day)
+            error = "     ERROR: Rings day is not correctly formatted. Acceptable values: sat, sun \n" \
+                    "     mon, tue, wed, thu, or fri. Got instead \"{}\": \n".format(self.day)
             self.error_array.append(error)
             self.allowaddrings = False  # do not allow speedcell to be input into dbase
-            return
+            return False
+        return True
 
-    def check_5200(self):
-        self.hours = str(self.hours)
-        self.hours = self.hours.strip()
-        if self.hours != "":
-            if not RingTimeChecker(self.hours).check_numeric():
-                error = "ERROR: 5200 time is not a number. Got instead \"{}\": \n".format(self.hours)
-                self.error_array.append(error)
-                self.allowaddrings = False
-                return
-            if not RingTimeChecker(self.hours).over_24():
-                error = "ERROR: 5200 time can not exceed 24.00. Got instead \"{}\": \n".format(self.hours)
-                self.error_array.append(error)
-                self.allowaddrings = False
-                return
-            if not RingTimeChecker(self.hours).less_than_zero():
-                error = "ERROR: 5200 time can not be negative. Got instead \"{}\": \n".format(self.hours)
-                self.error_array.append(error)
-                self.allowaddrings = False
-                return
-            if not RingTimeChecker(self.hours).count_decimals_place():
-                error = "ERROR 5200 time can have no more than two decimal places. Got instead \"{}\": \n"\
-                    .format(self.hours)
-                self.error_array.append(error)
-                self.allowaddrings = False
-                return
-        if self.hours != self.onrec_5200:  # compare 5200 time against 5200 from database,
+    def check_empty(self):
+        # determine conditions where existing record is deleted
+        if not self.hours:
+            if not self.lv_type or not self.lv_time:
+                if self.onrec_date:  # if there is an existing record to delete
+                    self.delete_recs()  # delete any pre existing record
+                return True
+        return False
+
+    def add_5200(self):
+        if self.hours == "0.0" and self.onrec_5200 in ("0", "0.00", "0.0", "", 0, 0.0):
+            pass
+        elif self.hours != self.onrec_5200:  # compare 5200 time against 5200 from database,
             self.add5200 = self.hours  # if different, the add
-            fyi = "FYI: New or updated 5200 time: {}\n".format(self.hours)
+            fyi = "     FYI: New or updated 5200 time: {}\n".format(self.hours)
             self.fyi_array.append(fyi)
 
+    def check_5200(self):
+        if type(self.hours) == str and not self.hours:  # pass if value is an empty string
+            self.add_5200()
+            return
+        ring = RingTimeChecker(self.hours).make_float()  # returns float or False
+        if ring is not False:
+            self.hours = ring  # convert the item to a float, if not already
+        else:  # if fail, create error msg and return
+            error = "     ERROR: 5200 time must be a number. Got instead \"{}\": \n".format(self.hours)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.hours).over_24():
+            error = "     ERROR: 5200 time can not exceed 24.00. Got instead \"{}\": \n".format(self.hours)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.hours).less_than_zero():
+            error = "     ERROR: 5200 time can not be negative. Got instead \"{}\": \n".format(self.hours)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.hours).count_decimals_place():
+            error = "     ERROR 5200 time can have no more than two decimal places. Got instead \"{}\": \n"\
+                .format(self.hours)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        self.hours = str(self.hours)  # convert float back to string
+        self.add_5200()
+
     def add_rs(self):
-        if self.rs != self.onrec_rs:  # compare 5200 time against 5200 from database,
+        if self.rs == "0.0" and self.onrec_rs in ("0", "0.00", "0.0", "", 0, 0.0):
+            pass
+        elif self.rs != self.onrec_rs:  # compare 5200 time against 5200 from database,
             self.addrs = self.rs  # if different, the add
-            fyi = "FYI: New or updated return to station: {}\n".format(self.rs)
+            fyi = "     FYI: New or updated return to station: {}\n".format(self.rs)
             self.fyi_array.append(fyi)
 
     def check_rs(self):
-        self.rs = str(self.rs)
-        self.rs = self.rs.strip()
-        if self.rs == "" or float(self.rs) == 0:
+        if type(self.rs) == str and not self.rs:  # pass if value is an empty string
             self.add_rs()
             return
-        if not RingTimeChecker(self.rs).check_numeric():
-            error = "ERROR: RS time is not a number. Got instead \"{}\": \n".format(self.rs)
+        ring = RingTimeChecker(self.rs).make_float()  # returns float or False
+        if ring is not False:
+            self.rs = ring  # convert the attribute to a float, if not already
+        else:  # if fail, create error msg and return
+            error = "     ERROR: RS must be a number. Got instead \"{}\": \n".format(self.rs)
             self.error_array.append(error)
             self.allowaddrings = False
             return
         if not RingTimeChecker(self.rs).over_24():
-            error = "ERROR: RS time can not exceed 24.00. Got instead \"{}\": \n".format(self.rs)
+            error = "     ERROR: RS time can not exceed 24.00. Got instead \"{}\": \n".format(self.rs)
             self.error_array.append(error)
             self.allowaddrings = False
             return
         if not RingTimeChecker(self.rs).less_than_zero():
-            error = "ERROR: RS time can not be negative. Got instead \"{}\": \n".format(self.rs)
+            error = "     ERROR: RS time can not be negative. Got instead \"{}\": \n".format(self.rs)
             self.error_array.append(error)
             self.allowaddrings = False
             return
         if not RingTimeChecker(self.rs).count_decimals_place():
-            error = "ERROR: RS time can have no more than two decimal places. Got instead \"{}\": \n".format(self.rs)
+            error = "     ERROR: RS time can have no more than two decimal places. Got instead \"{}\": \n".format(self.rs)
             self.error_array.append(error)
             self.allowaddrings = False
             return
+        self.rs = str(self.rs)  # convert float back to string
         self.add_rs()
+
+    def add_moves(self, baseready):
+        if baseready != self.onrec_moves:  # if the moves are different from on record moves from dbase,
+            self.addmoves = baseready  # add the moves
+            fyi = "     FYI: New or updated moves: {}\n".format(baseready)
+            self.fyi_array.append(fyi)
 
     def check_moves(self):
         self.moves = str(self.moves)
         self.moves = self.moves.strip()
-        if self.moves == "":
+        if type(self.moves) == str and not self.moves:
+            self.add_moves("")
             return
         self.moves = self.moves.replace("+", ",").replace("/", ",").replace("//", ",")\
             .replace("-", ",").replace("*", ",")  # replace all delimiters with commas
         moves_array = Convert(self.moves).string_to_array()  # convert the moves string to an array
         if not MovesChecker(moves_array).length():
-            error = "ERROR: Moves must be given in multiples of three. Got instead \"{}\": \n"\
+            error = "     ERROR: Moves must be given in multiples of three. Got instead \"{}\": \n"\
                 .format(len(moves_array))
             self.error_array.append(error)
             self.allowaddrings = False
             return
         for i in range(len(moves_array)):
             if i % 3 == 0 or (i + 2) % 3 == 0:  # check the time components of the moves triad
-                if not RingTimeChecker(moves_array[i]).check_numeric():
-                    error = "ERROR: Move times must be a number. Got instead \"{}\": \n".format(moves_array[i])
+                move_ring = RingTimeChecker(moves_array[i]).make_float()  # try to convert moves_array[i] to a float.
+                if move_ring is not False:  # if fail, create error msg and return
+                    moves_array[i] = move_ring  # convert the item to a float, if not already
+                else:
+                    error = "     ERROR: Move times must be a number. Got instead \"{}\": \n".format(moves_array[i])
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
                 if not RingTimeChecker(moves_array[i]).over_24():
-                    error = "ERROR: Move time can not exceed 24.00. Got instead \"{}\": ".format(moves_array[i])
+                    error = "     ERROR: Move time can not exceed 24.00. Got instead \"{}\": ".format(moves_array[i])
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
                 if not RingTimeChecker(moves_array[i]).less_than_zero():
-                    error = "ERROR: Move time can not be negative. Got instead \"{}\": \n".format(moves_array[i])
+                    error = "     ERROR: Move time can not be negative. Got instead \"{}\": \n".format(moves_array[i])
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
                 if not RingTimeChecker(moves_array[i]).count_decimals_place():
-                    error = "ERROR: Move time can have no more than two decimal places. Got instead \"{}\": \n"\
+                    error = "     ERROR: Move time can have no more than two decimal places. Got instead \"{}\": \n"\
                         .format(moves_array[i])
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
             if (i + 1) % 3 == 0:  # check the route component of the move triad
                 if not RouteChecker(moves_array[i]).check_numeric():
-                    error = "ERROR: Routes in move triads must be numeric. Got instead \"{}\": \n" \
+                    error = "     ERROR: Routes in move triads must be numeric. Got instead \"{}\": \n" \
                         .format(moves_array[i])
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
                 if not RouteChecker(moves_array[i]).check_length():
-                    error = "ERROR: Routes in move triads must have 4 or 5 digits. Got instead \"{}\": \n" \
+                    error = "     ERROR: Routes in move triads must have 4 or 5 digits. Got instead \"{}\": \n" \
                         .format(moves_array[i])
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
         for i in range(0, len(moves_array), 3):
             if moves_array[i] > moves_array[i + 1]:
-                error = "error: first value \"{}\" must be lesser than the second value \"{}\" in " \
-                        "moves.\n".format(moves_array[i], moves_array[i + 1])
+                error = "     ERROR: first value \"{}\" must be lesser than the second \n" \
+                        "            value \"{}\" in moves.\n".format(moves_array[i], moves_array[i + 1])
                 self.error_array.append(error)
                 self.allowaddrings = False
                 return
+            else:  # convert the items back into strings
+                moves_array[i] = str(moves_array[i])
+                moves_array[i + 1] = str(moves_array[i + 1])
         baseready = Convert(moves_array).array_to_string()  # convert the moves array to a baseready string
-        if baseready != self.onrec_moves:  # if the moves are different from on record moves from dbase,
-            self.addmoves = baseready  # add the moves
-            fyi = "FYI: New or updated moves: {}\n".format(baseready)
-            self.fyi_array.append(fyi)
+        self.add_moves(baseready)
 
     def add_codes(self):
-        if self.codes != self.onrec_codes:  # compare 5200 time against 5200 from database,
+        if self.codes == self.onrec_codes:  # compare 5200 time against 5200 from database,
+            pass
+        else:
             self.addcode = self.codes  # if different, the add
-            fyi = "FYI: New or updated code/note: {}\n".format(self.codes)
+            fyi = "     FYI: New or updated code/note: {}\n".format(self.codes)
             self.fyi_array.append(fyi)
 
     def check_codes(self):
@@ -1823,80 +1970,98 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.codes = self.codes.strip()
         self.codes = str(self.codes)
         self.codes = self.codes.lower()
-        if self.codes == "":
+        if not self.codes:
+            self.codes = "none"
             self.add_codes()
             return
         if self.codes not in all_codes:
-            error = "ERROR: There is no such code/note. Got instead: \"{}\" \n" \
+            error = "     ERROR: There is no such code/note. Got instead: \"{}\" \n" \
                 .format(self.codes)
             self.error_array.append(error)
             self.allowaddrings = False
             return
         if self.onrec_list in ("nl", "wal"):
             if self.codes in ("no call", "light", "sch chg", "annual", "sick", "excused"):
-                fyi = "FYI: The code/note you entered is not consistant with the list status for the day.\n" \
-                      "     Only \"none\" and \"ns day\" are useful for {} carriers. \n" \
-                      "     Got instead: {}\n".format(self.onrec_list, self.codes)  # report
-                self.fyi_array.append(fyi)
+                attn = "     ATTENTION: The code/note you entered is not consistant with the list status \n" \
+                       "                for the day. Only \"none\" and \"ns day\" are useful for {} carriers. \n" \
+                       "                Got instead: {}\n".format(self.onrec_list, self.codes)  # report
+                self.attn_array.append(attn)
         if self.onrec_list in ("otdl", "aux", "ptf"):
             if self.codes in ("ns day",):
-                fyi = "FYI: The code/note you entered is not consistant with the list status for the day.\n" \
-                      "     Only \"none\", \"no call\", \"light\", \"sch chg\", \"annual\", \"sick\", \"excused\" " \
-                      "     are useful for {} carriers. Got instead: {}\n".format(self.onrec_list, self.codes)
-                self.fyi_array.append(fyi)
+                attn = "     ATTENTION: The code/note you entered is not consistant with the list status \n" \
+                       "                for the day. Only \"none\", \"no call\", \"light\", \"sch chg\", \n" \
+                       "                \"annual\", \"sick\", \"excused\" are useful for {} carriers. \n" \
+                       "                Got instead: {}\n".format(self.onrec_list, self.codes)
+                self.attn_array.append(attn)
         self.add_codes()
 
     def check_leave_type(self):
         all_codes = ("none", "annual", "sick", "holiday", "other")
-        self.lv_type = self.lv_type.strip()
         self.lv_type = str(self.lv_type)
+        self.lv_type = self.lv_type.strip()
         self.lv_type = self.lv_type.lower()
         if self.lv_type != "":
             if self.lv_type not in all_codes:
-                error = "ERROR: There is no such leave type. Acceptable types are: \"none\", \"annual\", \n" \
-                        "\"sick\", \"holiday\", \"other\" Got instead: \"{}\"\n".format(self.codes)
+                error = "     ERROR: There is no such leave type. Acceptable types are: \"none\", \n" \
+                        "            \"annual\", \"sick\", \"holiday\", \"other\" \n" \
+                        "            Got instead: \"{}\"\n".format(self.lv_type)
                 self.error_array.append(error)
                 self.allowaddrings = False
                 return
         if self.lv_type != self.onrec_leave_type:  # compare 5200 time against 5200 from database,
             self.addlvtype = self.lv_type  # if different, the add
-            fyi = "FYI: New or updated leave type: {}\n".format(self.lv_type)
+            fyi = "     FYI: New or updated leave type: {}\n".format(self.lv_type)
             self.fyi_array.append(fyi)
 
     def add_leave_time(self):
-        if self.lv_time != self.onrec_leave_time:  # compare 5200 time against 5200 from database,
+        if self.lv_time == "0.0" and self.onrec_leave_time in ("0", "0.00", "0.0", "", 0, 0.0):
+            pass
+        elif self.lv_time != self.onrec_leave_time:  # compare 5200 time against 5200 from database,
             self.addlvtime = self.lv_time  # if different, the add
-            fyi = "FYI: New or updated leave time: {}\n".format(self.lv_time)
+            fyi = "     FYI: New or updated leave time: {}\n".format(self.lv_time)
             self.fyi_array.append(fyi)
 
     def check_leave_time(self):
-        self.lv_time = str(self.lv_time)
-        self.lv_time = self.lv_time.strip()
-        if self.lv_time == "":
+        if type(self.lv_time) == str and not self.lv_time:  # pass if value is an empty string
             self.add_leave_time()
             return
-        if not RingTimeChecker(self.lv_time).check_numeric():
-            error = "ERROR: Leave time is not a number. Got instead \"{}\": \n".format(self.lv_time)
+        ring = RingTimeChecker(self.lv_time).make_float()  # try to convert moves_array[i] to a float.
+        if ring is not False:  # if fail, create error msg and return
+            self.lv_time = ring  # convert the item to a float, if not already
+        else:
+            error = "     ERROR: Leave time must be a number. Got instead \"{}\": \n".format(self.lv_time)
             self.error_array.append(error)
             self.allowaddrings = False
             return
         if not RingTimeChecker(self.lv_time).over_8():
-            error = "ERROR: Leave time can not exceed 8.00. Got instead \"{}\": \n".format(self.lv_time)
+            error = "     ERROR: Leave time can not exceed 8.00. Got instead \"{}\": \n".format(self.lv_time)
             self.error_array.append(error)
             self.allowaddrings = False
             return
         if not RingTimeChecker(self.lv_time).less_than_zero():
-            error = "ERROR: Leave time can not be negative. Got instead \"{}\": \n".format(self.lv_time)
+            error = "     ERROR: Leave time can not be negative. Got instead \"{}\": \n".format(self.lv_time)
             self.error_array.append(error)
             self.allowaddrings = False
             return
         if not RingTimeChecker(self.lv_time).count_decimals_place():
-            error = "ERROR Leave time can have no more than two decimal places. Got instead \"{}\": \n" \
+            error = "     ERROR: Leave time can have no more than two decimal places. Got instead \"{}\": \n" \
                 .format(self.lv_time)
             self.error_array.append(error)
             self.allowaddrings = False
             return
+        self.lv_time = str(self.lv_time)
         self.add_leave_time()
+
+    def delete_recs(self):  # delete any pre existing record
+        if not self.parent.interject:
+            return
+        sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" % (self.adddate, self.parent.name)
+        commit(sql)
+        print(sql)
+        add = "     DELETE: Clock Rings record deleted from database\n"  # report
+        self.add_array.append(add)
+        fyi = "     FYI: Clock Rings record will be deleted from database\n"
+        self.fyi_array.append(fyi)
 
     def add_recs(self):
         chg_these = []
@@ -1906,46 +2071,52 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         moves_place = ""
         lv_type_place = ""
         lv_time_place = ""
-        if not self.parent.allowaddrings:
+        if not self.allowaddrings:
             return
+        # determine conditions where existing record is deleted
+        if not self.hours:
+            if not self.lv_type or not self.lv_time:
+                if self.onrec_date:  # if there is an existing record to delete
+                    self.delete_recs()  # delete any pre existing record
+                    return
         # contruct the sql command to commit to the database.
         if self.add5200 != "empty":  # 5200 place of sql command
-            add = "INPUT: 5200 time added or updated to database >>{}\n".format(self.add5200)  # report
+            add = "     INPUT: 5200 time added or updated to database >>{}\n".format(self.add5200)  # report
             self.add_array.append(add)
             chg_these.append("hours")
             hours_place = self.add5200
         else:
             hours_place = self.onrec_5200
         if self.addrs != "empty":  # rs place of sql command
-            add = "INPUT: RS time added or updated to database >>{}\n".format(self.addrs)  # report
+            add = "     INPUT: RS time added or updated to database >>{}\n".format(self.addrs)  # report
             self.add_array.append(add)
             chg_these.append("rs")
             rs_place = self.add5200
         else:
             rs_place = self.onrec_rs
         if self.addcode != "empty":  # code place of sql command
-            add = "INPUT: Code/note added or updated to database >>{}\n".format(self.addcode)  # report
+            add = "     INPUT: Code/note added or updated to database >>{}\n".format(self.addcode)  # report
             self.add_array.append(add)
             chg_these.append("code")
             code_place = self.addcode
         else:
             code_place = self.onrec_codes
         if self.addmoves != "empty":  # moves place of sql command
-            add = "INPUT: Moves added or updated to database >>{}\n".format(self.addmoves)  # report
+            add = "     INPUT: Moves added or updated to database >>{}\n".format(self.addmoves)  # report
             self.add_array.append(add)
             chg_these.append("moves")
             moves_place = self.addmoves
         else:
             moves_place = self.onrec_moves
         if self.addlvtype != "empty":  # lv type place of sql command
-            add = "INPUT: Leave type added or updated to database >>{}\n".format(self.addlvtype)  # report
+            add = "     INPUT: Leave type added or updated to database >>{}\n".format(self.addlvtype)  # report
             self.add_array.append(add)
             chg_these.append("lv type")
-            lv_type_place_place = self.addlvtype
+            lv_type_place= self.addlvtype
         else:
             lv_type_place = self.onrec_leave_type
         if self.addlvtime != "empty":  # lv time place of sql command
-            add = "INPUT: Leave time added or updated to database >>{}\n".format(self.addlvtime)  # report
+            add = "     INPUT: Leave time added or updated to database >>{}\n".format(self.addlvtime)  # report
             self.add_array.append(add)
             chg_these.append("lv time")
             lv_time_place = self.addlvtime
@@ -1953,32 +2124,50 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             lv_time_place = self.onrec_leave_time
         # if there are items to change, construct the sql command
         if chg_these:
-            sql = (self.adddate, self.parent.name, hours_place, rs_place, code_place, moves_place,
-                   lv_type_place, lv_time_place)
+            if not self.onrec_date:  # if there is no rings record for the date
+                sql = "INSERT INTO rings3(rings_date, carrier_name, total, rs, code, " \
+                      "moves, leave_type, leave_time) VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" \
+                      % (self.adddate, self.parent.name, hours_place, rs_place, code_place, moves_place,
+                         lv_type_place, lv_time_place)
+            else:  # if a record already exist
+                sql = "UPDATE rings3 SET total = '%s', rs = '%s', code = '%s', moves = '%s', leave_type = '%s', " \
+                      "leave_time = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" % (hours_place,
+                      rs_place, code_place, moves_place, lv_type_place, lv_time_place, self.adddate, self.parent.name)
+            commit(sql)
+            print(sql)
 
     def generate_report(self):  # generate a report
         self.parent.rings_fatal_rpt += len(self.error_array)
         self.parent.rings_add_rpt += len(self.add_array)
         self.parent.rings_fyi_rpt += len(self.fyi_array)
         if not self.parent.interject:
-            master_array = self.error_array + self.fyi_array  # use these reports for precheck
+            master_array = self.error_array + self.attn_array + self.fyi_array  # use these reports for precheck
         else:
-            master_array = self.error_array + self.add_array  # use these reports for input
+            master_array = self.error_array + self.attn_array + self.add_array  # use these reports for input
         if len(master_array) > 0:
-            self.parent.report.write("\n{}\n".format(self.parent.name))
-            self.parent.report.write("   sheet and row: >>> {} --> {} <<<\n".format(self.sheet, self.row))
-            if not self.parent.allowaddrecs:
-                self.parent.report.write("SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
+            if not self.parent.name_mentioned:
+                self.parent.report.write("\n{}\n".format(self.parent.name))
+                self.parent.name_mentioned = True
+            self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\" <<<\n".format(self.sheet, self.row))
+            if not self.allowaddrings:
+                self.parent.report.write("     CLOCK RINGS ENTRY PROHIBITED: Correct errors!\n")
                 # self.parent.fatal_rpt += 1
             for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.parent.report.write(rpt)
 
     def check(self):
-        if self.check_day():
-            self.get_onrecs()
-            self.check_5200()
-            self.check_rs()
-            self.check_codes()
+        if self.check_day():  # if the day is a valid day
+            self.get_onrecs()  # get existing "on record" records from the database
+            self.check_5200()  # check 5200/ hours
+            self.check_leave_type()  # check leave type
+            self.check_leave_time()  # check leave time
+            if not self.check_empty():  # checks if the record should be deleted
+                self.check_rs()   # check "return to station"
+                self.check_codes()  # check the codes/notes
+                self.check_moves()  # check moves
+                if self.parent.interject:  # if user wants to update database
+                    self.add_recs()  # format and input rings into database
+        self.generate_report()
 
 
 def speed_gen_carrier():
@@ -2187,6 +2376,410 @@ class SpeedCell:  # accepts minimum row information and carrier records for Spee
         return speedcell_count
 
 
+class SpeedSheetGen:
+    def __init__(self, frame):
+        self.frame = frame
+        self.pb = ProgressBarDe()  # create the progress bar object
+        self.db = SpeedSettings()  # calls values from tolerance table
+        self.day_array = (str(d_date.strftime("%a")).lower(),)
+        if g_range == "week":
+            self.day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        self.rotate_mode = self.db.speedcell_ns_rotate_mode  # NS day mode preference: rotating or fixed
+        self.ns_pref = "r"
+        if not self.rotate_mode:
+            self.ns_pref = "f"
+        self.dlsn_dict = {"sat": "sat", "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri",
+             "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
+             "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri",
+             "  ": "none", "": "none"}
+        self.id_recset = []
+        self.car_recs = []
+        self.speedcell_count = 0
+
+    def get_id_recset(self):  # get employee id and condensed record set
+        carriers = CarrierList(g_date[0], g_date[6], g_station).get()  # first get a carrier list
+        for c in carriers:
+            cc = GetCarrier(c, g_date[0]).filter_nonlist_recs()  # filter out any recs where list status is unchanged
+            ccc = GetCarrier(cc, g_date[0]).condense_recs(
+                self.db.speedcell_ns_rotate_mode)  # condense multiple recs into format used by speedsheets
+            self.id_recset.append(GetSpeedCarrier(ccc).add_id())  # merge carriers with emp id
+
+    def get_car_recs(self):  # sort carrier records by the worksheets they will be put on
+        self.car_recs = [self.order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
+        if not self.db.abc_breakdown:
+            order_abc = self.order_alphabetically()  # sort the id_recset alphabetically
+        else:
+            order_abc = self.order_by_abc_breakdown()  # sort the id_recset w/o emp id by abc breakdown
+        for abc in order_abc:
+            self.car_recs.append(abc)
+
+    def order_by_id(self):  # order id_recset by employee id
+        ordered_recs = []
+        for rec in self.id_recset:  # loop through the carrier list
+            if rec[0] != "":  # if the item for employee id is not empty
+                ordered_recs.append(rec)  # add the record set to the array
+        ordered_recs.sort(key=itemgetter(0))  # sort the array by the employee id
+        return ordered_recs
+
+    def order_alphabetically(self):  # order id recset alphabetically into one tab
+        alpha_recset = ["alpha_array", ]
+        alpha_recset[0] = []
+        for rec in self.id_recset:
+            if rec[0] == "":
+                alpha_recset[0].append(rec)
+        return alpha_recset
+
+    def order_by_abc_breakdown(self):  # sort id recset alphabetically into multiple tabs
+        abc_recset = ["a_array", "b_array", "cd_array", "efg_array", "h_array", "ijk_array", "m_array",
+                      "nop_array", "qr_array", "s_array", "tuv_array", "w_array", "xyz_array"]
+        for i in range(len(abc_recset)):
+            abc_recset[i] = []
+        for rec in self.id_recset:
+            if rec[0] == "":
+                if rec[1][1][0] == "a":  # sort names without emp ids into lettered arrays
+                    abc_recset[0].append(rec)
+                elif rec[1][1][0] == "b":
+                    abc_recset[1].append(rec)
+                elif rec[1][1][0] == "rec" or rec[1][1][0] == "d":
+                    abc_recset[2].append(rec)
+                elif rec[1][1][0] == "e" or rec[1][1][0] == "f" or rec[1][1][0] == "g":
+                    abc_recset[3].append(rec)
+                elif rec[1][1][0] == "h":
+                    abc_recset[4].append(rec)
+                elif rec[1][1][0] == "i" or rec[1][1][0] == "j" or rec[1][1][0] == "k":
+                    abc_recset[5].append(rec)
+                elif rec[1][1][0] == "m":
+                    abc_recset[6].append(rec)
+                elif rec[1][1][0] == "n" or rec[1][1][0] == "o" or rec[1][1][0] == "p":
+                    abc_recset[7].append(rec)
+                elif rec[1][1][0] == "q" or rec[1][1][0] == "r":
+                    abc_recset[8].append(rec)
+                elif rec[1][1][0] == "s":
+                    abc_recset[9].append(rec)
+                elif rec[1][1][0] == "t" or rec[1][1][0] == "u" or rec[1][1][0] == "v":
+                    abc_recset[10].append(rec)
+                elif rec[1][1][0] == "w":
+                    abc_recset[11].append(rec)
+                else:
+                    abc_recset[12].append(rec)
+        return abc_recset
+
+    # car_recs, db.abc_breakdown, db.min_empid, db.min_abc, db.min_alpha
+
+    def count_minrow_array(self):  # gets a count of minimum row info for each SpeedSheet tab
+        minrow_array = [self.db.min_empid, ]  # get minimum rows for employee id sheet
+        if not self.db.abc_breakdown:
+            minrow_array.append(self.db.min_alpha)  # get minimum rows for alphabetical sheet
+        else:
+            for i in range(len(self.car_recs) - 1):  # get minimum rows for abc breakdown sheets
+                minrow_array.append(self.db.min_abc)
+        return minrow_array
+
+    def count_car_recs(self):  # gets a count of carrier records for each SpeedSheet tab
+        car_recs = [len(self.car_recs[0]), ]  # get count of carrier recs for employee id sheet
+        if not self.db.abc_breakdown:
+            car_recs.append(len(self.car_recs[1]))  # get count of carriers for alphabetical sheet
+        else:
+            for i in range(1, len(self.car_recs)):  # get count of carriers for abc breakdown
+                car_recs.append(len(self.car_recs[i]))
+        return car_recs
+
+    def count(self):  # compare the minimum row and carrier records arrays to get the number of SpeedCells
+        speedcell_count = 0  # initialized the count
+        minrows = self.count_minrow_array()  # get minimum row count
+        carrecs = self.count_car_recs()  # get count of carriers
+        for i in range(len(minrows)):  # loop through results
+            speedcell_count += max(minrows[i], carrecs[i])  # take the larger of the two
+        return speedcell_count  # return total number of speedcells to be generated
+
+    def make_workbook(self):
+        pi = 0
+        empty_sc = 0
+        self.pb.move_count(self.speedcell_count)  # set length of progress bar
+        self.pb.start_up()
+        # Named styles for workbook
+        bd = Side(style='thin', color="80808080")  # defines borders
+        ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+        date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                    alignment=Alignment(horizontal='right'))
+        car_col_header = NamedStyle(name="car_col_header", font=Font(bold=True, name='Arial', size=8),
+                                    fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                                    border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                    alignment=Alignment(horizontal='left'))
+        col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                alignment=Alignment(horizontal='left'))
+        # yellow: faf818, blue: 18fafa, green: 18fa20, grey: ababab
+        bold_name = NamedStyle(name="bold_name", font=Font(name='Arial', size=8, bold=True),
+                               fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                               border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                                border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                             border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                             alignment=Alignment(horizontal='right'))
+        input_ns = NamedStyle(name="input_ns", font=Font(bold=True, name='Arial', size=8, color='ff0000'),
+                              border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                              alignment=Alignment(horizontal='right'))
+        if not self.db.abc_breakdown:
+            ws_list = ["emp_id", "alphabet"]
+            ws_titles = ["by employee id", "alphabetically"]
+        else:
+            ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
+            ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
+                         "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
+        wb = Workbook()  # define the workbook
+        ws_list[0] = wb.active  # create first worksheet
+        ws_list[0].title = ws_titles[0]  # title first worksheet
+        for i in range(1, len(ws_list)):  # loop to create all other worksheets
+            ws_list[i] = wb.create_sheet(ws_titles[i])
+        for i in range(len(ws_list)):
+            # format cell widths
+            ws_list[i].oddFooter.center.text = "&A"
+            ws_list[i].column_dimensions["A"].width = 8
+            ws_list[i].column_dimensions["B"].width = 8
+            ws_list[i].column_dimensions["C"].width = 8
+            ws_list[i].column_dimensions["D"].width = 8
+            ws_list[i].column_dimensions["E"].width = 8
+            ws_list[i].column_dimensions["F"].width = 8
+            ws_list[i].column_dimensions["G"].width = 8
+            ws_list[i].column_dimensions["H"].width = 8
+            ws_list[i].column_dimensions["I"].width = 8
+            ws_list[i].column_dimensions["J"].width = 8
+            ws_list[i].column_dimensions["K"].width = 8
+            cell = ws_list[i].cell(column=1, row=1)
+            cell.value = "Speedsheet - All Inclusive"
+            cell.style = ws_header
+            ws_list[i].merge_cells('A1:E1')
+            # create date/ pay period/ station header
+            cell = ws_list[i].cell(row=2, column=1)  # date label
+            cell.value = "Date:  "
+            cell.style = date_dov_title
+            cell = ws_list[i].cell(row=2, column=2)  # date
+            if g_range == "day":
+                cell.value = "{}".format(d_date.strftime("%A  %m/%d/%y"))
+            else:
+                cell.value = "{} through {}".format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y"))
+            cell.style = date_dov
+            ws_list[i].merge_cells('B2:E2')
+            cell = ws_list[i].cell(row=2, column=6)  # pay period label
+            cell.value = "PP:  "
+            cell.style = date_dov_title
+            cell = ws_list[i].cell(row=2, column=7)  # pay period
+            cell.value = pay_period
+            cell.style = date_dov
+            cell = ws_list[i].cell(row=2, column=8)  # station label
+            cell.value = "Station:  "
+            cell.style = date_dov_title
+            cell = ws_list[i].cell(row=2, column=9)  # station
+            cell.value = g_station
+            cell.style = date_dov
+            ws_list[i].merge_cells('I2:J2')
+            # apply title - show how carriers are sorted
+            cell = ws_list[i].cell(row=3, column=1)
+            if i == 0:
+                cell.value = "Carriers listed by Employee ID"
+            else:
+                cell.value = "Carriers listed Alphabetically: {}".format(ws_titles[i])
+            cell.style = list_header
+            ws_list[i].merge_cells('A3:E3')
+            if i == 0:  # only execute on the first sheet of the workbook
+                cell = ws_list[i].cell(row=3, column=6)  #
+                cell.value = "ns day preference (r=rotating/f=fixed): "  # ns day preference
+                cell.style = date_dov_title
+                ws_list[i].merge_cells('F3:I3')
+                cell = ws_list[i].cell(row=3, column=10)  #
+                cell.value = self.ns_pref
+                cell.style = date_dov
+            # Headers for Carrier List
+            cell = ws_list[i].cell(row=4, column=1)  # header day
+            cell.value = "Days"
+            cell.style = car_col_header
+            cell = ws_list[i].cell(row=4, column=2)  # header carrier name
+            cell.value = "Carrier Name"
+            cell.style = car_col_header
+            ws_list[i].merge_cells('B4:D4')
+            cell = ws_list[i].cell(row=4, column=5)  # header list type
+            cell.value = "List"
+            cell.style = car_col_header
+            cell = ws_list[i].cell(row=4, column=6)  # header ns day
+            cell.value = "NS Day"
+            cell.style = car_col_header
+            cell = ws_list[i].cell(row=4, column=7)  # header route
+            cell.value = "Route/s"
+            cell.style = car_col_header
+            ws_list[i].merge_cells('G4:I4')
+            cell = ws_list[i].cell(row=4, column=10)  # header emp id
+            cell.value = "Emp id"
+            cell.style = car_col_header
+            # Headers for Rings
+            cell = ws_list[i].cell(row=5, column=1)  # header day
+            cell.value = "Day"
+            cell.style = col_header
+            cell = ws_list[i].cell(row=5, column=2)  # header 5200
+            cell.value = "5200"
+            cell.style = col_header
+            cell = ws_list[i].cell(row=5, column=3)  # header MOVES
+            cell.value = "MOVES"
+            cell.style = col_header
+            ws_list[i].merge_cells('C5:F5')
+            cell = ws_list[i].cell(row=5, column=7)  # header RS
+            cell.value = "RS"
+            cell.style = col_header
+            cell = ws_list[i].cell(row=5, column=8)  # header codes
+            cell.value = "CODE"
+            cell.style = col_header
+            cell = ws_list[i].cell(row=5, column=9)  # header leave type
+            cell.value = "LV type"
+            cell.style = col_header
+            cell = ws_list[i].cell(row=5, column=10)  # header leave time
+            cell.value = "LV time"
+            cell.style = col_header
+            # freeze panes
+            ws_list[i].freeze_panes = ws_list[i].cell(row=6, column=1)  # ['A6']
+            if i == 0:
+                rowcount = self.db.min_empid  # get minimum speedcell count for employee id tab
+            elif i != 0 and not self.db.abc_breakdown:
+                rowcount = self.db.min_alpha  # get minimum speedcell count for alphabetical tab
+            else:
+                rowcount = self.db.min_abc  # get minimum speedcell count for each abc breakdown tab
+            rowcounter = max(rowcount, len(self.car_recs[i]))
+            row = 6  # start at row 6 after the page header display
+            for r in range(rowcounter):
+                if r < len(self.car_recs[i]):  # if the carrier records are not exhausted
+                    eff_date = self.car_recs[i][r][1][0]  # carrier effective date
+                    car_name = self.car_recs[i][r][1][1]  # carrier name
+                    car_list = self.car_recs[i][r][1][2]  # carrier list status
+                    car_ns = self.car_recs[i][r][1][3]  # carrier ns day
+                    car_route = self.car_recs[i][r][1][4]  # carrier route
+                    car_empid = self.car_recs[i][r][0]  # carrier employee id number
+                    self.pb.move_count(pi)  # increment progress bar
+                    self.pb.change_text("Formatting Speedcell for {}".format(car_name))
+                else:
+                    eff_date = ""  # enter blanks once records are exhausted
+                    car_name = ""
+                    car_list = ""
+                    car_ns = ""
+                    car_route = ""
+                    car_empid = ""
+                    self.pb.move_count(pi)  # increment progress bar
+                    empty_sc += 1  # increment counter for empty speedcells
+                    self.pb.change_text("Formatting empty Speedcell #{}".format(empty_sc))
+                pi += 1
+                cell = ws_list[i].cell(row=row, column=1)  # carrier effective date
+                cell.value = eff_date
+                cell.style = input_name
+                cell = ws_list[i].cell(row=row, column=2)  # carrier name
+                cell.value = car_name
+                cell.style = bold_name
+                ws_list[i].merge_cells('B' + str(row) + ':' + 'D' + str(row))
+                cell = ws_list[i].cell(row=row, column=5)  # carrier list status
+                cell.value = car_list
+                cell.style = input_name
+                cell = ws_list[i].cell(row=row, column=6)  # carrier ns day
+                cell.value = car_ns
+                cell.style = input_name
+                cell = ws_list[i].cell(column=7, row=row)  # carrier route
+                cell.value = car_route
+                cell.style = input_name
+                ws_list[i].merge_cells('G' + str(row) + ':' + 'I' + str(row))
+                cell = ws_list[i].cell(column=10, row=row)  # carrier emp id
+                cell.value = car_empid
+                cell.style = input_name
+                row += 1
+                if r < len(self.car_recs[i]):  # if the carrier records are not exhausted
+                    ring_recs = get_rings(car_name)
+                for d in range(len(self.day_array)):
+                    if r < len(self.car_recs[i]) and ring_recs[d] != []:  # if the carrier records are not exhausted
+                        ring_5200 = ring_recs[d][0][2]  # rings 5200
+                        ring_move = MvTriad(ring_recs[d][0][5]).mv_to_speed()  # format rings MOVES
+                        ring_rs = ring_recs[d][0][3]  # rings RS
+                        ring_code = ring_recs[d][0][4]  # rings CODES
+                        ring_lvty = ring_recs[d][0][6]  # rings LEAVE TYPE
+                        ring_lvtm = ring_recs[d][0][7]  # rings LEAVE TIME
+                    else:
+                        ring_5200 = ""  # rings 5200
+                        ring_move = ""  # rings MOVES
+                        ring_rs = ""  # rings RS
+                        ring_code = ""  # rings CODES
+                        ring_lvty = ""  # rings LEAVE TYPE
+                        ring_lvtm = ""  # rings LEAVE TIME
+                    cell = ws_list[i].cell(column=1, row=row)  # rings day
+                    cell.value = self.day_array[d]
+                    if self.day_array[d] == self.dlsn_dict[car_ns.lower()]:  # if it is the nsday
+                        cell.style = input_ns  # display it red and bold
+                    else:
+                        cell.style = input_s
+                    cell = ws_list[i].cell(column=2, row=row)  # rings 5200
+                    cell.value = ring_5200
+                    cell.style = input_s
+                    cell = ws_list[i].cell(column=3, row=row)  # rings moves
+                    cell.value = ring_move
+                    cell.style = input_s
+                    ws_list[i].merge_cells('C' + str(row) + ':' + 'F' + str(row))
+                    cell = ws_list[i].cell(column=7, row=row)  # rings RS
+                    cell.value = ring_rs
+                    cell.style = input_s
+                    cell = ws_list[i].cell(column=8, row=row)  # rings code
+                    cell.value = ring_code
+                    cell.style = input_s
+                    cell = ws_list[i].cell(column=9, row=row)  # rings lv type
+                    cell.value = ring_lvty
+                    cell.style = input_s
+                    cell = ws_list[i].cell(column=10, row=row)  # rings lv time
+                    cell.value = ring_lvtm
+                    cell.style = input_s
+                    row += 1
+            # name the excel file
+        self.pb.stop()  # stop and destroy the progress bar
+        if g_range == "day":
+            r = "_d"
+            date = d_date
+        else:
+            r = "_w"
+            date = g_date[0]
+        xl_filename = "kb" + str(format(date, "_%y_%m_%d")) + r + "spdall" + ".xlsx"
+        if messagebox.askokcancel("Speedsheet generator",
+                                  "Do you want to generate a speedsheet?",
+                                  parent=self.frame):
+            try:
+                wb.save(dir_path('speedsheets') + xl_filename)
+                messagebox.showinfo("Speedsheet generator",
+                                    "Your speedsheet was successfully generated. \n"
+                                    "File is named: {}".format(xl_filename),
+                                    parent=self.frame)
+            except:
+                messagebox.showerror("Speedsheet generator",
+                                     "The speedsheet was not generated. \n"
+                                     "Suggestion: \n"
+                                     "Make sure that identically named speedsheets are closed \n"
+                                     "(the file can't be overwritten while open).\n",
+                                     parent=self.frame)
+            try:
+                if sys.platform == "win32":
+                    os.startfile(dir_path('speedsheets') + xl_filename)
+                if sys.platform == "linux":
+                    subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + xl_filename])
+                if sys.platform == "darwin":
+                    subprocess.call(["open", dir_path('speedsheets') + xl_filename])
+            except:
+                messagebox.showerror("Spreadsheet generator",
+                                     "The spreadsheet was not opened. \n"
+                                     "Suggestion: \n"
+                                     "Make sure that identically named spreadsheets are closed \n"
+                                     "(the file can't be overwritten while open).\n",
+                                     parent=self.frame)
+
+    def gen(self):
+        self.get_id_recset()
+        self.get_car_recs()
+        self.speedcell_count = self.count()
+        self.make_workbook()
+
+
 def speed_gen_all(frame):
     pb_root = Tk()  # create a window for the progress bar
     pb_root.title("Generating Speedsheet")
@@ -2208,6 +2801,10 @@ def speed_gen_all(frame):
         ns_pref = "r"
     else:
         ns_pref = "f"
+    dlsn_dict = {"sat": "sat", "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri",
+             "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
+             "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri",
+             "  ": "none", "": "none"}
     # first get a carrier list
     carriers = CarrierList(g_date[0], g_date[6], g_station).get()
     id_recset = []
@@ -2401,24 +2998,24 @@ def speed_gen_all(frame):
                 pb_text.config(text="Formatting empty Speedcell #{}".format(empty_sc))
             pb_root.update()
             pi += 1
-            cell = ws_list[i]['A' + str(row)]  # carrier effective date
+            cell = ws_list[i].cell(row=row, column=1)  # carrier effective date
             cell.value = eff_date
             cell.style = input_name
-            cell = ws_list[i]['B' + str(row)]  # carrier name
+            cell = ws_list[i].cell(row=row, column=2)  # carrier name
             cell.value = car_name
             cell.style = bold_name
             ws_list[i].merge_cells('B' + str(row) + ':' + 'D' + str(row))
-            cell = ws_list[i]['E' + str(row)]  # carrier list status
+            cell = ws_list[i].cell(row=row, column=5)  # carrier list status
             cell.value = car_list
             cell.style = input_name
-            cell = ws_list[i]['F' + str(row)]  # carrier ns day
+            cell = ws_list[i].cell(row=row, column=6)  # carrier ns day
             cell.value = car_ns
             cell.style = input_name
-            cell = ws_list[i]['G' + str(row)]  # carrier route
+            cell = ws_list[i].cell(column=7, row=row)  # carrier route
             cell.value = car_route
             cell.style = input_name
             ws_list[i].merge_cells('G' + str(row) + ':' + 'I' + str(row))
-            cell = ws_list[i]['J' + str(row)]  # carrier emp id
+            cell = ws_list[i].cell(column=10, row=row)  # carrier emp id
             cell.value = car_empid
             cell.style = input_name
             row += 1
@@ -2439,29 +3036,29 @@ def speed_gen_all(frame):
                     ring_code = ""  # rings CODES
                     ring_lvty = ""  # rings LEAVE TYPE
                     ring_lvtm = ""  # rings LEAVE TIME
-                cell = ws_list[i]['A' + str(row)]  # rings day
+                cell = ws_list[i].cell(column=1, row=row)  # rings day
                 cell.value = day_array[d]
-                if day_array[d] == car_ns:
-                    cell.style = input_ns  # if it is the nsday
+                if day_array[d] == dlsn_dict[car_ns.lower()]:  # if it is the nsday
+                    cell.style = input_ns  # display it red and bold
                 else:
                     cell.style = input_s
-                cell = ws_list[i]['B' + str(row)]  # rings 5200
+                cell = ws_list[i].cell(column=2, row=row)  # rings 5200
                 cell.value = ring_5200
                 cell.style = input_s
-                cell = ws_list[i]['C' + str(row)]  # rings moves
+                cell = ws_list[i].cell(column=3,row=row)  # rings moves
                 cell.value = ring_move
                 cell.style = input_s
                 ws_list[i].merge_cells('C' + str(row) + ':' + 'F' + str(row))
-                cell = ws_list[i]['G' + str(row)]  # rings RS
+                cell = ws_list[i].cell(column=7, row=row)  # rings RS
                 cell.value = ring_rs
                 cell.style = input_s
-                cell = ws_list[i]['H' + str(row)]  # rings code
+                cell = ws_list[i].cell(column=8, row=row)  # rings code
                 cell.value = ring_code
                 cell.style = input_s
-                cell = ws_list[i]['I' + str(row)]  # rings lv type
+                cell = ws_list[i].cell(column=9, row=row)  # rings lv type
                 cell.value = ring_lvty
                 cell.style = input_s
-                cell = ws_list[i]['J' + str(row)]  # rings lv time
+                cell = ws_list[i].cell(column=10, row=row)  # rings lv time
                 cell.value = ring_lvtm
                 cell.style = input_s
                 row += 1
@@ -2489,9 +3086,9 @@ def speed_gen_all(frame):
         except:
             messagebox.showerror("Speedsheet generator",
                                  "The speedsheet was not generated. \n"
-                                 "Suggestion: "
-                                 "Make sure that identically named speedsheets are closed "
-                                 "(the file can't be overwritten while open).",
+                                 "Suggestion: \n"
+                                 "Make sure that identically named speedsheets are closed \n"
+                                 "(the file can't be overwritten while open).\n",
                                  parent=frame)
         try:
             if sys.platform == "win32":
@@ -2503,9 +3100,9 @@ def speed_gen_all(frame):
         except:
             messagebox.showerror("Spreadsheet generator",
                                  "The spreadsheet was not opened. \n"
-                                 "Suggestion: "
-                                 "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).",
+                                 "Suggestion: \n"
+                                 "Make sure that identically named spreadsheets are closed \n"
+                                 "(the file can't be overwritten while open).\n",
                                  parent=frame)
 
 
