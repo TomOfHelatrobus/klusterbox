@@ -1,7 +1,7 @@
 chardet==3.0.4
 et-xmlfile==1.0.1
 jdcal==1.4.1
-openpyxl==3.0.3
+openpyxl==3.0.7
 pdfminer.six==20181108
 pycryptodome==3.9.7
 PyPDF2==1.26.0
