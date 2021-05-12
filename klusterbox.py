@@ -24,7 +24,7 @@ from PIL import ImageTk, Image  # Pillow Library
 from openpyxl import load_workbook
 from openpyxl import Workbook
 from openpyxl.styles import colors
-from openpyxl.styles import NamedStyle, Font, Color, Border, Side, Alignment, PatternFill
+from openpyxl.styles import NamedStyle, Font, Color, Border, Side, Alignment, PatternFill, Protection
 from openpyxl.worksheet.pagebreak import Break
 # PDF Converter Libraries
 import chardet
@@ -2244,18 +2244,18 @@ class SpeedSheetGen:
     def __init__(self, frame, full_report):
         self.frame = frame
         self.full_report = full_report  # true - all inclusive, false - carrier recs only
-        self.pb = ProgressBarDe()  # create the progress bar object
+        self.pb = ""  # create the progress bar object
         self.db = SpeedSettings()  # calls values from tolerance table
         self.date = d_date
-        self.day_array = (str(d_date.strftime("%a")).lower(),)
+        self.day_array = (str(d_date.strftime("%a")).lower(),)  # if g_range == "day"
         self.range = "day"
         if g_range == "week":
             self.day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
             self.range = "week"
-        self.rotate_mode = self.db.speedcell_ns_rotate_mode  # NS day mode preference: rotating or fixed
-        self.ns_pref = "r"
+        self.rotate_mode = self.db.speedcell_ns_rotate_mode  # NS day mode preference: True-rotating or False-fixed
+        self.ns_pref = "r"  # "r" for rotating
         if not self.rotate_mode:
-            self.ns_pref = "f"
+            self.ns_pref = "f"  # "f" for fixed
         self.dlsn_dict = {"sat": "sat", "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri",
              "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
              "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri",
@@ -2263,12 +2263,40 @@ class SpeedSheetGen:
         self.id_recset = []
         self.car_recs = []
         self.speedcell_count = 0
+        self.ws_list = []
+        self.ws_titles = []
+        self.wb = Workbook()  # define the workbook
+        self.ws_header = ""
+        self.list_header = ""  # spreadsheet styles
+        self.date_dov = ""
+        self.date_dov_title = ""
+        self.car_col_header = ""
+        self.bold_name = ""
+        self.input_name = ""
+        self.col_header = ""
+        self.input_s = ""
+        self.input_ns = ""
 
     def gen(self):
+        if not self.start():  # ask ok/cancel to start
+            return
         self.get_id_recset()  # get carrier list and format for speedsheets
         self.get_car_recs()  # sort carrier list by worksheet
         self.speedcell_count = self.count()  # get a count of rows for progress bar
+        self.make_workbook_object()  # generate and open the workbook
+        self.name_styles()  # define the spreadsheet styles
         self.make_workbook()  # generate and open the workbook
+        self.stopsaveopen()  # stop, save and open
+
+    def start(self):
+        if messagebox.askokcancel("Speedsheet Generator",
+                                  "Did you want to generate a SpeedSheet?",
+                                  parent=self.frame):
+            self.pb = ProgressBarDe()  # create the progress bar object
+            return True
+        else:
+            del self.wb
+            return False
 
     def get_id_recset(self):  # get filtered/ condensed record set and employee id
         carriers = CarrierList(g_date[0], g_date[6], g_station).get()  # first get a carrier list
@@ -2398,164 +2426,179 @@ class SpeedSheetGen:
             i += 1  # increment counter
         return mv_str
 
+    def make_workbook_object(self):
+        if not self.db.abc_breakdown:
+            self.ws_list = ["emp_id", "alphabet"]
+            self.ws_titles = ["by employee id", "alphabetically"]
+        else:
+            self.ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
+            self.ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
+                         "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
+        self.ws_list[0] = self.wb.active  # create first worksheet
+        self.ws_list[0].title = self.ws_titles[0]  # title first worksheet
+        self.ws_list[0].protection.sheet = True
+        for i in range(1, len(self.ws_list)):  # loop to create all other worksheets
+            self.ws_list[i] = self.wb.create_sheet(self.ws_titles[i])
+            self.ws_list[i].protection.sheet = True
+            # self.ws_list[i] = Protection.enable()
+            # self.ws_list[i] = Protection.sheet = True
+
+            
+    def name_styles(self):  # Named styles for workbook
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                    alignment=Alignment(horizontal='right'))
+        # other color options: yellow: faf818, blue: 18fafa, green: 18fa20, grey: ababab
+        if self.full_report:  # color carrier cells
+            self.car_col_header = NamedStyle(name="car_col_header", font=Font(bold=True, name='Arial', size=8),
+                                        fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                                        border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                        alignment=Alignment(horizontal='left'))
+            self.bold_name = NamedStyle(name="bold_name", font=Font(name='Arial', size=8, bold=True),
+                                   fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                                   border=Border(left=bd, top=bd, right=bd, bottom=bd))
+            self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                    fill=PatternFill(fgColor='18fafa', fill_type='solid'),
+                                    border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        else:  # do not color carrier cells
+            self.car_col_header = NamedStyle(name="car_col_header", font=Font(bold=True, name='Arial', size=8),
+                                        border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                        alignment=Alignment(horizontal='left'))
+            self.bold_name = NamedStyle(name="bold_name", font=Font(name='Arial', size=8, bold=True),
+                                   border=Border(left=bd, top=bd, right=bd, bottom=bd))
+            self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                    border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                alignment=Alignment(horizontal='left'))
+
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                             border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                             alignment=Alignment(horizontal='right'))
+        self.input_ns = NamedStyle(name="input_ns", font=Font(bold=True, name='Arial', size=8, color='ff0000'),
+                              border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                              alignment=Alignment(horizontal='right'))
+        
     def make_workbook(self):
         pi = 0
         empty_sc = 0
         self.pb.max_count(self.speedcell_count)  # set length of progress bar
-        self.pb.start_up()
-        # Named styles for workbook
-        bd = Side(style='thin', color="80808080")  # defines borders
-        ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-        list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
-        date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
-        date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
-                                    alignment=Alignment(horizontal='right'))
-        # other color options: yellow: faf818, blue: 18fafa, green: 18fa20, grey: ababab
-        if self.full_report:  # color carrier cells
-            car_col_header = NamedStyle(name="car_col_header", font=Font(bold=True, name='Arial', size=8),
-                                        fill=PatternFill(fgColor='18fafa', fill_type='solid'),
-                                        border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                                        alignment=Alignment(horizontal='left'))
-            bold_name = NamedStyle(name="bold_name", font=Font(name='Arial', size=8, bold=True),
-                                   fill=PatternFill(fgColor='18fafa', fill_type='solid'),
-                                   border=Border(left=bd, top=bd, right=bd, bottom=bd))
-            input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                    fill=PatternFill(fgColor='18fafa', fill_type='solid'),
-                                    border=Border(left=bd, top=bd, right=bd, bottom=bd))
-        else:  # do not color carrier cells
-            car_col_header = NamedStyle(name="car_col_header", font=Font(bold=True, name='Arial', size=8),
-                                        border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                                        alignment=Alignment(horizontal='left'))
-            bold_name = NamedStyle(name="bold_name", font=Font(name='Arial', size=8, bold=True),
-                                   border=Border(left=bd, top=bd, right=bd, bottom=bd))
-            input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                    border=Border(left=bd, top=bd, right=bd, bottom=bd))
-        col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                                border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                                alignment=Alignment(horizontal='left'))
-
-        input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                             border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                             alignment=Alignment(horizontal='right'))
-        input_ns = NamedStyle(name="input_ns", font=Font(bold=True, name='Arial', size=8, color='ff0000'),
-                              border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                              alignment=Alignment(horizontal='right'))
-        if not self.db.abc_breakdown:
-            ws_list = ["emp_id", "alphabet"]
-            ws_titles = ["by employee id", "alphabetically"]
-        else:
-            ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
-            ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
-                         "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
-        wb = Workbook()  # define the workbook
-        ws_list[0] = wb.active  # create first worksheet
-        ws_list[0].title = ws_titles[0]  # title first worksheet
-        for i in range(1, len(ws_list)):  # loop to create all other worksheets
-            ws_list[i] = wb.create_sheet(ws_titles[i])
-        for i in range(len(ws_list)):
+        self.pb.start_up()  # start the progress bar
+        for i in range(len(self.ws_list)):
             # format cell widths
-            ws_list[i].oddFooter.center.text = "&A"
-            ws_list[i].column_dimensions["A"].width = 8
-            ws_list[i].column_dimensions["B"].width = 8
-            ws_list[i].column_dimensions["C"].width = 8
-            ws_list[i].column_dimensions["D"].width = 8
-            ws_list[i].column_dimensions["E"].width = 8
-            ws_list[i].column_dimensions["F"].width = 8
-            ws_list[i].column_dimensions["G"].width = 8
-            ws_list[i].column_dimensions["H"].width = 8
-            ws_list[i].column_dimensions["I"].width = 8
-            ws_list[i].column_dimensions["J"].width = 8
-            ws_list[i].column_dimensions["K"].width = 8
-            cell = ws_list[i].cell(column=1, row=1)
-            cell.value = "Speedsheet - All Inclusive"
-            cell.style = ws_header
-            ws_list[i].merge_cells('A1:E1')
+            self.ws_list[i].oddFooter.center.text = "&A"
+            self.ws_list[i].column_dimensions["A"].width = 8
+            self.ws_list[i].column_dimensions["B"].width = 8
+            self.ws_list[i].column_dimensions["C"].width = 8
+            self.ws_list[i].column_dimensions["D"].width = 8
+            self.ws_list[i].column_dimensions["E"].width = 8
+            self.ws_list[i].column_dimensions["F"].width = 8
+            self.ws_list[i].column_dimensions["G"].width = 8
+            self.ws_list[i].column_dimensions["H"].width = 8
+            self.ws_list[i].column_dimensions["I"].width = 8
+            self.ws_list[i].column_dimensions["J"].width = 8
+            self.ws_list[i].column_dimensions["K"].width = 8
+            cell = self.ws_list[i].cell(column=1, row=1)
+            if self.full_report and self.range == "week":
+                cell.value = "Speedsheet - All Inclusive Weekly"
+            elif self.full_report and self.range == "day":
+                cell.value = "Speedsheet - All Inclusive Daily"
+            else:
+                cell.value = "Speedsheet - Carriers"
+            cell.style = self.ws_header
+            self.ws_list[i].merge_cells('A1:E1')
             # create date/ pay period/ station header
-            cell = ws_list[i].cell(row=2, column=1)  # date label
+            cell = self.ws_list[i].cell(row=2, column=1)  # date label
             cell.value = "Date:  "
-            cell.style = date_dov_title
-            cell = ws_list[i].cell(row=2, column=2)  # date
+            cell.style = self.date_dov_title
+            cell = self.ws_list[i].cell(row=2, column=2)  # date
             if g_range == "day":
-                cell.value = "{}".format(d_date.strftime("%A  %m/%d/%y"))
+                cell.value = "{}".format(d_date.strftime("%m/%d/%y"))
             else:
                 cell.value = "{} through {}".format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y"))
-            cell.style = date_dov
-            ws_list[i].merge_cells('B2:E2')
-            cell = ws_list[i].cell(row=2, column=6)  # pay period label
+            cell.style = self.date_dov
+            self.ws_list[i].merge_cells('B2:E2')
+            cell = self.ws_list[i].cell(row=2, column=6)  # pay period label
             cell.value = "PP:  "
-            cell.style = date_dov_title
-            cell = ws_list[i].cell(row=2, column=7)  # pay period
+            cell.style = self.date_dov_title
+            cell = self.ws_list[i].cell(row=2, column=7)  # pay period
             cell.value = pay_period
-            cell.style = date_dov
-            cell = ws_list[i].cell(row=2, column=8)  # station label
+            cell.style = self.date_dov
+            cell = self.ws_list[i].cell(row=2, column=8)  # station label
             cell.value = "Station:  "
-            cell.style = date_dov_title
-            cell = ws_list[i].cell(row=2, column=9)  # station
+            cell.style = self.date_dov_title
+            cell = self.ws_list[i].cell(row=2, column=9)  # station
             cell.value = g_station
-            cell.style = date_dov
-            ws_list[i].merge_cells('I2:J2')
+            cell.style = self.date_dov
+            self.ws_list[i].merge_cells('I2:J2')
             # apply title - show how carriers are sorted
-            cell = ws_list[i].cell(row=3, column=1)
+            cell = self.ws_list[i].cell(row=3, column=1)
             if i == 0:
                 cell.value = "Carriers listed by Employee ID"
             else:
-                cell.value = "Carriers listed Alphabetically: {}".format(ws_titles[i])
-            cell.style = list_header
-            ws_list[i].merge_cells('A3:E3')
+                cell.value = "Carriers listed Alphabetically: {}".format(self.ws_titles[i])
+            cell.style = self.list_header
+            self.ws_list[i].merge_cells('A3:E3')
             if i == 0:  # only execute on the first sheet of the workbook
-                cell = ws_list[i].cell(row=3, column=6)  #
+                cell = self.ws_list[i].cell(row=3, column=6)  #
                 cell.value = "ns day preference (r=rotating/f=fixed): "  # ns day preference
-                cell.style = date_dov_title
-                ws_list[i].merge_cells('F3:I3')
-                cell = ws_list[i].cell(row=3, column=10)  #
+                cell.style = self.date_dov_title
+                self.ws_list[i].merge_cells('F3:I3')
+                cell = self.ws_list[i].cell(row=3, column=10)  #
                 cell.value = self.ns_pref
-                cell.style = date_dov
+                cell.style = self.date_dov
             # Headers for Carrier List
-            cell = ws_list[i].cell(row=4, column=1)  # header day
+            cell = self.ws_list[i].cell(row=4, column=1)  # header day
             cell.value = "Days"
-            cell.style = car_col_header
-            cell = ws_list[i].cell(row=4, column=2)  # header carrier name
+            cell.style = self.car_col_header
+            cell = self.ws_list[i].cell(row=4, column=2)  # header carrier name
             cell.value = "Carrier Name"
-            cell.style = car_col_header
-            ws_list[i].merge_cells('B4:D4')
-            cell = ws_list[i].cell(row=4, column=5)  # header list type
+            cell.style = self.car_col_header
+            self.ws_list[i].merge_cells('B4:D4')
+            cell = self.ws_list[i].cell(row=4, column=5)  # header list type
             cell.value = "List"
-            cell.style = car_col_header
-            cell = ws_list[i].cell(row=4, column=6)  # header ns day
+            cell.style = self.car_col_header
+            cell = self.ws_list[i].cell(row=4, column=6)  # header ns day
             cell.value = "NS Day"
-            cell.style = car_col_header
-            cell = ws_list[i].cell(row=4, column=7)  # header route
+            cell.style = self.car_col_header
+            cell = self.ws_list[i].cell(row=4, column=7)  # header route
             cell.value = "Route/s"
-            cell.style = car_col_header
-            ws_list[i].merge_cells('G4:I4')
-            cell = ws_list[i].cell(row=4, column=10)  # header emp id
+            cell.style = self.car_col_header
+            self.ws_list[i].merge_cells('G4:I4')
+            cell = self.ws_list[i].cell(row=4, column=10)  # header emp id
             cell.value = "Emp id"
-            cell.style = car_col_header
-            # Headers for Rings
-            cell = ws_list[i].cell(row=5, column=1)  # header day
-            cell.value = "Day"
-            cell.style = col_header
-            cell = ws_list[i].cell(row=5, column=2)  # header 5200
-            cell.value = "5200"
-            cell.style = col_header
-            cell = ws_list[i].cell(row=5, column=3)  # header MOVES
-            cell.value = "MOVES"
-            cell.style = col_header
-            ws_list[i].merge_cells('C5:F5')
-            cell = ws_list[i].cell(row=5, column=7)  # header RS
-            cell.value = "RS"
-            cell.style = col_header
-            cell = ws_list[i].cell(row=5, column=8)  # header codes
-            cell.value = "CODE"
-            cell.style = col_header
-            cell = ws_list[i].cell(row=5, column=9)  # header leave type
-            cell.value = "LV type"
-            cell.style = col_header
-            cell = ws_list[i].cell(row=5, column=10)  # header leave time
-            cell.value = "LV time"
-            cell.style = col_header
+            cell.style = self.car_col_header
+            row = 5  # start at row 5 after the page header display
+            if self.full_report:  # only include rings headers on all inclusive not carrier only
+                # Headers for Rings
+                cell = self.ws_list[i].cell(row=5, column=1)  # header day
+                cell.value = "Day"
+                cell.style = self.col_header
+                cell = self.ws_list[i].cell(row=5, column=2)  # header 5200
+                cell.value = "5200"
+                cell.style = self.col_header
+                cell = self.ws_list[i].cell(row=5, column=3)  # header MOVES
+                cell.value = "MOVES"
+                cell.style = self.col_header
+                self.ws_list[i].merge_cells('C5:F5')
+                cell = self.ws_list[i].cell(row=5, column=7)  # header RS
+                cell.value = "RS"
+                cell.style = self.col_header
+                cell = self.ws_list[i].cell(row=5, column=8)  # header codes
+                cell.value = "CODE"
+                cell.style = self.col_header
+                cell = self.ws_list[i].cell(row=5, column=9)  # header leave type
+                cell.value = "LV type"
+                cell.style = self.col_header
+                cell = self.ws_list[i].cell(row=5, column=10)  # header leave time
+                cell.value = "LV time"
+                cell.style = self.col_header
+                row = 6  # update start at row 6 after the page header display
             # freeze panes
-            ws_list[i].freeze_panes = ws_list[i].cell(row=6, column=1)  # ['A6']
+            self.ws_list[i].freeze_panes = self.ws_list[i].cell(row=row, column=1)  # ['A5] or ['A6']
             if i == 0:
                 rowcount = self.db.min_empid  # get minimum speedcell count for employee id tab
             elif i != 0 and not self.db.abc_breakdown:
@@ -2563,7 +2606,6 @@ class SpeedSheetGen:
             else:
                 rowcount = self.db.min_abc  # get minimum speedcell count for each abc breakdown tab
             rowcounter = max(rowcount, len(self.car_recs[i]))
-            row = 6  # start at row 6 after the page header display
             for r in range(rowcounter):
                 if r < len(self.car_recs[i]):  # if the carrier records are not exhausted
                     eff_date = self.car_recs[i][r][1][0]  # carrier effective date
@@ -2585,26 +2627,32 @@ class SpeedSheetGen:
                     empty_sc += 1  # increment counter for empty speedcells
                     self.pb.change_text("Formatting empty Speedcell #{}".format(empty_sc))
                 pi += 1  # progress bar counter
-                cell = ws_list[i].cell(row=row, column=1)  # carrier effective date
+                cell = self.ws_list[i].cell(row=row, column=1)  # carrier effective date
                 cell.value = eff_date
-                cell.style = input_name
-                cell = ws_list[i].cell(row=row, column=2)  # carrier name
+                cell.style = self.input_name
+                cell.protection = Protection(locked=False)
+                cell = self.ws_list[i].cell(row=row, column=2)  # carrier name
                 cell.value = car_name
-                cell.style = bold_name
-                ws_list[i].merge_cells('B' + str(row) + ':' + 'D' + str(row))
-                cell = ws_list[i].cell(row=row, column=5)  # carrier list status
+                cell.style = self.bold_name
+                cell.protection = Protection(locked=False)
+                self.ws_list[i].merge_cells('B' + str(row) + ':' + 'D' + str(row))
+                cell = self.ws_list[i].cell(row=row, column=5)  # carrier list status
                 cell.value = car_list
-                cell.style = input_name
-                cell = ws_list[i].cell(row=row, column=6)  # carrier ns day
+                cell.style = self.input_name
+                cell.protection = Protection(locked=False)
+                cell = self.ws_list[i].cell(row=row, column=6)  # carrier ns day
                 cell.value = car_ns
-                cell.style = input_name
-                cell = ws_list[i].cell(column=7, row=row)  # carrier route
+                cell.style = self.input_name
+                cell.protection = Protection(locked=False)
+                cell = self.ws_list[i].cell(column=7, row=row)  # carrier route
                 cell.value = car_route
-                cell.style = input_name
-                ws_list[i].merge_cells('G' + str(row) + ':' + 'I' + str(row))
-                cell = ws_list[i].cell(column=10, row=row)  # carrier emp id
+                cell.style = self.input_name
+                cell.protection = Protection(locked=False)
+                self.ws_list[i].merge_cells('G' + str(row) + ':' + 'I' + str(row))
+                cell = self.ws_list[i].cell(column=10, row=row)  # carrier emp id
                 cell.value = car_empid
-                cell.style = input_name
+                cell.style = self.input_name
+                cell.protection = Protection(locked=False)
                 row += 1
                 ring_recs = []
                 if self.full_report:
@@ -2628,71 +2676,67 @@ class SpeedSheetGen:
                             ring_code = ""  # rings CODES
                             ring_lvty = ""  # rings LEAVE TYPE
                             ring_lvtm = ""  # rings LEAVE TIME
-                        cell = ws_list[i].cell(column=1, row=row)  # rings day
+                        cell = self.ws_list[i].cell(column=1, row=row)  # rings day
                         cell.value = self.day_array[d]
                         if self.day_array[d] == self.dlsn_dict[car_ns.lower()]:  # if it is the nsday
-                            cell.style = input_ns  # display it red and bold
+                            cell.style = self.input_ns  # display it red and bold
                         else:
-                            cell.style = input_s
-                        cell = ws_list[i].cell(column=2, row=row)  # rings 5200
+                            cell.style = self.input_s
+                        cell = self.ws_list[i].cell(column=2, row=row)  # rings 5200
                         cell.value = ring_5200
-                        cell.style = input_s
-                        cell = ws_list[i].cell(column=3, row=row)  # rings moves
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
+                        cell = self.ws_list[i].cell(column=3, row=row)  # rings moves
                         cell.value = ring_move
-                        cell.style = input_s
-                        ws_list[i].merge_cells('C' + str(row) + ':' + 'F' + str(row))
-                        cell = ws_list[i].cell(column=7, row=row)  # rings RS
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
+                        self.ws_list[i].merge_cells('C' + str(row) + ':' + 'F' + str(row))
+                        cell = self.ws_list[i].cell(column=7, row=row)  # rings RS
                         cell.value = ring_rs
-                        cell.style = input_s
-                        cell = ws_list[i].cell(column=8, row=row)  # rings code
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
+                        cell = self.ws_list[i].cell(column=8, row=row)  # rings code
                         cell.value = ring_code
-                        cell.style = input_s
-                        cell = ws_list[i].cell(column=9, row=row)  # rings lv type
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
+                        cell = self.ws_list[i].cell(column=9, row=row)  # rings lv type
                         cell.value = ring_lvty
-                        cell.style = input_s
-                        cell = ws_list[i].cell(column=10, row=row)  # rings lv time
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
+                        cell = self.ws_list[i].cell(column=10, row=row)  # rings lv time
                         cell.value = ring_lvtm
-                        cell.style = input_s
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
                         row += 1
+
+    def stopsaveopen(self):
         self.pb.stop()  # stop and destroy the progress bar
-        if g_range == "day":
-            r = "_d"
-            date = d_date
-        else:
+        r = "_d"  # if self.range == "day":
+        date = d_date
+        if self.range == "week":
             r = "_w"
             date = g_date[0]
         # name the excel file
         xl_filename = "kb" + str(format(date, "_%y_%m_%d")) + r + "spdall" + ".xlsx"
-        if messagebox.askokcancel("Speedsheet generator",
-                                  "Do you want to generate a speedsheet?",
-                                  parent=self.frame):
-            try:
-                wb.save(dir_path('speedsheets') + xl_filename)
-                messagebox.showinfo("Speedsheet generator",
-                                    "Your speedsheet was successfully generated. \n"
-                                    "File is named: {}".format(xl_filename),
-                                    parent=self.frame)
-            except:
-                messagebox.showerror("Speedsheet generator",
-                                     "The speedsheet was not generated. \n"
-                                     "Suggestion: \n"
-                                     "Make sure that identically named speedsheets are closed \n"
-                                     "(the file can't be overwritten while open).\n",
-                                     parent=self.frame)
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('speedsheets') + xl_filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + xl_filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('speedsheets') + xl_filename])
-            except:
-                messagebox.showerror("Spreadsheet generator",
-                                     "The spreadsheet was not opened. \n"
-                                     "Suggestion: \n"
-                                     "Make sure that identically named spreadsheets are closed \n"
-                                     "(the file can't be overwritten while open).\n",
-                                     parent=self.frame)
+        try:
+            self.wb.save(dir_path('speedsheets') + xl_filename)
+            messagebox.showinfo("Speedsheet Generator",
+                                "Your speedsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.frame)
+            if sys.platform == "win32":
+                os.startfile(dir_path('speedsheets') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('speedsheets') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Speedsheet generator",
+                                 "The speedsheet was not generated. \n"
+                                 "Suggestion: \n"
+                                 "Make sure that identically named speedsheets are closed \n"
+                                 "(the file can't be overwritten while open).\n",
+                                 parent=self.frame)
 
 
 def gui_config_apply(frame, wheel_selection):  # set mousewheel orientation
