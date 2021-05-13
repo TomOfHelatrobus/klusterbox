@@ -78,7 +78,7 @@ def inquire(sql):
         cursor.execute(sql)
         results = cursor.fetchall()
         return results
-    except:
+    except sqlite3.OperationalError:
         messagebox.showerror("Database Error",
                              "Unable to access database.\n"
                              "\n Attempted Query: {}".format(sql))
@@ -101,7 +101,7 @@ def commit(sql):
         cursor.execute(sql)
         db.commit()
         db.close()
-    except:
+    except sqlite3.OperationalError:
         messagebox.showerror("Database Error",
                              "Unable to access database.\n"
                              "\n Attempted Query: {}".format(sql))
@@ -124,23 +124,23 @@ def titlebar_icon(root):  # place icon in titlebar
     if sys.platform == "win32" and platform == "py":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
-        except:
+        except TclError:
             pass
     if sys.platform == "win32" and platform == "winapp":
         try:
             root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
-        except:
+        except TclError:
             pass
     if sys.platform == "darwin" and platform == "py":
         try:
             root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
-        except:
+        except TclError:
             pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
             root.tk.call('wm', 'iconphoto', root._w, img)
-        except:
+        except TclError:
             pass
 
 
@@ -824,19 +824,6 @@ class Rings:
         return self.ring_recs
 
 
-def get_rings(carrier):  # return a set of rings for the investigation day or week
-    if g_range == "day":
-        days = (d_date,)
-    else:
-        days = (g_date[0], g_date[1], g_date[2], g_date[3], g_date[4], g_date[5], g_date[6])
-    rings = []
-    for d in days:
-        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (carrier, d)
-        result = inquire(sql)
-        rings.append(result)
-    return rings
-
-
 class SpeedSettings:
     def __init__(self):
         sql = "SELECT tolerance FROM tolerances"
@@ -1059,10 +1046,6 @@ def speed_cheatsheet():
     pass
 
 
-def speed_to_spread():
-    pass
-
-
 class SpeedLoadThread(Thread):  # use multithreading to load workbook while progress bar runs
     def __init__(self, path):
         Thread.__init__(self)
@@ -1145,58 +1128,95 @@ class SpeedSheetCheck:
         self.name = ""
         self.allowaddrecs = True
         self.name_mentioned = False
-        self.pb = ProgressBarDe(title="SpeedSheet Check", label="working: ", text="Stand by...")
+        self.pb = ProgressBarDe(title="Klusterbox SpeedSheet Check", label="working: ", text="Stand by...")
         self.sheets = []
         self.sheet_count = 0
         self.sheet_rowcount = []
+        self.all_inclusive = True
+        self.start_row = 6
+        self.modulus = 8
+        self.step = 2
 
     def check(self):
         try:
             date_array = [1, 1, 1]
-            rotation = self.wb["by employee id"].cell(row=3, column=10).value  # get the ns day mode preference.
-            self.ns_rotate_mode = self.ns_pref_finder(rotation)  # are ns day preferences rotating or fixed?
-            if self.ns_rotate_mode is not None:
+            self.set_ns_preference()
+            if self.ns_rotate_mode is not None and self.set_all_inclusive():
+                self.set_sheet_facts()
+                self.set_dates()
+                self.set_ns_dictionaries()
+                self.set_station()
+                self.start_reporter()
                 self.checking()
                 self.reporter()
                 date_array = Convert(self.start_date).datetime_separation()  # get the date to reset globals
                 set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, self.frame)
             else:
                 self.pb.delete()  # stop and destroy progress bar
+                self.showerror()
         except KeyError:  # if wrong type of file is selected, there will be an error
             self.pb.delete()  # stop and destroy progress bar
-            messagebox.showerror("Klusterbox SpeedSheets",
-                                 "SpeedSheets Precheck or Input has failed. \n"
-                                 "Either you have selected a spreadsheet that is not \n"
-                                 "a SpeedSheet or your Speedsheet is corrupted. \n"
-                                 "Suggestion: Verify that the file you are selecting \n "
-                                 "is a SpeedSheet. \n"
-                                 "Suggestion: Try re-generating the SpeedSheet.",
-                                 parent=self.frame)
+            self.showerror()
 
-    def ns_pref_finder(self, rotation):  # are ns day preferences rotating or fixed?
+    def set_ns_preference(self):  # are ns day preferences rotating or fixed?
+        rotation = self.wb["by employee id"].cell(row=3, column=10).value  # get the ns day mode preference.
         if rotation.lower() not in ("r", "f"):
-            error = "FATAL ERROR: \n" \
-                    "             sheet and row: >>> by employee id --> 3 <<<\n" \
-                    "             \n" \
-                    "             The ns day preference must be r or f.\n" \
-                    "             Enter \"r\" for rotating  or \"f\" for fixed.\n" \
-                    "             It is best practice to set the ns day preference\n" \
-                    "             in Klusterbox with:\n" \
-                    "             Management > SpeedSheet Settings > NS Preferences,\n" \
-                    "             Then re-generate the SpeedSheet."
-            self.report.write("\nSpeedSheet Pre-Check Report \n")
-            self.report.write("\n\n{}".format(error))
-            self.reporter()
-            return
+            self.ns_rotate_mode = None
         elif rotation == "r":
-            return True  # return True for rotating ns day preference
+            self.ns_rotate_mode = True
         else:
-            return False  # return False for fixed ns day preference
+            self.ns_rotate_mode = False
+
+    def set_all_inclusive(self):
+        # is the speedsheet all inclusive/ carrier only.
+        all_in = self.wb["by employee id"].cell(row=1, column=1).value
+        if all_in == "Speedsheet - All Inclusive Weekly":
+            return True  # default settings from __init__ do not need changing
+        elif all_in == "Speedsheet - All Inclusive Daily":
+            self.i_range = "day"  # change the range since it is daily
+            self.step = 0
+            self.modulus = 2
+            return True
+        elif all_in == "Speedsheet - Carriers":
+            self.all_inclusive = False
+            self.start_row = 5
+            self.step = 0
+            self.modulus = 1
+            return True
+        else:
+            return False
+
+    def set_sheet_facts(self):
+        self.sheets = self.wb.sheetnames  # get the names of the worksheets as a list
+        self.sheet_count = len(self.sheets)  # get the number of worksheets
+
+    def set_dates(self):
+        datecell = self.wb[self.sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
+        if len(datecell) < 12:  # if the investigation range is daily
+            self.start_date = Convert(datecell).backslashdate_to_datetime()  # convert formatted date to datetime
+            self.end_date = self.start_date  # since daily, dates are the same
+
+        else:  # if the investigation range is weekly
+            d = datecell.split(" through ")  # split the date into two
+            self.start_date = Convert(d[0]).backslashdate_to_datetime()  # convert formatted date to datetime
+            self.end_date = Convert(d[1]).backslashdate_to_datetime()
+
+    def set_ns_dictionaries(self):
+        ns_obj = NsDayDict(self.start_date)  # get the ns day object
+        self.ns_xlate = ns_obj.get()  # get ns day dictionary
+        self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
+        self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
+        self.ns_custom = ns_obj.custom_config(ns_obj)
+
+    def set_station(self):
+        self.station = self.wb[self.sheets[0]].cell(row=2, column=9).value  # get the station.
+
+    def start_reporter(self):
+        self.report.write("\nSpeedSheet Pre-Check Report \n")
+        self.report.write(">>> {}\n".format(self.path))
 
     def row_count(self):  # get a count of all rows for all sheets - need for progress bar
         total_rows = 0
-        self.sheets = self.wb.sheetnames  # get the names of the worksheets as a list
-        self.sheet_count = len(self.sheets)  # get the number of worksheets
         for i in range(self.sheet_count):
             ws = self.wb[self.sheets[i]]  # assign the worksheet object
             row_count = ws.max_row  # get the total amount of rows in the worksheet
@@ -1204,36 +1224,28 @@ class SpeedSheetCheck:
             total_rows += row_count
         return total_rows
 
+    def showerror(self):
+        messagebox.showerror("Klusterbox SpeedSheets",
+                             "SpeedSheets Precheck or Input has failed. \n"
+                             "Either you have selected a spreadsheet that is not \n"
+                             "a SpeedSheet or your Speedsheet is corrupted. \n"
+                             "Suggestion: Verify that the file you are selecting \n "
+                             "is a SpeedSheet. \n"
+                             "Suggestion: Try re-generating the SpeedSheet.",
+                             parent=self.frame)
+
     def checking(self):
-        self.report.write("\nSpeedSheet Pre-Check Report \n")
-        self.report.write(">>> {}\n".format(self.path))
         is_name = False  # initialize bool for speedcell name
-        count_diff = self.sheet_count * 6  # subtract top six rows from the row count
+        count_diff = self.sheet_count * self.start_row  # subtract top five/six rows from the row count
         self.pb.max_count(self.row_count() - count_diff)  # get total count of rows for the progress bar
         self.pb.start_up()  # start up the progress bar
         pb_counter = 0  # initialize the progress bar counter
-        datecell = self.wb[self.sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
-        if len(datecell) < 12:  # if the investigation range is daily
-            self.start_date = Convert(datecell).backslashdate_to_datetime()  # convert formatted date to datetime
-            self.end_date = self.start_date  # since daily, dates are the same
-            self.i_range = "day"  # change the range since it is daily
-        else:  # if the investigation range is weekly
-            d = datecell.split(" through ")  # split the date into two
-            self.start_date = Convert(d[0]).backslashdate_to_datetime()  # convert formatted date to datetime
-            self.end_date = Convert(d[1]).backslashdate_to_datetime()
-        ns_obj = NsDayDict(self.start_date)  # get the ns day object
-        self.ns_xlate = ns_obj.get()  # get ns day dictionary
-        self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
-        self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
-        self.ns_custom = ns_obj.custom_config(ns_obj)
-        station = self.wb[self.sheets[0]].cell(row=2, column=9).value  # get the station.
-        self.station = station
         for i in range(self.sheet_count):
             ws = self.wb[self.sheets[i]]  # assign the worksheet object
             row_count = ws.max_row  # get the total amount of rows in the worksheet
-            for ii in range(6, row_count):  # loop through all rows, start with row 6 until the end
+            for ii in range(self.start_row, row_count):  # loop through all rows, start with row 5 or 6 until the end
                 self.pb.move_count(pb_counter)
-                if (ii + 2) % 8 == 0:  # if the row is a carrier record
+                if (ii + self.step) % self.modulus == 0:  # if the row is a carrier record
                     if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
                         self.name_mentioned = False  # keeps names from being repeated in reports
                         self.carrier_count += 1  # get a count of the carriers for reports
@@ -1348,6 +1360,19 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
              "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
              "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri"}
 
+    def check_all(self):
+        self.get_carrec()
+        self.check_name()
+        self.check_employee_id_format()
+        self.check_employee_id_situation()
+        self.check_employee_id_use()
+        self.check_list_status()
+        self.check_ns()
+        self.check_route()
+        if self.parent.interject:
+            self.add_recs()
+        self.generate_report()
+
     def get_carrec(self):
         carrec = CarrierRecSet(self.name, self.parent.start_date, self.parent.end_date, self.parent.station).get()
         self.filtered_recset = CarrierRecFilter(carrec, self.parent.start_date).filter_nonlist_recs()
@@ -1401,6 +1426,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if self.empid == "":  # allow empty strings
             pass
         elif str(self.empid).isnumeric():  # allow integers and numeric strings
+            self.empid = str(self.empid).zfill(8) # change self.empid to string and zero fill to 8 places
             pass
         else:  # don't allow anything else
             error = "     ERROR: employee id is not numeric\n"  # report
@@ -1430,12 +1456,18 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if not self.filtered_recset:  # if the carrier is new
             self.addlist = dlsn_array
             self.addday = dlsn_day_array
-        elif self.onrec_date != Convert(dlsn_day_array).array_to_string():  # if the days have changed
-            self.addlist = dlsn_array
-            self.addday = dlsn_day_array
+            fyi = "     FYI: New List status will be entered: {}\n".format(dlsn_array)
+            self.fyi_array.append(fyi)
         elif self.onrec_list != Convert(dlsn_array).array_to_string():  # if the list has changed
             self.addlist = dlsn_array
             self.addday = dlsn_day_array
+            fyi = "     FYI: List status will be updated to: {}\n".format(dlsn_array)
+            self.fyi_array.append(fyi)
+        elif self.onrec_date != Convert(dlsn_day_array).array_to_string():  # if the days have changed
+            self.addlist = dlsn_array
+            self.addday = dlsn_day_array
+            fyi = "     FYI: List status will be updated to: {}\n".format(dlsn_array)
+            self.fyi_array.append(fyi)
         else:  # if there has been no change, do not change add___ vars.
             pass
 
@@ -1632,6 +1664,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if not self.parent.allowaddrecs:
             return
         if self.addlist != ["empty"]:
+
             add = "     INPUT: List Status added or updated to database >>{}\n" \
                 .format(Convert(self.addlist).array_to_string())  # report
             self.add_array.append(add)
@@ -1675,7 +1708,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                       "WHERE carrier_name = '%s' and effective_date = '%s'" \
                       % (list_place[0], ns_place, route_place, self.parent.station, self.name, self.parent.start_date)
             commit(sql)
-        if len(self.addlist) > 1:
+        if self.addlist != ["empty"] and "list" in chg_these:
             second_date = self.parent.start_date + timedelta(days=1)
             seventh_date = self.parent.end_date  # delete all dates in service week except sat range
             sql = "DELETE FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' and '%s'" % \
@@ -1709,19 +1742,6 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 # self.parent.fatal_rpt += 1
             for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.parent.report.write(rpt)
-
-    def check_all(self):
-        self.get_carrec()
-        self.check_name()
-        self.check_employee_id_situation()
-        self.check_employee_id_format()
-        self.check_employee_id_use()
-        self.check_list_status()
-        self.check_ns()
-        self.check_route()
-        if self.parent.interject:
-            self.add_recs()
-        self.generate_report()
 
 
 class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
@@ -2088,7 +2108,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             add = "     INPUT: RS time added or updated to database >>{}\n".format(self.addrs)  # report
             self.add_array.append(add)
             chg_these.append("rs")
-            rs_place = self.add5200
+            rs_place = self.addrs
         else:
             rs_place = self.onrec_rs
         if self.addcode != "empty":  # code place of sql command
@@ -2166,10 +2186,6 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.generate_report()
 
 
-def speed_gen_carrier():
-    pass
-
-
 class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
     def __init__(self, recset, startdate):
         self.recset = []  # initialize vars as empty for new carriers
@@ -2244,7 +2260,7 @@ class SpeedSheetGen:
     def __init__(self, frame, full_report):
         self.frame = frame
         self.full_report = full_report  # true - all inclusive, false - carrier recs only
-        self.pb = ""  # create the progress bar object
+        self.pb = ProgressBarDe()  # create the progress bar object
         self.db = SpeedSettings()  # calls values from tolerance table
         self.date = d_date
         self.day_array = (str(d_date.strftime("%a")).lower(),)  # if g_range == "day"
@@ -2276,10 +2292,9 @@ class SpeedSheetGen:
         self.col_header = ""
         self.input_s = ""
         self.input_ns = ""
+        self.filename = ""
 
     def gen(self):
-        if not self.start():  # ask ok/cancel to start
-            return
         self.get_id_recset()  # get carrier list and format for speedsheets
         self.get_car_recs()  # sort carrier list by worksheet
         self.speedcell_count = self.count()  # get a count of rows for progress bar
@@ -2287,16 +2302,6 @@ class SpeedSheetGen:
         self.name_styles()  # define the spreadsheet styles
         self.make_workbook()  # generate and open the workbook
         self.stopsaveopen()  # stop, save and open
-
-    def start(self):
-        if messagebox.askokcancel("Speedsheet Generator",
-                                  "Did you want to generate a SpeedSheet?",
-                                  parent=self.frame):
-            self.pb = ProgressBarDe()  # create the progress bar object
-            return True
-        else:
-            del self.wb
-            return False
 
     def get_id_recset(self):  # get filtered/ condensed record set and employee id
         carriers = CarrierList(g_date[0], g_date[6], g_station).get()  # first get a carrier list
@@ -2439,10 +2444,19 @@ class SpeedSheetGen:
         self.ws_list[0].protection.sheet = True
         for i in range(1, len(self.ws_list)):  # loop to create all other worksheets
             self.ws_list[i] = self.wb.create_sheet(self.ws_titles[i])
-            self.ws_list[i].protection.sheet = True
-            # self.ws_list[i] = Protection.enable()
-            # self.ws_list[i] = Protection.sheet = True
+            # self.ws_list[i].protection.sheet = True
 
+    def title(self):  # generate title and filename
+        if self.full_report and self.range == "week":
+            title = "Speedsheet - All Inclusive Weekly"
+            self.filename = "speed_" + str(format(g_date[0], "%y_%m_%d")) + "_all_w" + ".xlsx"
+        elif self.full_report and self.range == "day":
+            title = "Speedsheet - All Inclusive Daily"
+            self.filename = "speed_" + str(format(d_date, "%y_%m_%d")) + "_all_d" + ".xlsx"
+        else:
+            title = "Speedsheet - Carriers"
+            self.filename = "speed_" + str(format(g_date[0], "%y_%m_%d")) + "_carrier" + ".xlsx"
+        return title
             
     def name_styles(self):  # Named styles for workbook
         bd = Side(style='thin', color="80808080")  # defines borders
@@ -2502,12 +2516,7 @@ class SpeedSheetGen:
             self.ws_list[i].column_dimensions["J"].width = 8
             self.ws_list[i].column_dimensions["K"].width = 8
             cell = self.ws_list[i].cell(column=1, row=1)
-            if self.full_report and self.range == "week":
-                cell.value = "Speedsheet - All Inclusive Weekly"
-            elif self.full_report and self.range == "day":
-                cell.value = "Speedsheet - All Inclusive Daily"
-            else:
-                cell.value = "Speedsheet - Carriers"
+            cell.value = self.title()
             cell.style = self.ws_header
             self.ws_list[i].merge_cells('A1:E1')
             # create date/ pay period/ station header
@@ -2516,7 +2525,7 @@ class SpeedSheetGen:
             cell.style = self.date_dov_title
             cell = self.ws_list[i].cell(row=2, column=2)  # date
             if g_range == "day":
-                cell.value = "{}".format(d_date.strftime("%m/%d/%y"))
+                cell.value = "{}".format(d_date.strftime("%m/%d/%Y"))
             else:
                 cell.value = "{} through {}".format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y"))
             cell.style = self.date_dov
@@ -2596,7 +2605,7 @@ class SpeedSheetGen:
                 cell = self.ws_list[i].cell(row=5, column=10)  # header leave time
                 cell.value = "LV time"
                 cell.style = self.col_header
-                row = 6  # update start at row 6 after the page header display
+                row = 6  # update start at row 6 after the page header display if all inclusive
             # freeze panes
             self.ws_list[i].freeze_panes = self.ws_list[i].cell(row=row, column=1)  # ['A5] or ['A6']
             if i == 0:
@@ -2708,28 +2717,21 @@ class SpeedSheetGen:
                         cell.style = self.input_s
                         cell.protection = Protection(locked=False)
                         row += 1
+        self.pb.stop()
 
     def stopsaveopen(self):
-        self.pb.stop()  # stop and destroy the progress bar
-        r = "_d"  # if self.range == "day":
-        date = d_date
-        if self.range == "week":
-            r = "_w"
-            date = g_date[0]
-        # name the excel file
-        xl_filename = "kb" + str(format(date, "_%y_%m_%d")) + r + "spdall" + ".xlsx"
         try:
-            self.wb.save(dir_path('speedsheets') + xl_filename)
+            self.wb.save(dir_path('speedsheets') + self.filename)
             messagebox.showinfo("Speedsheet Generator",
                                 "Your speedsheet was successfully generated. \n"
-                                "File is named: {}".format(xl_filename),
+                                "File is named: {}".format(self.filename),
                                 parent=self.frame)
             if sys.platform == "win32":
-                os.startfile(dir_path('speedsheets') + xl_filename)
+                os.startfile(dir_path('speedsheets') + self.filename)
             if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + xl_filename])
+                subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + self.filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('speedsheets') + xl_filename])
+                subprocess.call(["open", dir_path('speedsheets') + self.filename])
         except PermissionError:
             messagebox.showerror("Speedsheet generator",
                                  "The speedsheet was not generated. \n"
@@ -2854,7 +2856,7 @@ def database_rings_report(frame, station):
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
-    except:
+    except PermissionError:
         messagebox.showerror("Report Generator",
                              "The report failed to generate.",
                              parent=frame)
@@ -3279,7 +3281,7 @@ def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
     try:
         if os.path.exists(path):
             os.remove(path)
-    except:
+    except sqlite3.OperationalError:
         messagebox.showerror("Access Error",
                              "Klusterbox can not delete the database as it is being used by another "
                              "application. Close the database in the other application and retry.",
@@ -11145,7 +11147,7 @@ def pay_period_guide(frame):
                 subprocess.call(["xdg-open", 'kb_sub/pp_guide/' + filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('pp_guide') + filename])
-        except:
+        except:  # ???
             messagebox.showerror("Report Generator",
                                  "The report was not generated.",
                                  parent=frame)
@@ -11700,7 +11702,7 @@ def about_klusterbox(frame):  # gives information about the program
             path = 'kb_sub/kb_images/kb_about.jpg'
         photo = ImageTk.PhotoImage(Image.open(path))
         Label(ff, image=photo).grid(row=r, column=0, columnspan=10, sticky="w")
-    except:
+    except TclError:
         pass
     r += 1
     Label(ff, text="").grid(row=r)
@@ -15142,6 +15144,7 @@ def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time,
 
 
 def triad_row_finder(index):
+    row = 0
     if index % 3 == 0:
         row = index / 3
     elif (index - 1) % 3 == 0:
@@ -15321,7 +15324,8 @@ def rings2(carrier, origin_frame):
         for d in dates:
             del short_list[:]
             for l in list_carrier:
-                if l[0] <= str(d): short_list.append(l)
+                if l[0] <= str(d):
+                    short_list.append(l)
             try:
                 winner = max(short_list, key=itemgetter(0))
                 daily_record.append(winner)
@@ -15482,7 +15486,7 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
         return
     try:
         date = datetime(year.get(), month.get(), day.get())
-    except:
+    except ValueError:
         messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
         return
     route_list = route.get().split("/")
@@ -15544,7 +15548,7 @@ def apply(year, month, day, c_name, ls, ns, route, station, frame):
 
     try:
         date = datetime(year.get(), month.get(), day.get())
-    except:
+    except ValueError:
         messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
         return
     carrier = c_name.strip().lower()
@@ -16094,7 +16098,7 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
         return
     try:
         date = datetime(year.get(), month.get(), day.get())
-    except:
+    except ValueError:
         messagebox.showerror("Invalid Date",
                              "Date entered is not valid",
                              parent=frame)
@@ -16560,17 +16564,17 @@ def main_frame():
     menubar.add_cascade(label="Basic", menu=basic_menu)
     # speedsheeet menu
     speed_menu = Menu(menubar, tearoff=0)
-    speed_menu.add_command(label="Generate All", command=lambda: SpeedSheetGen(f, True).gen())
+    speed_menu.add_command(label="Generate All Inclusive", command=lambda: SpeedSheetGen(f, True).gen())
     speed_menu.add_command(label="Generate Carrier", command=lambda: SpeedSheetGen(f, False).gen())
     speed_menu.add_command(label="Pre-check", command=lambda: SpeedWorkBookGet().open_file(f, False))
-    speed_menu.add_command(label="Input", command=lambda: SpeedWorkBookGet().open_file(f, True))
+    speed_menu.add_command(label="Input to Database", command=lambda: SpeedWorkBookGet().open_file(f, True))
     if gs_day == "x":
         speed_menu.entryconfig(0, state=DISABLED)
         speed_menu.entryconfig(1, state=DISABLED)
     speed_menu.add_separator()
-    speed_menu.add_command(label="Speed to Spreadsheet", command=lambda: speed_to_spread())
+
     speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
-    basic_menu.add_separator()
+    speed_menu.add_command(label="Speedsheet Archive" ,command=lambda: file_dialogue(dir_path('speedsheets')))
     menubar.add_cascade(label="Speedsheet", menu=speed_menu)
     # automated menu
     automated_menu = Menu(menubar, tearoff=0)
@@ -17133,7 +17137,7 @@ if __name__ == "__main__":
     if sys.platform == "darwin" and platform == "py":  # put icon in doc for mac
         try:  #
             root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except:
+        except TclError:
             pass
     root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
     if len(list_of_stations) < 2:  # if there are no stations in the stations list
