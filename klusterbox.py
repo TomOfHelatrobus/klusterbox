@@ -1,4 +1,5 @@
 # Standard Libraries
+import project_var  # holds variables for use in call modules
 from tkinter import *
 from tkinter import messagebox
 from tkinter import filedialog
@@ -153,7 +154,7 @@ class MakeWindow:
         self.body = Frame(self.c)
 
     def create(self, frame):
-        if frame != "none":
+        if frame is not None:
             frame.destroy()  # close out the previous frame
         self.topframe.pack(fill=BOTH, side=LEFT)
         self.buttons.pack(fill=BOTH, side=BOTTOM)
@@ -16426,8 +16427,11 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
         sat_range = date  # sat range = sat or the sat most prior
         pay_period = pp_by_date(sat_range)
         gs_year = int(date.strftime("%Y"))  # format that sat to form the global
+        project_var.case_year = int(date.strftime("%Y"))  # format that sat to form the global
         gs_mo = int(date.strftime("%m"))
+        project_var.case_month = int(date.strftime("%m"))
         gs_day = int(date.strftime("%d"))
+        project_var.case_day= int(date.strftime("%d"))
         del g_date[:]  # empty out the array for the global date variable
         d = datetime(int(gs_year), int(gs_mo), int(gs_day))
         # set the g_date variable
@@ -16481,8 +16485,11 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
         ns_code["none"] = "  "
         if i_range == "day":
             gs_year = int(s_year)
+            project_var.case_year = int(s_year)
             gs_mo = int(s_mo)
+            project_var.case_month = int(s_mo)
             gs_day = int(s_day)
+            project_var.case_day = int(s_day)
         ns_code["sat"] = "Sat"
         ns_code["mon"] = "Mon"
         ns_code["tue"] = "Tue"
@@ -16498,6 +16505,386 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
     if frame != "None":
         frame.destroy()
         main_frame()
+
+
+class MainFrame:
+    def __init__(self):
+        self.win = MakeWindow()
+        self.invest_frame = Frame(self.win.body)
+        self.main_frame = Frame(self.win.body)
+        self.now = datetime.now()
+        self.start_year = StringVar(self.win.body)
+        self.start_month = StringVar(self.win.body)  # create stringvars
+        self.start_day = StringVar(self.win.body)
+        self.i_range = StringVar(self.win.body)
+        self.min_abc = StringVar(self.win.body)
+        self.investigation_message = Label(self.win.body, text = "", fg="red")
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.carrier_list = []
+
+    def start(self):
+        self.win.create(None)  # create the window
+        self.pulldown_menu()
+        self.invest_frame.pack()
+        self.investigation_range()
+        self.main_frame.pack()
+        self.show_carrierlist()
+        self.bottom_of_frame()
+        self.win.finish()  # close the window
+
+    def investigation_range(self):
+        Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=1, columnspan=2)
+
+        if gs_mo == "x":
+            self.start_month.set(self.now.month)
+        else:
+            self.start_month.set(gs_mo)
+        om_month = OptionMenu(self.invest_frame, self.start_month, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+        om_month.config(width=2)
+        om_month.grid(row=1, column=3)
+        if gs_day == "x":
+            self.start_day.set(self.now.day)
+        else:
+            self.start_day.set(gs_day)
+        om_day = OptionMenu(self.invest_frame, self.start_day, "1", "2", "3", "4", "5", "6", "7", "8",
+                            "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+                            "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31")
+        om_day.config(width=2)
+        om_day.grid(row=1, column=4)
+        date_year = Entry(self.invest_frame, width=6, textvariable=self.start_year)
+        if gs_year == "x":
+            self.start_year.set(self.now.year)
+        else:
+            self.start_year.set(gs_year)
+        date_year.grid(row=1, column=5)
+        Label(self.invest_frame, text="RANGE", width=macadj(6, 8)).grid(row=1, column=6)
+        if g_range == "x":
+            self.i_range.set("week")
+        else:
+            self.i_range.set(g_range)
+        Radiobutton(self.invest_frame, text="weekly", variable=self.i_range, value="week",
+                    width=macadj(6, 7), anchor="w").grid(row=1, column=7)
+        Radiobutton(self.invest_frame, text="daily", variable=self.i_range, value="day",
+                    width=macadj(6, 7), anchor="w").grid(row=1, column=8)
+        # set station option menu
+        Label(self.invest_frame, text="STATION", anchor="w").grid(row=2, column=1, sticky=W)
+        station = StringVar(self.invest_frame)
+        if g_station == "x":
+            station.set("undefined")  # default value
+        else:
+            station.set(g_station)
+        stations_minus_outofstation = list_of_stations[:]
+        stations_minus_outofstation.remove("out of station")
+        if len(stations_minus_outofstation) == 0:
+            stations_minus_outofstation.append("undefined")
+        om = OptionMenu(self.invest_frame, station, *stations_minus_outofstation)
+        om.config(width=macadj(40, 34))
+        om.grid(row=2, column=2, columnspan=5, sticky=W)
+        # set and reset buttons for investigation range
+        Button(self.invest_frame, text="Set", width=macadj(8, 9), bg=macadj("green", "SystemButtonFace"),
+               fg=macadj("white", "green"), command=lambda: set_globals(self.start_year.get(),
+               self.start_month.get(), self.start_day.get(), self.i_range.get(), station.get(),
+               self.win.topframe)).grid(row=2, column=7)
+        Button(self.invest_frame, text="Reset", width=macadj(8, 9), bg=macadj("red", "SystemButtonFace"),
+               fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=8)
+        # Investigation date SET/NOT SET notification
+        if g_range == "x":
+            Label(self.invest_frame, text="Investigation date/range not set", foreground="red") \
+                .grid(row=3, column=1, columnspan=8, sticky="w")
+        elif g_range == "day":
+            f_date = d_date.strftime("%a - %b %d, %Y")
+            Label(self.invest_frame, text="Investigation Date Set: {}".format(f_date),
+                  foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
+            Label(self.invest_frame, text="Pay Period: {}".format(pay_period),
+                  foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
+        else:
+            f_date = g_date[0].strftime("%a - %b %d, %Y")
+            end_f_date = g_date[6].strftime("%a - %b %d, %Y")
+            Label(self.invest_frame, text="Investigation Range: {0} through {1}".format(f_date, end_f_date),
+                  foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
+            Label(self.invest_frame, text="Pay Period: {0}".format(pay_period),
+                  foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
+
+    def show_carrierlist(self):
+        if gs_day == "x":
+            Button(self.main_frame, text="Automatic Data Entry", width=30, command=lambda: call_indexers(f)). \
+                grid(row=0, column=1, pady=5)
+            Button(self.main_frame, text="Informal C", width=30, command=lambda: informalc(f)).grid(row=1, column=1, pady=5)
+            Button(self.main_frame, text="Quit", width=30, command=lambda: root.destroy()).grid(row=2, column=1, pady=5)
+            Label(self.main_frame, text="", width=macadj(20, 16)).grid(row=0, column=0)  # spacer
+        else:
+            if g_range == "week":
+                sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
+                      " FROM carriers WHERE effective_date <= '%s'" \
+                      "ORDER BY carrier_name, effective_date desc" % (g_date[6])
+            if g_range == "day":
+                sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
+                      " FROM carriers WHERE effective_date <= '%s'" \
+                      "ORDER BY carrier_name, effective_date desc" % d_date
+            results = inquire(sql)
+            # initialize arrays for data sorting
+            carrier_list = []
+            candidates = []
+            more_rows = []
+            pre_invest = []
+            # take raw data and sort into appropriate arrays
+            for i in range(len(results)):
+                candidates.append(results[i])  # put name into candidates array
+                jump = "no"  # triggers an analysis of the candidates array
+                if i != len(results) - 1:  # if the loop has not reached the end of the list
+                    if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
+                        jump = "yes"  # bypasses an analysis of the candidates array
+                if jump == "no":
+                    # sort into records in investigation range and those prior
+                    for record in candidates:
+                        if g_range == "week":  # if record falls in investigation range - add it to more rows array
+                            if str(g_date[1]) <= record[0] <= str(g_date[6]):
+                                more_rows.append(record)
+                            if record[0] <= str(g_date[0]) and len(pre_invest) == 0:
+                                pre_invest.append(record)
+                        if g_range == "day":
+                            if record[0] <= str(d_date) and len(pre_invest) == 0:
+                                pre_invest.append(record)
+                    # find carriers who start in the middle of the investigation range CATEGORY ONE
+                    if len(more_rows) > 0 and len(pre_invest) == 0:
+                        station_anchor = "no"
+                        for each in more_rows:  # check if any records place the carrier in the selected station
+                            if each[5] == g_station:
+                                station_anchor = "yes"  # if so, set the station anchor
+                        # since the carrier starts in the middle of the week and there is no record prior, create one
+                        if station_anchor == "yes":
+                            filler = (str(g_date[0]), each[1], " ", "none", " ", "out of station", 0, "A_out")
+                            carrier_list.append(list(filler))
+                            list(more_rows)
+                            more_rows.reverse()  # reverse the tuple
+                            for each in more_rows:
+                                x = list(each)  # convert the tuple to a list
+                                if x[5] == g_station:
+                                    x.append("B_in")  # tag if the record is the first in the list
+                                else:
+                                    x.append("B_out")
+                                carrier_list.append(x)  # add it to the list
+                    # find carriers with records before and during the investigation range CATEGORY TWO
+                    if len(more_rows) > 0 and len(pre_invest) > 0:
+                        station_anchor = "no"
+                        for each in more_rows + pre_invest:
+                            if each[5] == g_station:
+                                station_anchor = "yes"
+                        if station_anchor == "yes":
+                            # handle records prior to or on first day of investigation range.
+                            xx = list(pre_invest[0])
+                            if xx[5] == g_station:
+                                xx.append("A_in")
+                            else:
+                                xx.append("A_out")
+                            carrier_list.append(xx)
+                            # handle records inside the investigation range
+                            list(more_rows)
+                            more_rows.reverse()
+                            for each in more_rows:
+                                x = list(each)
+                                if x[5] == g_station:
+                                    x.append("B_in")
+                                else:
+                                    x.append("B_out")
+                                carrier_list.append(x)
+                    # find carrier with records from only before investigation range.CATEGORY THREE
+                    if len(more_rows) == 0 and len(pre_invest) == 1:
+                        for each in pre_invest:
+                            if each[5] == g_station:
+                                x = list(pre_invest[0])
+                                x.append("A_in")
+                                carrier_list.append(x)
+                    del more_rows[:]
+                    del pre_invest[:]
+                    del candidates[:]
+            # This code displays the records that have been selected above and placed in the carrier list array.
+            r = 0
+            i = 0
+            ii = 1
+        if len(self.carrier_list) == 0:
+            Label(self.main_frame, text="").grid(row=0, column=0)
+            Label(self.main_frame, text="The carrier list is empty. ", font=macadj("bold", "Helvetica 18")) \
+                .grid(row=1, column=0, sticky="w")
+            Label(self.main_frame, text="").grid(row=2, column=0)
+            Label(self.main_frame, text="Build the carrier list with the New Carrier feature\nor by running "
+                           "the Automatic Data Entry Feature.").grid(row=3, column=0)
+        if len(self.carrier_list) > 0:
+            Label(self.main_frame, text="Name (click for Rings)", fg="grey").grid(row=1, column=1, sticky="w")
+            Label(self.main_frame, text="List", fg="grey").grid(row=1, column=2, sticky="w")
+            Label(self.main_frame, text="N/S", fg="grey").grid(row=1, column=3, sticky="w")
+            Label(self.main_frame, text="Route", fg="grey").grid(row=1, column=4, sticky="w")
+            Label(self.main_frame, text="Edit", fg="grey").grid(row=1, column=5, sticky="w")
+
+    def pulldown_menu(self):
+        # create a pulldown menu, and add it to the menu bar
+        menubar = Menu(self.win.topframe)
+        # file menu
+        basic_menu = Menu(menubar, tearoff=0)
+        basic_menu.add_command(label="Save All", command=lambda: save_all(self.win.topframe))
+        basic_menu.add_separator()
+        basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(self.win.topframe))
+        basic_menu.add_command(label="Multiple Input", 
+                               command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss))
+        basic_menu.add_command(label="Report Summary", command=lambda: output_tab(self.win.topframe, self.carrier_list))
+        basic_menu.add_command(label="Mandates Spreadsheet",
+                               command=lambda r_rings="x": spreadsheet(self.win.topframe, self.carrier_list, r_rings))
+        basic_menu.add_command(label="Over Max Spreadsheet",
+                               command=lambda r_rings="x": overmax_spreadsheet(self.win.topframe, self.carrier_list))
+        if gs_day == "x":
+            basic_menu.entryconfig(2, state=DISABLED)
+            basic_menu.entryconfig(3, state=DISABLED)
+            basic_menu.entryconfig(4, state=DISABLED)
+            basic_menu.entryconfig(5, state=DISABLED)
+        if gs_day == "x" or g_range == "day":
+            basic_menu.entryconfig(6, state=DISABLED)
+        basic_menu.add_separator()
+        basic_menu.add_command(label="Informal C", command=lambda: informalc(self.win.topframe))
+        basic_menu.add_separator()
+        basic_menu.add_command(label="Location", command=lambda: location_klusterbox(self.win.topframe))
+        basic_menu.add_command(label="About Klusterbox", command=lambda: about_klusterbox(self.win.topframe))
+        basic_menu.add_separator()
+        basic_menu.add_command(label="View Out of Station",
+                               command=lambda: set_globals(self.start_year.get(), self.start_month.get(),
+                                                           self.start_day.get(), self.i_range.get(),
+                                                           "out of station", self.win.topframe))
+        basic_menu.add_separator()
+        basic_menu.add_command(label="Quit", command=lambda: root.destroy())
+        menubar.add_cascade(label="Basic", menu=basic_menu)
+        # speedsheeet menu
+        speed_menu = Menu(menubar, tearoff=0)
+        speed_menu.add_command(label="Generate All Inclusive", 
+                               command=lambda: SpeedSheetGen(self.win.topframe, True).gen())
+        speed_menu.add_command(label="Generate Carrier", 
+                               command=lambda: SpeedSheetGen(self.win.topframe, False).gen())
+        speed_menu.add_command(label="Pre-check", 
+                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, False))
+        speed_menu.add_command(label="Input to Database", 
+                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, True))
+        if gs_day == "x":
+            speed_menu.entryconfig(0, state=DISABLED)
+            speed_menu.entryconfig(1, state=DISABLED)
+        speed_menu.add_separator()
+
+        speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
+        speed_menu.add_command(label="Speedsheet Archive", command=lambda: file_dialogue(dir_path('speedsheets')))
+        menubar.add_cascade(label="Speedsheet", menu=speed_menu)
+        # automated menu
+        automated_menu = Menu(menubar, tearoff=0)
+        automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(self.win.topframe))
+        automated_menu.add_separator()
+        automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(self.win.topframe))
+        automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
+        automated_menu.add_command(label="Weekly Availability", command=lambda: wkly_avail(self.win.topframe))
+        automated_menu.add_separator()
+        automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(self.win.topframe))
+        automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(self.win.topframe))
+        menubar.add_cascade(label="Readers", menu=automated_menu)
+        # reports menu
+        reports_menu = Menu(menubar, tearoff=0)
+        reports_menu.add_command(label="Carrier Route and NS Day", 
+                                 command=lambda: rpt_carrier(self.win.topframe, self.carrier_list))
+        reports_menu.add_command(label="Carrier Route", 
+                                 command=lambda: rpt_carrier_route(self.win.topframe, self.carrier_list))
+        reports_menu.add_command(label="Carrier NS Day", 
+                                 command=lambda: rpt_carrier_nsday(self.win.topframe, self.carrier_list))
+        reports_menu.add_command(label="Carrier by List", 
+                                 command=lambda: rpt_carrier_by_list(self.win.topframe, self.carrier_list))
+        reports_menu.add_command(label="Carrier Status History", 
+                                 command=lambda: rpt_find_carriers(self.win.topframe, g_station))
+        reports_menu.add_separator()
+        reports_menu.add_command(label="Clock Rings Summary", 
+                                 command=lambda: database_rings_report(self.win.topframe, g_station))
+        reports_menu.add_separator()
+        reports_menu.add_command(label="Pay Period Guide Generator", 
+                                 command=lambda: pay_period_guide(self.win.topframe))
+        if gs_day == "x":
+            reports_menu.entryconfig(0, state=DISABLED)
+            reports_menu.entryconfig(1, state=DISABLED)
+            reports_menu.entryconfig(2, state=DISABLED)
+            reports_menu.entryconfig(3, state=DISABLED)
+            reports_menu.entryconfig(6, state=DISABLED)
+        menubar.add_cascade(label="Reports", menu=reports_menu)
+        # library menu
+        reportsarchive_menu = Menu(menubar, tearoff=0)
+        reportsarchive_menu.add_command(label="Mandates Spreadsheet",
+                                        command=lambda: file_dialogue(dir_path('spreadsheets')))
+        reportsarchive_menu.add_command(label="Over Max Spreadsheet",
+                                        command=lambda: file_dialogue(dir_path('over_max_spreadsheet')))
+        reportsarchive_menu.add_command(label="Speedsheets",
+                                        command=lambda: file_dialogue(dir_path('speedsheets')))
+        reportsarchive_menu.add_command(label="Over Max Finder",
+                                        command=lambda: file_dialogue(dir_path('over_max')))
+        reportsarchive_menu.add_command(label="Everything Report",
+                                        command=lambda: file_dialogue(dir_path('ee_reader')))
+        reportsarchive_menu.add_command(label="Weekly Availability",
+                                        command=lambda: file_dialogue(dir_path('weekly_availability')))
+        reportsarchive_menu.add_command(label="Pay Period Guide",
+                                        command=lambda: file_dialogue(dir_path('pp_guide')))
+        reportsarchive_menu.add_separator()
+        cleararchive = Menu(reportsarchive_menu, tearoff=0)
+        cleararchive.add_command(label="Mandates Spreadsheet",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('spreadsheets')))
+        cleararchive.add_command(label="Over Max Spreadsheet",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('over_max_spreadsheet')))
+        cleararchive.add_command(label="Over Max Finder",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('over_max')))
+        cleararchive.add_command(label="Everything Report",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('ee_reader')))
+        cleararchive.add_command(label="Weekly Availability",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('weekly_availability')))
+        cleararchive.add_command(label="Pay Period Guide",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('pp_guide')))
+        reportsarchive_menu.add_cascade(label="Clear Archive", menu=cleararchive)
+        menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
+        # management menu
+        management_menu = Menu(menubar, tearoff=0)
+        management_menu.add_command(label="GUI Configuration", command=lambda: gui_config(self.win.topframe))
+        management_menu.add_separator()
+        management_menu.add_command(label="List of Stations", command=lambda: station_list(self.win.topframe))
+        management_menu.add_command(label="Tolerances", command=lambda: tolerances(self.win.topframe))
+        management_menu.add_command(label="Spreadsheet Settings", 
+                                    command=lambda: spreadsheet_settings(self.win.topframe))
+        management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(self.win.topframe))
+        if gs_day == "x":
+            management_menu.entryconfig(5, state=DISABLED)
+        management_menu.add_command(label="Speedsheet Settings", 
+                                    command=lambda: SpeedConfigGui(self.win.topframe).create())
+        management_menu.add_separator()
+        management_menu.add_command(label="Auto Data Entry Settings", 
+                                    command=lambda: auto_data_entry_settings(self.win.topframe))
+        management_menu.add_command(label="PDF Converter Settings", 
+                                    command=lambda: pdf_converter_settings(self.win.topframe))
+        management_menu.add_separator()
+        management_menu.add_command(label="Database", 
+                                    command=lambda: (self.win.topframe.destroy(), 
+                                                     database_maintenance(self.win.topframe)))
+        management_menu.add_command(label="Delete Carriers", 
+                                    command=lambda: database_delete_carriers(self.win.topframe, g_station))
+        management_menu.add_command(label="Clean Carrier List", 
+                                    command=lambda: carrier_list_cleaning(self.win.topframe))
+        management_menu.add_command(label="Clean Rings", 
+                                    command=lambda: clean_rings3_table())
+        management_menu.add_separator()
+        management_menu.add_command(label="Name Index", 
+                                    command=lambda: (self.win.topframe.destroy(), name_index_screen()))
+        management_menu.add_command(label="Station Index", command=lambda: station_index_mgmt(self.win.topframe))
+        menubar.add_cascade(label="Management", menu=management_menu)
+        root.config(menu=menubar)
+        
+    def bottom_of_frame(self):
+        if gs_day != "x":
+            Button(self.win.buttons, text="New Carrier", command=lambda: input_carriers(self.win.topframe),
+                   width=macadj(13, 13)).pack(side=LEFT)
+            Button(self.win.buttons, text="Multi Input",
+                   command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss),
+                   width=macadj(13, 13)).pack(side=LEFT)
+            Button(self.win.buttons, text="Auto Data Entry", command=lambda: call_indexers(self.win.topframe),
+                   width=macadj(12, 12)).pack(side=LEFT)
+            r_rings = "x"
+            Button(self.win.buttons, text="Spreadsheet", width=macadj(13, 13),
+                   command=lambda: spreadsheet(self.win.topframe, self.carrier_list, r_rings)).pack(side=LEFT)
+            Button(self.win.buttons, text="Quit", width=macadj(13, 13), command=root.destroy).pack(side=LEFT)
 
 
 def main_frame():
@@ -17145,4 +17532,5 @@ if __name__ == "__main__":
     else:
         remove_file(dir_path_check('report'))  # empty out folders
         remove_file(dir_path_check('infc_grv'))
+        # MainFrame().start()
         main_frame()
