@@ -1,5 +1,5 @@
 # Standard Libraries
-import project_var  # holds variables for use in call modules
+import projvar  # holds variables, including root, for use in all modules
 from tkinter import *
 from tkinter import messagebox
 from tkinter import filedialog
@@ -65,11 +65,11 @@ This version of Klusterbox is being released under the GNU General Public Licens
 
 def inquire(sql):
     # query the database
-    if platform == "macapp":
+    if projvar.platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    elif platform == "winapp":
+    elif projvar.platform == "winapp":
         path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    elif platform == "py":
+    elif projvar.platform == "py":
         path = "kb_sub/mandates.sqlite"
     else:
         path = "kb_sub/mandates.sqlite"
@@ -88,11 +88,11 @@ def inquire(sql):
 
 # write to the database
 def commit(sql):
-    if platform == "macapp":
+    if projvar.platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    elif platform == "winapp":
+    elif projvar.platform == "winapp":
         path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    elif platform == "py":
+    elif projvar.platform == "py":
         path = "kb_sub/mandates.sqlite"
     else:
         path = "kb_sub/mandates.sqlite"
@@ -122,17 +122,17 @@ def macadj(win, mac):  # switch between variables depending on platform
 
 
 def titlebar_icon(root):  # place icon in titlebar
-    if sys.platform == "win32" and platform == "py":
+    if sys.platform == "win32" and projvar.platform == "py":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
         except TclError:
             pass
-    if sys.platform == "win32" and platform == "winapp":
+    if sys.platform == "win32" and projvar.platform == "winapp":
         try:
             root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
         except TclError:
             pass
-    if sys.platform == "darwin" and platform == "py":
+    if sys.platform == "darwin" and projvar.platform == "py":
         try:
             root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
         except TclError:
@@ -147,7 +147,7 @@ def titlebar_icon(root):  # place icon in titlebar
 
 class MakeWindow:
     def __init__(self):
-        self.topframe = Frame(root)
+        self.topframe = Frame(projvar.root)
         self.buttons = Canvas(self.topframe)  # button bar
         self.s = Scrollbar(self.topframe)
         self.c = Canvas(self.topframe, width=1600)
@@ -165,17 +165,18 @@ class MakeWindow:
         self.c.configure(yscrollcommand=self.s.set)
         # link the mousewheel - implementation varies by platform
         if sys.platform == "win32":
-            self.c.bind_all \
-                ('<MouseWheel>', lambda event: self.c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+            self.c.bind_all ('<MouseWheel>', lambda event: self.c.yview_scroll
+            (int(projvar.mousewheel * (event.delta / 120)), "units"))
         elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll(int(mousewheel * event.delta), "units"))
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
+            (int(projvar.mousewheel * event.delta), "units"))
         elif sys.platform == "linux":
             self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
             self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
         self.c.create_window((0, 0), window=self.body, anchor=NW)
 
     def finish(self):  # This closes the window created by front_window()
-        root.update()
+        projvar.root.update()
         self.c.config(scrollregion=self.c.bbox("all"))
         mainloop()
 
@@ -188,7 +189,7 @@ class MakeWindow:
 def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
     if frame != "none":
         frame.destroy()  # close out the previous frame
-    f = Frame(root)  # create new frame
+    f = Frame(projvar.root)  # create new frame
     f.pack(fill=BOTH, side=LEFT)
     buttons = Canvas(f)  # button bar
     buttons.pack(fill=BOTH, side=BOTTOM)
@@ -201,9 +202,9 @@ def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
     c.configure(yscrollcommand=s.set)
     # link the mousewheel - implementation varies by platform
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -215,7 +216,7 @@ def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
 
 
 def rear_window(wd):  # This closes the window created by front_window()
-    root.update()
+    projvar.root.update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
 
@@ -486,7 +487,7 @@ class NsDayDict:
         code_ns = {}
         for d in days:
             for c in color_pat:
-                if d[:3] == ns_code[c]:
+                if d[:3] == projvar.ns_code[c]:
                     code_ns[d] = c
         code_ns["None"] = "none"
         return code_ns
@@ -518,7 +519,7 @@ class ProgressBarIn:  # Indeterminate Progress Bar
         self.pb.grid(row=1, column=0, sticky="w")
         self.pb_text.grid(row=2, column=0, sticky="w")
         while pb_flag:  # use global as a flag. stop loop when flag is False
-            root.update()
+            projvar.root.update()
             self.pb['value'] += 1
             time.sleep(.1)
 
@@ -558,11 +559,11 @@ class ProgressBarDe:  # determinate Progress Bar
 
     def move_count(self, count):  # changes the count of the progress bar
         self.pb['value'] = count
-        root.update()
+        projvar.root.update()
 
     def change_text(self, text):  # changes the text of the progress bar
         self.pb_text.config(text="{}".format(text))
-        root.update()
+        projvar.root.update()
 
     def stop(self):
         self.pb.stop()  # stop and destroy the progress bar
@@ -633,6 +634,10 @@ class Convert:
         if self.data == sat_range.strftime("%a").lower():  # friday
             return str(sat_range)
 
+    def dt_converter(self):  # converts a string of a datetime to an actual datetime
+        dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
+        return dt
+
 
 class Handler:
     def __init__(self, data):
@@ -665,7 +670,7 @@ class Handler:
 
 def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
     if sys.platform == "darwin":
-        if platform == "macapp":
+        if projvar.platform == "macapp":
             if not os.path.isdir(os.path.expanduser("~") + '/Documents'):
                 os.makedirs(os.path.expanduser("~") + '/Documents')
             if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox'):
@@ -678,7 +683,7 @@ def dir_path(dirr):  # create needed directories if they don't exist and return 
                 os.makedirs(('kb_sub/' + dirr))
             path = 'kb_sub/' + dirr + '/'
     if sys.platform == "win32":
-        if platform == "winapp":
+        if projvar.platform == "winapp":
             if not os.path.isdir(os.path.expanduser("~") + '\\Documents'):
                 os.makedirs(os.path.expanduser("~") + '\\Documents')
             if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox'):
@@ -695,12 +700,12 @@ def dir_path(dirr):  # create needed directories if they don't exist and return 
 
 def dir_path_check(dirr):  # return appropriate path depending on platorm
     if sys.platform == "darwin":
-        if platform == "macapp":
+        if projvar.platform == "macapp":
             path = os.path.expanduser("~") + '/Documents/klusterbox/' + dirr
         else:
             path = 'kb_sub/' + dirr
     if sys.platform == "win32":
-        if platform == "winapp":
+        if projvar.platform == "winapp":
             path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr
         else:
             path = 'kb_sub\\' + dirr
@@ -786,12 +791,14 @@ class CarrierList:
     def get(self):  # get a weekly or daily carrier list
         c_list = []
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' AND effective_date <= '%s' " \
+              "ORDER BY carrier_name, effective_date desc" \
               % (self.station, self.end)
         distinct = inquire(sql)  # call function to access database
         for carrier in distinct:
             rec_set = CarrierRecSet(carrier[0], self.start, self.end, self.station).get()  # get rec set per carrier
             if rec_set is not None:  # only add rec sets if there is something there
                 c_list.append(rec_set)
+
         return c_list
 
 
@@ -907,7 +914,7 @@ class SpeedConfigGui:
                command=lambda: self.preset_low()).grid(row=12, column=3)
         self.win.fill(11, 20)  # fill the bottom of the window for scrolling
         Button(self.win.buttons, text="Go Back", width=20, anchor="w",
-               command=lambda: (self.win.topframe.destroy(), main_frame())).pack(side=LEFT)
+               command=lambda: (self.win.topframe.destroy(), MainFrame().start())).pack(side=LEFT)
         self.status_update.pack(side=LEFT)
         self.win.finish()
 
@@ -1063,7 +1070,7 @@ class SpeedLoadThread(Thread):  # use multithreading to load workbook while prog
 class SpeedWorkBookGet:
     @staticmethod
     def get_filepath(self):
-        if platform == "macapp" or platform == "winapp":
+        if projvar.platform == "macapp" or projvar.platform == "winapp":
             return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
         else:
             return 'kb_sub/speedsheets'
@@ -1123,7 +1130,7 @@ class SpeedSheetCheck:
         self.filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
         self.report = open(dir_path('report') + self.filename, "w")  # open the report
         self.station = ""
-        self.i_range = "week"
+        self.i_range = True  # investigation range is one week unless changed
         self.start_date = datetime(1, 1, 1, 0, 0, 0)
         self.end_date = datetime(1, 1, 1, 0, 0, 0)
         self.name = ""
@@ -1174,7 +1181,7 @@ class SpeedSheetCheck:
         if all_in == "Speedsheet - All Inclusive Weekly":
             return True  # default settings from __init__ do not need changing
         elif all_in == "Speedsheet - All Inclusive Daily":
-            self.i_range = "day"  # change the range since it is daily
+            self.i_range = False  # change the range since it is daily
             self.step = 0
             self.modulus = 2
             return True
@@ -2195,6 +2202,7 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
         self.nsday = ""
         self.route = ""
         self.station = ""
+        lastrec = None
         if recset is not None:  # handle carriers who are not new carriers
             if len(recset) != 0:  # new carriers can appear as NoneType or an empty list
                 self.recset = recset
@@ -2202,6 +2210,7 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
                     lastrec = r
                     break
                 self.startdate = startdate
+                self.date = lastrec[0]
                 self.carrier = lastrec[1]
                 self.nsday = lastrec[3]
                 self.route = lastrec[4]
@@ -2256,6 +2265,19 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
             i += 1
         return date_str, self.carrier, list_str, self.nsday, self.route, self.station
 
+    def detect_outofstation(self, station):  # returns a rec with only the date and name
+        record_set = []
+        if Convert(self.date).dt_converter() > self.startdate:
+            to_add = [self.startdate, self.carrier]  # out of station records only have one item
+            record_set.append(to_add)
+        for rec in reversed(self.recset):
+            if rec[5] == station:
+                record_set.append(rec)
+            else:
+                to_add = [self.startdate, self.carrier]  # out of station records only date and name
+                record_set.append(to_add)
+        return record_set
+
 
 class SpeedSheetGen:
     def __init__(self, frame, full_report):
@@ -2263,10 +2285,10 @@ class SpeedSheetGen:
         self.full_report = full_report  # true - all inclusive, false - carrier recs only
         self.pb = ProgressBarDe()  # create the progress bar object
         self.db = SpeedSettings()  # calls values from tolerance table
-        self.date = d_date
-        self.day_array = (str(d_date.strftime("%a")).lower(),)  # if g_range == "day"
+        self.date = projvar.invran_date
+        self.day_array = (str(projvar.invran_date.strftime("%a")).lower(),)  # if invran_weekly_span == False
         self.range = "day"
-        if g_range == "week":
+        if projvar.invran_weekly_span:  # if investigation range is weekly
             self.day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
             self.range = "week"
         self.rotate_mode = self.db.speedcell_ns_rotate_mode  # NS day mode preference: True-rotating or False-fixed
@@ -2305,12 +2327,13 @@ class SpeedSheetGen:
         self.stopsaveopen()  # stop, save and open
 
     def get_id_recset(self):  # get filtered/ condensed record set and employee id
-        carriers = CarrierList(g_date[0], g_date[6], g_station).get()  # first get a carrier list
+        carriers = CarrierList(projvar.invran_date_week[0], projvar.invran_date_week[6],
+                               projvar.invran_station).get()  # first get a carrier list
         for c in carriers:
             # filter out any recs where list status is unchanged
-            filtered_recs = CarrierRecFilter(c, g_date[0]).filter_nonlist_recs()
+            filtered_recs = CarrierRecFilter(c, projvar.invran_date_week[0]).filter_nonlist_recs()
             # condense multiple recs into format used by speedsheets
-            condensed_recs = CarrierRecFilter(filtered_recs, g_date[0]).condense_recs(self.db.speedcell_ns_rotate_mode)
+            condensed_recs = CarrierRecFilter(filtered_recs, projvar.invran_date_week[0]).condense_recs(self.db.speedcell_ns_rotate_mode)
             self.id_recset.append(self.add_id(self, condensed_recs))  # merge carriers with emp id
 
     @staticmethod
@@ -2450,13 +2473,13 @@ class SpeedSheetGen:
     def title(self):  # generate title and filename
         if self.full_report and self.range == "week":
             title = "Speedsheet - All Inclusive Weekly"
-            self.filename = "speed_" + str(format(g_date[0], "%y_%m_%d")) + "_all_w" + ".xlsx"
+            self.filename = "speed_" + str(format(projvar.invran_date_week[0], "%y_%m_%d")) + "_all_w" + ".xlsx"
         elif self.full_report and self.range == "day":
             title = "Speedsheet - All Inclusive Daily"
-            self.filename = "speed_" + str(format(d_date, "%y_%m_%d")) + "_all_d" + ".xlsx"
+            self.filename = "speed_" + str(format(projvar.invran_date, "%y_%m_%d")) + "_all_d" + ".xlsx"
         else:
             title = "Speedsheet - Carriers"
-            self.filename = "speed_" + str(format(g_date[0], "%y_%m_%d")) + "_carrier" + ".xlsx"
+            self.filename = "speed_" + str(format(projvar.invran_date_week[0], "%y_%m_%d")) + "_carrier" + ".xlsx"
         return title
             
     def name_styles(self):  # Named styles for workbook
@@ -2525,23 +2548,24 @@ class SpeedSheetGen:
             cell.value = "Date:  "
             cell.style = self.date_dov_title
             cell = self.ws_list[i].cell(row=2, column=2)  # date
-            if g_range == "day":
-                cell.value = "{}".format(d_date.strftime("%m/%d/%Y"))
+            if projvar.invran_weekly_span:  # if investigation range is daily
+                cell.value = "{}".format(projvar.invran_date.strftime("%m/%d/%Y"))
             else:
-                cell.value = "{} through {}".format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y"))
+                cell.value = "{} through {}".format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
+                                                    projvar.invran_date_week[6].strftime("%m/%d/%Y"))
             cell.style = self.date_dov
             self.ws_list[i].merge_cells('B2:E2')
             cell = self.ws_list[i].cell(row=2, column=6)  # pay period label
             cell.value = "PP:  "
             cell.style = self.date_dov_title
             cell = self.ws_list[i].cell(row=2, column=7)  # pay period
-            cell.value = pay_period
+            cell.value = projvar.pay_period
             cell.style = self.date_dov
             cell = self.ws_list[i].cell(row=2, column=8)  # station label
             cell.value = "Station:  "
             cell.style = self.date_dov_title
             cell = self.ws_list[i].cell(row=2, column=9)  # station
-            cell.value = g_station
+            cell.value = projvar.invran_station
             cell.style = self.date_dov
             self.ws_list[i].merge_cells('I2:J2')
             # apply title - show how carriers are sorted
@@ -2743,13 +2767,12 @@ class SpeedSheetGen:
 
 
 def gui_config_apply(frame, wheel_selection):  # set mousewheel orientation
-    global mousewheel
     if wheel_selection.get() == "natural":
         wheel_multiple = int(1)
-        mousewheel = int(1)
+        projvar.mousewheel = int(1)
     else:  # if the wheel_selection.get() == "reverse"
         wheel_multiple = int(-1)
-        mousewheel = int(-1)
+        projvar.mousewheel = int(-1)
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (wheel_multiple, "mousewheel")
     commit(sql)
     gui_config(frame)
@@ -2759,7 +2782,7 @@ def gui_config(frame):  # generate page to adjust gui configurations
     # retrieve mousewheel info- mouse wheel scroll direction
     sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
     results = inquire(sql)
-    mousewheel = int(results[0][0])
+    projvar.mousewheel = int(results[0][0])
     wd = front_window(frame)
     Label(wd[3], text="GUI Configuration", font=macadj("bold", "Helvetica 18"), anchor="w") \
         .grid(row=0, sticky="w", columnspan=4)
@@ -2771,7 +2794,7 @@ def gui_config(frame):  # generate page to adjust gui configurations
     om_wheel = OptionMenu(wd[3], wheel_selection, "natural", "reverse")  # option menu configuration below
     om_wheel.config(width=7)
     om_wheel.grid(row=4, column=1)
-    if mousewheel == 1:
+    if projvar.mousewheel == 1:
         wheel_selection.set("natural")
     else:
         wheel_selection.set("reverse")
@@ -2780,7 +2803,7 @@ def gui_config(frame):  # generate page to adjust gui configurations
     gui_config_apply(wd[0], wheel_selection)).grid(row=6, column=2)
 
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -2934,7 +2957,7 @@ def database_delete_carriers(frame, station):
     Label(wd[3], text="").grid(row=3, column=0)
     Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
     station_selection = StringVar(wd[3])
-    om_station = OptionMenu(wd[3], station_selection, *list_of_stations)
+    om_station = OptionMenu(wd[3], station_selection, *projvar.list_of_stations)
     om_station.config(width=30, anchor="w")
     om_station.grid(row=5, column=0, columnspan=2, sticky="w")
     if station == "x":
@@ -2981,13 +3004,11 @@ def database_delete_carriers(frame, station):
            command=lambda: database_delete_carriers_apply(wd[0], station_selection, vars)) \
         .pack(side=LEFT)
     Button(wd[4], text="Go Back", width=15, bg="light yellow", anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
 def database_delete_records(masterframe, frame, time_range, date, end_date, table, stations):
-    global list_of_stations
-    global g_station
     db_date = datetime(1, 1, 1, 0, 0)
     db_end_date = datetime(1, 1, 1, 0, 0)
     table_array = []
@@ -3017,7 +3038,7 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
         db_end_date = datetime(int(d[2]), int(d[0]), int(d[1]))
     # define the station array to loop
     if stations.get() == "all stations":
-        station_array = list_of_stations[:]
+        station_array = projvar.list_of_stations[:]
     else:
         station_array = [stations.get()]
     # define the table array to loop
@@ -3054,8 +3075,8 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                 commit(sql)
                 sql = "INSERT INTO stations (station) VALUES('%s')" % "out of station"
                 commit(sql)
-                del list_of_stations[:]
-                list_of_stations.append("out of station")
+                del projvar.list_of_stations[:]
+                projvar.list_of_stations.append("out of station")
 
                 reset("none")  # reset investigation range
         messagebox.showinfo("Database Maintenance",
@@ -3074,8 +3095,8 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                     sql = "DELETE FROM stations WHERE station = '%s'" % stat
                     commit(sql)
                 if stat != "out of station":
-                    list_of_stations.remove(stat)
-                if g_station == stat:
+                    projvar.list_of_stations.remove(stat)
+                if projvar.invran_station == stat:
                     reset("none")
             if tab == "station_index":
                 if stat != "out of station":
@@ -3273,11 +3294,11 @@ def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
                                   "\n\n Are you sure you want to proceed?", parent=frame):
         return
     path = "kb_sub/mandates.sqlite"
-    if platform == "macapp":
+    if projvar.platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    if platform == "winapp":
+    if projvar.platform == "winapp":
         path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    if platform == "py":
+    if projvar.platform == "py":
         path = "kb_sub/mandates.sqlite"
     try:
         if os.path.exists(path):
@@ -3452,10 +3473,10 @@ def database_maintenance(frame):
         Label(wd[3], text="Delete carrier records where station no longer exist (recommended)") \
             .grid(row=r, column=1, sticky="w", columnspan=6)
         r += 1
-    if g_station != "x":
+    if projvar.invran_station is None:
         Label(wd[3], text="").grid(row=r, column=0, sticky="w")
         r += 1
-        Label(wd[3], text="Database Records, {} Specific".format(g_station)) \
+        Label(wd[3], text="Database Records, {} Specific".format(projvar.invran_station)) \
             .grid(row=r, sticky="w", columnspan=4)
         r += 1
         Label(wd[3], text="To see results from other stations, change station "
@@ -3465,18 +3486,18 @@ def database_maintenance(frame):
         Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
         r += 1
         # get and display number of records for carriers
-        sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % g_station
+        sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % projvar.invran_station
         results = inquire(sql)
         Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
         Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
         # get and display number of records for distinct carrier names from carriers
-        sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % g_station
+        sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % projvar.invran_station
         results = inquire(sql)
         Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
         Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
-    if "out of station" in list_of_stations:
+    if "out of station" in projvar.list_of_stations:
         Label(wd[3], text="").grid(row=r, column=0, sticky="w")
         r += 1
         Label(wd[3], text="Database Records, for \"{}\"".format("out of station")) \
@@ -3508,10 +3529,10 @@ def database_maintenance(frame):
     Label(rings_frame, text="").grid(row=rr)
     rr += 1
     Label(rings_frame, text="Station: ").grid(row=rr, column=0, sticky=W)
-    om_rings = OptionMenu(rings_frame, rings_station, *list_of_stations)
+    om_rings = OptionMenu(rings_frame, rings_station, *projvar.list_of_stations)
     om_rings.config(width=20)
-    if g_station != "x":
-        present_station = g_station
+    if projvar.invran_station is None:
+        present_station = projvar.invran_station
     else:
         present_station = "select a station"
     rings_station.set(present_station)
@@ -3569,7 +3590,7 @@ def database_maintenance(frame):
         om1_table.config(width=20)
     om1_table.grid(row=rrr, column=3, sticky="w")
     rrr += 1
-    station_options = list_of_stations[:]  # use splice to make copy of list without creating alias
+    station_options = projvar.list_of_stations[:]  # use splice to make copy of list without creating alias
     station_options.append("all stations")
     Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
     om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
@@ -3645,26 +3666,25 @@ def database_maintenance(frame):
     Label(cleaner_frame2, text="").grid(row=rrr)
     r += 1
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
 def rpt_impman(list_carrier):  # generate report for improper mandates
-    date = g_date[0]
+    sql = ""
+    date = projvar.invran_date_week[0]
     dates = []  # array containing days.
-    if g_range == "week":
-        for i in range(7):
-            dates.append(date)
-            date += timedelta(days=1)
-    if g_range == "day":
-        dates.append(d_date)
-    if g_range == "week":
+    # if investigation range is weekly
+    for i in range(7):
+        dates.append(date)
+        date += timedelta(days=1)
         sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-              % (g_date[0], g_date[6])
-    else:
+            % (projvar.invran_date_week[0], projvar.invran_date_week[6])
+    if not projvar.invran_weekly_span:  # if investigation range is daily
+        dates.append(projvar.invran_date)
         sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
               "carrier_name" \
-              % d_date
+              % projvar.invran_date
     rings = inquire(sql)
     sql = "SELECT * FROM tolerance_results"  # get tolerance_results
     tolerance_results = inquire(sql)
@@ -3685,10 +3705,10 @@ def rpt_impman(list_carrier):  # generate report for improper mandates
     report.write("Improper Mandates Report\n")
     for day in dates:
         report.write('\n\n   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
+        report.write('      Station: {}\n'.format(projvar.invran_station))
         f_date = day.strftime("%A  %b %d, %Y")
         report.write('      Date: {}\n'.format(f_date))
-        report.write('      Pay Period: {}\n\n'.format(pay_period))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
         del daily_list[:]
         del dl_nl[:]
         del dl_wal[:]
@@ -3704,7 +3724,7 @@ def rpt_impman(list_carrier):  # generate report for improper mandates
                     jump = "yes"  # bypasses an analysis of the candidates array
             if jump == "no":  # review the list of candidates
                 winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == g_station:
+                if winner[5] == projvar.invran_station:
                     daily_list.append(winner)  # add the record if it matches the station
                 del candidates[:]  # empty out the candidates array.
         for item in daily_list:  # sort carriers in daily list by the list they are in
@@ -3985,13 +4005,13 @@ def rpt_dt_limiter(date, first_date):  # return the first day if it is earlier t
         return date
 
 
-def rpt_ns_fixer(ns_code):  # remove the day from the ns_code if fixed
+def rpt_ns_fixer(nsday_code):  # remove the day from the ns_code if fixed
     fix = []
-    if "fixed" in ns_code:
-        fix = ns_code.split(":")
+    if "fixed" in nsday_code:
+        fix = nsday_code.split(":")
         return fix[0]
     else:
-        return ns_code
+        return nsday_code
 
 
 def rpt_carrier_by_list(frame, carrier_list):
@@ -4028,15 +4048,15 @@ def rpt_carrier_by_list(frame, carrier_list):
         report = open(dir_path('report') + filename, "w")
         report.write("\nCarrier by List\n\n")
         report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
-        if g_range == "day":
-            f_date = d_date
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
             report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            f_date = g_date[0]
+            f_date = projvar.invran_date_week[0]
             report.write('      Dates: {} through {}\n'
-                         .format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n'.format(pay_period))
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n'.format(projvar.pay_period))
 
         i = 1
         last_list = ""
@@ -4087,7 +4107,7 @@ def rpt_find_carriers(frame, station):
     Label(wd[3], text="").grid(row=3, column=0)
     Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
     station_selection = StringVar(wd[3])
-    om_station = OptionMenu(wd[3], station_selection, *list_of_stations)
+    om_station = OptionMenu(wd[3], station_selection, *projvar.list_of_stations)
     if sys.platform != "darwin":
         om_station.config(width=30, anchor="w")
     else:
@@ -4137,7 +4157,7 @@ def rpt_find_carriers(frame, station):
         i += 1
     # apply and close buttons
     Button(wd[4], text="Go Back", width=20, bg="light yellow", anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -4156,15 +4176,15 @@ def rpt_carrier(frame, carrier_list):  # Generate and display a report of carrie
         report = open(dir_path('report') + filename, "w")
         report.write("\nCarrier Route and NS Day Report\n\n\n")
         report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
-        if g_range == "day":
-            f_date = d_date
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
             report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            f_date = g_date[0]
+            f_date = projvar.invran_date_week[0]
             report.write('      Dates: {} through {}\n'
-                         .format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(pay_period))
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
         report.write('{:>4} {:<23} {:<13} {:<29} {:<10}\n'.format("", "Carrier Name", "N/S Day", "Route/s",
                                                                   "Start Date"))
         report.write('     ------------------------------------------------------------------- ----------\n')
@@ -4172,10 +4192,10 @@ def rpt_carrier(frame, carrier_list):  # Generate and display a report of carrie
         for line in carrier_list:
             if line[1] not in reoccurring_names:
                 report.write('{:>4} {:<23} {:<4} {:<8} {:<29}\n'
-                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]), line[4]))
+                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]), line[4]))
             else:
                 report.write('{:>4} {:<23} {:<4} {:<8} {:<29} {:<10}\n'
-                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]), line[4],
+                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]), line[4],
                                      rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
             if i % 3 == 0:
                 report.write('     ------------------------------------------------------------------- ----------\n')
@@ -4212,15 +4232,15 @@ def rpt_carrier_route(frame, carrier_list):  # Generate and display a report of 
         report = open(dir_path('report') + filename, "w")
         report.write("\nCarrier Route Report\n\n\n")
         report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
-        if g_range == "day":
-            f_date = d_date
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
             report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            f_date = g_date[0]
+            f_date = projvar.invran_date_week[0]
             report.write('      Date: {} through {}\n'
-                         .format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(pay_period))
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
         report.write('{:>4}  {:<22} {:<29}\n'.format("", "Carrier Name", "Route/s"))
         report.write('      ---------------------------------------------------- -------------------\n')
         i = 1
@@ -4260,25 +4280,25 @@ def rpt_carrier_nsday(frame, carrier_list):  # Generate and display a report of 
         report = open(dir_path('report') + filename, "w")
         report.write("\nCarrier NS Day\n\n\n")
         report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(g_station))
-        if g_range == "day":
-            f_date = d_date
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
             report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
         else:
-            f_date = g_date[0]
+            f_date = projvar.invran_date_week[0]
             report.write('      Date: {} through {}\n'
-                         .format(g_date[0].strftime("%m/%d/%Y"), g_date[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(pay_period))
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
         report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
         report.write('      ----------------------------------------  -------------------\n')
         i = 1
         for line in carrier_list:
             if line[1] not in reoccurring_names:
                 report.write('{:>4}  {:<22} {:<5}{:<12}\n'
-                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]])))
+                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]])))
             else:
                 report.write('{:>4}  {:<22} {:<5}{:<12}  effective {:<10}\n'
-                             .format(i, line[1], ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]),
+                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]),
                                      rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
             if i % 3 == 0:
                 report.write('      ----------------------------------------  -------------------\n')
@@ -4351,14 +4371,14 @@ def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spread
         if pre[1] not in unique_name:
             unique_name.append(pre[1])
             carrier_list.append(pre)  # the carrier_list is now ready and has no duplicates
-    date = g_date[0]
+    date = projvar.invran_date_week[0]
     dates = []  # array containing days.
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         for i in range(7):
             dates.append(date)
             date += timedelta(days=1)
     sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-          % (g_date[0], g_date[6])
+          % (projvar.invran_date_week[0], projvar.invran_date_week[6])
     r_rings = inquire(sql)
     # get minimum rows
     sql = "SELECT tolerance FROM tolerances"
@@ -4445,12 +4465,12 @@ def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spread
     summary['F3'] = "Pay Period:"  # Pay Period Header
     summary['F3'].style = date_dov_title
     summary.merge_cells('G3:I3')  # blank field for pay period
-    summary['G3'] = pay_period
+    summary['G3'] = projvar.pay_period
     summary['G3'].style = date_dov
     summary['A4'] = "Station:"  # Station Header
     summary['A4'].style = date_dov_title
     summary.merge_cells('B4:D4')  # blank field for station
-    summary['B4'] = g_station
+    summary['B4'] = projvar.invran_station
     summary['B4'].style = date_dov
     summary['A6'] = "name"
     summary['A6'].style = col_center_header
@@ -4469,12 +4489,12 @@ def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spread
     violations['K3'] = "Pay Period:"
     violations['k3'].style = date_dov_title
     violations.merge_cells('O3:S3')  # blank field for pay period
-    violations['O3'] = pay_period
+    violations['O3'] = projvar.pay_period
     violations['O3'].style = date_dov
     violations['A4'] = "Station:"
     violations['A4'].style = date_dov_title
     violations.merge_cells('B4:J4')  # blank field for station
-    violations['B4'] = g_station
+    violations['B4'] = projvar.invran_station
     violations['B4'].style = date_dov
     violations.merge_cells('D6:Q6')
     violations['D6'] = "Daily Paid Leave times with type"
@@ -4922,7 +4942,7 @@ def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spread
                     jump = "yes"  # bypasses an analysis of the candidates array
             if jump == "no":  # review the list of candidates
                 winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == g_station:
+                if winner[5] == projvar.invran_station:
                     daily_list.append(winner)  # add the record if it matches the station
                 del candidates[:]  # empty out the candidates array.
     summary_i = 7
@@ -5417,7 +5437,7 @@ def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spread
     violations.row_dimensions[i].height = 10  # adjust all row height
     violations.row_dimensions[i + 1].height = 10  # adjust all row height
     # name the excel file
-    xl_filename = "kb_om" + str(format(g_date[0], "_%y_%m_%d")) + ".xlsx"
+    xl_filename = "kb_om" + str(format(projvar.invran_date_week[0], "_%y_%m_%d")) + ".xlsx"
     if messagebox.askokcancel("Spreadsheet generator",
                               "Do you want to generate a spreadsheet?",
                               parent=frame):
@@ -5476,7 +5496,7 @@ def ns_config_reset(frame):  # reset ns day configurations from Non-Scheduled Da
 
 
 def ns_config(frame):  # generate Non-Scheduled Day Configurations page to configure ns day settings
-    if gs_day == "x":
+    if projvar.invran_day == None:
         messagebox.showerror("Non-Scheduled Day Configurations",
                              "You must set the Investigation Range before changing the NS Day Configurations.",
                              parent=frame)
@@ -5488,11 +5508,11 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
         .grid(row=0, sticky="w", columnspan=4)
     Label(wd[3], text=" ").grid(row=1, column=0)
     Label(wd[3], text="Change Configuration").grid(row=2, sticky="w", columnspan=4)
-    f_date = g_date[0].strftime("%a - %b %d, %Y")
-    end_f_date = g_date[6].strftime("%a - %b %d, %Y")
+    f_date = projvar.invran_date_week[0].strftime("%a - %b %d, %Y")
+    end_f_date = projvar.invran_date_week[6].strftime("%a - %b %d, %Y")
     Label(wd[3], text="Investigation Range: {0} through {1}".format(f_date, end_f_date),
           foreground="red").grid(row=3, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text="Pay Period: {0}".format(pay_period),
+    Label(wd[3], text="Pay Period: {0}".format(projvar.pay_period),
           foreground="red").grid(row=4, column=0, sticky="w", columnspan=4)
     Label(wd[3], text=" ").grid(row=5, column=0, sticky="w", columnspan=4)
     Label(wd[3], text="Day", foreground="grey").grid(row=6, column=0, sticky="w")  # column headers
@@ -5516,7 +5536,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     red_color = StringVar(wd[3])
     black_color = StringVar(wd[3])
     fill_array = [yellow_color, blue_color, green_color, brown_color, red_color, black_color]
-    Label(wd[3], text="{}".format(ns_code['yellow'])).grid(row=7, column=0, sticky="w")  # yellow row
+    Label(wd[3], text="{}".format(projvar.ns_code['yellow'])).grid(row=7, column=0, sticky="w")  # yellow row
     Entry(wd[3], textvariable=yellow_text, width=10).grid(row=7, column=1, sticky="w")
     yellow_text.set(result[0][2])
     om_yellow = OptionMenu(wd[3], yellow_color, *color_array)
@@ -5524,7 +5544,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     om_yellow.config(width=13, anchor="w")
     om_yellow.grid(row=7, column=2, sticky="w")
     Label(wd[3], text="yellow").grid(row=7, column=3, sticky="w")
-    Label(wd[3], text="{}".format(ns_code['blue'])).grid(row=8, column=0, sticky="w")  # blue row
+    Label(wd[3], text="{}".format(projvar.ns_code['blue'])).grid(row=8, column=0, sticky="w")  # blue row
     Entry(wd[3], textvariable=blue_text, width=10).grid(row=8, column=1, sticky="w")
     blue_text.set(result[1][2])
     om_blue = OptionMenu(wd[3], blue_color, *color_array)
@@ -5532,7 +5552,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     om_blue.config(width=13, anchor="w")
     om_blue.grid(row=8, column=2, sticky="w")
     Label(wd[3], text="blue").grid(row=8, column=3, sticky="w")
-    Label(wd[3], text="{}".format(ns_code['green'])).grid(row=9, column=0, sticky="w")  # green row
+    Label(wd[3], text="{}".format(projvar.ns_code['green'])).grid(row=9, column=0, sticky="w")  # green row
     Entry(wd[3], textvariable=green_text, width=10).grid(row=9, column=1, sticky="w")
     green_text.set(result[2][2])
     om_green = OptionMenu(wd[3], green_color, *color_array)
@@ -5540,7 +5560,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     om_green.config(width=13, anchor="w")
     om_green.grid(row=9, column=2, sticky="w")
     Label(wd[3], text="green").grid(row=9, column=3, sticky="w")
-    Label(wd[3], text="{}".format(ns_code['brown'])).grid(row=10, column=0, sticky="w")  # brown row
+    Label(wd[3], text="{}".format(projvar.ns_code['brown'])).grid(row=10, column=0, sticky="w")  # brown row
     Entry(wd[3], textvariable=brown_text, width=10).grid(row=10, column=1, sticky="w")
     brown_text.set(result[3][2])
     om_brown = OptionMenu(wd[3], brown_color, *color_array)
@@ -5548,7 +5568,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     om_brown.config(width=13, anchor="w")
     om_brown.grid(row=10, column=2, sticky="w")
     Label(wd[3], text="brown").grid(row=10, column=3, sticky="w")
-    Label(wd[3], text="{}".format(ns_code['red'])).grid(row=11, column=0, sticky="w")  # red row
+    Label(wd[3], text="{}".format(projvar.ns_code['red'])).grid(row=11, column=0, sticky="w")  # red row
     Entry(wd[3], textvariable=red_text, width=10).grid(row=11, column=1, sticky="w")
     red_text.set(result[4][2])
     om_red = OptionMenu(wd[3], red_color, *color_array)
@@ -5556,7 +5576,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     om_red.config(width=13, anchor="w")
     om_red.grid(row=11, column=2, sticky="w")
     Label(wd[3], text="red").grid(row=11, column=3, sticky="w")
-    Label(wd[3], text="{}".format(ns_code['black'])).grid(row=12, column=0, sticky="w")  # black row
+    Label(wd[3], text="{}".format(projvar.ns_code['black'])).grid(row=12, column=0, sticky="w")  # black row
     Entry(wd[3], textvariable=black_text, width=10).grid(row=12, column=1, sticky="w")
     black_text.set(result[5][2])
     om_black = OptionMenu(wd[3], black_color, *color_array)
@@ -5572,7 +5592,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     Button(wd[3], text="reset", width=10, command=lambda: ns_config_reset(wd[0])).grid(row=17, column=3)
 
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -5682,7 +5702,7 @@ def pdf_splitter(frame):  # PDF Splitter
                new_path.get().strip())) \
         .grid(row=15, column=4, sticky="e")
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -5743,7 +5763,7 @@ def pdf_converter_settings(frame):
     pdf_converter_settings_apply(wd[0], error_selection, raw_selection, txt_selection)) \
         .grid(row=12, column=2)
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -5869,6 +5889,7 @@ def pdf_converter_short_name(file_path):
 
 
 def pdf_converter(frame):
+    date_holder = []
     # inquire as to if the pdf converter reports have been opted for by the user
     sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
     result = inquire(sql)
@@ -6204,8 +6225,8 @@ def pdf_converter(frame):
                         unprocessed_counter += 1  # unprocessed rings
                         salih_rpt.append(lastname)
                     time_holder = []
-                    if re.match(r" [0-2][0-9]\.[0-9][0-9]$", e) and len(
-                            date_holder) != 0:  # look for time following date/mv desig
+                    # look for time following date/mv desig
+                    if re.match(r" [0-2][0-9]\.[0-9][0-9]$", e) and len(date_holder) != 0:
                         date_holder.append(e)
                         time_holder = date_holder
                     # look for items in franklin array to solve for franklin problem
@@ -6909,7 +6930,7 @@ def informalc_edit(frame, result, grv_num, msg):
           fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
         .grid(row=9, column=0, sticky="w")  # select a station
     station = StringVar(wd[0])
-    station_options = list_of_stations
+    station_options = projvar.list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
@@ -7164,13 +7185,15 @@ def informalc_addnames(grv_no, c_list, listbox):
 
 
 def informalc_root(passed_result, grv_no):
+    start = None
+    end = None
     global informalc_newroot  # initialize the global
     new_root = Tk()
     informalc_newroot = new_root  # set the global
     new_root.title("KLUSTERBOX")
     titlebar_icon(new_root)  # place icon in titlebar
-    x_position = root.winfo_x() + 450
-    y_position = root.winfo_y() - 25
+    x_position = projvar.root.winfo_x() + 450
+    y_position = projvar.root.winfo_y() - 25
     new_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
     n_f = Frame(new_root)
     n_f.pack()
@@ -8044,7 +8067,7 @@ def informalc_grvlist(frame):
     # select station
     Label(wd[3], text=" Station ", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
           anchor="w", width=macadj(14, 12)).grid(row=2, column=0, columnspan=3, sticky="w")
-    station_options = list_of_stations
+    station_options = projvar.list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
@@ -8171,7 +8194,7 @@ def informalc_new(frame, msg):
     Label(wd[3], text="", height=macadj(1, 2)).grid(row=8, column=1)
     station = StringVar(wd[0])
     station.set("Select a Station")
-    station_options = list_of_stations
+    station_options = projvar.list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station_om = OptionMenu(wd[3], station, *station_options)
@@ -8496,8 +8519,8 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
     informalc_poe_lbox = poe_root  # set the global
     poe_root.title("KLUSTERBOX")
     titlebar_icon(poe_root)  # place icon in titlebar
-    x_position = root.winfo_x() + 450
-    y_position = root.winfo_y() - 25
+    x_position = projvar.root.winfo_x() + 450
+    y_position = projvar.root.winfo_y() - 25
     poe_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
     n_f = Frame(poe_root)
     n_f.pack()
@@ -8528,7 +8551,7 @@ def informalc_poe_search(frame):
     wd = front_window(frame)
     the_year = StringVar(wd[0])
     the_station = StringVar(wd[0])
-    station_options = list_of_stations
+    station_options = projvar.list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     the_station.set("undefined")
@@ -8657,7 +8680,7 @@ def informalc_por(frame):
     afterdate = StringVar(wd[0])
     beforedate = StringVar(wd[0])
     station = StringVar(wd[0])
-    station_options = list_of_stations
+    station_options = projvar.list_of_stations
     if "out of station" in station_options:
         station_options.remove("out of station")
     station.set("undefined")
@@ -8714,9 +8737,8 @@ def informalc(frame):
           'hours varchar,rate varchar,amount varchar)'
     commit(sql)
     # put out of station back into the list of stations in case it has been removed.
-    global list_of_stations
-    if "out of station" not in list_of_stations:
-        list_of_stations.append("out of station")
+    if "out of station" not in projvar.list_of_stations:
+        projvar.list_of_stations.append("out of station")
     wd = front_window(frame)  # F,S,C,FF,buttons
     Label(wd[3], text="Informal C", font=macadj("bold", "Helvetica 18")).grid(row=0, sticky="w")
     Label(wd[3], text="The C is for Compliance").grid(row=1, sticky="w")
@@ -8726,7 +8748,7 @@ def informalc(frame):
     Button(wd[3], text="Payout Entry", width=30, command=lambda: informalc_poe_search(wd[0])).grid(row=5, pady=5)
     Button(wd[3], text="Payout Report", width=30, command=lambda: informalc_por(wd[0])).grid(row=6, pady=5)
     Label(wd[3], text="", width=70).grid(row=7)
-    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: (wd[0].destroy(), main_frame())) \
+    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: (wd[0].destroy(), MainFrame().start())) \
         .grid(row=0, column=0)
     rear_window(wd)
 
@@ -8771,7 +8793,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                    parent=frame)
             return
         else:
-            t_range = "week"
+            t_range = True
     year = int(tacs_pp[:-3])  # set the globals
     pp = tacs_pp[-3:]
     t_date = find_pp(year, pp)
@@ -8788,7 +8810,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
     set_globals(s_year, s_mo, s_day, t_range, station[0][0], "None")  # set the investigation range
     # get the otdl list from the carriers table
     sql = "SELECT carrier_name FROM carriers WHERE effective_date <= '%s' and station = '%s' and list_status = '%s'" \
-          "ORDER BY carrier_name, effective_date desc" % (g_date[6], g_station, 'otdl')
+          "ORDER BY carrier_name, effective_date desc" % (projvar.invran_date_week[6], projvar.invran_station, 'otdl')
     results = inquire(sql)  # call function to access database
     unique_carriers = []  # create non repeating list of otdl carriers
     for name in results:
@@ -8808,12 +8830,12 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
             ot_wkly.append("no index")
         sql = "SELECT effective_date,list_status,station FROM carriers " \
               "WHERE carrier_name='%s' and effective_date<='%s'" \
-              "ORDER BY effective_date desc" % (name, g_date[6])
+              "ORDER BY effective_date desc" % (name, projvar.invran_date_week[6])
         results = inquire(sql)
         ot_wkly.append(name)
-        for date in g_date:  # loop for each day of the week
+        for date in projvar.invran_date_week:  # loop for each day of the week
             for rec in results:  # loop for each record starting from the latest
-                if rec[2] == g_station:  # if there is a station match
+                if rec[2] == projvar.invran_station:  # if there is a station match
                     station_anchor = "yes"  # mark the carrier as attached to station
                 if datetime.strptime(rec[0],
                                      '%Y-%m-%d %H:%M:%S') <= date:  # if the rec is at or earlier than investigation.
@@ -8850,10 +8872,10 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                "designated. Use the Multi Input Feature to designate otdl carriers. \n"
                                "This Weekly Availability Report can not be generated without a list of otdl carriers. "
                                "Build the carrier list/otdl before re-running Weekly Availability."
-                               .format(g_station, g_date[0].strftime("%b %d, %Y")),
+                               .format(projvar.invran_station, projvar.invran_date_week[0].strftime("%b %d, %Y")),
                                parent=frame)
         frame.destroy()
-        main_frame()
+        MainFrame().start()
     else:  # if there is an otdl then build array holding hours for each day
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         extra_hour_codes = ("49", "52", "55", "56", "57", "58", "59", "60")
@@ -8946,21 +8968,21 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
         wkly_total.merge_cells('A1:E1')
         wkly_total['A3'] = "Date:  "  # create date/ pay period/ station header
         wkly_total['A3'].style = date_dov_title
-        range_of_dates = format(g_date[0], "%A  %m/%d/%y") + " - " + format(g_date[6], "%A  %m/%d/%y")
+        range_of_dates = format(projvar.invran_date_week[0], "%A  %m/%d/%y") + " - " + format(projvar.invran_date_week[6], "%A  %m/%d/%y")
         wkly_total['B3'] = range_of_dates
         wkly_total['B3'].style = date_dov
         wkly_total.merge_cells('B3:H3')
-        date = datetime(int(gs_year), int(gs_mo), int(gs_day))
-        pay_period = pp_by_date(date)
+        date = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
+        projvar.pay_period = pp_by_date(date)
         wkly_total['E4'] = "Pay Period:  "
         wkly_total['E4'].style = date_dov_title
         wkly_total.merge_cells('E4:F4')
-        wkly_total['G4'] = pay_period
+        wkly_total['G4'] = projvar.pay_period
         wkly_total['G4'].style = date_dov
         wkly_total.merge_cells('G4:H4')
         wkly_total['A4'] = "Station:  "
         wkly_total['A4'].style = date_dov_title
-        wkly_total['B4'] = g_station
+        wkly_total['B4'] = projvar.invran_station
         wkly_total['B4'].style = date_dov
         wkly_total.merge_cells('B4:D4')
         oi = 6
@@ -9079,7 +9101,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                 wkly_total.merge_cells('A' + str(oi) + ':D' + str(oi))
                 oi += 1
         # name the excel file
-        xl_filename = "kb_wa" + str(format(g_date[0], "_%y_%m_%d")) + ".xlsx"
+        xl_filename = "kb_wa" + str(format(projvar.invran_date_week[0], "_%y_%m_%d")) + ".xlsx"
         ok = messagebox.askokcancel("Spreadsheet generator",
                                     "Do you want to generate a spreadsheet?",
                                     parent=frame)
@@ -9104,7 +9126,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                      "(the file can't be overwritten while open).",
                                      parent=frame)
         frame.destroy()
-        main_frame()
+        MainFrame().start()
 
 
 def station_rec_del(frame, tacs, kb):
@@ -9198,7 +9220,7 @@ def station_index_mgmt(frame):
         Button(wd[3], text="Delete All", width="15", command=lambda: (wd[0].destroy(), stationindexer_del_all())) \
             .grid(row=g + 1, column=0, columnspan=3, sticky="e")
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -9243,7 +9265,7 @@ def name_index_screen():
             x += 1
         Button(wd[3], text="Delete All", width="15", command=lambda: del_all_nameindexer(wd[0])) \
             .grid(row=x, column=0, columnspan=5, sticky="e")
-    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     wd[0].update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
@@ -9353,15 +9375,16 @@ def auto_precheck():
 
 
 def gen_carrier_list():
+    sql = ""
     # generate in range carrier list
-    if g_range == "week":  # select sql dependant on range
+    if projvar.invran_weekly_span:  # select sql dependant on range
         sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
               " FROM carriers WHERE effective_date <= '%s' " \
-              "ORDER BY carrier_name, effective_date desc" % g_date[6]
-    if g_range == "day":
+              "ORDER BY carrier_name, effective_date desc" % projvar.invran_date_week[6]
+    if not projvar.invran_weekly_span:   # if investigation range is weekly
         sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
               " FROM carriers WHERE effective_date <= '%s' " \
-              "ORDER BY carrier_name, effective_date desc" % d_date
+              "ORDER BY carrier_name, effective_date desc" % projvar.invran_date
     results = inquire(sql)  # call function to access database
     carrier_list = []  # initialize arrays for data sorting
     candidates = []
@@ -9376,19 +9399,20 @@ def gen_carrier_list():
         if jump == "no":
             # sort into records in investigation range and those prior
             for record in candidates:
-                if g_range == "week":  # if record falls in investigation range - add it to more rows array
-                    if str(g_date[1]) <= record[0] <= str(g_date[6]):
+                # if record falls in investigation range - add it to more rows array
+                if projvar.invran_weekly_span:  # if investigation range is weekly
+                    if str(projvar.invran_date_week[1]) <= record[0] <= str(projvar.invran_date_week[6]):
                         more_rows.append(record)
-                    if record[0] <= str(g_date[0]) and len(pre_invest) == 0:
+                    if record[0] <= str(projvar.invran_date_week[0]) and len(pre_invest) == 0:
                         pre_invest.append(record)
-                if g_range == "day":
-                    if record[0] <= str(d_date) and len(pre_invest) == 0:
-                        pre_invest.append(record)
+                if not projvar.invran_weekly_span:  # if investigation range is daily...
+                    if record[0] <= str(projvar.invran_date) and len(pre_invest) == 0:  # if date match and no pre_investigation
+                        pre_invest.append(record)  # add rec to pre_invest array
             # find carriers who start in the middle of the investigation range CATEGORY ONE
             if len(more_rows) > 0 and len(pre_invest) == 0:
                 station_anchor = "no"
                 for each in more_rows:  # check if any records place the carrier in the selected station
-                    if each[5] == g_station:
+                    if each[5] == projvar.invran_station:
                         station_anchor = "yes"  # if so, set the station anchor
                 if station_anchor == "yes":
                     list(more_rows)
@@ -9399,7 +9423,7 @@ def gen_carrier_list():
             if len(more_rows) > 0 and len(pre_invest) > 0:
                 station_anchor = "no"
                 for each in more_rows + pre_invest:
-                    if each[5] == g_station:
+                    if each[5] == projvar.invran_station:
                         station_anchor = "yes"
                 if station_anchor == "yes":
                     xx = list(pre_invest[0])
@@ -9407,7 +9431,7 @@ def gen_carrier_list():
             # find carrier with records from only before investigation range.CATEGORY THREE
             if len(more_rows) == 0 and len(pre_invest) == 1:
                 for each in pre_invest:
-                    if each[5] == g_station:
+                    if each[5] == projvar.invran_station:
                         x = list(pre_invest[0])
                         carrier_list.append(x)
             del more_rows[:]
@@ -9450,14 +9474,14 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
             if cc == 150: break  # survey 150 lines before breaking to anaylize results.
             cc += 1
         if len(range_days) > 5:
-            t_range = "day"  # set the range
+            t_range = False  # set the range
             messagebox.showwarning("File Selection Error",
                                    "Employee Everything Reports that cover only one day /n"
                                    "are not supported in this version of Klusterbox.",
                                    parent=frame)
             return
         else:
-            t_range = "week"
+            t_range = True
     year = int(tacs_pp[:-3])
     pp = tacs_pp[-3:]
     t_date = find_pp(year, pp)
@@ -9474,7 +9498,7 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
     for record in results:
         kb_stations.append(record[0])
     frame.destroy()
-    f = Frame(root)
+    f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
     s = Scrollbar(f)  # link up the canvas and scrollbar
     c = Canvas(f, width=1600)
@@ -9483,9 +9507,9 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -9503,7 +9527,7 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
                                "csv format, you should have better results.",
                                parent=f)
         f.destroy()
-        main_frame()
+        MainFrame().start()
         return
 
     station_index.append("out of station")
@@ -9536,12 +9560,12 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
     Button(ff, text="OK", width=8, command=lambda: apply_auto_indexer_1
     (f, file_path, tacs_station, station_sorter.get(), station_new.get(), t_date, t_range)) \
         .grid(row=12, column=2, sticky=W)
-    Button(ff, text="Cancel", width=8, command=lambda: (f.destroy(), main_frame())).grid(row=12, column=3, sticky=W)
+    Button(ff, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).grid(row=12, column=3, sticky=W)
     if tacs_station in tacs_index:
         auto_indexer_2(f, file_path, t_date, tacs_station, t_range)
     else:
         c.config(scrollregion=c.bbox("all"))
-        root.update()
+        projvar.root.update()
         mainloop()
 
 
@@ -9551,7 +9575,6 @@ def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station
     station_index = []
     for ss in result:
         station_index.append(ss[0])
-    global list_of_stations
     station_new = station_new.strip()
     if station_sorter == "select matching station":
         messagebox.showerror("Data Entry Error",
@@ -9564,11 +9587,11 @@ def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station
                              parent=frame)
         return
     elif station_sorter == "ADD STATION" and station_new != "":
-        if station_new not in list_of_stations:
+        if station_new not in projvar.list_of_stations:
             sql = "INSERT INTO stations (station) VALUES('%s')" % station_new
         commit(sql)
-        if station_new not in list_of_stations:
-            list_of_stations.append(station_new)
+        if station_new not in projvar.list_of_stations:
+            projvar.list_of_stations.append(station_new)
         if len(tacs_station) != 0:  # add to the station index to the dbase unless tacs_station is empty.
             sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
                   % (tacs_station, station_new, "")
@@ -9710,7 +9733,7 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         kb_name = result[0][0]
         sql = "SELECT effective_date,carrier_name FROM carriers " \
               "WHERE carrier_name = '%s' AND effective_date <= '%s' " \
-              "ORDER BY effective_date DESC" % (kb_name, g_date[0])
+              "ORDER BY effective_date DESC" % (kb_name, projvar.invran_date_week[0])
         result = inquire(sql)
         if not result:
             new_carrier.append(name)  # will add as new carrier in AI 3
@@ -9746,13 +9769,13 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         auto_indexer_5(frame, file_path, check_these)  # step to AI  to check discrepancies
     else:  # If there are candidates sort, generate PAIRING SCREEN 1
         frame.destroy()
-        f = Frame(root)
+        f = Frame(projvar.root)
         f.pack(fill=BOTH, side=LEFT)
         c1 = Canvas(f)
         c1.pack(fill=BOTH, side=BOTTOM),
         Button(c1, text="Continue", width=8, command=lambda: auto_indexer_3
         (f, file_path, tacs_list, name_sorter, tried_names, new_carrier, check_these)).grid(row=0, column=0)
-        Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), main_frame())).grid(row=0, column=1)
+        Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).grid(row=0, column=1)
         s = Scrollbar(f)  # link up the canvas and scrollbar
         c = Canvas(f, width=1600)
         s.pack(side=RIGHT, fill=BOTH)
@@ -9760,9 +9783,10 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         s.configure(command=c.yview, orient="vertical")
         c.configure(yscrollcommand=s.set)
         if sys.platform == "win32":
-            c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+            c.bind_all('<MouseWheel>',
+                       lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
         elif sys.platform == "darwin":
-            c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+            c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
         elif sys.platform == "linux":
             c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
             c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -9776,8 +9800,9 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         "should be able to find it on this screen or the next. It is possible that the name has no match, if that is \n"
         "the case then select \"ADD NAME\" in the next screen. You can change the default between \"NOT FOUND\" and \n"
         "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
-        "Investigation Range: {0} through {1}\n\n".format(g_date[0].strftime("%a - %b %d, %Y"),
-                                                          g_date[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
+        "Investigation Range: {0} through {1}\n\n"
+              .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
             .grid(row=1, column=0, columnspan=10, sticky="w")
         Button(ff, text="DISCARD", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 1)) \
             .grid(row=2, column=3, sticky="w", columnspan=2)
@@ -9817,7 +9842,7 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
                 Label(ff, text=str(len(possible_names)) + " names").grid(row=cc, column=4, sticky="w")
             cc += 1
             i += 1
-        root.update()
+        projvar.root.update()
         c.config(scrollregion=c.bbox("all"))
         mainloop()
 
@@ -9873,13 +9898,13 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
             c_list.append(item[0])
     name_sorter = []  # page contents
     frame.destroy()  # destroy old frame and build new frame
-    f = Frame(root)
+    f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="Continue", width=8, command=lambda: apply_auto_indexer_3
     (f, c1, file_path, tacs_list, name_sorter, new_carrier, c_list, check_these)).grid(row=0, column=0)
-    Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), main_frame())).grid(row=0, column=1)
+    Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).grid(row=0, column=1)
     s = Scrollbar(f)  # link up the canvas and scrollbar
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
@@ -9887,9 +9912,9 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -9908,8 +9933,8 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
         " you should be able to find it on this screen. It is possible that the name has no match, if that is \n"
         "the case then select \"ADD NAME\" in this screen. You can change the default between \"ADD NAME\" and \n"
         "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
-        "Investigation Range: {0} through {1}\n\n".format(g_date[0].strftime("%a - %b %d, %Y"),
-                                                          g_date[6].strftime("%a - %b %d, %Y")),
+        "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                                                          projvar.invran_date_week[6].strftime("%a - %b %d, %Y")),
               justify=LEFT).grid(row=1, column=0, columnspan=10, sticky="w")
         Button(ff, text="DISCARD", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 1)) \
             .grid(row=2, column=3, sticky="w", columnspan=2)
@@ -9945,7 +9970,7 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
                 Label(ff, text=str(len(possible_names)) + " names").grid(row=cc, column=4)
             cc += 1
             i += 1
-        root.update()
+        projvar.root.update()
         c.config(scrollregion=c.bbox("all"))
         mainloop()
 
@@ -10082,9 +10107,9 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         remove_array = ("sat", "mon", "tue", "wed", "thu", "fri")
     else:
         remove_array = ("green", "brown", "red", "black", "yellow", "blue")
-    ns_code_mod = dict()  # copy the ns_code dict to ns_code_mod using dict()
-    for key in ns_code:
-        ns_code_mod[key] = ns_code[key]
+    ns_code_mod = dict()  # copy the projvar.ns_code dict to ns_code_mod using dict()
+    for key in projvar.ns_code:
+        ns_code_mod[key] = projvar.ns_code[key]
     for key in remove_array:
         if key in ns_code_mod:
             del ns_code_mod[key]  # modify available ns days per ns_toggle
@@ -10105,13 +10130,13 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     ns_dict = {}  # create dictionary for ns day data
     for id in results:  # loop to fill dictionary with ns day info
         ns_dict[id[0]] = id[1]
-    f = Frame(root)
+    f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="Continue", width=8, command=lambda: apply_auto_indexer_4
     (f, c1, file_path, to_addname, carrier_name, l_s, l_ns, route, check_these)).pack(side=LEFT)
-    Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), main_frame())).pack(side=LEFT)
+    Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).pack(side=LEFT)
     s = Scrollbar(f)  # link up the canvas and scrollbar
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
@@ -10120,9 +10145,9 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -10135,8 +10160,8 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     "information (shown in blue),as a guide if it is accurate. As OTDL/WAL information is not in TACS, it is \n"
     "not shown and this information will have to requested from management. Routes must be only 4 digits \n"
     "long. In cases were there are multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
-    "Investigation Range: {0} through {1}\n\n".format(g_date[0].strftime("%a - %b %d, %Y"),
-                                                      g_date[6].strftime("%a - %b %d, %Y"))
+    "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
           , justify=LEFT).grid(row=1, column=0, sticky="w", columnspan=6)
     y = 2  # count for the row
     Label(ff, text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
@@ -10158,7 +10183,7 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         Label(ff, text=macadj("not in record", "unknown"), fg=color).grid(row=y, column=1, sticky="w")
         Label(ff, text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
         Label(ff, text=name[3], fg=color).grid(row=y, column=3, sticky="w")
-        Label(ff, text=g_station, fg=color).grid(row=y, column=4, sticky="w")
+        Label(ff, text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
         y += 1
         list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
         if name[3] == "auxiliary":
@@ -10188,19 +10213,18 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         i += 1
         Label(ff, text="").grid(row=y, column=0, sticky="w")
         y += 1
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
     mainloop()
 
 
 def apply_auto_indexer_4(frame, buttons, file_path, to_addname, carrier_name, l_s, l_ns, route,
                          check_these):  # adds new carriers to the carriers table
-    if g_range == "week":
-        eff_date = g_date[0]
-    if g_range == "day":
-        eff_date = d_date
+    eff_date = projvar.invran_date_week[0]    # if investigation range is weekly
+    if not projvar.invran_weekly_span:  # if investigation range is daily
+        eff_date = projvar.invran_date
     station = StringVar(frame)  # put station var in a StringVar object
-    station.set(g_station)
+    station.set(projvar.invran_station)
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.pack(side=LEFT)
     pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
@@ -10240,8 +10264,8 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     frame.destroy()
     opt_nsday = []  # make an array of "day / color" options for option menu
     ns_opt_dict = {}  # creates a dictionary of ns colors/ options for menu
-    for each in ns_code:  # creates the option menu options for ns day menu
-        ns_option = ns_code[each] + " - " + each  # make a string for each day/color
+    for each in projvar.ns_code:  # creates the option menu options for ns day menu
+        ns_option = projvar.ns_code[each] + " - " + each  # make a string for each day/color
         ns_opt_dict[each] = ns_option
         if each == "none":
             ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
@@ -10262,7 +10286,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
             remainders.append(name)
     for name in remainders:  # get carriers data from carriers for remainders
         sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s'" \
-              "ORDER BY effective_date desc" % (name_dict[name[0]], g_date[0])
+              "ORDER BY effective_date desc" % (name_dict[name[0]], projvar.invran_date_week[0])
         result = inquire(sql)
         carrier_list.append(list(result[0]))
     carrier_list.sort(key=itemgetter(1))  # resort carrier list after additions
@@ -10279,7 +10303,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     "Routes must 4  or 5 digits long. In cases where there are multiple routes, the routes must be \n"
     "separated by a \"/\" backslash.\n\n"
     "Investigation Range: {0} through {1}\n\n"
-          .format(g_date[0].strftime("%a - %b %d, %Y"), g_date[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
+          .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"), projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
         .grid(row=1, sticky="w")
     y = 1  # count for the row
     Label(wd[3], text="    ", fg="Grey").grid(row=y, column=0, sticky="w")
@@ -10321,7 +10345,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     tlist = "undetected"
                     tnsday = code_ns[str(ns_dict[name[0]])]
                     troute = "undetected"
-                tstation = g_station
+                tstation = projvar.invran_station
                 trip_wire = "set"
                 # check tacs data against data in carriers table/ klusterbox
                 if k_name[2] not in tlist:
@@ -10354,7 +10378,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     Label(wd[3], text=macadj("not in record", "unknown"), fg=color).grid(row=y, column=1, sticky="w")
                     Label(wd[3], text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
                     Label(wd[3], text=name[3], fg=color).grid(row=y, column=3, sticky="w")
-                    Label(wd[3], text=g_station, fg=color).grid(row=y, column=4, sticky="w")
+                    Label(wd[3], text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
                     y += 1
                     carrier_name.append(k_name[1])  # add kb name to the array
                     list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
@@ -10374,7 +10398,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     e_route[i].set(k_name[4])
                     l_station.append(StringVar(wd[3]))
                     l_station[i].set(k_name[5])
-                    list_station = OptionMenu(wd[3], l_station[i], *list_of_stations)
+                    list_station = OptionMenu(wd[3], l_station[i], *projvar.list_of_stations)
                     list_station.config(width=macadj(25, 18))
                     list_station.grid(row=y, column=4, sticky="w")
                     y += 1
@@ -10384,7 +10408,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     Button(wd[4], text="Continue", width=8,
            command=lambda: apply_auto_indexer_5(wd[0], wd[4], file_path, carrier_name, l_s, l_ns, e_route,
                                                 l_station, check_these)).pack(side=LEFT)
-    Button(wd[4], text="Cancel", width=8, command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+    Button(wd[4], text="Cancel", width=8, command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     if skip_this_screen == "yes":
         auto_indexer_6(wd[0], file_path)
     else:
@@ -10393,10 +10417,9 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
 
 def apply_auto_indexer_5(frame, buttons, file_path, carrier_name, l_s, l_ns, e_route, l_station, check_these):
     # adds new carriers to the carriers table
-    if g_range == "week":
-        eff_date = g_date[0]
-    if g_range == "day":
-        eff_date = d_date
+    eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
+    if not projvar.invran_weekly_span:  # if investigation range is daily
+        eff_date = projvar.invran_date
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.pack(side=LEFT)
     pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
@@ -10519,8 +10542,8 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
     "them to the correct station (if listed). If the correct \nis not listed or the carrier "
     "is no longer working for the post office, then "
     "select \"out of station\".\n\n"
-    "Investigation Range: {0} through {1}\n\n".format(g_date[0].strftime("%a - %b %d, %Y"),
-                                                      g_date[6].strftime("%a - %b %d, %Y")),
+    "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y")),
           justify=LEFT).grid(row=1, sticky="w")
     y = 1  # count for the row
     Label(wd[3], text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
@@ -10540,7 +10563,7 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
     for name in ex_carrier:
         sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
               "ORDER BY effective_date DESC" \
-              % (name, g_date[0])
+              % (name, projvar.invran_date_week[0])
         result = inquire(sql)
         carrier_name.append(StringVar(wd[3]))  # store name
         carrier_name[cc].set(result[0][1])
@@ -10561,7 +10584,7 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
         station[cc].set(result[0][5])
         new_station.append(StringVar(wd[3]))
         new_station[cc].set("out of station")
-        stat_om = OptionMenu(wd[3], new_station[cc], *list_of_stations)  # station
+        stat_om = OptionMenu(wd[3], new_station[cc], *projvar.list_of_stations)  # station
         if sys.platform != "darwin":
             stat_om.config(width=25, anchor="w")
         else:
@@ -10576,12 +10599,12 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
         Button(wd[4], text="Continue", width=8,
                command=lambda: apply_auto_indexer_6(wd[0], wd[4], file_path, carrier_name,
                                                     list_status, ns_day, route, station, new_station)).pack(side=LEFT)
-        Button(wd[4], text="Cancel", width=8, command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+        Button(wd[4], text="Cancel", width=8, command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
         rear_window(wd)
 
 
 def apply_auto_indexer_6(frame, buttons, file_path, carrier_name, list_status, ns_day, route, station, new_station):
-    date = g_date[0]
+    date = projvar.invran_date_week[0]
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.pack(side=LEFT)
     pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
@@ -10679,10 +10702,10 @@ def auto_skimmer(frame, file_path):
                             "The Employee Everything Report has been sucessfully inputed into the database",
                             parent=frame)
         frame.destroy()
-        main_frame()
+        MainFrame().start()
     else:
         frame.destroy()
-        main_frame()
+        MainFrame().start()
 
 
 def auto_weekly_analysis(array):
@@ -10690,7 +10713,7 @@ def auto_weekly_analysis(array):
     day_dict = {}
     x = 0
     for item in days:  # make a dictionary for each day in the week
-        day_dict[item] = g_date[x]
+        day_dict[item] = projvar.invran_date_week[x]
         x += 1
     rings = []
     input_rings = []
@@ -10735,7 +10758,7 @@ def auto_weekly_analysis(array):
                     return
                 # find the code, if any
                 if newest_carrier[2] in ("nl", "wal"):
-                    if day_dict[line[0]].strftime("%a") == ns_code[newest_carrier[3]] and float(line[2]) > 0:
+                    if day_dict[line[0]].strftime("%a") == projvar.ns_code[newest_carrier[3]] and float(line[2]) > 0:
                         c_code = "ns day"
                     else:
                         c_code = "none"
@@ -10829,6 +10852,7 @@ def auto_daily_analysis(rings):
     leave_time = []
     final_leave_type = ""
     final_leave_time = 0.0
+    dayofweek = None
     if len(rings) > 0:
         name = rings[0][4].zfill(8)  # Get NAME
         for line in rings:
@@ -11101,6 +11125,7 @@ def ee_skimmer(frame):
 
 
 def pay_period_guide(frame):
+    i = 0
     year = simpledialog.askinteger("Pay Period Guide", "Enter the year you want generated.", parent=frame,
                                    minvalue=2, maxvalue=9999)
     if year is not None:
@@ -11562,7 +11587,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
 def file_dialogue(folder):  # opens file folders to access generated reports
     if not os.path.isdir(folder):
         os.makedirs(folder)
-    if platform == "py":
+    if projvar.platform == "py":
         file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
     else:
         file_path = filedialog.askopenfilename(initialdir=folder)
@@ -11598,6 +11623,7 @@ def remove_file_var(frame, folder):  # removes a file and all contents
                                         "Success! All the files in the {} archive have been deleted."
                                         .format(folder_name),
                                         parent=frame)
+
             except:
                 messagebox.showerror("Delete Folder Contents",
                                      "Failure! {} can not be deleted because it is being used by another program."
@@ -11611,18 +11637,18 @@ def remove_file_var(frame, folder):  # removes a file and all contents
 
 def location_klusterbox(frame):  # provides the location of the program
     archive = ""
-
+    dbase = None
     if sys.platform == "darwin":
-        if platform == "macapp":
+        if projvar.platform == "macapp":
             path = "Applications"
             dbase = os.path.expanduser("~") + '/Documents/.klusterbox/' + 'mandates.sqlite'
             archive = os.path.expanduser("~") + '/Documents/klusterbox'
-        if platform == "py":
+        if projvar.platform == "py":
             path = os.getcwd()
             dbase = os.getcwd() + '/kb_sub/mandates.sqlite'
             archive = os.getcwd() + '/kb_sub'
     else:
-        if platform == "winapp":
+        if projvar.platform == "winapp":
             path = os.getcwd()
             dbase = os.path.expanduser("~") + '\Documents\.klusterbox\\' + 'mandates.sqlite'
             archive = os.path.expanduser("~") + '\Documents\klusterbox'
@@ -11642,19 +11668,19 @@ def location_klusterbox(frame):  # provides the location of the program
 def open_docs(frame, doc):  # opens docs in the about_klusterbox() function
     try:
         if sys.platform == "win32":
-            if platform == "py":
+            if projvar.platform == "py":
                 try:
                     os.startfile(doc)  # in IDE the files are in the project folder
                 except:
                     os.startfile('kb_sub\\' + doc)  # in KB legacy the files are in the kb_sub folder
-            if platform == "winapp":
+            if projvar.platform == "winapp":
                 os.startfile(os.getcwd() + "\\" + doc)
         if sys.platform == "linux":
             subprocess.call(doc)
         if sys.platform == "darwin":
-            if platform == "macapp":
+            if projvar.platform == "macapp":
                 subprocess.call(["open", 'Applications/klusterbox.app/Contents/Resources/' + doc])
-            if platform == "py":
+            if projvar.platform == "py":
                 subprocess.call(["open", doc])
     except:
         messagebox.showerror("Project Documents",
@@ -11668,13 +11694,13 @@ def callback(url):  # open hyperlinks at about_klusterbox()
 
 def about_klusterbox(frame):  # gives information about the program
     frame.destroy()
-    f = Frame(root)
+    f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     # apply and close buttons
     Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: [f.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -11683,9 +11709,9 @@ def about_klusterbox(frame):  # gives information about the program
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -11695,9 +11721,9 @@ def about_klusterbox(frame):  # gives information about the program
     r = 0  # set row counter
     # page contents
     try:
-        if platform == "macapp":
+        if projvar.platform == "macapp":
             path = 'Applications/klusterbox.app/Contents/Resources/kb_about.jpg'
-        if platform == "winapp":
+        if projvar.platform == "winapp":
             path = os.getcwd() + "\\" + "kb_about.jpg"
         else:
             path = 'kb_sub/kb_images/kb_about.jpg'
@@ -11795,13 +11821,12 @@ def about_klusterbox(frame):  # gives information about the program
     Button(ff, text="read", width=macadj(7, 7), command=lambda: open_docs(f, "requirements.txt")) \
         .grid(row=r, column=0, sticky="w")
     Label(ff, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
     ff.mainloop()
 
 
 def apply_startup(switch, station, frame):
-    global list_of_stations
     if switch == "enter":
         if station.get().strip() == "" or station.get().strip == "x":
             messagebox.showerror("Prohibited Action",
@@ -11810,16 +11835,16 @@ def apply_startup(switch, station, frame):
             return
         sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
         commit(sql)
-        list_of_stations.append(station.get())
+        projvar.list_of_stations.append(station.get())
     # access list of stations from database
     sql = "SELECT * FROM stations ORDER BY station"
     results = inquire(sql)
     # define and populate list of stations variable
-    del list_of_stations[:]
+    del projvar.list_of_stations[:]
     for stat in results:
-        list_of_stations.append(stat[0])
+        projvar.list_of_stations.append(stat[0])
     frame.destroy()  # destroy old frame
-    main_frame()  # load new frame
+    MainFrame().start()  # load new frame
 
 
 def start_up():  # the start up screen when no information has been entered
@@ -11828,7 +11853,7 @@ def start_up():  # the start up screen when no information has been entered
     for rec in skip_these:
         sql = "INSERT OR IGNORE INTO skippers(code, description) VALUES ('%s','%s')" % (rec[0], rec[1])
         commit(sql)
-    f = Frame(root)
+    f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT, pady=10, padx=20)
     c = Canvas(f, width=1600)
     c.pack(side=LEFT, fill=BOTH)
@@ -11851,9 +11876,9 @@ def start_up():  # the start up screen when no information has been entered
     Label(ff, text="Or you can exit to the main screen and enter your\n"
                    "station by going to Management > list of stations.") \
         .grid(row=6, columnspan=2, sticky="w")
-    Button(ff, width=5, text="EXIT", command=lambda: [f.destroy(), main_frame()]). \
+    Button(ff, width=5, text="EXIT", command=lambda: [f.destroy(), MainFrame().start()]). \
         grid(row=7, columnspan=2, sticky="e")
-    root.update()
+    projvar.root.update()
     mainloop()
 
 
@@ -11942,7 +11967,7 @@ def carrier_list_cleaning(frame):  # cleans the database of duplicate records
                             "All redundancies have been eliminated from the carrier list.",
                             parent=frame)
         frame.destroy()
-        main_frame()
+        MainFrame().start()
     if not ok:
         messagebox.showinfo("Database Maintenance",
                             "No redundancies have been found in the carrier list.",
@@ -12145,7 +12170,7 @@ def auto_data_entry_settings(frame):
     Button(wd[3], text="Set", width=5, command=lambda: data_entry_permit_zero(wd[0], zero_top, zero_bottom)) \
         .grid(row=r, column=0, columnspan=4, sticky="e")
 
-    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), main_frame())) \
+    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), MainFrame().start())) \
         .grid(row=0, column=0, sticky="w")
     rear_window(wd)
 
@@ -12265,7 +12290,7 @@ def spreadsheet_settings(frame):
     Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "zero")) \
         .grid(row=12, column=3)
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), main_frame())).pack(side=LEFT)
+           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -12352,13 +12377,13 @@ def tolerance_presets(frame, order):
 
 def tolerances(frame):
     frame.destroy()
-    f = Frame(root)
+    f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     # apply and close buttons
     Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: [f.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -12367,9 +12392,9 @@ def tolerances(frame):
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -12415,19 +12440,18 @@ def tolerances(frame):
     ot_own_rt.set(results[0][2])
     ot_tol.set(results[1][2])
     av_tol.set(results[2][2])
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
 
 
 def apply_station(switch, station, frame):
-    global list_of_stations
     if switch == "enter":
         if station.get().strip() == "" or station.get().strip() == "x":
             messagebox.showerror("Prohibited Action",
                                  "You can not enter a blank entry for a station.",
                                  parent=frame)
             return
-        if station.get() in list_of_stations:
+        if station.get() in projvar.list_of_stations:
             messagebox.showerror("Prohibited Action",
                                  "That station is already in the list of stations.",
                                  parent=frame)
@@ -12435,7 +12459,7 @@ def apply_station(switch, station, frame):
     if switch == "enter":
         sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
         commit(sql)
-        list_of_stations.append(station.get())
+        projvar.list_of_stations.append(station.get())
     if switch == "delete":
         if station == "out of station":
             text = "You can not delete the \"out of station\" listing."
@@ -12451,20 +12475,19 @@ def apply_station(switch, station, frame):
             commit(sql)
             database_clean_carriers()
             database_clean_rings()
-            if g_station == station:
+            if projvar.invran_station == station:
                 reset("none")
     # access list of stations from database
     sql = "SELECT * FROM stations ORDER BY station"
     results = inquire(sql)
     # define and populate list of stations variable
-    del list_of_stations[:]
+    del projvar.list_of_stations[:]
     for stat in results:
-        list_of_stations.append(stat[0])
+        projvar.list_of_stations.append(stat[0])
     station_list(frame)
 
 
 def station_update_apply(frame, old_station, new_station):
-    global list_of_stations
     if old_station.get() == "select a station":
         messagebox.showerror("Prohibited Action",
                              "Please select a station.",
@@ -12477,11 +12500,11 @@ def station_update_apply(frame, old_station, new_station):
                              "You can not enter a blank entry for a station.",
                              parent=frame)
         return
-    if g_station == old_station.get():
+    if projvar.invran_station == old_station.get():
         reset("none")
     go_ahead = True
     duplicate = False
-    if new_station.get() in list_of_stations:
+    if new_station.get() in projvar.list_of_stations:
         go_ahead = messagebox.askokcancel("Duplicate Detected",
                                           "This station already exist in the list of stations. "
                                           "If you proceed, all records for {} will be merged with "
@@ -12492,7 +12515,7 @@ def station_update_apply(frame, old_station, new_station):
     if duplicate and go_ahead:
         sql = "DELETE FROM stations WHERE station='%s'" % old_station.get()
         commit(sql)
-        list_of_stations.remove(new_station.get())
+        projvar.list_of_stations.remove(new_station.get())
     if go_ahead:
         sql = "UPDATE stations SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
         commit(sql)
@@ -12500,8 +12523,8 @@ def station_update_apply(frame, old_station, new_station):
         commit(sql)
         sql = "UPDATE station_index SET kb_station='%s' WHERE kb_station='%s'" % (new_station.get(), old_station.get())
         commit(sql)
-        list_of_stations.append(new_station.get())
-        list_of_stations.remove(old_station.get())
+        projvar.list_of_stations.append(new_station.get())
+        projvar.list_of_stations.remove(old_station.get())
         station_list(frame)
     if not go_ahead:
         return
@@ -12509,12 +12532,12 @@ def station_update_apply(frame, old_station, new_station):
 
 def station_list(frame):
     frame.destroy()
-    f = Frame(root)
+    f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: [f.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -12523,9 +12546,9 @@ def station_list(frame):
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -12614,7 +12637,7 @@ def station_list(frame):
         Label(ff, text="{}.  {}".format(count, ss)).grid(row=row, columnspan=2, sticky="w")
         count += 1
         row += 1
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
 
 
@@ -12623,9 +12646,9 @@ def apply_mi(frame, array_var, ls, ns, station, route, date):  # enter changes f
     year = IntVar()
     month = IntVar()
     day = IntVar()
-    y = g_date[x].strftime("%Y").lstrip("0")
-    m = g_date[x].strftime("%m").lstrip("0")
-    d = g_date[x].strftime("%d").lstrip("0")
+    y = projvar.invran_date_week[x].strftime("%Y").lstrip("0")
+    m = projvar.invran_date_week[x].strftime("%m").lstrip("0")
+    d = projvar.invran_date_week[x].strftime("%d").lstrip("0")
     year.set(y)
     month.set(m)
     day.set(d)
@@ -12648,20 +12671,21 @@ def apply_mi(frame, array_var, ls, ns, station, route, date):  # enter changes f
 
 
 def mass_input(frame, day, sort):
+    sql = ""
     frame.destroy()
-    switch_f7 = Frame(root)
+    switch_f7 = Frame(projvar.root)
     switch_f7.pack()
     c1 = Canvas(switch_f7)
     c1.pack(fill=BOTH, side=BOTTOM)
     # apply and close buttons
     Button(c1, text="Submit", width=10, anchor="w",
            command=lambda: [switch_f7.destroy(), apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route,
-                                                          pass_date), main_frame()]).pack(side=LEFT)
+                                                          pass_date), MainFrame().start()]).pack(side=LEFT)
     Button(c1, text="Apply", width=10, anchor="w",
            command=lambda: [apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route, pass_date),
                             mass_input(switch_f7, day, sort)]).pack(side=LEFT)
     Button(c1, text="Go Back", width=10, anchor="w",
-           command=lambda: [switch_f7.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [switch_f7.destroy(), MainFrame().start()]).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(switch_f7)
     c = Canvas(switch_f7, height=800, width=1600)
@@ -12670,9 +12694,9 @@ def mass_input(frame, day, sort):
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -12687,7 +12711,7 @@ def mass_input(frame, day, sort):
     opt_day = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
     opt_sort = ["name", "list", "ns day"]
     mi_date.set(day)
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is daily
         mi_date.set(day)
         om1 = OptionMenu(head_f, mi_date, *opt_day)
         om1.config(width="5")
@@ -12700,33 +12724,33 @@ def mass_input(frame, day, sort):
         .grid(row=0, column=2)
     # figure out the day and display
     pass_date = IntVar()
-    if g_range == "week":
-        for i in range(len(g_date)):
+    if projvar.invran_weekly_span:   # if investigation range is weekly
+        for i in range(len(projvar.invran_date_week)):
             if opt_day[i] == day:
-                f_date = g_date[i].strftime("%a - %b %d, %Y")
+                f_date = projvar.invran_date_week[i].strftime("%a - %b %d, %Y")
                 pass_date.set(i)
                 Label(f, text="Showing results for {}"
                       .format(f_date), font=macadj("bold", "Helvetica 18"), justify=LEFT) \
                     .grid(row=0, column=0, columnspan=4, sticky=W)
-    if g_range == "day":
+    if not projvar.invran_weekly_span:  # if investigation range is daily
         for i in range(len(opt_day)):
-            if d_date.strftime("%a") == opt_day[i]:
-                f_date = d_date.strftime("%a - %b %d, %Y")
+            if projvar.invran_date.strftime("%a") == opt_day[i]:
+                f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
                 pass_date.set(i)
                 Label(f, text="Showing results for {}"
                       .format(f_date), font=macadj("bold", "Helvetica 18"), justify=LEFT) \
                     .grid(row=0, column=0, columnspan=4, sticky=W)
     # access database
-    for i in range(len(g_date)):
+    for i in range(len(projvar.invran_date_week)):
         if opt_day[i] == day:
-            if g_range == "week":
+            if projvar.invran_weekly_span:  # if investigation range is weekly
                 sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
                       " FROM carriers WHERE effective_date <= '%s'" \
-                      "ORDER BY carrier_name, effective_date" % (g_date[i])
+                      "ORDER BY carrier_name, effective_date" % (projvar.invran_date_week[i])
             else:
                 sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
                       " FROM carriers WHERE effective_date <= '%s'" \
-                      "ORDER BY carrier_name, effective_date" % d_date
+                      "ORDER BY carrier_name, effective_date" % projvar.invran_date
     results = inquire(sql)
     # initialize arrays for data sorting
     carrier_list = []
@@ -12752,7 +12776,7 @@ def mass_input(frame, day, sort):
                 jump = "yes"  # bypasses an analysis of the candidates array
         if jump == "no":
             winner = max(candidates, key=itemgetter(0))  # select the most recent record
-            if winner[5] == g_station:  # if that record matches the current station...
+            if winner[5] == projvar.invran_station:  # if that record matches the current station...
                 carrier_list.append(winner)  # then insert that record in the carrier list
                 if sort == "list":  # sort carrier list by ot list if selected
                     if winner[2] == "otdl":
@@ -12818,11 +12842,11 @@ def mass_input(frame, day, sort):
     mi_nsday = []
     nsk = []
     days = ("sat", "mon", "tue", "wed", "thu", "fri")
-    for each in ns_code.keys():
-        nsk.append(each)  # make an array of ns_code keys
+    for each in projvar.ns_code.keys():
+        nsk.append(each)  # make an array of projvar.ns_code keys
     opt_nsday = []  # make an array of "day / color" options for option menu
-    for each in ns_code:
-        ns_option = ns_code[each] + "  " + ns_dict[each]  # make a string for each day/color
+    for each in projvar.ns_code:
+        ns_option = projvar.ns_code[each] + "  " + ns_dict[each]  # make a string for each day/color
         if each in days:
             ns_option = "fixed:" + "  " + each  # if the ns day is fixed - make a special string
         if each == "none":
@@ -12862,7 +12886,7 @@ def mass_input(frame, day, sort):
         mi_nsday[count].set(opt_nsday[ns_index])
         # set up station option menu and variable
         mi_station.append(StringVar(f))
-        om_station = OptionMenu(f, mi_station[count], *list_of_stations)  # configuration below
+        om_station = OptionMenu(f, mi_station[count], *projvar.list_of_stations)  # configuration below
         om_station.grid(row=i, column=3)
         mi_station[count].set(record[5])
         # adjust optionmenu configuration by platform
@@ -12880,27 +12904,27 @@ def mass_input(frame, day, sort):
         count += 1
         i += 1
     del carrier_list[:]
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
 
 
 def spreadsheet(frame, list_carrier, r_rings):
-    date = g_date[0]
+    date = projvar.invran_date_week[0]
     dates = []  # array containing days.
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         for i in range(7):
             dates.append(date)
             date += timedelta(days=1)
-    if g_range == "day":
-        dates.append(d_date)
+    if not projvar.invran_weekly_span:  # if investigation range is daily
+        dates.append(projvar.invran_date)
     if r_rings == "x":
-        if g_range == "week":
+        if projvar.invran_weekly_span:  # if investigation range is weekly
             sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-                  % (g_date[0], g_date[6])
+                  % (projvar.invran_date_week[0], projvar.invran_date_week[6])
         else:
             sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
                   "carrier_name" \
-                  % d_date
+                  % projvar.invran_date
         r_rings = inquire(sql)
     # Named styles for workbook
     bd = Side(style='thin', color="80808080")  # defines borders
@@ -12939,15 +12963,15 @@ def spreadsheet(frame, list_carrier, r_rings):
     ws_list = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
     i = 0
     wb = Workbook()  # define the workbook
-    if g_range == "day":
+    if not projvar.invran_weekly_span:  # if investigation range is daily
         for ii in range(len(day_finder)):
-            if d_date.strftime("%a") == day_finder[ii]:  # find the correct day
+            if projvar.invran_date.strftime("%a") == day_finder[ii]:  # find the correct day
                 i = ii
         ws_list[i] = wb.active  # create first worksheet
         ws_list[i].title = day_of_week[i]  # title first worksheet
         summary = wb.create_sheet("summary")
         reference = wb.create_sheet("reference")
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         ws_list[0] = wb.active  # create first worksheet
         ws_list[0].title = "saturday"  # title first worksheet
         for i in range(1, len(ws_list)):  # create worksheet for remaining six days
@@ -12971,15 +12995,15 @@ def spreadsheet(frame, list_carrier, r_rings):
         del dl_aux[:]
         # create a list of carriers for each day.
         for ii in range(len(list_carrier)):
-            if list_carrier[ii][0] <= str(day):
-                candidates.append(list_carrier[ii])  # put name into candidates array
+            if list_carrier[ii][0][0] <= str(day):
+                candidates.append(list_carrier[ii][0])  # put name into candidates array
             jump = "no"  # triggers an analysis of the candidates array
             if ii != len(list_carrier) - 1:  # if the loop has not reached the end of the list
-                if list_carrier[ii][1] == list_carrier[ii + 1][1]:  # if the name current and next name are the same
+                if list_carrier[ii][0][1] == list_carrier[ii + 1][0][1]:  # if the name current and next name are the same
                     jump = "yes"  # bypasses an analysis of the candidates array
             if jump == "no":  # review the list of candidates
                 winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == g_station: daily_list.append(winner)  # add the record if it matches the station
+                if winner[5] == projvar.invran_station: daily_list.append(winner)  # add the record if it matches the station
                 del candidates[:]  # empty out the candidates array.
         for item in daily_list:  # sort carriers in daily list by the list they are in
             if item[2] == "nl":
@@ -13018,14 +13042,14 @@ def spreadsheet(frame, list_carrier, r_rings):
         cell.style = date_dov_title
         ws_list[i].merge_cells('E3:F3')
         cell = ws_list[i].cell(row=3, column=7)
-        cell.value = pay_period
+        cell.value = projvar.pay_period
         cell.style = date_dov
         ws_list[i].merge_cells('G3:H3')
         cell = ws_list[i].cell(row=4, column=1)
         cell.value = "Station:  "
         cell.style = date_dov_title
         cell = ws_list[i].cell(row=4, column=2)
-        cell.value = g_station
+        cell.value = projvar.invran_station
         cell.style = date_dov
         ws_list[i].merge_cells('B4:D4')
         # no list carriers *********************************************************************************************
@@ -14226,13 +14250,13 @@ def spreadsheet(frame, list_carrier, r_rings):
     summary['B3'].style = date_dov_title
     summary['A5'] = "Pay Period:  "
     summary['A5'].style = date_dov_title
-    summary['B5'] = pay_period
+    summary['B5'] = projvar.pay_period
     summary['B5'].style = date_dov
     summary.merge_cells('B5:D5')
 
     summary['A6'] = "Station:  "
     summary['A6'].style = date_dov_title
-    summary['B6'] = g_station
+    summary['B6'] = projvar.invran_station
     summary['B6'].style = date_dov
     summary.merge_cells('B6:D6')
     summary['B8'] = "Availability"
@@ -14257,9 +14281,9 @@ def spreadsheet(frame, list_carrier, r_rings):
     summary['H9'].style = date_dov_title
     row = 10
     range_num = 0
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         range_num = 7
-    if g_range == "day":
+    if not projvar.invran_weekly_span:  # if investigation range is daily
         range_num = 1
     for i in range(range_num):
         summary['A' + str(row)] = format(dates[i], "%m/%d/%y %a")
@@ -14335,7 +14359,7 @@ def spreadsheet(frame, list_carrier, r_rings):
     reference['E15'] = "Carrier excused from mandatory overtime"
     # name the excel file
     r = "_w"
-    if g_range == "day":
+    if not projvar.invran_weekly_span:  # if investigation range is daily
         r = "_d"
     xl_filename = "kb" + str(format(dates[0], "_%y_%m_%d")) + r + ".xlsx"
     if messagebox.askokcancel("Spreadsheet generator",
@@ -14377,25 +14401,25 @@ def tab_selected(t):  # attach notebook tab for
 
 def output_tab(frame, list_carrier):
     frame.destroy()
-    switch_f5 = Frame(root, bg="white")
+    switch_f5 = Frame(projvar.root, bg="white")
     switch_f5.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(switch_f5)
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="spreadsheet", width=15, anchor="w",
            command=lambda: spreadsheet(switch_f5, list_carrier, r_rings)).pack(side=LEFT)
     Button(c1, text="Go Back", width=15, anchor="w",
-           command=lambda: [switch_f5.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [switch_f5.destroy(), MainFrame().start()]).pack(side=LEFT)
     dates = []  # array containing days
-    if g_range == "week":
-        dates = g_date
-    if g_range == "day":
-        dates.append(d_date)
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
+        dates = projvar.invran_date_week
+    if not projvar.invran_weekly_span:  # if investigation range is daily
+        dates.append(projvar.invran_date)
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-              % (g_date[0], g_date[6])
+              % (projvar.invran_date_week[0], projvar.invran_date_week[6])
     else:
         sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
-              "carrier_name" % d_date
+              "carrier_name" % projvar.invran_date
     r_rings = inquire(sql)
     sql = "SELECT * FROM tolerances"  # get tolerances
     tolerances = inquire(sql)
@@ -14433,7 +14457,7 @@ def output_tab(frame, list_carrier):
                     jump = "yes"  # bypasses an analysis of the candidates array
             if jump == "no":  # review the list of candidates
                 winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == g_station: daily_list.append(winner)  # add the record if it matches the station
+                if winner[5] == projvar.invran_station: daily_list.append(winner)  # add the record if it matches the station
                 del candidates[:]  # empty out the candidates array.
         for item in daily_list:  # sort carriers in daily list by the list they are in
             if item[2] == "nl":
@@ -14446,7 +14470,7 @@ def output_tab(frame, list_carrier):
                 dl_aux.append(item)
         tabs = Frame(tab_control)  # put frame in notebook
         tabs.pack(fill=BOTH, side=LEFT)
-        if g_range == "week":
+        if projvar.invran_weekly_span:  # if investigation range is weekly
             tab_control.add(tabs, text="{}".format(tab[t]))  # Add the tab
         c[t] = Canvas(tabs, width=1600, bg="white")  # put canvas inside notebook frame
         s = Scrollbar(tabs, command=c[t].yview)  # define and bind the scrollbar with the canvas
@@ -14455,11 +14479,12 @@ def output_tab(frame, list_carrier):
         c[t].bind("<Map>", lambda event, t=t: tab_selected(t))
         if sys.platform == "win32":
             c[current_tab].bind_all('<MouseWheel>',
-                                    lambda event: c[current_tab].yview_scroll(int(mousewheel * (event.delta / 120)),
-                                                                              "units"))
+                                    lambda event: c[current_tab].yview_scroll
+                                    (int(projvar.mousewheel * (event.delta / 120)), "units"))
         elif sys.platform == "darwin":
             c[current_tab].bind_all('<MouseWheel>',
-                                    lambda event: c[current_tab].yview_scroll(int(mousewheel * event.delta), "units"))
+                                    lambda event: c[current_tab].yview_scroll
+                                    (int(projvar.mousewheel * event.delta), "units"))
         elif sys.platform == "linux":
             c[current_tab].bind_all('<Button-4>', lambda event: c[current_tab].yview('scroll', -1, 'units'))
             c[current_tab].bind_all('<Button-5>', lambda event: c[current_tab].yview('scroll', 1, 'units'))
@@ -14942,10 +14967,11 @@ def output_tab(frame, list_carrier):
             .grid(row=oi, column=5)  # availability to 11.5 total
         oi += 2
         t += 1  # t increaments tabs
-    root.mainloop()
+    projvar.root.mainloop()
 
 
 def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time, go_return):
+    sql = ""
     day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     days = (sat_mm, sun_mm, mon_mm, tue_mm, wed_mm, thr_mm, fri_mm)
     cc = 0
@@ -15062,16 +15088,16 @@ def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time,
         else:
             llv_time.append(str(t))  # otherwise input the string as it appears
     dates = []
-    if g_range == "week":
-        dates = g_date
-    if g_range == "day":
-        dates.append(d_date)
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
+        dates = projvar.invran_date_week
+    if not projvar.invran_weekly_span:  # if investigation range is daily
+        dates.append(projvar.invran_date)
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date BETWEEN '%s' AND '%s'" \
               % (carrier[1], dates[0], dates[6])
-    if g_range == "day":
+    if not projvar.invran_weekly_span:  # if investigation range is daily
         sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" \
-              % (carrier[1], d_date)
+              % (carrier[1], projvar.invran_date)
     results = inquire(sql)
     d_sat_mm = []  # format moves for database
     d_sun_mm = []
@@ -15109,7 +15135,7 @@ def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time,
         if x.replace(',', '') == "":
             x = ""
         all_moves.append(x)
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         xserts = [0, 1, 2, 3, 4, 5, 6, ]  # seven inserts for a week and one for a day
     else:
         xserts = [0]
@@ -15216,6 +15242,219 @@ def new_entry(frame, day, moves):  # creates new entry fields for "more move fun
                 .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
 
 
+class EnterRings:
+    def __init__(self, carrier, frame):
+        self.frame = frame
+        self.origin_frame = None  # defunct
+        self.win = MakeWindow()
+        self.carrier = carrier
+        self.carrecs = []
+        self.ringrecs = []
+        self.dates = []
+        self.daily_recs = []
+        self.totals = []
+        self.rss = []
+        self.moves = []
+        self.codes = []
+        self.lvtypes = []
+        self.lvtimes = []
+        self.sat_mm = []
+        self.sun_mm = []
+        self.mon_mm = []
+        self.tue_mm = []
+        self.wed_mm = []
+        self.thu_mm = []
+        self.fri_mm = []
+
+    def get_carrecs(self):
+        if projvar.invran_weekly_span:
+            self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date_week[0], projvar.invran_date_week[6],
+                                         projvar.invran_station).get()
+        else:
+            self.carrecs =  CarrierRecSet(self.carrier, projvar.invran_date, projvar.invran_date,
+                                         projvar.invran_station).get()
+
+    def get_ringrecs(self):
+        if projvar.invran_weekly_span:
+            self.ringrecs =Rings(self.carrier, projvar.invran_date).get_for_week()
+        else:
+            self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_day()
+
+    def get_dates(self):
+        if projvar.invran_weekly_span:
+            self.dates = projvar.invran_date_week
+        else:
+            self.dates = [projvar.invran_date, ]
+
+    def get_daily_recs(self):
+        daily = None
+        for day in self.dates:
+            for rec in self.carrecs:
+                if rec[0] >= day:
+                    daily = rec
+                else:
+                    self.daily_recs.append(daily)
+                    break
+
+    def start(self):
+        self.win.create(self.frame)
+        self.get_carrecs()
+        self.get_ringrecs()
+        self.get_daily_recs()
+        self.build_page()
+        self.win.finish()
+
+    def build_page(self):
+        day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
+        frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
+        color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
+        nolist_codes = ("none", "ns day")
+        ot_aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
+        lv_options = ("none", "annual", "sick", "holiday", "other")
+        option_menu = ["om0", "om1", "om2", "om3", "om4", "om5", "om6"]
+        lv_option_menu = ["lom0", "lom1", "lom2", "lom3", "lom4", "lom5", "lom6"]
+        total_widget = ["tw0", "tw1", "tw2", "tw3", "tw4", "tw5", "tw6"]
+        frame_i = 0  # counter for the frame
+        header_frame = Frame(self.win.topframe, width=500)  # header  frame
+        # header_frame.grid(row=frame_i, padx=5, sticky="w")
+        header_frame.pack()
+        # Header at top of window: name
+        Label(header_frame, text="carrier name: ", fg="Grey", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, column=0, sticky="w")
+        Label(header_frame, text="{}".format(self.carrecs[0][1]), font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, column=1, sticky="w")
+        Label(header_frame, text="list status: {}".format(self.carrecs[0][2])) \
+            .grid(row=1, sticky="w", columnspan=2)
+        if self.carrecs[0][4] != "":
+            Label(header_frame, text="route/s: {}".format(self.carrecs[0][4])) \
+                .grid(row=2, sticky="w", columnspan=2)
+        frame_i += 2
+        if projvar.invran_weekly_span:  # if investigation range is weekly
+            i_range = 7  # loop 7 times for week or once for day
+        else:
+            i_range = 1
+        for i in range(i_range):
+            now_total = ""  # default values
+            now_rs = ""
+            now_code = "none"
+            now_moves = ""
+            now_lv_type = "none"
+            now_lv_time = ""
+            for ring in self.ringrecs:
+                if ring[0] == str(self.dates[i]):  # if the dates match set the corresponding rings
+                    now_total = ring[2]
+                    now_rs = ring[3]
+                    now_code = ring[4]
+                    now_moves = ring[5]
+                    if ring[6] == '':  # format the leave type
+                        now_lv_type = "none"
+                    else:
+                        now_lv_type = ring[6]
+                    if str(ring[7]) == 'None':  # format the leave time to be blank or a float
+                        now_lv_time = ""
+                    elif isfloat(ring[7]) == TRUE and float(ring[7]) == 0:  # if the leave time can be a float
+                        now_lv_time = ""
+                    else:
+                        now_lv_time = ring[7]
+            grid_i = 0  # counter for the grid within the frame
+            frame[i] = Frame(self.win.topframe, width=500)
+            # frame[i].grid(row=frame_i, padx=5, sticky="w")
+            frame[i].pack()
+            # Display the day and date
+            if projvar.ns_code[self.carrecs[0][3]] == self.dates[i].strftime("%a"):
+                Label(frame[i], text="{} NS DAY".format(self.dates[i].strftime("%a %b %d, %Y")), fg="red") \
+                    .grid(row=grid_i, column=0, columnspan=5, sticky="w")
+            else:
+                Label(frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
+                    .grid(row=grid_i, column=0, columnspan=5, sticky="w")
+            grid_i += 1
+            if self.daily_recs[i][5] == projvar.invran_station:
+                Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=0)  # Display all labels
+                Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=1)
+                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                    Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=2)
+                    Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=3)
+                    Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=4)
+                    Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=6)
+                    Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=7)
+                    Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=8)
+                else:
+                    Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=3)
+                    Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=4)
+                    Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=5)
+                grid_i += 1
+                # Display the entry widgets
+                self.totals.append(StringVar(frame[i]))  # 5200 entry widget
+                total_widget[i] = Entry(frame[i], width=macadj(8, 4), textvariable=self.totals[i])
+                total_widget[i].grid(row=grid_i, column=0)
+                self.totals[i].set(now_total)  # set the starting value for total
+                self.rss.append(StringVar(frame[i]))  # RS entry widget
+                Entry(frame[i], width=macadj(8, 4), textvariable=self.rss[i]).grid(row=grid_i, column=1)
+                self.rss[i].set(now_rs)  # set the starting value for RS
+                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                    if now_moves.strip() != "":
+                        new_entry(frame[i], day[i], now_moves)  # MOVES on and off entry widgets
+                    else:
+                        new_entry(frame[i], day[i], 0)
+                    Button(frame[i], text="more moves", command=lambda x=i: new_entry(frame[x], day[x], 0)) \
+                        .grid(row=grid_i, column=5)
+                self.codes.append(StringVar(frame[i]))  # code entry widget
+                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *nolist_codes)
+                else:
+                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *ot_aux_codes)
+                self.codes[i].set(now_code)
+                option_menu[i].configure(width=macadj(7, 6))
+                self.lvtypes.append(StringVar(frame[i]))  # leave type entry widget
+                lv_option_menu[i] = OptionMenu(frame[i], self.lvtypes[i], *lv_options)
+                lv_option_menu[i].configure(width=macadj(7, 6))
+                self.lvtimes.append(StringVar(frame[i]))  # leave time entry widget
+                self.lvtypes[i].set(now_lv_type)  # set the starting value for leave type
+                self.lvtimes[i].set(now_lv_time)  # set the starting value for leave type
+                # put code widgets on the grid
+                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                    option_menu[i].grid(row=grid_i, column=6)  # code widget
+                    lv_option_menu[i].grid(row=grid_i, column=7)  # leave type widget
+                    Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
+                        .grid(row=grid_i, column=8)  # leave time widget
+                else:
+                    option_menu[i].grid(row=grid_i, column=3)  # code widget
+                    lv_option_menu[i].grid(row=grid_i, column=4)  # leave type widget
+                    Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
+                        .grid(row=grid_i, column=5)  # leave time widget
+
+            else:
+                self.totals.append(StringVar(frame[i]))  # 5200 entry widget
+                self.rss.append(StringVar(frame[i]))  # RS entry
+
+                if self.daily_recs[i][5] != "no record":  # display for records that are out of station
+                    Label(frame[i], text="out of station: {}".format(self.daily_recs[i][5]), fg="white", bg="grey",
+                          width=55,
+                          height=2, anchor="w") \
+                        .grid(row=grid_i, column=0)
+                else:  # display for when there is no record relevant for that day.
+                    Label(frame[i], text="no record", fg="white", bg="grey", width=55,
+                          height=2, anchor="w") \
+                        .grid(row=grid_i, column=0)
+            frame_i += 1
+        f7 = Frame(self.win.topframe)
+        # f7.grid(row=frame_i)
+        f7.pack()
+        Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
+
+    def buttons_frame(self):
+        Button(self.win.buttons, text="Submit", width=10, bg="light yellow", anchor="w",
+               command=lambda: [apply_rings(self.origin_frame, self.win.topframe, self.carrier,
+                                            self.total, self.rs, self.code,
+                               self.lvtype, self.lvtime, "no_return")]).pack(side=LEFT)
+        Button(self.win.buttons, text="Apply", width=10, bg="light yellow", anchor="w",
+               command=lambda: [
+                   apply_rings(self.origin_frame, self.win.topframe, self.carrier, self.total, self.rs, self.code,
+                               self.lvtype, self.lvtime, "do_return")]).pack(side=LEFT)
+        Button(self.win.buttons, text="Go Back", width=10, bg="light yellow", anchor="w",
+               command=lambda: MainFrame().start()).pack(side=LEFT)
+
+
 def rings2(carrier, origin_frame):
     root = Tk()
     root.title("KLUSTERBOX - Carrier Rings")
@@ -15244,9 +15483,9 @@ def rings2(carrier, origin_frame):
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -15260,18 +15499,18 @@ def rings2(carrier, origin_frame):
     del wed_mm[:]
     del thr_mm[:]
     del fri_mm[:]
-    date = datetime(int(gs_year), int(gs_mo), int(gs_day))
+    date = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
     dates = []
     list_carrier = []
-    if g_range == "week":
+    start_invest = date  # if investigation range is daily
+    end_invest = date
+    dates.append(date)
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         start_invest = date
         end_invest = date + timedelta(days=6)
         for i in range(7):
             dates.append(date)
             date += timedelta(days=1)
-    else:
-        end_invest = date
-        dates.append(date)
     sql = "SELECT * FROM" \
           " carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
           "ORDER BY effective_date" % (carrier[1], end_invest)
@@ -15291,8 +15530,8 @@ def rings2(carrier, origin_frame):
     lv_time = []
     code = []
     daily_record = []  # reference before assignment
-    if g_range == "week":  # Get carrier list information
-        in_range = []
+    if projvar.invran_weekly_span:   # if investigation range is weekly
+        in_range = []  # Get carrier list information
         candidates = []
         station_anchor = "no"
         sat_rec = "false"
@@ -15300,11 +15539,11 @@ def rings2(carrier, origin_frame):
         is_winner = "false"
         # create list carrier array: most recent records of carriers currently in the station for any day of the week
         for r in results:
-            if str(start_invest) <= r[0] <= str(end_invest) and r[5] == g_station:
+            if str(start_invest) <= r[0] <= str(end_invest) and r[5] == projvar.invran_station:
                 station_anchor = "yes"
                 if str(start_invest) == r[0]:
                     sat_rec = "true"  # hit on saturday is true
-                if r[5] == g_station:
+                if r[5] == projvar.invran_station:
                     in_station = "true"  # hit if in station at any time
         for r in results:
             if str(start_invest) <= r[0]:
@@ -15313,7 +15552,7 @@ def rings2(carrier, origin_frame):
                 candidates.append(r)
         if candidates and sat_rec == "false":
             winner = max(candidates, key=itemgetter(0))
-            if winner[5] == g_station or station_anchor == "yes":
+            if winner[5] == projvar.invran_station or station_anchor == "yes":
                 list_carrier.append(winner)
                 if len(in_range) > 0:
                     is_winner = "true"
@@ -15324,26 +15563,26 @@ def rings2(carrier, origin_frame):
         daily_record = []
         for d in dates:
             del short_list[:]
-            for l in list_carrier:
-                if l[0] <= str(d):
-                    short_list.append(l)
+            for ls in list_carrier:
+                if ls[0] <= str(d):
+                    short_list.append(ls)
             try:
                 winner = max(short_list, key=itemgetter(0))
                 daily_record.append(winner)
             except:
-                no_record = (str(d), l[1], '', '', '', 'no record')
+                no_record = (str(d), ls[1], '', '', '', 'no record')
                 daily_record.append(no_record)
-    elif g_range == "day":
+    elif not projvar.invran_weekly_span:  # if investigation range is daily
         daily_record = []
         candidates = []
         for record in results:
             candidates.append(record)
         if candidates:
             winner = max(candidates, key=itemgetter(0))
-            if winner[5] == g_station:
+            if winner[5] == projvar.invran_station:
                 list_carrier.append(winner)
                 daily_record.append(winner)
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date BETWEEN '%s' AND '%s'" \
               % (carrier[1], start_invest, end_invest)
     else:
@@ -15364,7 +15603,7 @@ def rings2(carrier, origin_frame):
         Label(header_frame, text="route/s: {}".format(carrier[4])) \
             .grid(row=2, sticky="w", columnspan=2)
     frame_i += 2
-    if g_range == "week":
+    if projvar.invran_weekly_span:  # if investigation range is weekly
         i_range = 7  # loop 7 times for week or once for day
     else:
         i_range = 1
@@ -15395,14 +15634,14 @@ def rings2(carrier, origin_frame):
         frame[i] = Frame(f, width=500)
         frame[i].grid(row=frame_i, padx=5, sticky="w")
         # Display the day and date
-        if ns_code[carrier[3]] == dates[i].strftime("%a"):
+        if projvar.ns_code[carrier[3]] == dates[i].strftime("%a"):
             Label(frame[i], text="{} NS DAY".format(dates[i].strftime("%a %b %d, %Y")), fg="red") \
                 .grid(row=grid_i, column=0, columnspan=5, sticky="w")
         else:
             Label(frame[i], text=dates[i].strftime("%a %b %d, %Y"), fg="blue") \
                 .grid(row=grid_i, column=0, columnspan=5, sticky="w")
         grid_i += 1
-        if daily_record[i][5] == g_station:
+        if daily_record[i][5] == projvar.invran_station:
             Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=0)  # Display all labels
             Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=1)
             if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
@@ -15536,7 +15775,7 @@ def delete_carrier(name):
     if len(results) > 0:
         edit_carrier(name[1])
     else:
-        main_frame()
+        MainFrame().start()
 
 
 def apply(year, month, day, c_name, ls, ns, route, station, frame):
@@ -15652,7 +15891,7 @@ def name_change(name, c_name, frame):
             sql = "UPDATE name_index SET kb_name = '%s' WHERE kb_name = '%s'" % (c_name, name)
             commit(sql)
         frame.destroy()
-        main_frame()
+        MainFrame().start()
 
 
 def purge_carrier(frame, carrier):
@@ -15671,7 +15910,7 @@ def purge_carrier(frame, carrier):
     sql = "DELETE FROM name_index WHERE kb_name = '%s'" % carrier
     commit(sql)
     frame.destroy()
-    main_frame()
+    MainFrame().start()
 
 
 def update_carrier(a):
@@ -15688,7 +15927,7 @@ def update_carrier(a):
         ns_color_dict[d] = "teal"
     ns_dict["none"] = "none"  # add "none" to dictionary
     ns_color_dict["none"] = "teal"
-    switch_f4 = Frame(root)
+    switch_f4 = Frame(projvar.root)
     switch_f4.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(switch_f4)
     c1.pack(fill=BOTH, side=BOTTOM)
@@ -15701,9 +15940,9 @@ def update_carrier(a):
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -15768,27 +16007,32 @@ def update_carrier(a):
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ns = StringVar(ns_frame)
     ns.set(a[3])
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["yellow"]) \
+                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["yellow"])\
         .grid(row=1, column=0)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['blue'], ns_results[1][2]), variable=ns, value="blue",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['blue'], ns_results[1][2]), variable=ns, value="blue",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["blue"]) \
         .grid(row=1, column=1)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['green'], ns_results[2][2]), variable=ns, value="green",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['green'], ns_results[2][2]), variable=ns, value="green",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["green"]) \
         .grid(row=2, column=0)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['brown'], ns_results[3][2]), variable=ns, value="brown",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['brown'], ns_results[3][2]), variable=ns, value="brown",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["brown"]) \
         .grid(row=2, column=1)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['red'], ns_results[4][2]), variable=ns, value="red",
+    Radiobutton(ns_frame, text="{}:   {}".format(projvar.ns_code['red'], ns_results[4][2]), variable=ns, value="red",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["red"]) \
         .grid(row=3, column=0)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['black'], ns_results[5][2]), variable=ns, value="black",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['black'], ns_results[5][2]), variable=ns, value="black",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["black"]) \
         .grid(row=3, column=1)
@@ -15836,21 +16080,21 @@ def update_carrier(a):
           fg=macadj("black", "white"), width=5).grid(row=0, column=0, sticky=W)
     station = StringVar(station_frame)
     station.set(a[5])  # default value
-    om_stat = OptionMenu(station_frame, station, *list_of_stations)
+    om_stat = OptionMenu(station_frame, station, *projvar.list_of_stations)
     om_stat.config(width=macadj("24", "22"))
     om_stat.grid(row=0, column=1, sticky=W)
     station_frame.grid(row=6, sticky=W, pady=5)
     # set rowid
     rowid = StringVar(f)
     rowid = a[6]
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
     # apply and close buttons
     Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
            command=lambda: apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, switch_f4)) \
         .pack(side=LEFT)
     Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: [switch_f4.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [switch_f4.destroy(), MainFrame().start()]).pack(side=LEFT)
 
 
 def edit_carrier(e_name):
@@ -15870,7 +16114,7 @@ def edit_carrier(e_name):
         ns_color_dict[d] = "teal"
     ns_dict["none"] = "none"  # add "none" to dictionary
     ns_color_dict["none"] = "teal"
-    switch_f3 = Frame(root)
+    switch_f3 = Frame(projvar.root)
     switch_f3.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(switch_f3)
     c1.pack(fill=BOTH, side=BOTTOM)
@@ -15883,9 +16127,9 @@ def edit_carrier(e_name):
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -15902,9 +16146,9 @@ def edit_carrier(e_name):
     month = IntVar(f)
     day = IntVar(f)
     # pre set values for date
-    month.set(gs_mo)
-    day.set(gs_day)
-    year.set(gs_year)
+    month.set(projvar.invran_month)
+    day.set(projvar.invran_day)
+    year.set(projvar.invran_year)
     # define frame
     date_frame = Frame(f)
     Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
@@ -15940,7 +16184,7 @@ def edit_carrier(e_name):
     try:
         ls.set(value=results[0][2])
     except:
-        switch_f3.destroy(), main_frame()
+        switch_f3.destroy(), MainFrame().start()
     Radiobutton(list_frame, text="OTDL", variable=ls, value='otdl', justify=LEFT) \
         .grid(row=1, column=0, sticky=W)
     Radiobutton(list_frame, text="Work Assignment", variable=ls, value='wal', justify=LEFT) \
@@ -15959,27 +16203,33 @@ def edit_carrier(e_name):
           width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ns = StringVar(ns_frame)
     ns.set(results[0][3])
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["yellow"]) \
         .grid(row=1, column=0)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['blue'], ns_results[1][2]), variable=ns, value="blue",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['blue'], ns_results[1][2]), variable=ns, value="blue",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["blue"]) \
         .grid(row=1, column=1)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['green'], ns_results[2][2]), variable=ns, value="green",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['green'], ns_results[2][2]), variable=ns, value="green",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["green"]) \
         .grid(row=2, column=0)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['brown'], ns_results[3][2]), variable=ns, value="brown",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['brown'], ns_results[3][2]), variable=ns, value="brown",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["brown"]) \
         .grid(row=2, column=1)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['red'], ns_results[4][2]), variable=ns, value="red",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['red'], ns_results[4][2]), variable=ns, value="red",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["red"]) \
         .grid(row=3, column=0)
-    Radiobutton(ns_frame, text="{}:   {}".format(ns_code['black'], ns_results[5][2]), variable=ns, value="black",
+    Radiobutton(ns_frame, text="{}:   {}"
+                .format(projvar.ns_code['black'], ns_results[5][2]), variable=ns, value="black",
                 indicatoron=macadj(0, 1), width=15, anchor="w",
                 bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["black"]) \
         .grid(row=3, column=1)
@@ -16027,7 +16277,7 @@ def edit_carrier(e_name):
           width=5).grid(row=0, column=0, sticky=W)
     station = StringVar(station_frame)
     station.set(results[0][5])  # default value
-    om_stat = OptionMenu(station_frame, station, *list_of_stations)
+    om_stat = OptionMenu(station_frame, station, *projvar.list_of_stations)
     om_stat.config(width=macadj("24", "22"))
     om_stat.grid(row=0, column=1, sticky=W)
     # Label(station_frame, text=" ").grid(row=1)
@@ -16083,14 +16333,14 @@ def edit_carrier(e_name):
         Label(history_frame, text="                             ").grid(row=row_line, column=2, sticky=W)
         row_line += 1
     history_frame.grid(row=9, sticky=W, pady=5)
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
     # apply and close buttons
     Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
            command=lambda: [apply(year, month, day, name, ls, ns, route, station, switch_f3), switch_f3.destroy(),
-                            main_frame()]).pack(side=LEFT)
+                            MainFrame().start()]).pack(side=LEFT)
     Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: [switch_f3.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [switch_f3.destroy(), MainFrame().start()]).pack(side=LEFT)
 
 
 def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, frame):
@@ -16190,7 +16440,7 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
     if not match:
         commit(sql)
     frame.destroy()
-    main_frame()
+    MainFrame().start()
 
 
 def input_carriers(frame):  # window for inputting new carriers
@@ -16209,7 +16459,7 @@ def input_carriers(frame):  # window for inputting new carriers
     ns_dict["none"] = "none"  # add "none" to dictionary
     ns_color_dict["none"] = "teal"
     frame.destroy()
-    switch_f6 = Frame(root)
+    switch_f6 = Frame(projvar.root)
     switch_f6.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(switch_f6)
     c1.pack(fill=BOTH, side=BOTTOM)
@@ -16218,7 +16468,7 @@ def input_carriers(frame):  # window for inputting new carriers
                nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, switch_f6))) \
         .pack(side=LEFT)
     Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: [switch_f6.destroy(), main_frame()]).pack(side=LEFT)
+           command=lambda: [switch_f6.destroy(), MainFrame().start()]).pack(side=LEFT)
     # set up variable for scrollbar and canvas
     s = Scrollbar(switch_f6)
     c = Canvas(switch_f6, width=1600)
@@ -16228,9 +16478,9 @@ def input_carriers(frame):  # window for inputting new carriers
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
     elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
+        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
     elif sys.platform == "linux":
         c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
         c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
@@ -16247,9 +16497,9 @@ def input_carriers(frame):  # window for inputting new carriers
     year = IntVar(date_frame)  # define variables for date
     month = IntVar(date_frame)
     day = IntVar(date_frame)
-    month.set(gs_mo)  # set values for variables
-    day.set(gs_day)
-    year.set(gs_year)
+    month.set(projvar.invran_month)  # set values for variables
+    day.set(projvar.invran_day)
+    year.set(projvar.invran_year)
     Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30,
           anchor="w").grid(row=0, column=0, sticky=W, columnspan=30)  # date label
@@ -16297,25 +16547,25 @@ def input_carriers(frame):  # window for inputting new carriers
           fg=macadj("black", "white")).grid(row=0, column=0, sticky=W, columnspan=2)
     nc_ns = StringVar(ns_frame)
     nc_ns.set("none")
-    Radiobutton(ns_frame, text="{}:   yellow".format(ns_code['yellow']), variable=nc_ns, value="yellow",
+    Radiobutton(ns_frame, text="{}:   yellow".format(projvar.ns_code['yellow']), variable=nc_ns, value="yellow",
                 indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
                 selectcolor=ns_color_dict["yellow"]).grid(row=1, column=0)
-    Radiobutton(ns_frame, text="{}:   blue".format(ns_code['blue']), variable=nc_ns, value="blue",
+    Radiobutton(ns_frame, text="{}:   blue".format(projvar.ns_code['blue']), variable=nc_ns, value="blue",
                 indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
                 selectcolor=ns_color_dict["blue"]).grid(row=2, column=0)
-    Radiobutton(ns_frame, text="{}:   green".format(ns_code['green']), variable=nc_ns, value="green",
+    Radiobutton(ns_frame, text="{}:   green".format(projvar.ns_code['green']), variable=nc_ns, value="green",
                 indicatoron=macadj(0, 1),
                 width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
                 selectcolor=ns_color_dict["green"]).grid(row=3, column=0)
-    Radiobutton(ns_frame, text="{}:   brown".format(ns_code['brown']), variable=nc_ns, value="brown",
+    Radiobutton(ns_frame, text="{}:   brown".format(projvar.ns_code['brown']), variable=nc_ns, value="brown",
                 indicatoron=macadj(0, 1),
                 width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
                 selectcolor=ns_color_dict["brown"]).grid(row=1, column=1)
-    Radiobutton(ns_frame, text="{}:   red".format(ns_code['red']), variable=nc_ns, value="red",
+    Radiobutton(ns_frame, text="{}:   red".format(projvar.ns_code['red']), variable=nc_ns, value="red",
                 indicatoron=macadj(0, 1), width=15,
                 anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
                 selectcolor=ns_color_dict["red"]).grid(row=2, column=1)
-    Radiobutton(ns_frame, text="{}:   black".format(ns_code['black']), variable=nc_ns, value="black",
+    Radiobutton(ns_frame, text="{}:   black".format(projvar.ns_code['black']), variable=nc_ns, value="black",
                 indicatoron=macadj(0, 1),
                 width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
                 selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
@@ -16365,47 +16615,32 @@ def input_carriers(frame):  # window for inputting new carriers
           fg=macadj("black", "white")) \
         .grid(row=0, column=0, sticky=W)
     nc_station = StringVar(station_frame)
-    nc_station.set(g_station)  # default value
-    om_stat = OptionMenu(station_frame, nc_station, *list_of_stations)
+    nc_station.set(projvar.invran_station)  # default value
+    om_stat = OptionMenu(station_frame, nc_station, *projvar.list_of_stations)
     om_stat.config(width=macadj(24, 22))
     om_stat.grid(row=0, column=1, sticky=W)
     station_frame.grid(row=6, sticky=W, pady=5)
-    root.update()
+    projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
 
 
 def reset(frame):
-    global gs_year
-    global gs_mo
-    global gs_day
-    global g_range
-    global g_station
-    global ns_code
-    global g_date
-    global d_date
     # reset initial value of globals
-    gs_year = "x"
-    gs_mo = "x"
-    gs_day = "x"
-    g_range = "x"
-    g_station = "x"
-    g_date = []
+    projvar.invran_year = None
+    projvar.invran_month = None
+    projvar.invran_day = None
+    projvar.invran_weekly_span = None  # default is weekly investigation range
+    projvar.invran_station = None
+    projvar.invran_date_week = []
+    projvar.invran_date = None
+    projvar.ns_code = {}
     if frame != "none":
         frame.destroy()
-        main_frame()
+        MainFrame().start()
 
 
 def set_globals(s_year, s_mo, s_day, i_range, station, frame):
-    global gs_year
-    global gs_mo
-    global gs_day
-    global g_range
-    global g_station
-    global ns_code
-    global g_date
-    global d_date
-    global pay_period
-    g_range = i_range
+    projvar.invran_weekly_span = i_range
     if station == "undefined":
         messagebox.showerror("Investigation station setting",
                              'Please select a station.',
@@ -16419,26 +16654,23 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
     except ValueError:
         valid_date = False
     if valid_date:
-        d_date = date
+        projvar.invran_date = date
         wkdy_name = date.strftime("%a")
         while wkdy_name != "Sat":  # while date enter is not a saturday
             date -= timedelta(days=1)  # walk back the date until it is a saturday
             wkdy_name = date.strftime("%a")
         sat_range = date  # sat range = sat or the sat most prior
-        pay_period = pp_by_date(sat_range)
-        gs_year = int(date.strftime("%Y"))  # format that sat to form the global
-        project_var.case_year = int(date.strftime("%Y"))  # format that sat to form the global
-        gs_mo = int(date.strftime("%m"))
-        project_var.case_month = int(date.strftime("%m"))
-        gs_day = int(date.strftime("%d"))
-        project_var.case_day= int(date.strftime("%d"))
-        del g_date[:]  # empty out the array for the global date variable
-        d = datetime(int(gs_year), int(gs_mo), int(gs_day))
-        # set the g_date variable
-        g_date.append(d)
+        projvar.pay_period = pp_by_date(sat_range)
+        projvar.invran_year = int(date.strftime("%Y"))  # format that sat to form the global
+        projvar.invran_month = int(date.strftime("%m"))
+        projvar.invran_day = int(date.strftime("%d"))
+        del projvar.invran_date_week[:]  # empty out the array for the global date variable
+        d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
+        # set the projvar.invran_date_week variable
+        projvar.invran_date_week.append(d)
         for i in range(6):
             d += timedelta(days=1)
-            g_date.append(d)
+            projvar.invran_date_week.append(d)
         # define color sequence tuple
         pat = ("blue", "green", "brown", "red", "black", "yellow")
         # calculate the n/s day of sat/first day of investigation range
@@ -16464,10 +16696,10 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
                     cdate -= timedelta(days=7)
         # find ns day for each day in range
         date = sat_range
-        ns_code = {}
+        projvar.ns_code = {}
         for i in range(7):
             if i == 0:
-                ns_code[pat[x]] = date.strftime("%a")
+                projvar.ns_code[pat[x]] = date.strftime("%a")
                 date += timedelta(days=1)
             elif i == 1:
                 date += timedelta(days=1)
@@ -16476,35 +16708,33 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
                 else:
                     x += 1
             else:
-                ns_code[pat[x]] = date.strftime("%a")
+                projvar.ns_code[pat[x]] = date.strftime("%a")
                 date += timedelta(days=1)
                 if x > 4:
                     x = 0
                 else:
                     x += 1
-        ns_code["none"] = "  "
-        if i_range == "day":
-            gs_year = int(s_year)
-            project_var.case_year = int(s_year)
-            gs_mo = int(s_mo)
-            project_var.case_month = int(s_mo)
-            gs_day = int(s_day)
-            project_var.case_day = int(s_day)
-        ns_code["sat"] = "Sat"
-        ns_code["mon"] = "Mon"
-        ns_code["tue"] = "Tue"
-        ns_code["wed"] = "Wed"
-        ns_code["thu"] = "Thu"
-        ns_code["fri"] = "Fri"
+        projvar.ns_code["none"] = "  "
+        if not i_range:  # if investigation range is one day
+            projvar.invran_year = int(s_year)
+            projvar.invran_month = int(s_mo)
+            projvar.invran_day = int(s_day)
+            projvar.invran_day = int(s_day)
+        projvar.ns_code["sat"] = "Sat"
+        projvar.ns_code["mon"] = "Mon"
+        projvar.ns_code["tue"] = "Tue"
+        projvar.ns_code["wed"] = "Wed"
+        projvar.ns_code["thu"] = "Thu"
+        projvar.ns_code["fri"] = "Fri"
     else:
         messagebox.showerror("Investigation date/range",
                              'The date entered is not valid.',
                              parent=frame)
         return
-    g_station = station
+    projvar.invran_station = station
     if frame != "None":
         frame.destroy()
-        main_frame()
+        MainFrame().start()
 
 
 class MainFrame:
@@ -16516,64 +16746,82 @@ class MainFrame:
         self.start_year = StringVar(self.win.body)
         self.start_month = StringVar(self.win.body)  # create stringvars
         self.start_day = StringVar(self.win.body)
-        self.i_range = StringVar(self.win.body)
+        self.i_range = BooleanVar(self.win.body)
         self.min_abc = StringVar(self.win.body)
-        self.investigation_message = Label(self.win.body, text = "", fg="red")
+        self.investigation_message = Label(self.win.body, text="", fg="red")
         self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.start_date = projvar.invran_date
+        self.end_date = projvar.invran_date
+        if projvar.invran_weekly_span:
+            self.start_date = projvar.invran_date_week[0]
+            self.end_date = projvar.invran_date_week[6]
         self.carrier_list = []
 
     def start(self):
         self.win.create(None)  # create the window
+        self.get_carrierlist()
         self.pulldown_menu()
         self.invest_frame.pack()
         self.investigation_range()
         self.main_frame.pack()
-        self.show_carrierlist()
+        if projvar.invran_station is None:  # if the investigation range is not set
+            self.invran_not_set()  # investigation range not set screen
+        else:
+            if self.carrier_list:  # is the carrier is has contents
+                self.show_carrierlist()  # show the carrier list
+            else:  # if the carrier list is empty
+                self.empty_carrierlist()  # the carrier list is empty screen
         self.bottom_of_frame()
         self.win.finish()  # close the window
+
+    def get_carrierlist(self):
+        # get carrier list
+        self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
     def investigation_range(self):
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=1, columnspan=2)
 
-        if gs_mo == "x":
+        if projvar.invran_month is None:
             self.start_month.set(self.now.month)
         else:
-            self.start_month.set(gs_mo)
+            self.start_month.set(projvar.invran_month)
         om_month = OptionMenu(self.invest_frame, self.start_month, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
         om_month.config(width=2)
         om_month.grid(row=1, column=3)
-        if gs_day == "x":
+        if projvar.invran_day is None:
             self.start_day.set(self.now.day)
         else:
-            self.start_day.set(gs_day)
+            self.start_day.set(projvar.invran_day)
         om_day = OptionMenu(self.invest_frame, self.start_day, "1", "2", "3", "4", "5", "6", "7", "8",
                             "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
                             "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31")
         om_day.config(width=2)
         om_day.grid(row=1, column=4)
         date_year = Entry(self.invest_frame, width=6, textvariable=self.start_year)
-        if gs_year == "x":
+        if projvar.invran_year is None:
             self.start_year.set(self.now.year)
         else:
-            self.start_year.set(gs_year)
+            self.start_year.set(projvar.invran_year)
         date_year.grid(row=1, column=5)
         Label(self.invest_frame, text="RANGE", width=macadj(6, 8)).grid(row=1, column=6)
-        if g_range == "x":
-            self.i_range.set("week")
-        else:
-            self.i_range.set(g_range)
-        Radiobutton(self.invest_frame, text="weekly", variable=self.i_range, value="week",
+        if projvar.invran_weekly_span is None:
+            self.i_range.set(True)
+        elif not projvar.invran_weekly_span:  # if investigation range is daily
+            self.i_range.set(False)
+        else:  # if investigation range is weekly
+            self.i_range.set(True)
+        Radiobutton(self.invest_frame, text="weekly", variable=self.i_range, value=True,
                     width=macadj(6, 7), anchor="w").grid(row=1, column=7)
-        Radiobutton(self.invest_frame, text="daily", variable=self.i_range, value="day",
+        Radiobutton(self.invest_frame, text="daily", variable=self.i_range, value=False,
                     width=macadj(6, 7), anchor="w").grid(row=1, column=8)
         # set station option menu
         Label(self.invest_frame, text="STATION", anchor="w").grid(row=2, column=1, sticky=W)
         station = StringVar(self.invest_frame)
-        if g_station == "x":
+        if projvar.invran_station is None:
             station.set("undefined")  # default value
         else:
-            station.set(g_station)
-        stations_minus_outofstation = list_of_stations[:]
+            station.set(projvar.invran_station)
+        stations_minus_outofstation = projvar.list_of_stations[:]
         stations_minus_outofstation.remove("out of station")
         if len(stations_minus_outofstation) == 0:
             stations_minus_outofstation.append("undefined")
@@ -16588,133 +16836,90 @@ class MainFrame:
         Button(self.invest_frame, text="Reset", width=macadj(8, 9), bg=macadj("red", "SystemButtonFace"),
                fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=8)
         # Investigation date SET/NOT SET notification
-        if g_range == "x":
+        if projvar.invran_weekly_span is None:
             Label(self.invest_frame, text="Investigation date/range not set", foreground="red") \
                 .grid(row=3, column=1, columnspan=8, sticky="w")
-        elif g_range == "day":
-            f_date = d_date.strftime("%a - %b %d, %Y")
+        elif projvar.invran_weekly_span == 0:  # if the investigation range is one day
+            f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
             Label(self.invest_frame, text="Investigation Date Set: {}".format(f_date),
                   foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
-            Label(self.invest_frame, text="Pay Period: {}".format(pay_period),
+            Label(self.invest_frame, text="Pay Period: {}".format(projvar.pay_period),
                   foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
         else:
-            f_date = g_date[0].strftime("%a - %b %d, %Y")
-            end_f_date = g_date[6].strftime("%a - %b %d, %Y")
+            # if the investigation range is weekly
+            f_date = projvar.invran_date_week[0].strftime("%a - %b %d, %Y")
+            end_f_date = projvar.invran_date_week[6].strftime("%a - %b %d, %Y")
             Label(self.invest_frame, text="Investigation Range: {0} through {1}".format(f_date, end_f_date),
                   foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
-            Label(self.invest_frame, text="Pay Period: {0}".format(pay_period),
+            Label(self.invest_frame, text="Pay Period: {0}".format(projvar.pay_period),
                   foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
 
+    def invran_not_set(self):
+        Button(self.main_frame, text="Automatic Data Entry", width=30,
+               command=lambda: call_indexers(self.win.topframe)).grid(row=0, column=1, pady=5)
+        Button(self.main_frame, text="Informal C", width=30,
+               command=lambda: informalc(self.win.topframe)).grid(row=1, column=1, pady=5)
+        Button(self.main_frame, text="Quit", width=30, command=lambda: projvar.root.destroy())\
+            .grid(row=2, column=1,pady=5)
+        Label(self.main_frame, text="", width=macadj(20, 16)).grid(row=0, column=0)  # spacer
+
+    def empty_carrierlist(self):
+        Label(self.main_frame, text="").grid(row=0, column=0)
+        Label(self.main_frame, text="The carrier list is empty. ", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=1, column=0, sticky="w")
+        Label(self.main_frame, text="").grid(row=2, column=0)
+        Label(self.main_frame, text="Build the carrier list with the New Carrier feature\nor by running "
+                                    "the Automatic Data Entry Feature.").grid(row=3, column=0)
+
     def show_carrierlist(self):
-        if gs_day == "x":
-            Button(self.main_frame, text="Automatic Data Entry", width=30, command=lambda: call_indexers(f)). \
-                grid(row=0, column=1, pady=5)
-            Button(self.main_frame, text="Informal C", width=30, command=lambda: informalc(f)).grid(row=1, column=1, pady=5)
-            Button(self.main_frame, text="Quit", width=30, command=lambda: root.destroy()).grid(row=2, column=1, pady=5)
-            Label(self.main_frame, text="", width=macadj(20, 16)).grid(row=0, column=0)  # spacer
-        else:
-            if g_range == "week":
-                sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
-                      " FROM carriers WHERE effective_date <= '%s'" \
-                      "ORDER BY carrier_name, effective_date desc" % (g_date[6])
-            if g_range == "day":
-                sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
-                      " FROM carriers WHERE effective_date <= '%s'" \
-                      "ORDER BY carrier_name, effective_date desc" % d_date
-            results = inquire(sql)
-            # initialize arrays for data sorting
-            carrier_list = []
-            candidates = []
-            more_rows = []
-            pre_invest = []
-            # take raw data and sort into appropriate arrays
-            for i in range(len(results)):
-                candidates.append(results[i])  # put name into candidates array
-                jump = "no"  # triggers an analysis of the candidates array
-                if i != len(results) - 1:  # if the loop has not reached the end of the list
-                    if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
-                        jump = "yes"  # bypasses an analysis of the candidates array
-                if jump == "no":
-                    # sort into records in investigation range and those prior
-                    for record in candidates:
-                        if g_range == "week":  # if record falls in investigation range - add it to more rows array
-                            if str(g_date[1]) <= record[0] <= str(g_date[6]):
-                                more_rows.append(record)
-                            if record[0] <= str(g_date[0]) and len(pre_invest) == 0:
-                                pre_invest.append(record)
-                        if g_range == "day":
-                            if record[0] <= str(d_date) and len(pre_invest) == 0:
-                                pre_invest.append(record)
-                    # find carriers who start in the middle of the investigation range CATEGORY ONE
-                    if len(more_rows) > 0 and len(pre_invest) == 0:
-                        station_anchor = "no"
-                        for each in more_rows:  # check if any records place the carrier in the selected station
-                            if each[5] == g_station:
-                                station_anchor = "yes"  # if so, set the station anchor
-                        # since the carrier starts in the middle of the week and there is no record prior, create one
-                        if station_anchor == "yes":
-                            filler = (str(g_date[0]), each[1], " ", "none", " ", "out of station", 0, "A_out")
-                            carrier_list.append(list(filler))
-                            list(more_rows)
-                            more_rows.reverse()  # reverse the tuple
-                            for each in more_rows:
-                                x = list(each)  # convert the tuple to a list
-                                if x[5] == g_station:
-                                    x.append("B_in")  # tag if the record is the first in the list
-                                else:
-                                    x.append("B_out")
-                                carrier_list.append(x)  # add it to the list
-                    # find carriers with records before and during the investigation range CATEGORY TWO
-                    if len(more_rows) > 0 and len(pre_invest) > 0:
-                        station_anchor = "no"
-                        for each in more_rows + pre_invest:
-                            if each[5] == g_station:
-                                station_anchor = "yes"
-                        if station_anchor == "yes":
-                            # handle records prior to or on first day of investigation range.
-                            xx = list(pre_invest[0])
-                            if xx[5] == g_station:
-                                xx.append("A_in")
-                            else:
-                                xx.append("A_out")
-                            carrier_list.append(xx)
-                            # handle records inside the investigation range
-                            list(more_rows)
-                            more_rows.reverse()
-                            for each in more_rows:
-                                x = list(each)
-                                if x[5] == g_station:
-                                    x.append("B_in")
-                                else:
-                                    x.append("B_out")
-                                carrier_list.append(x)
-                    # find carrier with records from only before investigation range.CATEGORY THREE
-                    if len(more_rows) == 0 and len(pre_invest) == 1:
-                        for each in pre_invest:
-                            if each[5] == g_station:
-                                x = list(pre_invest[0])
-                                x.append("A_in")
-                                carrier_list.append(x)
-                    del more_rows[:]
-                    del pre_invest[:]
-                    del candidates[:]
-            # This code displays the records that have been selected above and placed in the carrier list array.
-            r = 0
-            i = 0
-            ii = 1
-        if len(self.carrier_list) == 0:
-            Label(self.main_frame, text="").grid(row=0, column=0)
-            Label(self.main_frame, text="The carrier list is empty. ", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=1, column=0, sticky="w")
-            Label(self.main_frame, text="").grid(row=2, column=0)
-            Label(self.main_frame, text="Build the carrier list with the New Carrier feature\nor by running "
-                           "the Automatic Data Entry Feature.").grid(row=3, column=0)
-        if len(self.carrier_list) > 0:
-            Label(self.main_frame, text="Name (click for Rings)", fg="grey").grid(row=1, column=1, sticky="w")
-            Label(self.main_frame, text="List", fg="grey").grid(row=1, column=2, sticky="w")
-            Label(self.main_frame, text="N/S", fg="grey").grid(row=1, column=3, sticky="w")
-            Label(self.main_frame, text="Route", fg="grey").grid(row=1, column=4, sticky="w")
-            Label(self.main_frame, text="Edit", fg="grey").grid(row=1, column=5, sticky="w")
+        Label(self.main_frame, text="Name (click for Rings)", fg="grey").grid(row=0, column=1, sticky="w")
+        Label(self.main_frame, text="List", fg="grey").grid(row=0, column=2, sticky="w")
+        Label(self.main_frame, text="N/S", fg="grey").grid(row=0, column=3, sticky="w")
+        Label(self.main_frame, text="Route", fg="grey").grid(row=0, column=4, sticky="w")
+        Label(self.main_frame, text="Edit", fg="grey").grid(row=0, column=5, sticky="w")
+        r = 1
+        i = 0
+        ii = 1
+        for line in self.carrier_list:
+            rec_count = 0
+            # detect any out of station records and modify recset
+            line = CarrierRecFilter(line, self.start_date).detect_outofstation(projvar.invran_station)
+            # if the row is even, then choose a color for it
+            if i & 1:
+                color = "light yellow"
+            else:
+                color = "white"
+            for rec in line:
+                if rec_count == 0:  # display the first row of carrier recs
+                    Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
+                    # Button(self.main_frame, text=rec[1], width=24, bg=color, anchor="w",
+                    #                       command=lambda x=rec: rings2(x, projvar.root)).grid(row=r, column=1)
+                    Button(self.main_frame, text=rec[1], width=24, bg=color, anchor="w",
+                           command=lambda x=rec: EnterRings(x[1], self.win.topframe).start()).grid(row=r, column=1)
+                    Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
+                           command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
+                        .grid(row=r, column=5)
+                    ii += 1
+                else:  # display non first rows of carrier recs
+                    dt = datetime.strptime(rec[0], "%Y-%m-%d %H:%M:%S")
+                    Button(self.main_frame, text=dt.strftime("%a"), width=24, bg=color, anchor="e")\
+                        .grid(row=r, column=1)
+                    Button(self.main_frame, text="", width=4, bg=color) \
+                        .grid(row=r, column=5)
+                if len(rec) > 2:  # because "out of station" recs only have two items
+                    Button(self.main_frame, text=rec[2], width=3, bg=color, anchor="w").grid(row=r, column=2)  # list
+                    day_off = projvar.ns_code[rec[3]].lower()
+                    Button(self.main_frame, text=day_off, width=4, bg=color, anchor="w").grid(row=r, column=3)  # nsday
+                    Button(self.main_frame, text=rec[4], width=24, bg=color, anchor="w")\
+                        .grid(row=r, column=4)  # station
+                    rec_count += 1
+                else:
+                    Button(self.main_frame, text="out of station", width=34, bg=color)\
+                        .grid(row=r, column=2, columnspan=3)
+                r += 1
+                rec_count += 1
+            i += 1
+            r += 1
 
     def pulldown_menu(self):
         # create a pulldown menu, and add it to the menu bar
@@ -16731,12 +16936,12 @@ class MainFrame:
                                command=lambda r_rings="x": spreadsheet(self.win.topframe, self.carrier_list, r_rings))
         basic_menu.add_command(label="Over Max Spreadsheet",
                                command=lambda r_rings="x": overmax_spreadsheet(self.win.topframe, self.carrier_list))
-        if gs_day == "x":
+        if projvar.invran_day is None:
             basic_menu.entryconfig(2, state=DISABLED)
             basic_menu.entryconfig(3, state=DISABLED)
             basic_menu.entryconfig(4, state=DISABLED)
             basic_menu.entryconfig(5, state=DISABLED)
-        if gs_day == "x" or g_range == "day":
+        if projvar.invran_day is None or not projvar.invran_weekly_span:   # if investigation range is daily or None
             basic_menu.entryconfig(6, state=DISABLED)
         basic_menu.add_separator()
         basic_menu.add_command(label="Informal C", command=lambda: informalc(self.win.topframe))
@@ -16749,7 +16954,7 @@ class MainFrame:
                                                            self.start_day.get(), self.i_range.get(),
                                                            "out of station", self.win.topframe))
         basic_menu.add_separator()
-        basic_menu.add_command(label="Quit", command=lambda: root.destroy())
+        basic_menu.add_command(label="Quit", command=lambda: projvar.root.destroy())
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # speedsheeet menu
         speed_menu = Menu(menubar, tearoff=0)
@@ -16761,11 +16966,10 @@ class MainFrame:
                                command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, False))
         speed_menu.add_command(label="Input to Database", 
                                command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, True))
-        if gs_day == "x":
+        if projvar.invran_day is None:
             speed_menu.entryconfig(0, state=DISABLED)
             speed_menu.entryconfig(1, state=DISABLED)
         speed_menu.add_separator()
-
         speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
         speed_menu.add_command(label="Speedsheet Archive", command=lambda: file_dialogue(dir_path('speedsheets')))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
@@ -16791,14 +16995,14 @@ class MainFrame:
         reports_menu.add_command(label="Carrier by List", 
                                  command=lambda: rpt_carrier_by_list(self.win.topframe, self.carrier_list))
         reports_menu.add_command(label="Carrier Status History", 
-                                 command=lambda: rpt_find_carriers(self.win.topframe, g_station))
+                                 command=lambda: rpt_find_carriers(self.win.topframe, projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Clock Rings Summary", 
-                                 command=lambda: database_rings_report(self.win.topframe, g_station))
+                                 command=lambda: database_rings_report(self.win.topframe, projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Pay Period Guide Generator", 
                                  command=lambda: pay_period_guide(self.win.topframe))
-        if gs_day == "x":
+        if projvar.invran_day is None:
             reports_menu.entryconfig(0, state=DISABLED)
             reports_menu.entryconfig(1, state=DISABLED)
             reports_menu.entryconfig(2, state=DISABLED)
@@ -16846,7 +17050,7 @@ class MainFrame:
         management_menu.add_command(label="Spreadsheet Settings", 
                                     command=lambda: spreadsheet_settings(self.win.topframe))
         management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(self.win.topframe))
-        if gs_day == "x":
+        if projvar.invran_day is None:
             management_menu.entryconfig(5, state=DISABLED)
         management_menu.add_command(label="Speedsheet Settings", 
                                     command=lambda: SpeedConfigGui(self.win.topframe).create())
@@ -16860,7 +17064,7 @@ class MainFrame:
                                     command=lambda: (self.win.topframe.destroy(), 
                                                      database_maintenance(self.win.topframe)))
         management_menu.add_command(label="Delete Carriers", 
-                                    command=lambda: database_delete_carriers(self.win.topframe, g_station))
+                                    command=lambda: database_delete_carriers(self.win.topframe, projvar.invran_station))
         management_menu.add_command(label="Clean Carrier List", 
                                     command=lambda: carrier_list_cleaning(self.win.topframe))
         management_menu.add_command(label="Clean Rings", 
@@ -16870,10 +17074,10 @@ class MainFrame:
                                     command=lambda: (self.win.topframe.destroy(), name_index_screen()))
         management_menu.add_command(label="Station Index", command=lambda: station_index_mgmt(self.win.topframe))
         menubar.add_cascade(label="Management", menu=management_menu)
-        root.config(menu=menubar)
+        projvar.root.config(menu=menubar)
         
     def bottom_of_frame(self):
-        if gs_day != "x":
+        if projvar.invran_day is not None:
             Button(self.win.buttons, text="New Carrier", command=lambda: input_carriers(self.win.topframe),
                    width=macadj(13, 13)).pack(side=LEFT)
             Button(self.win.buttons, text="Multi Input",
@@ -16884,394 +17088,7 @@ class MainFrame:
             r_rings = "x"
             Button(self.win.buttons, text="Spreadsheet", width=macadj(13, 13),
                    command=lambda: spreadsheet(self.win.topframe, self.carrier_list, r_rings)).pack(side=LEFT)
-            Button(self.win.buttons, text="Quit", width=macadj(13, 13), command=root.destroy).pack(side=LEFT)
-
-
-def main_frame():
-    f = Frame(root)
-    f.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(f)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    if gs_day != "x":
-        Button(c1, text="New Carrier", command=lambda: input_carriers(f),
-               width=macadj(13, 13)).pack(side=LEFT)
-        Button(c1, text="Multi Input", command=lambda dd="Sat", ss="name": mass_input(f, dd, ss),
-               width=macadj(13, 13)).pack(side=LEFT)
-        Button(c1, text="Auto Data Entry", command=lambda: call_indexers(f),
-               width=macadj(12, 12)).pack(side=LEFT)
-        r_rings = "x"
-        Button(c1, text="Spreadsheet", width=macadj(13, 13),
-               command=lambda: spreadsheet(f, carrier_list, r_rings)).pack(side=LEFT)
-        Button(c1, text="Quit", width=macadj(13, 13), command=root.destroy).pack(side=LEFT)
-    # link up the canvas and scrollbar
-    s = Scrollbar(f)
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=10)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create a pulldown menu, and add it to the menu bar
-    menubar = Menu(f)
-    # file menu
-    basic_menu = Menu(menubar, tearoff=0)
-    basic_menu.add_command(label="Save All", command=lambda: save_all(f))
-    basic_menu.add_separator()
-    basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(f))
-    basic_menu.add_command(label="Multiple Input", command=lambda dd="Sat", ss="name": mass_input(f, dd, ss))
-    basic_menu.add_command(label="Report Summary", command=lambda: output_tab(f, carrier_list))
-    basic_menu.add_command(label="Mandates Spreadsheet",
-                           command=lambda: spreadsheet(f, carrier_list, r_rings))
-    basic_menu.add_command(label="Over Max Spreadsheet",
-                           command=lambda r_rings="x": overmax_spreadsheet(f, carrier_list))
-    if gs_day == "x":
-        basic_menu.entryconfig(2, state=DISABLED)
-        basic_menu.entryconfig(3, state=DISABLED)
-        basic_menu.entryconfig(4, state=DISABLED)
-        basic_menu.entryconfig(5, state=DISABLED)
-    if gs_day == "x" or g_range == "day":
-        basic_menu.entryconfig(6, state=DISABLED)
-    basic_menu.add_separator()
-    basic_menu.add_command(label="Informal C", command=lambda: informalc(f))
-    basic_menu.add_separator()
-    basic_menu.add_command(label="Location", command=lambda: location_klusterbox(f))
-    basic_menu.add_command(label="About Klusterbox", command=lambda: about_klusterbox(f))
-    basic_menu.add_separator()
-    basic_menu.add_command(label="View Out of Station",
-                           command=lambda: set_globals(start_year.get(), start_month.get(),
-                                                       start_day.get(), i_range.get(), "out of station", f))
-    basic_menu.add_separator()
-    basic_menu.add_command(label="Quit", command=lambda: root.destroy())
-    menubar.add_cascade(label="Basic", menu=basic_menu)
-    # speedsheeet menu
-    speed_menu = Menu(menubar, tearoff=0)
-    speed_menu.add_command(label="Generate All Inclusive", command=lambda: SpeedSheetGen(f, True).gen())
-    speed_menu.add_command(label="Generate Carrier", command=lambda: SpeedSheetGen(f, False).gen())
-    speed_menu.add_command(label="Pre-check", command=lambda: SpeedWorkBookGet().open_file(f, False))
-    speed_menu.add_command(label="Input to Database", command=lambda: SpeedWorkBookGet().open_file(f, True))
-    if gs_day == "x":
-        speed_menu.entryconfig(0, state=DISABLED)
-        speed_menu.entryconfig(1, state=DISABLED)
-    speed_menu.add_separator()
-
-    speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
-    speed_menu.add_command(label="Speedsheet Archive" ,command=lambda: file_dialogue(dir_path('speedsheets')))
-    menubar.add_cascade(label="Speedsheet", menu=speed_menu)
-    # automated menu
-    automated_menu = Menu(menubar, tearoff=0)
-    automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(f))
-    automated_menu.add_separator()
-    automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(f))
-    automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(f))
-    automated_menu.add_command(label="Weekly Availability", command=lambda: wkly_avail(f))
-    automated_menu.add_separator()
-    automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(f))
-    automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(f))
-    menubar.add_cascade(label="Readers", menu=automated_menu)
-    # reports menu
-    reports_menu = Menu(menubar, tearoff=0)
-    reports_menu.add_command(label="Carrier Route and NS Day", command=lambda: rpt_carrier(f, carrier_list))
-    reports_menu.add_command(label="Carrier Route", command=lambda: rpt_carrier_route(f, carrier_list))
-    reports_menu.add_command(label="Carrier NS Day", command=lambda: rpt_carrier_nsday(f, carrier_list))
-    reports_menu.add_command(label="Carrier by List", command=lambda: rpt_carrier_by_list(f, carrier_list))
-    reports_menu.add_command(label="Carrier Status History", command=lambda: rpt_find_carriers(f, g_station))
-    # reports_menu.add_command(label="Improper Mandates", command=lambda: rpt_impman(f, carrier_list))
-    reports_menu.add_separator()
-    reports_menu.add_command(label="Clock Rings Summary", command=lambda: database_rings_report(f, g_station))
-    reports_menu.add_separator()
-    reports_menu.add_command(label="Pay Period Guide Generator", command=lambda: pay_period_guide(f))
-    if gs_day == "x":
-        reports_menu.entryconfig(0, state=DISABLED)
-        reports_menu.entryconfig(1, state=DISABLED)
-        reports_menu.entryconfig(2, state=DISABLED)
-        reports_menu.entryconfig(3, state=DISABLED)
-        reports_menu.entryconfig(6, state=DISABLED)
-    menubar.add_cascade(label="Reports", menu=reports_menu)
-    # library menu
-    reportsarchive_menu = Menu(menubar, tearoff=0)
-    reportsarchive_menu.add_command(label="Mandates Spreadsheet",
-                                    command=lambda: file_dialogue(dir_path('spreadsheets')))
-    reportsarchive_menu.add_command(label="Over Max Spreadsheet",
-                                    command=lambda: file_dialogue(dir_path('over_max_spreadsheet')))
-    reportsarchive_menu.add_command(label="Speedsheets",
-                                    command=lambda: file_dialogue(dir_path('speedsheets')))
-    reportsarchive_menu.add_command(label="Over Max Finder",
-                                    command=lambda: file_dialogue(dir_path('over_max')))
-    reportsarchive_menu.add_command(label="Everything Report",
-                                    command=lambda: file_dialogue(dir_path('ee_reader')))
-    reportsarchive_menu.add_command(label="Weekly Availability",
-                                    command=lambda: file_dialogue(dir_path('weekly_availability')))
-    reportsarchive_menu.add_command(label="Pay Period Guide",
-                                    command=lambda: file_dialogue(dir_path('pp_guide')))
-    reportsarchive_menu.add_separator()
-    cleararchive = Menu(reportsarchive_menu, tearoff=0)
-    cleararchive.add_command(label="Mandates Spreadsheet",
-                             command=lambda: remove_file_var(f, dir_path('spreadsheets')))
-    cleararchive.add_command(label="Over Max Spreadsheet",
-                             command=lambda: remove_file_var(f, dir_path('over_max_spreadsheet')))
-    cleararchive.add_command(label="Over Max Finder",
-                             command=lambda: remove_file_var(f, dir_path('over_max')))
-    cleararchive.add_command(label="Everything Report",
-                             command=lambda: remove_file_var(f, dir_path('ee_reader')))
-    cleararchive.add_command(label="Weekly Availability",
-                             command=lambda: remove_file_var(f, dir_path('weekly_availability')))
-    cleararchive.add_command(label="Pay Period Guide",
-                             command=lambda: remove_file_var(f, dir_path('pp_guide')))
-    reportsarchive_menu.add_cascade(label="Clear Archive", menu=cleararchive)
-    menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
-    # management menu
-    management_menu = Menu(menubar, tearoff=0)
-    management_menu.add_command(label="GUI Configuration", command=lambda: gui_config(f))
-    management_menu.add_separator()
-    management_menu.add_command(label="List of Stations", command=lambda: station_list(f))
-    management_menu.add_command(label="Tolerances", command=lambda: tolerances(f))
-    management_menu.add_command(label="Spreadsheet Settings", command=lambda: spreadsheet_settings(f))
-    management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(f))
-    if gs_day == "x":
-        management_menu.entryconfig(5, state=DISABLED)
-    management_menu.add_command(label="Speedsheet Settings", command=lambda: SpeedConfigGui(f).create())
-    management_menu.add_separator()
-    management_menu.add_command(label="Auto Data Entry Settings", command=lambda: auto_data_entry_settings(f))
-    management_menu.add_command(label="PDF Converter Settings", command=lambda: pdf_converter_settings(f))
-    management_menu.add_separator()
-    management_menu.add_command(label="Database", command=lambda: (f.destroy(), database_maintenance(f)))
-    management_menu.add_command(label="Delete Carriers", command=lambda: database_delete_carriers(f, g_station))
-    management_menu.add_command(label="Clean Carrier List", command=lambda: carrier_list_cleaning(f))
-    management_menu.add_command(label="Clean Rings", command=lambda: clean_rings3_table())
-    management_menu.add_separator()
-    management_menu.add_command(label="Name Index", command=lambda: (f.destroy(), name_index_screen()))
-    management_menu.add_command(label="Station Index", command=lambda: station_index_mgmt(f))
-    menubar.add_cascade(label="Management", menu=management_menu)
-    root.config(menu=menubar)
-    # create the frame inside the canvas
-    pre_f = Frame(c)
-    c.create_window((0, 0), window=pre_f, anchor=NW)
-    ff = Frame(c)
-    c.create_window((0, 108), window=ff, anchor=NW)
-    # set up tkinter variables for time and place:
-    now = datetime.now()
-    start_year = IntVar(pre_f)
-    start_month = IntVar(pre_f)
-    start_day = IntVar(pre_f)
-    i_range = StringVar(pre_f)
-    # set up labels for the investigation range and station
-    Label(pre_f, text="INVESTIGATION DATE").grid(row=1, column=1, columnspan=2)
-    if gs_mo == "x":
-        start_month.set(now.month)
-    else:
-        start_month.set(gs_mo)
-    om_month = OptionMenu(pre_f, start_month, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-    om_month.config(width=2)
-    om_month.grid(row=1, column=3)
-    if gs_day == "x":
-        start_day.set(now.day)
-    else:
-        start_day.set(gs_day)
-    om_day = OptionMenu(pre_f, start_day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
-                        "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30",
-                        "31")
-    om_day.config(width=2)
-    om_day.grid(row=1, column=4)
-    date_year = Entry(pre_f, width=6, textvariable=start_year)
-    if gs_year == "x":
-        start_year.set(now.year)
-    else:
-        start_year.set(gs_year)
-    date_year.grid(row=1, column=5)
-    Label(pre_f, text="RANGE", width=macadj(6, 8)).grid(row=1, column=6)
-    if g_range == "x":
-        i_range.set("week")
-    else:
-        i_range.set(g_range)
-    Radiobutton(pre_f, text="weekly", variable=i_range, value="week", width=macadj(6, 7), anchor="w") \
-        .grid(row=1, column=7)
-    Radiobutton(pre_f, text="daily", variable=i_range, value="day", width=macadj(6, 7), anchor="w") \
-        .grid(row=1, column=8)
-    # set station option menu
-    Label(pre_f, text="STATION", anchor="w").grid(row=2, column=1, sticky=W)
-    station = StringVar(f)
-    if g_station == "x":
-        station.set("undefined")  # default value
-    else:
-        station.set(g_station)
-    stations_minus_outofstation = list_of_stations[:]
-    stations_minus_outofstation.remove("out of station")
-    if len(stations_minus_outofstation) == 0:
-        stations_minus_outofstation.append("undefined")
-    om = OptionMenu(pre_f, station, *stations_minus_outofstation)
-    om.config(width=macadj(40, 34))
-    om.grid(row=2, column=2, columnspan=5, sticky=W)
-    # set and reset buttons for investigation range
-    Button(pre_f, text="Set", width=macadj(8, 9), bg=macadj("green", "SystemButtonFace"),
-           fg=macadj("white", "green"),
-           command=lambda: set_globals(start_year.get(), start_month.get(), start_day.get(), i_range.get(),
-                                       station.get(), f)).grid(row=2, column=7)
-    Button(pre_f, text="Reset", width=macadj(8, 9), bg=macadj("red", "SystemButtonFace"),
-           fg=macadj("white", "red"),
-           command=lambda: reset(f)).grid(row=2, column=8)
-    # Investigation date SET/NOT SET notification
-    if g_range == "x":
-        Label(pre_f, text="Investigation date/range not set", foreground="red") \
-            .grid(row=3, column=1, columnspan=8, sticky="w")
-    elif g_range == "day":
-        f_date = d_date.strftime("%a - %b %d, %Y")
-        Label(pre_f, text="Investigation Date Set: {}".format(f_date),
-              foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
-        Label(pre_f, text="Pay Period: {}".format(pay_period),
-              foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
-    else:
-        f_date = g_date[0].strftime("%a - %b %d, %Y")
-        end_f_date = g_date[6].strftime("%a - %b %d, %Y")
-        Label(pre_f, text="Investigation Range: {0} through {1}".format(f_date, end_f_date),
-              foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
-        Label(pre_f, text="Pay Period: {0}".format(pay_period),
-              foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
-    if gs_day == "x":
-        Button(ff, text="Automatic Data Entry", width=30, command=lambda: call_indexers(f)). \
-            grid(row=0, column=1, pady=5)
-        Button(ff, text="Informal C", width=30, command=lambda: informalc(f)).grid(row=1, column=1, pady=5)
-        Button(ff, text="Quit", width=30, command=lambda: root.destroy()).grid(row=2, column=1, pady=5)
-        Label(ff, text="", width=macadj(20, 16)).grid(row=0, column=0)  # spacer
-    else:
-        if g_range == "week":
-            sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
-                  " FROM carriers WHERE effective_date <= '%s'" \
-                  "ORDER BY carrier_name, effective_date desc" % (g_date[6])
-        if g_range == "day":
-            sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
-                  " FROM carriers WHERE effective_date <= '%s'" \
-                  "ORDER BY carrier_name, effective_date desc" % d_date
-        results = inquire(sql)
-        # initialize arrays for data sorting
-        carrier_list = []
-        candidates = []
-        more_rows = []
-        pre_invest = []
-        # take raw data and sort into appropriate arrays
-        for i in range(len(results)):
-            candidates.append(results[i])  # put name into candidates array
-            jump = "no"  # triggers an analysis of the candidates array
-            if i != len(results) - 1:  # if the loop has not reached the end of the list
-                if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
-                    jump = "yes"  # bypasses an analysis of the candidates array
-            if jump == "no":
-                # sort into records in investigation range and those prior
-                for record in candidates:
-                    if g_range == "week":  # if record falls in investigation range - add it to more rows array
-                        if str(g_date[1]) <= record[0] <= str(g_date[6]):
-                            more_rows.append(record)
-                        if record[0] <= str(g_date[0]) and len(pre_invest) == 0:
-                            pre_invest.append(record)
-                    if g_range == "day":
-                        if record[0] <= str(d_date) and len(pre_invest) == 0:
-                            pre_invest.append(record)
-                # find carriers who start in the middle of the investigation range CATEGORY ONE
-                if len(more_rows) > 0 and len(pre_invest) == 0:
-                    station_anchor = "no"
-                    for each in more_rows:  # check if any records place the carrier in the selected station
-                        if each[5] == g_station:
-                            station_anchor = "yes"  # if so, set the station anchor
-                    # since the carrier starts in the middle of the week and there is no record prior, create one
-                    if station_anchor == "yes":
-                        filler = (str(g_date[0]), each[1], " ", "none", " ", "out of station", 0, "A_out")
-                        carrier_list.append(list(filler))
-                        list(more_rows)
-                        more_rows.reverse()  # reverse the tuple
-                        for each in more_rows:
-                            x = list(each)  # convert the tuple to a list
-                            if x[5] == g_station:
-                                x.append("B_in")  # tag if the record is the first in the list
-                            else:
-                                x.append("B_out")
-                            carrier_list.append(x)  # add it to the list
-                # find carriers with records before and during the investigation range CATEGORY TWO
-                if len(more_rows) > 0 and len(pre_invest) > 0:
-                    station_anchor = "no"
-                    for each in more_rows + pre_invest:
-                        if each[5] == g_station:
-                            station_anchor = "yes"
-                    if station_anchor == "yes":
-                        # handle records prior to or on first day of investigation range.
-                        xx = list(pre_invest[0])
-                        if xx[5] == g_station:
-                            xx.append("A_in")
-                        else:
-                            xx.append("A_out")
-                        carrier_list.append(xx)
-                        # handle records inside the investigation range
-                        list(more_rows)
-                        more_rows.reverse()
-                        for each in more_rows:
-                            x = list(each)
-                            if x[5] == g_station:
-                                x.append("B_in")
-                            else:
-                                x.append("B_out")
-                            carrier_list.append(x)
-                # find carrier with records from only before investigation range.CATEGORY THREE
-                if len(more_rows) == 0 and len(pre_invest) == 1:
-                    for each in pre_invest:
-                        if each[5] == g_station:
-                            x = list(pre_invest[0])
-                            x.append("A_in")
-                            carrier_list.append(x)
-                del more_rows[:]
-                del pre_invest[:]
-                del candidates[:]
-        # This code displays the records that have been selected above and placed in the carrier list array.
-        r = 0
-        i = 0
-        ii = 1
-        if len(carrier_list) == 0:
-            Label(ff, text="").grid(row=0, column=0)
-            Label(ff, text="The carrier list is empty. ", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=1, column=0, sticky="w")
-            Label(ff, text="").grid(row=2, column=0)
-            Label(ff, text="Build the carrier list with the New Carrier feature\nor by running "
-                           "the Automatic Data Entry Feature.").grid(row=3, column=0)
-        if len(carrier_list) > 0:
-            Label(ff, text="Name (click for Rings)", fg="grey").grid(row=r, column=1, sticky="w")
-            Label(ff, text="List", fg="grey").grid(row=r, column=2, sticky="w")
-            Label(ff, text="N/S", fg="grey").grid(row=r, column=3, sticky="w")
-            Label(ff, text="Route", fg="grey").grid(row=r, column=4, sticky="w")
-            Label(ff, text="Edit", fg="grey").grid(row=r, column=5, sticky="w")
-            r += 1
-        for line in carrier_list:
-            # if the row is even, then choose a color for it
-            if i & 1:
-                color = "light yellow"
-            else:
-                color = "white"
-            if carrier_list[i][len(carrier_list[i]) - 1] == "A_in" or carrier_list[i][
-                len(carrier_list[i]) - 1] == "A_out":
-                Label(ff, text=ii).grid(row=r, column=0)
-                ii += 1
-                Button(ff, text=line[1], width=24, bg=color, anchor="w",
-                       command=lambda x=line: rings2(x, root)).grid(row=r, column=1)
-            else:
-                dt = datetime.strptime(line[0], "%Y-%m-%d %H:%M:%S")
-                Button(ff, text=dt.strftime("%a"), width=24, bg=color, anchor="e",
-                       command=lambda x=line: rings2(x, root)).grid(row=r, column=1)
-            if line[len(line) - 1] == "A_in" or line[len(line) - 1] == "B_in":
-                Button(ff, text=line[2], width=3, bg=color, anchor="w").grid(row=r, column=2)
-                day_off = ns_code[line[3]].lower()
-                Button(ff, text=day_off, width=4, bg=color, anchor="w").grid(row=r, column=3)
-                Button(ff, text=line[4], width=24, bg=color, anchor="w").grid(row=r, column=4)
-            else:
-                Button(ff, text="out of station", width=34, bg=color).grid(row=r, column=2, columnspan=3)
-            Button(ff, text="edit", width=4, bg=color, anchor="w",
-                   command=lambda x=line[1]: [f.destroy(), edit_carrier(x)]).grid(row=r, column=5)
-            i += 1
-            r += 1
-    root.update()
-    c.config(scrollregion=c.bbox("all"))
-    mainloop()
+            Button(self.win.buttons, text="Quit", width=macadj(13, 13), command=projvar.root.destroy).pack(side=LEFT)
 
 
 def setup_database():
@@ -17292,22 +17109,8 @@ def setup_database():
     pb["value"] = pb_counter
     pb_text.config(text="Setting up: Global Variables ")
     pb_root.update()
-    global gs_year
-    global gs_mo
-    global gs_day
-    global g_date
-    global g_range
-    global g_station
-    global list_of_stations
-    global platform
-    global mousewheel
     # set initial value of globals
-    gs_year = "x"
-    gs_mo = "x"
-    gs_day = "x"
-    g_range = "x"
-    g_station = "x"
-    g_date = []
+    projvar.invran_date_week = []
     pb_counter += 1  # increment progress bar
     pb["value"] = pb_counter
     pb_text.config(text="Setting up: Tables - Station")
@@ -17426,7 +17229,7 @@ def setup_database():
     # initialize mousewheel - mouse wheel scroll direction
     sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
     results = inquire(sql)
-    mousewheel = int(results[0][0])
+    projvar.mousewheel = int(results[0][0])
     sql = "SELECT * FROM stations ORDER BY station"
     results = inquire(sql)
     pb_counter += 1  # increment progress bar
@@ -17434,9 +17237,9 @@ def setup_database():
     pb_text.config(text="Setting up: List of Stations")
     pb_root.update()
     # define and populate list of stations variable
-    list_of_stations = []
+    projvar.list_of_stations = []
     for stat in results:
-        list_of_stations.append(stat[0])
+        projvar.list_of_stations.append(stat[0])
     pb.stop()  # stop and destroy the progress bar
     pb_label.destroy()  # destroy the label for the progress bar
     pb.destroy()
@@ -17445,18 +17248,6 @@ def setup_database():
 
 if __name__ == "__main__":
     # declare all global variables
-    global gs_year
-    global gs_mo
-    global gs_day
-    global g_date
-    global d_date
-    global g_range
-    global g_station
-    global list_of_stations
-    global ns_code
-    global pay_period
-    global platform
-    global mousewheel
     global informalc_newroot
     global informalc_addframe
     global poe_add_pay_periods
@@ -17480,57 +17271,56 @@ if __name__ == "__main__":
     thr_mm = []
     fri_mm = []
     # set up platform variable
-    platform = "py"  # initialize platform variable
+    projvar.platform = "py"  # initialize projvar.platform variable
     split_home = os.getcwd().split("\\")
     if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/":  # if it is a mac app
-        platform = "macapp"
+        projvar.platform = "macapp"
     elif len(split_home) > 2:
         if split_home[1] == "Program Files (x86)" and split_home[2] == "klusterbox":
-            platform = "winapp"
+            projvar.platform = "winapp"
         elif split_home[1] == "Program Files" and split_home[2] == "klusterbox":
-            platform = "winapp"
+            projvar.platform = "winapp"
         else:
-            platform = "py"  # if it is running as a .py or .exe outside program files/applications
+            projvar.platform = "py"  # if it is running as a .py or .exe outside program files/applications
     else:
-        platform = "py"  # if it is running as a .py or .exe outside program files/applications
+        projvar.platform = "py"  # if it is running as a .py or .exe outside program files/applications
     # create directories if they don't exist
-    if platform == "macapp":
+    if projvar.platform == "macapp":
         if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')):
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents'))
         if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox')):
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox'))
         if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox')):
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox'))
-    if platform == "winapp":
+    if projvar.platform == "winapp":
         if not os.path.isdir(os.path.expanduser("~") + '\\Documents'):
             os.makedirs(os.path.expanduser("~") + '\\Documents')
         if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox'):
             os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
         if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\.klusterbox'):
             os.makedirs(os.path.expanduser("~") + '\\Documents\\.klusterbox')
-    if platform == "py":
+    if projvar.platform == "py":
         if not os.path.isdir('kb_sub'):
             os.makedirs('kb_sub')
     # set up the database
     setup_database()
-    root = Tk()
+    projvar.root = Tk()
     # initialize position and size for root window
     position_x = 100
     position_y = 50
     size_x = 625
     size_y = 600
-    root.title("KLUSTERBOX version {}".format(version))
-    titlebar_icon(root)  # place icon in titlebar
-    if sys.platform == "darwin" and platform == "py":  # put icon in doc for mac
+    projvar.root.title("KLUSTERBOX version {}".format(version))
+    titlebar_icon(projvar.root)  # place icon in titlebar
+    if sys.platform == "darwin" and projvar.platform == "py":  # put icon in doc for mac
         try:  #
-            root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
+            projvar.root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
         except TclError:
             pass
-    root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
-    if len(list_of_stations) < 2:  # if there are no stations in the stations list
+    projvar.root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
+    if len(projvar.list_of_stations) < 2:  # if there are no stations in the stations list
         start_up()
     else:
         remove_file(dir_path_check('report'))  # empty out folders
         remove_file(dir_path_check('infc_grv'))
-        # MainFrame().start()
-        main_frame()
+        MainFrame().start()
