@@ -148,9 +148,9 @@ def titlebar_icon(root):  # place icon in titlebar
 class MakeWindow:
     def __init__(self):
         self.topframe = Frame(projvar.root)
-        self.buttons = Canvas(self.topframe)  # button bar
         self.s = Scrollbar(self.topframe)
         self.c = Canvas(self.topframe, width=1600)
+        self.buttons = Canvas(self.topframe)  # button bar
         self.body = Frame(self.c)
 
     def create(self, frame):
@@ -637,6 +637,16 @@ class Convert:
     def dt_converter(self):  # converts a string of a datetime to an actual datetime
         dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
         return dt
+
+    def empty_not_zero(self):  # returns an empty string for any value equal to zero
+        if self.data == 0:
+            return ""
+        return self.data
+
+    def none_not_empty(self):  # returns none instead of empty string for option menus
+        if self.data == "":
+            return "none"
+        return self.data
 
 
 class Handler:
@@ -11699,8 +11709,10 @@ def about_klusterbox(frame):  # gives information about the program
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     # apply and close buttons
+    # Button(c1, text="Go Back", width=20, anchor="w",
+    #        command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
     Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -15246,12 +15258,13 @@ class EnterRings:
     def __init__(self, carrier, frame):
         self.frame = frame
         self.origin_frame = None  # defunct
-        self.win = MakeWindow()
+        self.win = None
         self.carrier = carrier
         self.carrecs = []
         self.ringrecs = []
         self.dates = []
-        self.daily_recs = []
+        self.daily_carrecs = []
+        self.daily_ringrecs = []
         self.totals = []
         self.rss = []
         self.moves = []
@@ -15266,7 +15279,19 @@ class EnterRings:
         self.thu_mm = []
         self.fri_mm = []
 
-    def get_carrecs(self):
+    def start(self):
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+        self.get_carrecs()
+        self.get_ringrecs()
+        self.get_dates()
+        self.get_daily_carrecs()
+        self.get_daily_ringrecs()
+        self.build_page()
+        self.buttons_frame()
+        self.win.finish()
+
+    def get_carrecs(self):  # get the carrier's carrier rec set
         if projvar.invran_weekly_span:
             self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date_week[0], projvar.invran_date_week[6],
                                          projvar.invran_station).get()
@@ -15274,37 +15299,45 @@ class EnterRings:
             self.carrecs =  CarrierRecSet(self.carrier, projvar.invran_date, projvar.invran_date,
                                          projvar.invran_station).get()
 
-    def get_ringrecs(self):
+    def get_ringrecs(self):  #
         if projvar.invran_weekly_span:
-            self.ringrecs =Rings(self.carrier, projvar.invran_date).get_for_week()
+            self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_week()
         else:
             self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_day()
 
-    def get_dates(self):
+    def get_dates(self):  # get a datetime object for each day in the investigation range
         if projvar.invran_weekly_span:
             self.dates = projvar.invran_date_week
         else:
             self.dates = [projvar.invran_date, ]
 
-    def get_daily_recs(self):
-        daily = None
-        for day in self.dates:
+    def get_daily_carrecs(self):  # make a list of carrecs for each day
+        for d in self.dates:
             for rec in self.carrecs:
-                if rec[0] >= day:
-                    daily = rec
-                else:
-                    self.daily_recs.append(daily)
+                if rec[0] <= str(d):
+                    self.daily_carrecs.append(rec)
                     break
 
-    def start(self):
-        self.win.create(self.frame)
-        self.get_carrecs()
-        self.get_ringrecs()
-        self.get_daily_recs()
-        self.build_page()
-        self.win.finish()
+    def get_daily_ringrecs(self):  # make list of ringrecs for each day, insert empty rec if there is no rec
+        match = False
+        for d in self.dates:  # for each day in self.dates
+            for rr in self.ringrecs:
+                if rr:
+                    if rr[0] == d:
+                        self.daily_ringrecs.append(rr)  # creates the daily_ringrecs array
+                        match = True
+            if not match:  # if there is no match
+                add_this = (d, "", "", "", "none", "", "", "")  # creates the daily_ringrecs array
+                self.daily_ringrecs.append(add_this)
+            match = False
 
     def build_page(self):
+        now_total = None
+        now_rs = None
+        now_code = None
+        now_moves = None
+        now_lv_type = None
+        now_lv_time = None
         day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
         frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
         color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
@@ -15315,9 +15348,9 @@ class EnterRings:
         lv_option_menu = ["lom0", "lom1", "lom2", "lom3", "lom4", "lom5", "lom6"]
         total_widget = ["tw0", "tw1", "tw2", "tw3", "tw4", "tw5", "tw6"]
         frame_i = 0  # counter for the frame
-        header_frame = Frame(self.win.topframe, width=500)  # header  frame
-        # header_frame.grid(row=frame_i, padx=5, sticky="w")
-        header_frame.pack()
+        header_frame = Frame(self.win.body, width=500)  # header  frame
+        header_frame.grid(row=frame_i, padx=5, sticky="w")
+        # header_frame.pack()
         # Header at top of window: name
         Label(header_frame, text="carrier name: ", fg="Grey", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
@@ -15334,32 +15367,16 @@ class EnterRings:
         else:
             i_range = 1
         for i in range(i_range):
-            now_total = ""  # default values
-            now_rs = ""
-            now_code = "none"
-            now_moves = ""
-            now_lv_type = "none"
-            now_lv_time = ""
-            for ring in self.ringrecs:
-                if ring[0] == str(self.dates[i]):  # if the dates match set the corresponding rings
-                    now_total = ring[2]
-                    now_rs = ring[3]
-                    now_code = ring[4]
-                    now_moves = ring[5]
-                    if ring[6] == '':  # format the leave type
-                        now_lv_type = "none"
-                    else:
-                        now_lv_type = ring[6]
-                    if str(ring[7]) == 'None':  # format the leave time to be blank or a float
-                        now_lv_time = ""
-                    elif isfloat(ring[7]) == TRUE and float(ring[7]) == 0:  # if the leave time can be a float
-                        now_lv_time = ""
-                    else:
-                        now_lv_time = ring[7]
+            for ring in self.daily_ringrecs:  # assign the values for each rings attribute
+                now_total = Convert(ring[2]).empty_not_zero()
+                now_rs = Convert(ring[3]).empty_not_zero()
+                now_code = Convert(ring[4]).none_not_empty()
+                now_moves = ring[5]
+                now_lv_type = Convert(ring[6]).none_not_empty()
+                now_lv_time = Convert(ring[7]).empty_not_zero()
             grid_i = 0  # counter for the grid within the frame
-            frame[i] = Frame(self.win.topframe, width=500)
-            # frame[i].grid(row=frame_i, padx=5, sticky="w")
-            frame[i].pack()
+            frame[i] = Frame(self.win.body, width=500)
+            frame[i].grid(row=frame_i, padx=5, sticky="w")
             # Display the day and date
             if projvar.ns_code[self.carrecs[0][3]] == self.dates[i].strftime("%a"):
                 Label(frame[i], text="{} NS DAY".format(self.dates[i].strftime("%a %b %d, %Y")), fg="red") \
@@ -15368,10 +15385,10 @@ class EnterRings:
                 Label(frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
             grid_i += 1
-            if self.daily_recs[i][5] == projvar.invran_station:
+            if self.daily_carrecs[i][5] == projvar.invran_station:
                 Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=0)  # Display all labels
                 Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=1)
-                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
                     Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=2)
                     Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=3)
                     Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=4)
@@ -15384,35 +15401,41 @@ class EnterRings:
                     Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=5)
                 grid_i += 1
                 # Display the entry widgets
-                self.totals.append(StringVar(frame[i]))  # 5200 entry widget
+                # 5200 time
+                self.totals.append(StringVar(frame[i]))  # append stringvar to totals array
                 total_widget[i] = Entry(frame[i], width=macadj(8, 4), textvariable=self.totals[i])
                 total_widget[i].grid(row=grid_i, column=0)
                 self.totals[i].set(now_total)  # set the starting value for total
+                # Return to Station (rs)
                 self.rss.append(StringVar(frame[i]))  # RS entry widget
                 Entry(frame[i], width=macadj(8, 4), textvariable=self.rss[i]).grid(row=grid_i, column=1)
                 self.rss[i].set(now_rs)  # set the starting value for RS
-                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                # Moves
+                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
                     if now_moves.strip() != "":
                         new_entry(frame[i], day[i], now_moves)  # MOVES on and off entry widgets
                     else:
                         new_entry(frame[i], day[i], 0)
                     Button(frame[i], text="more moves", command=lambda x=i: new_entry(frame[x], day[x], 0)) \
                         .grid(row=grid_i, column=5)
+                # Codes/Notes
                 self.codes.append(StringVar(frame[i]))  # code entry widget
-                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
                     option_menu[i] = OptionMenu(frame[i], self.codes[i], *nolist_codes)
                 else:
                     option_menu[i] = OptionMenu(frame[i], self.codes[i], *ot_aux_codes)
                 self.codes[i].set(now_code)
                 option_menu[i].configure(width=macadj(7, 6))
+                # Leave Type
                 self.lvtypes.append(StringVar(frame[i]))  # leave type entry widget
                 lv_option_menu[i] = OptionMenu(frame[i], self.lvtypes[i], *lv_options)
                 lv_option_menu[i].configure(width=macadj(7, 6))
+                # Leave Time
                 self.lvtimes.append(StringVar(frame[i]))  # leave time entry widget
                 self.lvtypes[i].set(now_lv_type)  # set the starting value for leave type
                 self.lvtimes[i].set(now_lv_time)  # set the starting value for leave type
                 # put code widgets on the grid
-                if self.daily_recs[i][2] == "wal" or self.daily_recs[i][2] == "nl":
+                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
                     option_menu[i].grid(row=grid_i, column=6)  # code widget
                     lv_option_menu[i].grid(row=grid_i, column=7)  # leave type widget
                     Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
@@ -15422,37 +15445,31 @@ class EnterRings:
                     lv_option_menu[i].grid(row=grid_i, column=4)  # leave type widget
                     Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
                         .grid(row=grid_i, column=5)  # leave time widget
-
             else:
                 self.totals.append(StringVar(frame[i]))  # 5200 entry widget
                 self.rss.append(StringVar(frame[i]))  # RS entry
-
-                if self.daily_recs[i][5] != "no record":  # display for records that are out of station
-                    Label(frame[i], text="out of station: {}".format(self.daily_recs[i][5]), fg="white", bg="grey",
-                          width=55,
-                          height=2, anchor="w") \
-                        .grid(row=grid_i, column=0)
+                if self.daily_carrecs[i][5] != "no record":  # display for records that are out of station
+                    Label(frame[i], text="out of station: {}".format(self.daily_carrecs[i][5]),
+                          fg="white", bg="grey", width=55, height=2, anchor="w").grid(row=grid_i, column=0)
                 else:  # display for when there is no record relevant for that day.
-                    Label(frame[i], text="no record", fg="white", bg="grey", width=55,
-                          height=2, anchor="w") \
+                    Label(frame[i], text="no record", fg="white", bg="grey", width=55, height=2, anchor="w")\
                         .grid(row=grid_i, column=0)
             frame_i += 1
-        f7 = Frame(self.win.topframe)
-        # f7.grid(row=frame_i)
-        f7.pack()
+        f7 = Frame(self.win.body)
+        f7.grid(row=frame_i)
         Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
 
     def buttons_frame(self):
         Button(self.win.buttons, text="Submit", width=10, bg="light yellow", anchor="w",
                command=lambda: [apply_rings(self.origin_frame, self.win.topframe, self.carrier,
-                                            self.total, self.rs, self.code,
-                               self.lvtype, self.lvtime, "no_return")]).pack(side=LEFT)
+                                            self.totals, self.rss, self.codes,
+                               self.lvtypes, self.lvtimes, "no_return")]).pack(side=LEFT)
         Button(self.win.buttons, text="Apply", width=10, bg="light yellow", anchor="w",
                command=lambda: [
-                   apply_rings(self.origin_frame, self.win.topframe, self.carrier, self.total, self.rs, self.code,
-                               self.lvtype, self.lvtime, "do_return")]).pack(side=LEFT)
+                   apply_rings(self.origin_frame, self.win.topframe, self.carrier, self.totals, self.rss, self.codes,
+                               self.lvtypes, self.lvtimes, "do_return")]).pack(side=LEFT)
         Button(self.win.buttons, text="Go Back", width=10, bg="light yellow", anchor="w",
-               command=lambda: MainFrame().start()).pack(side=LEFT)
+               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
 
 
 def rings2(carrier, origin_frame):
@@ -16757,8 +16774,8 @@ class MainFrame:
             self.end_date = projvar.invran_date_week[6]
         self.carrier_list = []
 
-    def start(self):
-        self.win.create(None)  # create the window
+    def start(self, frame=None):
+        self.win.create(frame)  # create the window
         self.get_carrierlist()
         self.pulldown_menu()
         self.invest_frame.pack()
