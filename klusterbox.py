@@ -590,6 +590,11 @@ class Convert:
         else:
             return False
 
+    def bool_to_onoff(self): # takes a boolean and returns on for true, off for false
+        if int(self.data):
+            return "on"
+        return "off"
+
     def backslashdate_to_datetime(self):  # convert a date with backslashes into a datetime
         date = self.data.split("/")
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
@@ -2776,45 +2781,81 @@ class SpeedSheetGen:
                                  parent=self.frame)
 
 
-def gui_config_apply(frame, wheel_selection):  # set mousewheel orientation
-    if wheel_selection.get() == "natural":
-        wheel_multiple = int(1)
-        projvar.mousewheel = int(1)
-    else:  # if the wheel_selection.get() == "reverse"
-        wheel_multiple = int(-1)
-        projvar.mousewheel = int(-1)
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (wheel_multiple, "mousewheel")
-    commit(sql)
-    gui_config(frame)
+class GuiConfig:
+    def __init__(self, frame):
+        self.frame = frame
+        self.win = MakeWindow()
+        self.wheel_selection = StringVar(self.win.body)
+        self.ot_rings_limiter = StringVar(self.win.body)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.rings_limiter = None
 
+    def create(self):
+        self.get_settings()
+        self.build()
 
-def gui_config(frame):  # generate page to adjust gui configurations
-    # retrieve mousewheel info- mouse wheel scroll direction
-    sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
-    results = inquire(sql)
-    projvar.mousewheel = int(results[0][0])
-    wd = front_window(frame)
-    Label(wd[3], text="GUI Configuration", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=0, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=1, column=0)
-    Label(wd[3], text="Mouse Wheel Scrolling").grid(row=2, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=3, column=0)
-    Label(wd[3], text="Direction", width=15, anchor="w").grid(row=4, column=0, sticky="w")
-    wheel_selection = StringVar(wd[3])
-    om_wheel = OptionMenu(wd[3], wheel_selection, "natural", "reverse")  # option menu configuration below
-    om_wheel.config(width=7)
-    om_wheel.grid(row=4, column=1)
-    if projvar.mousewheel == 1:
-        wheel_selection.set("natural")
-    else:
-        wheel_selection.set("reverse")
-    Label(wd[3], text=" ").grid(row=5)
-    Button(wd[3], text="set", width=10, command=lambda:
-    gui_config_apply(wd[0], wheel_selection)).grid(row=6, column=2)
+    def get_settings(self):
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
+        results = inquire(sql)
+        projvar.mousewheel = int(results[0][0])
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
+        results = inquire(sql)
+        rings_limiter = results[0][0]
+        self.rings_limiter = Convert(rings_limiter).bool_to_onoff()  # convert the bool to on or off
 
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
-    rear_window(wd)
+    def build(self):
+        self.win.create(self.frame)
+        Label(self.win.body, text="GUI Configuration", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=0, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=1, column=0)
+        Label(self.win.body, text="Mouse Wheel Scrolling").grid(row=2, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=3, column=0)
+        Label(self.win.body, text="Direction", width=15, anchor="w").grid(row=4, column=0, sticky="w")
+
+        om_wheel = OptionMenu(self.win.body, self.wheel_selection, "natural", "reverse")  # option menu configuration below
+        om_wheel.config(width=7)
+        om_wheel.grid(row=4, column=1)
+        if projvar.mousewheel == 1:
+            self.wheel_selection.set("natural")
+        else:
+            self.wheel_selection.set("reverse")
+        Button(self.win.body, text="set", width=7, command=lambda:self.apply_mousewheel()).grid(row=4, column=2)
+        Label(self.win.body, text=" ").grid(row=7, column=0)
+        Label(self.win.body, text="Overtime Rings Limiter").grid(row=8, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=9, column=0)
+        Label(self.win.body, text="Limiter", width=15, anchor="w").grid(row=10, column=0, sticky="w")
+        om_rings = OptionMenu(self.win.body, self.ot_rings_limiter, "on", "off")  # option menu configuration below
+        om_rings.config(width=7)
+        om_rings.grid(row=10, column=1)
+        self.ot_rings_limiter.set(self.rings_limiter)
+        Button(self.win.body, text="set", width=7, command=lambda: self.apply_rings_limiter()).grid(row=10, column=2)
+        # Display buttons and status update message
+        Button(self.win.buttons, text="Go Back", width=20, anchor="w",
+               command=lambda: (self.win.topframe.destroy(), MainFrame().start())).pack(side=LEFT)
+        self.status_update.pack(side=LEFT)
+        self.win.finish()
+
+    def apply_rings_limiter(self):
+        if self.ot_rings_limiter.get() == "on":
+            rings_limiter = int(1)
+        else:
+            rings_limiter = int(0)
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (rings_limiter, "ot_rings_limiter")
+        commit(sql)
+        msg = "Overtime Rings Limiter updated: {}".format(self.ot_rings_limiter.get())
+        self.status_update.config(text="{}".format(msg))
+
+    def apply_mousewheel(self):
+        if self.wheel_selection.get() == "natural":
+            wheel_multiple = int(1)
+            projvar.mousewheel = int(1)  #sets the project variable
+        else:  # if the self.wheel_selection.get() == "reverse"
+            wheel_multiple = int(-1)
+            projvar.mousewheel = int(-1)  #sets the project variable
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (wheel_multiple, "mousewheel")
+        commit(sql)
+        msg = "Mousescroll direction updated: {}".format(self.wheel_selection.get())
+        self.status_update.config(text="{}".format(msg))
 
 
 def database_rings_report(frame, station):
@@ -15205,6 +15246,7 @@ def triad_col_finder(index):
 
 
 def rings_triad_placement(iteration):
+    place = 0
     if iteration % 3 == 0:
         place = 2
     elif (iteration - 1) % 3 == 0:
@@ -15215,6 +15257,7 @@ def rings_triad_placement(iteration):
 
 
 def new_entry(frame, day, moves):  # creates new entry fields for "more move functionality"
+    mm = []
     if day == "sat":
         mm = sat_mm  # find the day in question and use the correlating  array
     elif day == "sun":
@@ -15271,6 +15314,8 @@ class EnterRings:
         self.codes = []
         self.lvtypes = []
         self.lvtimes = []
+        self.now_moves = ""
+        self.now_day = ""
         self.sat_mm = []
         self.sun_mm = []
         self.mon_mm = []
@@ -15278,6 +15323,7 @@ class EnterRings:
         self.wed_mm = []
         self.thu_mm = []
         self.fri_mm = []
+        self.ot_rings_limiter = None
 
     def start(self):
         self.win = MakeWindow()
@@ -15287,6 +15333,7 @@ class EnterRings:
         self.get_dates()
         self.get_daily_carrecs()
         self.get_daily_ringrecs()
+        self.get_rings_limiter()
         self.build_page()
         self.buttons_frame()
         self.win.finish()
@@ -15299,7 +15346,7 @@ class EnterRings:
             self.carrecs =  CarrierRecSet(self.carrier, projvar.invran_date, projvar.invran_date,
                                          projvar.invran_station).get()
 
-    def get_ringrecs(self):  #
+    def get_ringrecs(self):  # get the ring recs for the invran
         if projvar.invran_weekly_span:
             self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_week()
         else:
@@ -15323,13 +15370,18 @@ class EnterRings:
         for d in self.dates:  # for each day in self.dates
             for rr in self.ringrecs:
                 if rr:
-                    if rr[0] == d:
+                    if rr[0] == str(d):
                         self.daily_ringrecs.append(rr)  # creates the daily_ringrecs array
                         match = True
             if not match:  # if there is no match
                 add_this = (d, "", "", "", "none", "", "", "")  # creates the daily_ringrecs array
                 self.daily_ringrecs.append(add_this)
             match = False
+
+    def get_rings_limiter(self):
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
+        results = inquire(sql)
+        self.ot_rings_limiter = int(results[0][0])
 
     def build_page(self):
         now_total = None
@@ -15350,7 +15402,6 @@ class EnterRings:
         frame_i = 0  # counter for the frame
         header_frame = Frame(self.win.body, width=500)  # header  frame
         header_frame.grid(row=frame_i, padx=5, sticky="w")
-        # header_frame.pack()
         # Header at top of window: name
         Label(header_frame, text="carrier name: ", fg="Grey", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
@@ -15367,13 +15418,13 @@ class EnterRings:
         else:
             i_range = 1
         for i in range(i_range):
-            for ring in self.daily_ringrecs:  # assign the values for each rings attribute
-                now_total = Convert(ring[2]).empty_not_zero()
-                now_rs = Convert(ring[3]).empty_not_zero()
-                now_code = Convert(ring[4]).none_not_empty()
-                now_moves = ring[5]
-                now_lv_type = Convert(ring[6]).none_not_empty()
-                now_lv_time = Convert(ring[7]).empty_not_zero()
+            # for ring in self.daily_ringrecs:  # assign the values for each rings attribute
+            now_total = Convert(self.daily_ringrecs[i][2]).empty_not_zero()
+            now_rs = Convert(self.daily_ringrecs[i][3]).empty_not_zero()
+            now_code = Convert(self.daily_ringrecs[i][4]).none_not_empty()
+            self.now_moves = self.daily_ringrecs[i][5]
+            now_lv_type = Convert(self.daily_ringrecs[i][6]).none_not_empty()
+            now_lv_time = Convert(self.daily_ringrecs[i][7]).empty_not_zero()
             grid_i = 0  # counter for the grid within the frame
             frame[i] = Frame(self.win.body, width=500)
             frame[i].grid(row=frame_i, padx=5, sticky="w")
@@ -15385,20 +15436,20 @@ class EnterRings:
                 Label(frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
             grid_i += 1
+            column = 6  # if the ot rings limiter is off/false - column = 5
+            if self.ot_rings_limiter:  #  else ot rings limiter is on/true - colummn = 3
+                if self.daily_carrecs[i][2] in ("otdl", "aux", "ptf"):
+                    column = 3
             if self.daily_carrecs[i][5] == projvar.invran_station:
                 Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=0)  # Display all labels
                 Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=1)
-                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
+                if column == 6:
                     Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=2)
                     Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=3)
                     Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=4)
-                    Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=6)
-                    Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=7)
-                    Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=8)
-                else:
-                    Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=3)
-                    Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=4)
-                    Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=5)
+                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=column)
+                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=column+1)
+                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=column+2)
                 grid_i += 1
                 # Display the entry widgets
                 # 5200 time
@@ -15411,13 +15462,14 @@ class EnterRings:
                 Entry(frame[i], width=macadj(8, 4), textvariable=self.rss[i]).grid(row=grid_i, column=1)
                 self.rss[i].set(now_rs)  # set the starting value for RS
                 # Moves
-                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
-                    if now_moves.strip() != "":
-                        new_entry(frame[i], day[i], now_moves)  # MOVES on and off entry widgets
+                if column == 6:
+                    if self.now_moves.strip() != "":
+                        self.new_entry(frame[i], day[i])  # MOVES on and off entry widgets
                     else:
-                        new_entry(frame[i], day[i], 0)
-                    Button(frame[i], text="more moves", command=lambda x=i: new_entry(frame[x], day[x], 0)) \
+                        self.new_entry(frame[i], day[i])
+                    Button(frame[i], text="more moves", command=lambda x=i: self.new_entry(frame[x], day[x])) \
                         .grid(row=grid_i, column=5)
+                self.now_moves = ""  # zero out self.now_moves so more moves button works properly
                 # Codes/Notes
                 self.codes.append(StringVar(frame[i]))  # code entry widget
                 if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
@@ -15426,25 +15478,18 @@ class EnterRings:
                     option_menu[i] = OptionMenu(frame[i], self.codes[i], *ot_aux_codes)
                 self.codes[i].set(now_code)
                 option_menu[i].configure(width=macadj(7, 6))
+                option_menu[i].grid(row=grid_i, column=column)  # code widget
                 # Leave Type
                 self.lvtypes.append(StringVar(frame[i]))  # leave type entry widget
                 lv_option_menu[i] = OptionMenu(frame[i], self.lvtypes[i], *lv_options)
                 lv_option_menu[i].configure(width=macadj(7, 6))
+                lv_option_menu[i].grid(row=grid_i, column=column+1)  # leave type widget
                 # Leave Time
                 self.lvtimes.append(StringVar(frame[i]))  # leave time entry widget
                 self.lvtypes[i].set(now_lv_type)  # set the starting value for leave type
                 self.lvtimes[i].set(now_lv_time)  # set the starting value for leave type
-                # put code widgets on the grid
-                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
-                    option_menu[i].grid(row=grid_i, column=6)  # code widget
-                    lv_option_menu[i].grid(row=grid_i, column=7)  # leave type widget
-                    Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
-                        .grid(row=grid_i, column=8)  # leave time widget
-                else:
-                    option_menu[i].grid(row=grid_i, column=3)  # code widget
-                    lv_option_menu[i].grid(row=grid_i, column=4)  # leave type widget
-                    Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
-                        .grid(row=grid_i, column=5)  # leave time widget
+                Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
+                    .grid(row=grid_i, column=column+2)  # leave time widget
             else:
                 self.totals.append(StringVar(frame[i]))  # 5200 entry widget
                 self.rss.append(StringVar(frame[i]))  # RS entry
@@ -15458,6 +15503,64 @@ class EnterRings:
         f7 = Frame(self.win.body)
         f7.grid(row=frame_i)
         Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
+
+    @staticmethod
+    def triad_row_finder(self, index):  # finds the row of the moves entry widget or button
+        if index % 3 == 0:
+            return index / 3
+        elif (index - 1) % 3 == 0:
+            return (index - 1) / 3
+        elif (index - 2) % 3 == 0:
+            return (index - 2) / 3
+
+    @staticmethod
+    def triad_col_finder(self, index):  # finds the column of the moves widget
+        if index % 3 == 0:  # first column
+            return int(0)
+        elif (index - 1) % 3 == 0:  # second column
+            return int(1)
+        elif (index - 2) % 3 == 0:  # third column
+            return int(2)
+
+    def new_entry(self, frame, day):  # creates new entry fields for "more move functionality"
+        mm = []
+        if day == "sat":
+            mm = self.sat_mm  # find the day in question and use the correlating  array
+        elif day == "sun":
+            mm = self.sun_mm
+        elif day == "mon":
+            mm = self.mon_mm
+        elif day == "tue":
+            mm = self.tue_mm
+        elif day == "wed":
+            mm = self.wed_mm
+        elif day == "thr":
+            mm = self.thu_mm
+        elif day == "fri":
+            mm = self.fri_mm
+        # what to do depending on the moves
+        if self.now_moves == "":  # if there are no moves sent to the function
+            mm.append(StringVar(frame))  # create first entry field for new entries
+            Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
+                .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # route
+            mm.append(StringVar(frame))  # create second entry field for new entries
+            Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
+                .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move off
+            mm.append(StringVar(frame))  # create second entry field for new entries
+            Entry(frame, width=macadj(8, 5), textvariable=mm[len(mm) - 1]) \
+                .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move on
+        else:  # if there are moves which need to be set
+            moves = self.now_moves.split(",")
+            iterations = len(moves)
+            for i in range(int(iterations)):
+                mm.append(StringVar(frame))  # create entry field for moves from database
+                mm[i].set(moves[i])
+                if (i + 1) % 3 == 0:
+                    ml = 5
+                else:
+                    ml = 4
+                Entry(frame, width=macadj(8, ml), textvariable=mm[i]) \
+                    .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
 
     def buttons_frame(self):
         Button(self.win.buttons, text="Submit", width=10, bg="light yellow", anchor="w",
@@ -17060,7 +17163,8 @@ class MainFrame:
         menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
         # management menu
         management_menu = Menu(menubar, tearoff=0)
-        management_menu.add_command(label="GUI Configuration", command=lambda: gui_config(self.win.topframe))
+        # management_menu.add_command(label="GUI Configuration", command=lambda: gui_config(self.win.topframe))
+        management_menu.add_command(label="GUI Configuration", command=lambda: GuiConfig(self.win.topframe).create())
         management_menu.add_separator()
         management_menu.add_command(label="List of Stations", command=lambda: station_list(self.win.topframe))
         management_menu.add_command(label="Tolerances", command=lambda: tolerances(self.win.topframe))
@@ -17182,6 +17286,8 @@ def setup_database():
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(18, "min_spd_abc", 10)'
     commit(sql)
     sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(19, "speedcell_ns_rotate_mode", "True")'
+    commit(sql)
+    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(20, "ot_rings_limiter", 0)'
     commit(sql)
     pb_counter += 1  # increment progress bar
     pb["value"] = pb_counter
