@@ -273,7 +273,13 @@ class RouteChecker:
         self.route = route
         self.routearray = self.route.split("/")
 
+    def is_empty(self):
+        if self.route == "":
+            return True
+        return False
+
     def check_numeric(self):  # is the route numeric?
+        print(self.route, type(self.route), len(self.route))
         if self.route == "":
             return True
         for r in self.routearray:
@@ -297,6 +303,19 @@ class RouteChecker:
                 return False
         return True
 
+    def only_one(self):  # returns False if there is more than one route given
+        if len(self.routearray) > 1:
+            return False
+        return True
+
+    def only_numbers(self):  # returns True if variable is empty string or contains only numbers
+        if self.route == "":
+            return True
+        try:
+            num = int(self.route)
+        except ValueError:
+            return False
+
     def check_all(self):  # do all checks, return False if any fail.
         if not self.check_numeric():
             return False
@@ -311,24 +330,36 @@ class RingTimeChecker:
     def __init__(self, ring):
         self.ring = ring
 
-    def make_float(self):
+    def make_float(self):  # converts self.ring to a floatType or returns False
         try:
             self.ring = float(self.ring)
             return self.ring
         except ValueError:
             return False
 
-    def check_numeric(self):  # is the route numeric?
-        if not self.ring.isnumeric():
+    def check_for_zeros(self):  # returns True if zero or empty
+        try:
+            if float(self.ring) == 0:
+                return True
+        except ValueError:
+            pass
+        if self.ring == "":
+            return True
+        return False
+
+    def check_numeric(self):  # is the ring numeric?
+        try:
+            float(self.ring)
+            return True
+        except ValueError:
             return False
-        return True
 
     def over_24(self):  # is the time greater than 24 hours
         if float(self.ring) > 24:
             return False
         return True
 
-    def over_8(self):  # is the time greater than 24 hours
+    def over_8(self):  # is the time greater than 8 hours
         if float(self.ring) > 8:
             return False
         return True
@@ -339,7 +370,7 @@ class RingTimeChecker:
         return True
 
     def count_decimals_place(self):  # limit time to two decimal places
-        return round(float(self.ring), 2) == float(self.ring)
+        return round(float(self.ring), 2) == float(self.ring)  # returns False if self.ring has > two decimal places
 
 
 class MovesChecker:
@@ -348,6 +379,21 @@ class MovesChecker:
 
     def length(self):  # return False if not a multiple of three
         return len(self.moves) % 3 == 0
+
+    def check_for_zeros(self):  # returns True if zero or empty
+        if self.moves == "":
+            return True
+        try:
+            if float(self.moves) == 0:
+                return True
+        except ValueError:
+            pass
+        return False
+
+    def compare(self, second):  # return False if first move is greater than second move
+        if float(self.moves) > float(second):
+            return False
+        return True
 
 
 class NsDayDict:
@@ -644,7 +690,9 @@ class Convert:
         return dt
 
     def empty_not_zero(self):  # returns an empty string for any value equal to zero
-        if self.data == 0:
+        if self.data == "0":
+            return ""
+        if self.data == "0.0":
             return ""
         return self.data
 
@@ -681,6 +729,22 @@ class Handler:
             return ""
         else:
             return "s"
+
+
+def isfloat(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
+def isint(value):
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False
 
 
 def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
@@ -1497,7 +1561,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
     def check_list_status(self):
         self.list_stat = str(self.list_stat)
         self.list_stat = self.list_stat.strip()
-        if self.list_stat == "":
+        if self.list_stat == "":  # if the list_stat is empty
             self.add_list_status(["nl"], [])
             return
         dlsn_array = []  # dynamic list status notation array
@@ -12028,22 +12092,6 @@ def carrier_list_cleaning(frame):  # cleans the database of duplicate records
     del duplicates[:]
 
 
-def isfloat(value):
-    try:
-        float(value)
-        return True
-    except ValueError:
-        return False
-
-
-def isint(value):
-    try:
-        int(value)
-        return True
-    except ValueError:
-        return False
-
-
 def data_mods_codes_delete(frame, to_delete):
     sql = "DELETE FROM skippers WHERE code='%s'" % to_delete[0]
     commit(sql)
@@ -15245,16 +15293,6 @@ def triad_col_finder(index):
     return int(col)
 
 
-def rings_triad_placement(iteration):
-    place = 0
-    if iteration % 3 == 0:
-        place = 2
-    elif (iteration - 1) % 3 == 0:
-        place = 0
-    elif (iteration - 2) % 3 == 0:
-        place = 1
-    return place
-
 
 def new_entry(frame, day, moves):  # creates new entry fields for "more move functionality"
     mm = []
@@ -15303,20 +15341,20 @@ class EnterRings:
         self.origin_frame = None  # defunct
         self.win = None
         self.carrier = carrier
-        self.carrecs = []
-        self.ringrecs = []
-        self.dates = []
-        self.daily_carrecs = []
-        self.daily_ringrecs = []
-        self.totals = []
+        self.carrecs = []  # get the carrier rec set
+        self.ringrecs = []  # get the rings for the week
+        self.dates = []  # get a datetime object for each day in the investigation range
+        self.daily_carrecs = []  # get the carrier record for each day
+        self.daily_ringrecs = []  # get the rings record for each day
+        self.totals = []  # arrays holding stringvars
         self.rss = []
         self.moves = []
         self.codes = []
         self.lvtypes = []
         self.lvtimes = []
-        self.now_moves = ""
-        self.now_day = ""
-        self.sat_mm = []
+        self.now_moves = ""  # default values of the stringvars
+        self.now_day = ""  # not used
+        self.sat_mm = []  # holds daily stringvars for moves
         self.sun_mm = []
         self.mon_mm = []
         self.tue_mm = []
@@ -15324,6 +15362,13 @@ class EnterRings:
         self.thu_mm = []
         self.fri_mm = []
         self.ot_rings_limiter = None
+        self.day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        self.chg_these = []
+        self.add5200 = []
+        self.addrings = []
+        if projvar.invran_weekly_span:
+            for i in range(7):
+                self.addrings.append([])
 
     def start(self):
         self.win = MakeWindow()
@@ -15343,7 +15388,7 @@ class EnterRings:
             self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date_week[0], projvar.invran_date_week[6],
                                          projvar.invran_station).get()
         else:
-            self.carrecs =  CarrierRecSet(self.carrier, projvar.invran_date, projvar.invran_date,
+            self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date, projvar.invran_date,
                                          projvar.invran_station).get()
 
     def get_ringrecs(self):  # get the ring recs for the invran
@@ -15436,14 +15481,16 @@ class EnterRings:
                 Label(frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
             grid_i += 1
-            column = 6  # if the ot rings limiter is off/false - column = 5
-            if self.ot_rings_limiter:  #  else ot rings limiter is on/true - colummn = 3
-                if self.daily_carrecs[i][2] in ("otdl", "aux", "ptf"):
+            column = 6  # if the ot rings limiter is off/false - column = 6
+            if self.daily_carrecs[i][2] in ("aux", "ptf"):  # don't show moves for aux or ptf carriers
+                column = 3
+            elif self.daily_carrecs[i][2] in ("otdl", ):  # show moves for otdl unless ot rings limiter is on
+                if self.ot_rings_limiter:  # if ot rings limiter is on/true - colummn = 3
                     column = 3
             if self.daily_carrecs[i][5] == projvar.invran_station:
                 Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=0)  # Display all labels
                 Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=1)
-                if column == 6:
+                if column == 6:  # don't show moves for aux, ptf and (maybe) otdl
                     Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=2)
                     Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=3)
                     Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=4)
@@ -15462,8 +15509,8 @@ class EnterRings:
                 Entry(frame[i], width=macadj(8, 4), textvariable=self.rss[i]).grid(row=grid_i, column=1)
                 self.rss[i].set(now_rs)  # set the starting value for RS
                 # Moves
-                if column == 6:
-                    if self.now_moves.strip() != "":
+                if column == 6:  # don't show moves for aux, ptf and (maybe) otdl
+                    if self.now_moves.strip():
                         self.new_entry(frame[i], day[i])  # MOVES on and off entry widgets
                     else:
                         self.new_entry(frame[i], day[i])
@@ -15505,16 +15552,16 @@ class EnterRings:
         Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
 
     @staticmethod
-    def triad_row_finder(self, index):  # finds the row of the moves entry widget or button
+    def triad_row_finder(index):  # finds the row of the moves entry widget or button
         if index % 3 == 0:
-            return index / 3
+            return int(index / 3)
         elif (index - 1) % 3 == 0:
-            return (index - 1) / 3
+            return int((index - 1) / 3)
         elif (index - 2) % 3 == 0:
-            return (index - 2) / 3
+            return int((index - 2) / 3)
 
     @staticmethod
-    def triad_col_finder(self, index):  # finds the column of the moves widget
+    def triad_col_finder(index):  # finds the column of the moves widget
         if index % 3 == 0:  # first column
             return int(0)
         elif (index - 1) % 3 == 0:  # second column
@@ -15542,13 +15589,16 @@ class EnterRings:
         if self.now_moves == "":  # if there are no moves sent to the function
             mm.append(StringVar(frame))  # create first entry field for new entries
             Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
-                .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # route
+                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
+                      column=self.triad_col_finder(len(mm) - 1) + 2)  # route
             mm.append(StringVar(frame))  # create second entry field for new entries
             Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
-                .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move off
+                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
+                      column=self.triad_col_finder(len(mm) - 1) + 2)  # move off
             mm.append(StringVar(frame))  # create second entry field for new entries
             Entry(frame, width=macadj(8, 5), textvariable=mm[len(mm) - 1]) \
-                .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move on
+                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
+                      column=self.triad_col_finder(len(mm) - 1) + 2)  # move on
         else:  # if there are moves which need to be set
             moves = self.now_moves.split(",")
             iterations = len(moves)
@@ -15560,19 +15610,187 @@ class EnterRings:
                 else:
                     ml = 4
                 Entry(frame, width=macadj(8, ml), textvariable=mm[i]) \
-                    .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
+                    .grid(row=self.triad_row_finder(i) + 2, column=self.triad_col_finder(i) + 2)
 
     def buttons_frame(self):
         Button(self.win.buttons, text="Submit", width=10, bg="light yellow", anchor="w",
                command=lambda: [apply_rings(self.origin_frame, self.win.topframe, self.carrier,
                                             self.totals, self.rss, self.codes,
                                self.lvtypes, self.lvtimes, "no_return")]).pack(side=LEFT)
-        Button(self.win.buttons, text="Apply", width=10, bg="light yellow", anchor="w",
-               command=lambda: [
-                   apply_rings(self.origin_frame, self.win.topframe, self.carrier, self.totals, self.rss, self.codes,
-                               self.lvtypes, self.lvtimes, "do_return")]).pack(side=LEFT)
+        Button(self.win.buttons, text= "Apply", width=10, anchor="w",
+               command=lambda: self.apply_rings()).pack(side=LEFT)
         Button(self.win.buttons, text="Go Back", width=10, bg="light yellow", anchor="w",
                command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+
+    def apply_rings(self):
+        self.empty_addrings()
+        self.add_date()
+        self.check_5200()
+        self.check_rs()
+        self.check_moves()
+        self.check_leave()
+        for line in self.addrings:
+            print(line)
+
+    def empty_addrings(self):  # empty out addring arrays
+        for i in range(len(self.addrings)):
+            self.addrings[i] = []
+
+    def add_date(self):
+        for i in range(len(self.dates)):
+            self.addrings[i].append(self.dates[i])
+            self.addrings[i].append(self.carrier)
+
+    def check_5200(self):
+        for i in range(len(self.totals)):
+            total = self.totals[i].get().strip()
+            if RingTimeChecker(total).check_for_zeros():
+                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
+                continue  # skip other checks
+            if not RingTimeChecker(total).check_numeric():
+                text = "You must enter a numeric value in 5200 for {}.".format(self.day[i])
+                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(total).over_24():
+                text = "Values greater than 24 are not accepted in 5200 for {}.".format(self.day[i])
+                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(total).less_than_zero():
+                text = "Values less than or equal to 0 are not accepted in 5200 for {}.".format(self.day[i])
+                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(total).count_decimals_place():
+                text = "Values with more than 2 decimal places are not accepted in 5200 for {}.".format(self.day[i])
+                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
+                return
+            total = format(float(total), '.2f')  # format it as a float with 2 decimal places
+            self.addrings[i].append(total)  # if all checks pass, add to addrings
+
+    def check_rs(self):
+        for i in range(len(self.rss)):
+            rs = str(self.rss[i].get()).strip()
+            if RingTimeChecker(rs).check_for_zeros():
+                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
+                continue  # skip other checks
+            if not RingTimeChecker(rs).check_numeric():
+                text = "You must enter a numeric value in RS for {}.".format(self.day[i])
+                messagebox.showerror("RS Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(rs).over_24():
+                text = "Values greater than 24 are not accepted in RS for {}.".format(self.day[i])
+                messagebox.showerror("RS Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(rs).less_than_zero():
+                text = "Values less than or equal to 0 are not accepted in RS for {}.".format(self.day[i])
+                messagebox.showerror("RS Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(rs).count_decimals_place():
+                text = "Values with more than 2 decimal places are not accepted in RS for {}.".format(self.day[i])
+                messagebox.showerror("RS Error", text, parent=self.win.topframe)
+                return
+            rs = format(float(rs), '.2f')  # format it as a float with 2 decimal places
+            self.addrings[i].append(rs)  # if all checks pass, add to addrings
+
+    def check_moves(self):
+        days = (self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm)
+        cc = 0  # increments one for each day
+        for d in days:  # check for bad inputs in moves
+            move_string = ""
+            added_moves = False
+            x = len(d)
+            for i in range(x):
+                if triad_col_finder(i) == 0:  # find the first of the triad
+                    first_move = d[i].get().strip()
+                    second_move = d[i + 1].get().strip()
+                    print(first_move, second_move)
+                    if MovesChecker(first_move).check_for_zeros() or MovesChecker(second_move).check_for_zeros():
+                        if MovesChecker(first_move).check_for_zeros() and \
+                                MovesChecker(second_move).check_for_zeros():  # if both are zeros
+                            continue  # skip the rest of the checks
+                        text = "You must provide two values on moves for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if not RingTimeChecker(first_move).check_numeric() or \
+                            not RingTimeChecker(second_move).check_numeric():
+                        text = "You must enter a numeric value on moves for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if not MovesChecker(first_move).compare(second_move):
+                        text = "The earlier value can not be greater than the later value on moves for {}." \
+                            .format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if not RingTimeChecker(first_move).over_24() or not RingTimeChecker(second_move).over_24():
+                        text = "Values greater than 24 are not accepted on moves for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if not RingTimeChecker(first_move).less_than_zero() or \
+                        not RingTimeChecker(second_move).less_than_zero():
+                        text = "Values less than 0 are not accepted on moves for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if not RingTimeChecker(first_move).count_decimals_place() or \
+                        not RingTimeChecker(second_move).count_decimals_place():
+                        text = "Moves can not have more than two decimal places on moves for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if i > 2:
+                        move_string += ","
+                    move_string += first_move + "," + second_move + ","
+                    added_moves = True
+                if triad_col_finder(i) == 2:  # find the third of the triad
+                    route = d[i].get().strip()
+                    if RouteChecker(route).is_empty():  # if the route is an empty string
+                        if added_moves:
+                            move_string += ""
+                        continue  # skip the rest of the checks
+                    if not RouteChecker(route).check_numeric():
+                        text = "You must enter a numeric value on route for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if not RouteChecker(route).only_one():
+                        text = "Only one route is allowed in route field on moves for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if RouteChecker(route).only_numbers():
+                        text = "Only numbers are allowed in route field on moves for {}.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if not RouteChecker(route).check_length():
+                        text = "The route number for {} must be four or five digits long.".format(self.day[cc])
+                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                        return
+                    if added_moves:
+                        move_string += route
+                    added_moves = False
+            self.addrings[cc].append(move_string)
+            cc += 1
+
+    def check_leave(self):
+        for i in range(len(self.lvtimes)):
+            lvtime = str(self.lvtimes[i].get()).strip()
+            if RingTimeChecker(lvtime).check_for_zeros():
+                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
+                continue  # skip other checks
+            if not RingTimeChecker(lvtime).check_numeric():
+                text = "You must enter a numeric value in Leave Time for {}.".format(self.day[i])
+                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(lvtime).over_8():
+                text = "Values greater than 8 are not accepted in Leave Time for {}.".format(self.day[i])
+                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(lvtime).less_than_zero():
+                text = "Values less than or equal to 0 are not accepted in Leave Time for {}.".format(self.day[i])
+                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
+                return
+            if not RingTimeChecker(lvtime).count_decimals_place():
+                text = "Values with more than 2 decimal places are not accepted in Leave Time for {}."\
+                    .format(self.day[i])
+                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
+                return
+            lvtime = format(float(lvtime), '.2f')  # format it as a float with 2 decimal places
+            self.addrings[i].append(lvtime)  # if all checks pass, add to addrings
 
 
 def rings2(carrier, origin_frame):
