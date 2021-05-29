@@ -632,8 +632,7 @@ class Convert:
     def str_to_bool(self):  # change a string into a boolean variable type
         if self.data == 'True':
             return True
-        else:
-            return False
+        return False
 
     def bool_to_onoff(self): # takes a boolean and returns on for true, off for false
         if int(self.data):
@@ -699,6 +698,10 @@ class Convert:
         if self.data == "":
             return "none"
         return self.data
+
+    def hundredths(self):  # returns a number (as a string) into a number with 2 decimal places
+        number = float(self.data)  # convert the number to a float
+        return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
 
 
 class Handler:
@@ -876,7 +879,6 @@ class CarrierList:
             rec_set = CarrierRecSet(carrier[0], self.start, self.end, self.station).get()  # get rec set per carrier
             if rec_set is not None:  # only add rec sets if there is something there
                 c_list.append(rec_set)
-
         return c_list
 
 
@@ -992,7 +994,7 @@ class SpeedConfigGui:
                command=lambda: self.preset_low()).grid(row=12, column=3)
         self.win.fill(11, 20)  # fill the bottom of the window for scrolling
         Button(self.win.buttons, text="Go Back", width=20, anchor="w",
-               command=lambda: (self.win.topframe.destroy(), MainFrame().start())).pack(side=LEFT)
+               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
         self.status_update.pack(side=LEFT)
         self.win.finish()
 
@@ -1866,6 +1868,20 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.addlvtype = "empty"
         self.addlvtime = "empty"
 
+    def check(self):
+        if self.check_day():  # if the day is a valid day
+            self.get_onrecs()  # get existing "on record" records from the database
+            self.check_5200()  # check 5200/ hours
+            self.check_leave_time()  # check leave time
+            if not self.check_empty():  # checks if the record should be deleted
+                self.check_rs()   # check "return to station"
+                self.check_codes()  # check the codes/notes
+                self.check_leave_type()  # check leave type
+                self.check_moves()  # check moves
+                if self.parent.interject:  # if user wants to update database
+                    self.add_recs()  # format and input rings into database
+        self.generate_report()
+
     def get_day_as_datetime(self):  # get the datetime object for the day in use
         day = Convert(self.day).day_to_datetime_str(self.parent.start_date)
         self.adddate = day
@@ -1904,10 +1920,11 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
     def check_empty(self):
         # determine conditions where existing record is deleted
         if not self.hours:
-            if not self.lv_type or not self.lv_time:
-                if self.onrec_date:  # if there is an existing record to delete
-                    self.delete_recs()  # delete any pre existing record
-                return True
+            if not self.lv_time:
+                if self.codes != "no call":
+                    if self.onrec_date:  # if there is an existing record to delete
+                        self.delete_recs()  # delete any pre existing record
+                    return True
         return False
 
     def add_5200(self):
@@ -1947,6 +1964,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.allowaddrings = False
             return
         self.hours = str(self.hours)  # convert float back to string
+        self.hours = Convert(self.hours).hundredths()  # make number a string with 2 decimal places
         self.add_5200()
 
     def add_rs(self):
@@ -1986,6 +2004,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.allowaddrings = False
             return
         self.rs = str(self.rs)  # convert float back to string
+        self.rs = Convert(self.rs).hundredths()  # make number a string with 2 decimal places
         self.add_rs()
 
     def add_moves(self, baseready):
@@ -2003,7 +2022,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.moves = self.moves.replace("+", ",").replace("/", ",").replace("//", ",")\
             .replace("-", ",").replace("*", ",")  # replace all delimiters with commas
         moves_array = Convert(self.moves).string_to_array()  # convert the moves string to an array
-        if not MovesChecker(moves_array).length():
+        if not MovesChecker(moves_array).length():  # check number of items is multiple of three
             error = "     ERROR: Moves must be given in multiples of three. Got instead \"{}\": \n"\
                 .format(len(moves_array))
             self.error_array.append(error)
@@ -2055,9 +2074,12 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                 self.error_array.append(error)
                 self.allowaddrings = False
                 return
-            else:  # convert the items back into strings
+            else:  # convert the items back into strings with 2 decimal places
                 moves_array[i] = str(moves_array[i])
+                moves_array[i] = Convert(moves_array[i]).hundredths()
                 moves_array[i + 1] = str(moves_array[i + 1])
+                moves_array[i + 1] = Convert(moves_array[i + 1]).hundredths()
+
         baseready = Convert(moves_array).array_to_string()  # convert the moves array to a baseready string
         self.add_moves(baseready)
 
@@ -2099,28 +2121,36 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                 self.attn_array.append(attn)
         self.add_codes()
 
-    def check_leave_type(self):
-        all_codes = ("none", "annual", "sick", "holiday", "other")
-        self.lv_type = str(self.lv_type)
-        self.lv_type = self.lv_type.strip()
-        self.lv_type = self.lv_type.lower()
-        if self.lv_type != "":
-            if self.lv_type not in all_codes:
-                error = "     ERROR: There is no such leave type. Acceptable types are: \"none\", \n" \
-                        "            \"annual\", \"sick\", \"holiday\", \"other\" \n" \
-                        "            Got instead: \"{}\"\n".format(self.lv_type)
-                self.error_array.append(error)
-                self.allowaddrings = False
-                return
-        if self.lv_type != self.onrec_leave_type:  # compare 5200 time against 5200 from database,
+    def add_lvtype(self):  # store the leave type if it has changed and passes checks
+        if self.lv_type == self.onrec_leave_type:  # compare 5200 time against 5200 from database,
+            pass  # take no action if they are the same
+        else:
             self.addlvtype = self.lv_type  # if different, the add
             fyi = "     FYI: New or updated leave type: {}\n".format(self.lv_type)
             self.fyi_array.append(fyi)
 
+    def check_leave_type(self):  # check the leave type
+        all_codes = ("none", "annual", "sick", "holiday", "other")
+        self.lv_type = str(self.lv_type)  # make sure lv type is a string
+        self.lv_type = self.lv_type.strip()  # remove whitespace
+        self.lv_type = self.lv_type.lower()  # force lv type to be lowercase
+        if not self.lv_type:
+            self.lv_type = "none"
+            self.add_lvtype()  # store the leave type if it has changed and passes checks
+            return
+        if self.lv_type not in all_codes:
+            error = "     ERROR: There is no such leave type. Acceptable types are: \"none\", \n" \
+                    "            \"annual\", \"sick\", \"holiday\", \"other\" \n" \
+                    "            Got instead: \"{}\"\n".format(self.lv_type)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        self.add_lvtype()  # store the leave type if it has changed and passes checks
+
     def add_leave_time(self):
         if self.lv_time == "0.0" and self.onrec_leave_time in ("0", "0.00", "0.0", "", 0, 0.0):
-            pass
-        elif self.lv_time != self.onrec_leave_time:  # compare 5200 time against 5200 from database,
+            pass  # if new and old lv times are both empty, take no action
+        elif self.lv_time != self.onrec_leave_time:  # compare lv type time against lv type from database,
             self.addlvtime = self.lv_time  # if different, the add
             fyi = "     FYI: New or updated leave time: {}\n".format(self.lv_time)
             self.fyi_array.append(fyi)
@@ -2153,18 +2183,19 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.error_array.append(error)
             self.allowaddrings = False
             return
-        self.lv_time = str(self.lv_time)
+        self.lv_time = str(self.lv_time)  # make lv time back into a string
+        self.lv_time = Convert(self.lv_time).hundredths()  # make lv time into a string number with 2 decimal places
         self.add_leave_time()
 
     def delete_recs(self):  # delete any pre existing record
         if not self.parent.interject:
+            fyi = "     FYI: Clock Rings record will be deleted from database\n"
+            self.fyi_array.append(fyi)
             return
         sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" % (self.adddate, self.parent.name)
         commit(sql)
         add = "     DELETE: Clock Rings record deleted from database\n"  # report
         self.add_array.append(add)
-        fyi = "     FYI: Clock Rings record will be deleted from database\n"
-        self.fyi_array.append(fyi)
 
     def add_recs(self):
         chg_these = []
@@ -2178,10 +2209,11 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             return
         # determine conditions where existing record is deleted
         if not self.hours:
-            if not self.lv_type or not self.lv_time:
-                if self.onrec_date:  # if there is an existing record to delete
-                    self.delete_recs()  # delete any pre existing record
-                    return
+            if not self.lv_time:
+                if self.codes != "no call":
+                    if self.onrec_date:  # if there is an existing record to delete
+                        self.delete_recs()  # delete any pre existing record
+                        return
         # contruct the sql command to commit to the database.
         if self.add5200 != "empty":  # 5200 place of sql command
             add = "     INPUT: 5200 time added or updated to database >>{}\n".format(self.add5200)  # report
@@ -2215,7 +2247,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             add = "     INPUT: Leave type added or updated to database >>{}\n".format(self.addlvtype)  # report
             self.add_array.append(add)
             chg_these.append("lv type")
-            lv_type_place= self.addlvtype
+            lv_type_place = self.addlvtype
         else:
             lv_type_place = self.onrec_leave_type
         if self.addlvtime != "empty":  # lv time place of sql command
@@ -2256,20 +2288,6 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                 # self.parent.fatal_rpt += 1
             for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.parent.report.write(rpt)
-
-    def check(self):
-        if self.check_day():  # if the day is a valid day
-            self.get_onrecs()  # get existing "on record" records from the database
-            self.check_5200()  # check 5200/ hours
-            self.check_leave_type()  # check leave type
-            self.check_leave_time()  # check leave time
-            if not self.check_empty():  # checks if the record should be deleted
-                self.check_rs()   # check "return to station"
-                self.check_codes()  # check the codes/notes
-                self.check_moves()  # check moves
-                if self.parent.interject:  # if user wants to update database
-                    self.add_recs()  # format and input rings into database
-        self.generate_report()
 
 
 class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
@@ -2626,9 +2644,9 @@ class SpeedSheetGen:
             cell.value = "Date:  "
             cell.style = self.date_dov_title
             cell = self.ws_list[i].cell(row=2, column=2)  # date
-            if projvar.invran_weekly_span:  # if investigation range is daily
-                cell.value = "{}".format(projvar.invran_date.strftime("%m/%d/%Y"))
-            else:
+            # if investigation range is daily
+            cell.value = "{}".format(projvar.invran_date.strftime("%m/%d/%Y"))
+            if projvar.invran_weekly_span:
                 cell.value = "{} through {}".format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
                                                     projvar.invran_date_week[6].strftime("%m/%d/%Y"))
             cell.style = self.date_dov
@@ -2894,7 +2912,7 @@ class GuiConfig:
         Button(self.win.body, text="set", width=7, command=lambda: self.apply_rings_limiter()).grid(row=10, column=2)
         # Display buttons and status update message
         Button(self.win.buttons, text="Go Back", width=20, anchor="w",
-               command=lambda: (self.win.topframe.destroy(), MainFrame().start())).pack(side=LEFT)
+               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
         self.status_update.pack(side=LEFT)
         self.win.finish()
 
@@ -3118,7 +3136,7 @@ def database_delete_carriers(frame, station):
            command=lambda: database_delete_carriers_apply(wd[0], station_selection, vars)) \
         .pack(side=LEFT)
     Button(wd[4], text="Go Back", width=15, bg="light yellow", anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -3780,385 +3798,193 @@ def database_maintenance(frame):
     Label(cleaner_frame2, text="").grid(row=rrr)
     r += 1
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     rear_window(wd)
 
 
-def rpt_impman(list_carrier):  # generate report for improper mandates
-    sql = ""
-    date = projvar.invran_date_week[0]
-    dates = []  # array containing days.
-    # if investigation range is weekly
-    for i in range(7):
-        dates.append(date)
-        date += timedelta(days=1)
-        sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-            % (projvar.invran_date_week[0], projvar.invran_date_week[6])
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        dates.append(projvar.invran_date)
-        sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
-              "carrier_name" \
-              % projvar.invran_date
-    rings = inquire(sql)
-    sql = "SELECT * FROM tolerance_results"  # get tolerance_results
-    tolerance_results = inquire(sql)
-    ot_own_rt = tolerance_results[0][2]
-    ot_tol = tolerance_results[1][2]
-    av_tol = tolerance_results[2][2]  # get tolerance_results
-    daily_list = []  # array
-    candidates = []
-    dl_nl = []
-    dl_wal = []
-    dl_otdl = []
-    dl_aux = []
-    rec = ""
-    weekly_summary = []
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
-    filename = "report_improper_mandates" + "_" + stamp + ".txt"
-    report = open(dir_path('report') + filename, "w")  # create text document
-    report.write("Improper Mandates Report\n")
-    for day in dates:
-        report.write('\n\n   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        f_date = day.strftime("%A  %b %d, %Y")
-        report.write('      Date: {}\n'.format(f_date))
-        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
-        del daily_list[:]
-        del dl_nl[:]
-        del dl_wal[:]
-        del dl_otdl[:]
-        del dl_aux[:]
-        # create a list of carriers for each day.
-        for ii in range(len(list_carrier)):
-            if list_carrier[ii][0] <= str(day):
-                candidates.append(list_carrier[ii])  # put name into candidates array
-            jump = "no"  # triggers an analysis of the candidates array
-            if ii != len(list_carrier) - 1:  # if the loop has not reached the end of the list
-                if list_carrier[ii][1] == list_carrier[ii + 1][1]:  # if the name current and next name are the same
-                    jump = "yes"  # bypasses an analysis of the candidates array
-            if jump == "no":  # review the list of candidates
-                winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == projvar.invran_station:
-                    daily_list.append(winner)  # add the record if it matches the station
-                del candidates[:]  # empty out the candidates array.
-        for item in daily_list:  # sort carriers in daily list by the list they are in
-            if item[2] == "nl":
-                dl_nl.append(item)
-            if item[2] == "wal":
-                dl_wal.append(item)
-            if item[2] == "otdl":
-                dl_otdl.append(item)
-            if item[2] in ("aux", "ptf"):
-                dl_aux.append(item)
-        daily_summary = [day]  # initialize array for the daily summary
-        # daily_summary.append(day)
-        print("DAY: ", day, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-        print("No List -------------------------------------------------------------------")
-        daily_ot = 0.0
-        daily_ot_off_route = 0.0
-        for name in dl_nl:
-            ot = 0.0
-            ot_off_route = 0.0
-            for r in rings:
-                if r[0] == str(day) and r[1] == name[1]:
-                    rec = r
-            moves_array = []
-            if rec != "":
-                if rec[2] != "":
-                    if rec[4] == "ns day":
-                        ot = float(rec[2])
-                    else:
-                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
-                if ot <= float(ot_own_rt):
-                    ot = 0  # adjust sum for tolerance
-                if rec[5] != "":  # if there is a moves in the record
-                    move_list = rec[5].split(",")  # convert moves from string to an array
-                    sub_array_counter = 0  # sort the moves into multidimentional array
-                    i = 1
-                    for item in move_list:
-                        if (i + 2) % 3 == 0:  # add an array to the array every third item
-                            moves_array.append([])
-                        moves_array[sub_array_counter].append(item)
-                        i += 1
-                        if (i - 1) % 3 == 0:
-                            sub_array_counter += 1
-                            i = 1
-                    move_segment_total = 0
-                    for move_segment in moves_array:
-                        move_segment_total += (
-                                float(move_segment[1]) - float(move_segment[0]))  # calc off time off route
-                    if rec[4] == "ns day":
-                        ot_off_route = float(rec[2])
-                    else:
-                        ot_off_route = min(move_segment_total, ot)
-                    print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array[0][0], " ", moves_array[0][1], " ",
-                          moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route)
-                    if len(moves_array) > 1:
-                        for i in range(len(moves_array) - 1):
-                            print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
-                else:
-                    print(name[1])
-            daily_ot += ot
-            daily_ot_off_route += ot_off_route
-            rec = ""
-        daily_summary.append(daily_ot)
-        daily_summary.append(daily_ot_off_route)
+class Reports:
+    def __init__(self, frame):
+        self.frame = frame
+        self.start_date = projvar.invran_date
+        self.end_date = projvar.invran_date
+        if projvar.invran_weekly_span:
+            self.start_date = projvar.invran_date_week[0]
+            self.end_date = projvar.invran_date_week[6]
+        self.carrier_list = []
 
-        print("Work Assignment -------------------------------------------------------------------")
-        daily_ot = 0.0
-        daily_ot_off_route = 0.0
-        for name in dl_wal:
-            ot = 0.0
-            ot_off_route = 0.0
-            for r in rings:
-                if r[0] == str(day) and r[1] == name[1]:
-                    rec = r
-            moves_array = []
-            if rec != "":
-                if rec[2] != "":
-                    if rec[4] == "ns day":  # calculate overtime
-                        ot = float(rec[2])
-                    else:
-                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
-                if rec[5] != "":  # if there is a moves in the record
-                    move_list = rec[5].split(",")  # convert moves from string to an array
-                    sub_array_counter = 0  # sort the moves into multidimentional array
-                    i = 1
-                    for item in move_list:
-                        if (i + 2) % 3 == 0:  # add an array to the array every third item
-                            moves_array.append([])
-                        moves_array[sub_array_counter].append(item)
-                        i += 1
-                        if (i - 1) % 3 == 0:
-                            sub_array_counter += 1
-                            i = 1
-                    move_segment_total = 0
-                    for move_segment in moves_array:
-                        move_segment_total += (
-                                float(move_segment[1]) - float(move_segment[0]))  # calc off time off route
-                    if rec[4] == "ns day":
-                        ot_off_route = float(rec[2])
-                    else:
-                        ot_off_route = min(move_segment_total, ot)  # calc off time off route
-                    if ot_off_route <= float(ot_tol):
-                        ot_off_route = 0  # adjust sum for tolerance
-                    print(name[1], "  ", rec[2], " ", rec[4], " ", moves_array[0][0], " ", moves_array[0][1], " ",
-                          moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route)
-                    if len(moves_array) > 1:
-                        for i in range(len(moves_array) - 1):
-                            print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
-                else:
-                    print(name[1])
-            daily_ot += ot
-            daily_ot_off_route += ot_off_route
-            rec = ""
-        daily_summary.append(daily_ot)
-        daily_summary.append(daily_ot_off_route)
-        print("Overtime Desired -------------------------------------------------------------------")
-        report.write('Overtime Desired List\n\n')
-        report.write('{:>31}{:<22}{:<14}{:<20}\n'.format("", "Moves off Route", "Overtime", "Availability"))
-        report.write('{:<15}{:>8}{:>6}{:<7}{:<7}{:<7}{:>7}{:>7}{:>7}{:>7}\n'
-                     .format("name", "code", "5200", "  off", "  on", "   route", "total", "off rt", "to 10", "to 12"))
-        report.write("------------------------------------------------------------------------------\n")
-        daily_to_10 = 0.0
-        daily_to_12 = 0.0
-        for name in dl_otdl:
-            availability_to_10 = 0.0
-            availability_to_12 = 0.0
-            ot = 0.0
-            ot_off_route = 0.0
-            for r in rings:  # cycle though clock rings and search for match
-                if r[0] == str(day) and r[1] == name[1]:  # if there is a match
-                    rec = r  # capture the record
-            moves_array = []
-            carrier = name[1][:15]
-            if rec != "":  # if there is a result for the name
-                if rec[4] == "none":  # if the code is "none", create empty string
-                    code = ""
-                else:
-                    code = rec[4]
-                if code == "no call":  # if there is a no call, max out availability
-                    availability_to_12 = 12
-                    availability_to_10 = 10
-                if rec[2] != "":  # calculate daily overtime if there is a 5200 time
-                    if code == "ns day":
-                        ot = float(rec[2])
-                    else:
-                        ot = max(float(rec[2]) - float(8), 0)  # calculate overtime
-                    availability_to_10 = max(10 - float(rec[2]), 0)  # calculate availability to 10 hours
-                    if availability_to_10 <= float(av_tol):
-                        availability_to_10 = 0  # adjust sum for tolerance
-                    availability_to_12 = max(12 - float(rec[2]), 0)  # calculate availability to 12 hours
-                    if availability_to_12 <= float(av_tol):
-                        availability_to_12 = 0  # adjust sum for tolerance
-                if rec[5] != "":  # if there is a moves in the record
-                    move_list = rec[5].split(",")  # convert moves from string to an array
-                    sub_array_counter = 0  # sort the moves into multidimentional array
-                    i = 1
-                    for item in move_list:
-                        if (i + 2) % 3 == 0:  # add an array to the array every third item
-                            moves_array.append([])
-                        moves_array[sub_array_counter].append(item)
-                        i += 1
-                        if (i - 1) % 3 == 0:
-                            sub_array_counter += 1
-                            i = 1
-                    move_segment_total = 0  # calc off time off route
-                    for move_segment in moves_array:
-                        move_segment_total += (
-                                float(move_segment[1]) - float(move_segment[0]))
-                    if code == "ns day":
-                        ot_off_route = float(rec[2])
-                    else:
-                        ot_off_route = min(move_segment_total, ot)  # calc off time off route
-                    # if there are moves
-                    print(name[1], "  ", rec[2], " ", code, " ", moves_array[0][0], " ", moves_array[0][1], " ",
-                          moves_array[0][2], " ", ot, " ", move_segment_total, " ", ot_off_route, " ",
-                          availability_to_10, " ", availability_to_12)
-                    report.write('{:<15}{:>8}{:>6}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}\n'.format
-                                 (carrier,
-                                  code,
-                                  "{0:.2f}".format(float(rec[2])),
-                                  "{0:.2f}".format(float(moves_array[0][0])),
-                                  "{0:.2f}".format(float(moves_array[0][1])),
-                                  moves_array[0][2],
-                                  "{0:.2f}".format(float(ot)),
-                                  "{0:.2f}".format(float(ot_off_route)),
-                                  "{0:.2f}".format(float(availability_to_10)),
-                                  "{0:.2f}".format(float(availability_to_12))
-                                  ))
-                    if len(moves_array) > 1:
-                        for i in range(len(moves_array) - 1):
-                            print(moves_array[i + 1][0], " ", moves_array[i + 1][1], " ", moves_array[i + 1][2])
-                            report.write('{:>29}{:>7}{:>7}{:>7}\n'.format
-                                         ("",
-                                          "{0:.2f}".format(float(moves_array[i + 1][0])),
-                                          "{0:.2f}".format(float(moves_array[i + 1][1])),
-                                          moves_array[i + 1][2],
-                                          ))
-                else:  # if there are no moves
-                    print(name[1], "  ", rec[2], " ", code, " ", "", " ", "", " ",
-                          "", " ", ot, " ", "", " ", ot_off_route, " ",
-                          availability_to_10, " ", availability_to_12)
-                    report.write('{:<15}{:>8}{:>6}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}{:>7}\n'.format
-                                 (carrier,
-                                  code,
-                                  rec[2],
-                                  "",
-                                  "",
-                                  "",
-                                  "{0:.2f}".format(float(ot)),
-                                  "{0:.2f}".format(float(ot_off_route)),
-                                  "{0:.2f}".format(float(availability_to_10)),
-                                  "{0:.2f}".format(float(availability_to_12))
-                                  ))
-            daily_to_10 += availability_to_10
-            daily_to_12 += availability_to_12
-            rec = ""
-        daily_summary.append(daily_to_10)
-        daily_summary.append(daily_to_12)
-        print("Auxiliary -------------------------------------------------------------------")
-        daily_to_10 = 0.0
-        daily_to_12 = 0.0
-        for name in dl_aux:
-            availability_to_10 = 0.0
-            availability_to_12 = 0.0
-            for r in rings:
-                if r[0] == str(day) and r[1] == name[1]:
-                    rec = r
-            moves_array = []
-            if rec != "":
-                if rec[5] != "":
-                    move_list = rec[5].split(",")  # convert moves from string to an array
-                    sub_array_counter = 0  # sort the moves into multidimentional array
-                    i = 1
-                    for item in move_list:
-                        if (i + 2) % 3 == 0:  # add an array to the array every third item
-                            moves_array.append([])
-                        moves_array[sub_array_counter].append(item)
-                        i += 1
-                        if (i - 1) % 3 == 0:
-                            sub_array_counter += 1
-                            i = 1
-                if (rec[2]) == "":  # if the 5200 hours/ rec[2] is an empty string, make it a zero.
-                    dailyhours = float(0.0)
-                else:
-                    dailyhours = float(rec[2])  # if the 5200 hours/ rec[2] is an empty string, make it a zero.
-                availability_to_10 = max(10 - dailyhours, 0)  # calculate availability to 10 hours
-                if availability_to_10 <= float(av_tol):
-                    availability_to_10 = 0  # adjust sum for tolerance
-                availability_to_12 = max(12 - dailyhours, 0)  # calculate availability to 12 hours
-                if availability_to_12 <= float(av_tol):
-                    availability_to_12 = 0  # adjust sum for tolerance
-                print(name[1], "  ", dailyhours, " ", rec[4], " ", availability_to_10, " ", availability_to_12)
-            else:
-                print(name[1])
-            daily_to_10 += availability_to_10
-            daily_to_12 += availability_to_12
-            rec = ""
-        report.write("------------------------------------------------------------------------------\n")
-        daily_summary.append(daily_to_10)
-        daily_summary.append(daily_to_12)
-        weekly_summary.append(daily_summary)
-    report.close()  # finish up text document
-    if sys.platform == "win32":  # open the text document
-        os.startfile(dir_path('report') + filename)
-    if sys.platform == "linux":
-        subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-    if sys.platform == "darwin":
-        subprocess.call(["open", dir_path('report') + filename])
-    print("weekly summary: ")
-    for line in weekly_summary:
-        print(line)
+    def get_carrierlist(self):
+        # get carrier list
+        self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
-
-def rpt_dt_limiter(date, first_date):  # return the first day if it is earlier than the date
-    if date < first_date:
-        return first_date
-    else:
-        return date
-
-
-def rpt_ns_fixer(nsday_code):  # remove the day from the ns_code if fixed
-    fix = []
-    if "fixed" in nsday_code:
-        fix = nsday_code.split(":")
-        return fix[0]
-    else:
-        return nsday_code
-
-
-def rpt_carrier_by_list(frame, carrier_list):
-    unique_names = []  # get a list of unique names
-    reoccurring_names = []  # get a list of reoccurring names
-    for car in carrier_list:
-        if car[1] not in unique_names:
-            unique_names.append(car[1])
+    @staticmethod
+    def rpt_dt_limiter(date, first_date):  # return the first day if it is earlier than the date
+        if date < first_date:
+            return first_date
         else:
-            reoccurring_names.append(car[1])
-    list_dict = {"nl": "No List", "wal": "Work Assignment List",
-                 "otdl": "Overtime Desired List", "ptf": "Part Time Flexible", "aux": "Auxiliary Carrier"}
-    # initialize arrays for data sorting
-    otdl_array = []
-    wal_array = []
-    nl_array = []
-    ptf_array = []
-    aux_array = []
-    for carrier in carrier_list:
-        if carrier[2] == "otdl":
-            otdl_array.append(carrier)
-        if carrier[2] == "wal":
-            wal_array.append(carrier)
-        if carrier[2] == "nl":
-            nl_array.append(carrier)
-        if carrier[2] == "ptf":
-            ptf_array.append(carrier)
-        if carrier[2] == "aux":
-            aux_array.append(carrier)
-    array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array  #
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
-    filename = "report_carrier_by_list" + "_" + stamp + ".txt"
-    try:
+            return date
+    @staticmethod
+    def rpt_ns_fixer(nsday_code):  # remove the day from the ns_code if fixed
+        fix = []
+        if "fixed" in nsday_code:
+            fix = nsday_code.split(":")
+            return fix[0]
+        else:
+            return nsday_code
+
+    def rpt_carrier(self):  # Generate and display a report of carrier routes and nsday
+        self.get_carrierlist()
+        ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+        filename = "report_carrier_route_nsday" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier Route and NS Day Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+        else:  # if investigation range is weekly
+            f_date = projvar.invran_date_week[0]  # use the first day of the service week
+            report.write('      Dates: {} through {}\n'
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
+                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
+        report.write('{:>4} {:<23} {:<13} {:<29} {:<10}\n'.format("", "Carrier Name", "N/S Day", "Route/s",
+                                                                  "Start Date"))
+        report.write('     ------------------------------------------------------------------- ----------\n')
+        i = 1
+        for line in self.carrier_list:
+            ii = 0
+            for rec in reversed(line):
+                if not ii:
+                    report.write('{:>4} {:<23} {:<4} {:<8} {:<29}\n'
+                        .format(i, rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]]),
+                        rec[4]))
+                else:
+                    report.write('{:>4} {:<23} {:<4} {:<8} {:<29} {:<10}\n'
+                        .format("", rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]]),
+                        rec[4], self.rpt_dt_limiter(dt_converter(rec[0]), f_date).strftime("%A")))
+                ii += 1
+            if i % 3 == 0:
+                report.write('     ------------------------------------------------------------------- ----------\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+    def rpt_carrier_route(self):  # Generate and display a report of carrier routes
+        self.get_carrierlist()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "report_carrier_route" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier Route Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+        else:
+            f_date = projvar.invran_date_week[0]
+            report.write('      Date: {} through {}\n'
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
+                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
+        report.write('{:>4}  {:<22} {:<29}\n'.format("", "Carrier Name", "Route/s"))
+        report.write('      ---------------------------------------------------- -------------------\n')
+        i = 1
+        for line in self.carrier_list:
+            ii = 0
+            for rec in reversed(line):  # reverse order so earliest one appears first
+                if not ii:  # if the first record
+                    report.write('{:>4}  {:<22} {:<29}\n'.format(i, rec[1], rec[4]))
+                else:  # if not the first record, use alternate format
+                    report.write('{:>4}  {:<22} {:<29} effective {:<10}\n'
+                             .format("", rec[1], rec[4],
+                                     self.rpt_dt_limiter(dt_converter(rec[0]), f_date).strftime("%A")))
+                ii += 1
+            if i % 3 == 0:
+                report.write('      ---------------------------------------------------- -------------------\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+    def rpt_carrier_nsday(self):  # Generate and display a report of carrier ns day
+        self.get_carrierlist()
+        ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "report_carrier_nsday" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier NS Day\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+        else:
+            f_date = projvar.invran_date_week[0]
+            report.write('      Date: {} through {}\n'
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
+                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
+        report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
+        report.write('      ----------------------------------------  -------------------\n')
+        i = 1
+        for line in self.carrier_list:
+            ii = 0
+            for rec in reversed(line):
+                if not ii:
+                    report.write('{:>4}  {:<22} {:<5}{:<12}\n'
+                             .format(i, rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]])))
+                else:
+                    report.write('{:>4}  {:<22} {:<5}{:<12}  effective {:<10}\n'
+                             .format("", rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]]),
+                                     self.rpt_dt_limiter(dt_converter(rec[0]), f_date).strftime("%A")))
+                ii += 1
+            if i % 3 == 0:
+                report.write('      ----------------------------------------  -------------------\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+    def rpt_carrier_by_list(self):
+        self.get_carrierlist()
+        list_dict = {"nl": "No List", "wal": "Work Assignment List",
+                     "otdl": "Overtime Desired List", "ptf": "Part Time Flexible", "aux": "Auxiliary Carrier"}
+        # initialize arrays for data sorting
+        otdl_array = []
+        wal_array = []
+        nl_array = []
+        ptf_array = []
+        aux_array = []
+        for line in self.carrier_list:
+            for carrier in line:
+                if carrier[2] == "otdl":
+                    otdl_array.append(carrier)
+                if carrier[2] == "wal":
+                    wal_array.append(carrier)
+                if carrier[2] == "nl":
+                    nl_array.append(carrier)
+                if carrier[2] == "ptf":
+                    ptf_array.append(carrier)
+                if carrier[2] == "aux":
+                    aux_array.append(carrier)
+        array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array  #
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+        filename = "report_carrier_by_list" + "_" + stamp + ".txt"
         report = open(dir_path('report') + filename, "w")
         report.write("\nCarrier by List\n\n")
         report.write('   Showing results for:\n')
@@ -4169,24 +3995,25 @@ def rpt_carrier_by_list(frame, carrier_list):
         else:
             f_date = projvar.invran_date_week[0]
             report.write('      Dates: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
+                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
         report.write('      Pay Period: {}\n'.format(projvar.pay_period))
-
         i = 1
-        last_list = ""
+        last_list = ""  # this is a indicator for when a new list is starting
         for line in array_var:
-            if last_list != line[2]:
+            if last_list != line[2]:  # if the new record is in a different list that the last
                 report.write('\n\n      {:<20}\n\n'
-                             .format(list_dict[line[2]]))
+                             .format(list_dict[line[2]]))  # write new headers
                 report.write('{:>4}  {:<22} {:>4}\n'.format("", "Carrier Name", "List"))
                 report.write('      ---------------------------  -------------------\n')
                 i = 1
-            if line[1] not in reoccurring_names:
+            if dt_converter(line[0]) not in projvar.invran_date_week:
+            # if line[1] not in reoccurring_names:
                 report.write('{:>4}  {:<22} {:>4}\n'.format(i, line[1], line[2]))
             else:
                 report.write('{:>4}  {:<22} {:>4}  effective {:<10}\n'
                              .format(i, line[1], line[2],
-                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
+                                     self.rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
             if i % 3 == 0:
                 report.write('      ---------------------------  -------------------\n')
             last_list = line[2]
@@ -4198,243 +4025,87 @@ def rpt_carrier_by_list(frame, carrier_list):
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
+    def rpt_chg_station(self, frame, station):
+        self.frame = frame
+        if station.get() == "Select a station":
+            station_string = "x"
+        else:
+            station_string = station.get()
+        self.rpt_find_carriers(station_string)
 
-def rpt_chg_station(frame, station):
-    if station.get() == "Select a station":
-        station_string = "x"
-    else:
-        station_string = station.get()
-    rpt_find_carriers(frame, station_string)
-
-
-def rpt_find_carriers(frame, station):
-    wd = front_window(frame)
-    Label(wd[3], text="Carriers Status History", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=0, sticky="w")
-    Label(wd[3], text="").grid(row=1, column=0)
-    Label(wd[3], text="Select the station to see all carriers who have ever worked "
-                      "at the station - past and present. \n ", justify=LEFT) \
-        .grid(row=2, column=0, sticky="w", columnspan=6)
-    Label(wd[3], text="").grid(row=3, column=0)
-    Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
-    station_selection = StringVar(wd[3])
-    om_station = OptionMenu(wd[3], station_selection, *projvar.list_of_stations)
-    if sys.platform != "darwin":
-        om_station.config(width=30, anchor="w")
-    else:
-        om_station.config(width=30)
-    om_station.grid(row=5, column=0, columnspan=2, sticky="w")
-    if station == "x":
-        station_selection.set("Select a station")
-    else:
-        station_selection.set(station)
-    Button(wd[3], text="select", width=macadj(14, 12), anchor="w",
-           command=lambda: rpt_chg_station(wd[0], station_selection)) \
-        .grid(row=5, column=2, sticky="w")
-    Label(wd[3], text="").grid(row=6, column=0)
-    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
-          "ORDER BY carrier_name ASC" % station
-    results = inquire(sql)
-    if station != "x":
-        Label(wd[3], text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
-    results_frame = Frame(wd[3])
-    results_frame.grid(row=8, columnspan=4)
-    i = 0
-    if station != "x":
-        if len(results) > 0:
-            Label(results_frame, text="Name", anchor="w", fg="grey").grid(row=i, column=0, sticky="w")
-            Label(results_frame, text="Last Date", anchor="w", fg="grey") \
-                .grid(row=i, column=1, columnspan=2, sticky="w")
-            Label(results_frame, text="Station", anchor="w", fg="grey").grid(row=i, column=3, sticky="w")
-        elif len(results) == 0:
-            Label(results_frame, text="", anchor="w").grid(row=i, column=0, sticky="w")
-            i += 1
-            Label(results_frame, text="After a search, no results were found in the klusterbox database.", anchor="w") \
-                .grid(row=i, column=0, sticky="w")
-    i += 1
-    for name in results:
-        sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
-        top_rec = inquire(sql)
-        Label(results_frame, text=name[0], anchor="w").grid(row=i, column=0, sticky="w")
-        Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
-            .grid(row=i, column=1, sticky="w")
-        Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
-        Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
-        Label(results_frame, text="     ", anchor="w").grid(row=i, column=4, sticky="w")
-        Button(results_frame, text="Report", anchor="w",
-               command=lambda in_line=name: rpt_carrier_history(wd[0], in_line[0])) \
-            .grid(row=i, column=5, sticky="w")
-        Label(results_frame, text="         ", anchor="w").grid(row=i, column=6, sticky="w")
+    def rpt_find_carriers(self, station):
+        win = MakeWindow()
+        win.create(self.frame)
+        Label(win.body, text="Carriers Status History", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, column=0, sticky="w")
+        Label(win.body, text="").grid(row=1, column=0)
+        Label(win.body, text="Select the station to see all carriers who have ever worked "
+                          "at the station - past and present. \n ", justify=LEFT) \
+            .grid(row=2, column=0, sticky="w", columnspan=6)
+        Label(win.body, text="").grid(row=3, column=0)
+        Label(win.body, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
+        station_selection = StringVar(win.body)
+        om_station = OptionMenu(win.body, station_selection, *projvar.list_of_stations)
+        if sys.platform != "darwin":
+            om_station.config(width=30, anchor="w")
+        else:
+            om_station.config(width=30)
+        om_station.grid(row=5, column=0, columnspan=2, sticky="w")
+        if station == "x":
+            station_selection.set("Select a station")
+        else:
+            station_selection.set(station)
+        Button(win.body, text="select", width=macadj(14, 12), anchor="w",
+               command=lambda: self.rpt_chg_station(win.topframe, station_selection)) \
+            .grid(row=5, column=2, sticky="w")
+        Label(win.body, text="").grid(row=6, column=0)
+        sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
+              "ORDER BY carrier_name ASC" % station
+        results = inquire(sql)
+        if station != "x":
+            Label(win.body, text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
+        results_frame = Frame(win.body)
+        results_frame.grid(row=8, columnspan=4)
+        i = 0
+        if station != "x":
+            if len(results) > 0:
+                Label(results_frame, text="Name", anchor="w", fg="grey").grid(row=i, column=0, sticky="w")
+                Label(results_frame, text="Last Date", anchor="w", fg="grey") \
+                    .grid(row=i, column=1, columnspan=2, sticky="w")
+                Label(results_frame, text="Station", anchor="w", fg="grey").grid(row=i, column=3, sticky="w")
+            elif len(results) == 0:
+                Label(results_frame, text="", anchor="w").grid(row=i, column=0, sticky="w")
+                i += 1
+                Label(results_frame, text="After a search, no results were found in the klusterbox database.",
+                      anchor="w") \
+                    .grid(row=i, column=0, sticky="w")
         i += 1
-    # apply and close buttons
-    Button(wd[4], text="Go Back", width=20, bg="light yellow", anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
-    rear_window(wd)
-
-
-def rpt_carrier(frame, carrier_list):  # Generate and display a report of carrier routes and nsday
-    unique_names = []  # get a list of unique names
-    reoccurring_names = []  # get a list of reoccurring names
-    for car in carrier_list:
-        if car[1] not in unique_names:
-            unique_names.append(car[1])
-        else:
-            reoccurring_names.append(car[1])
-    ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
-    filename = "report_carrier_route_nsday" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier Route and NS Day Report\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        if not projvar.invran_weekly_span:  # if investigation range is daily
-            f_date = projvar.invran_date
-            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-        else:
-            f_date = projvar.invran_date_week[0]
-            report.write('      Dates: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
-        report.write('{:>4} {:<23} {:<13} {:<29} {:<10}\n'.format("", "Carrier Name", "N/S Day", "Route/s",
-                                                                  "Start Date"))
-        report.write('     ------------------------------------------------------------------- ----------\n')
-        i = 1
-        for line in carrier_list:
-            if line[1] not in reoccurring_names:
-                report.write('{:>4} {:<23} {:<4} {:<8} {:<29}\n'
-                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]), line[4]))
-            else:
-                report.write('{:>4} {:<23} {:<4} {:<8} {:<29} {:<10}\n'
-                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]), line[4],
-                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
-            if i % 3 == 0:
-                report.write('     ------------------------------------------------------------------- ----------\n')
+        for name in results:
+            sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
+            top_rec = inquire(sql)
+            Label(results_frame, text=name[0], anchor="w").grid(row=i, column=0, sticky="w")
+            Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
+                .grid(row=i, column=1, sticky="w")
+            Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
+            Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
+            Label(results_frame, text="     ", anchor="w").grid(row=i, column=4, sticky="w")
+            Button(results_frame, text="Report", anchor="w",
+                   command=lambda in_line=name: self.rpt_carrier_history(in_line[0])) \
+                .grid(row=i, column=5, sticky="w")
+            Label(results_frame, text="         ", anchor="w").grid(row=i, column=6, sticky="w")
             i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
+        # apply and close buttons
+        Button(win.buttons, text="Go Back", width=20, bg="light yellow", anchor="w",
+               command=lambda: MainFrame().start(frame=win.topframe)).pack(side=LEFT)
+        win.finish()
 
-
-def rpt_carrier_route(frame, carrier_list):  # Generate and display a report of carrier routes
-    unique_names = []  # get a list of unique names
-    reoccurring_names = []  # get a list of reoccurring names
-    for car in carrier_list:
-        if car[1] not in unique_names:
-            unique_names.append(car[1])
-        else:
-            reoccurring_names.append(car[1])
-    unique_names = []  # get a list of unique names
-    reoccurring_names = []  # get a list of reoccurring names
-    for car in carrier_list:
-        if car[1] not in unique_names:
-            unique_names.append(car[1])
-        else:
-            reoccurring_names.append(car[1])
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = "report_carrier_route" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier Route Report\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        if not projvar.invran_weekly_span:  # if investigation range is daily
-            f_date = projvar.invran_date
-            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-        else:
-            f_date = projvar.invran_date_week[0]
-            report.write('      Date: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
-        report.write('{:>4}  {:<22} {:<29}\n'.format("", "Carrier Name", "Route/s"))
-        report.write('      ---------------------------------------------------- -------------------\n')
-        i = 1
-        for line in carrier_list:
-            if line[1] not in reoccurring_names:
-                report.write('{:>4}  {:<22} {:<29}\n'.format(i, line[1], line[4]))
-            else:
-                report.write('{:>4}  {:<22} {:<29} effective {:<10}\n'
-                             .format(i, line[1], line[4],
-                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
-            if i % 3 == 0:
-                report.write('      ---------------------------------------------------- -------------------\n')
-            i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
-
-
-def rpt_carrier_nsday(frame, carrier_list):  # Generate and display a report of carrier ns day
-    unique_names = []  # get a list of unique names
-    reoccurring_names = []  # get a list of reoccurring names
-    for car in carrier_list:
-        if car[1] not in unique_names:
-            unique_names.append(car[1])
-        else:
-            reoccurring_names.append(car[1])
-    ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = "report_carrier_nsday" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier NS Day\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        if not projvar.invran_weekly_span:  # if investigation range is daily
-            f_date = projvar.invran_date
-            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-        else:
-            f_date = projvar.invran_date_week[0]
-            report.write('      Date: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"), projvar.invran_date_week[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
-        report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
-        report.write('      ----------------------------------------  -------------------\n')
-        i = 1
-        for line in carrier_list:
-            if line[1] not in reoccurring_names:
-                report.write('{:>4}  {:<22} {:<5}{:<12}\n'
-                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]])))
-            else:
-                report.write('{:>4}  {:<22} {:<5}{:<12}  effective {:<10}\n'
-                             .format(i, line[1], projvar.ns_code[line[3]], rpt_ns_fixer(ns_dict[line[3]]),
-                                     rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
-            if i % 3 == 0:
-                report.write('      ----------------------------------------  -------------------\n')
-            i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
-
-
-def rpt_carrier_history(frame, carrier):
-    sql = "SELECT effective_date, list_status, ns_day, route_s, station" \
-          " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % carrier
-    results = inquire(sql)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = "report_carrier_history" + "_" + stamp + ".txt"
-    try:
+    def rpt_carrier_history(self, carrier):
+        sql = "SELECT effective_date, list_status, ns_day, route_s, station" \
+              " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % carrier
+        results = inquire(sql)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "report_carrier_history" + "_" + stamp + ".txt"
         report = open(dir_path('report') + filename, "w")
         report.write("\nCarrier Status Change History\n\n")
         report.write('   Showing all status changes in the klusterbox database for {}\n\n'.format(carrier))
@@ -4455,8 +4126,6 @@ def rpt_carrier_history(frame, carrier):
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
 def clean_rings3_table():  # database maintenance
@@ -5706,7 +5375,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     Button(wd[3], text="reset", width=10, command=lambda: ns_config_reset(wd[0])).grid(row=17, column=3)
 
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -5816,7 +5485,7 @@ def pdf_splitter(frame):  # PDF Splitter
                new_path.get().strip())) \
         .grid(row=15, column=4, sticky="e")
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -5877,7 +5546,7 @@ def pdf_converter_settings(frame):
     pdf_converter_settings_apply(wd[0], error_selection, raw_selection, txt_selection)) \
         .grid(row=12, column=2)
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -8862,7 +8531,7 @@ def informalc(frame):
     Button(wd[3], text="Payout Entry", width=30, command=lambda: informalc_poe_search(wd[0])).grid(row=5, pady=5)
     Button(wd[3], text="Payout Report", width=30, command=lambda: informalc_por(wd[0])).grid(row=6, pady=5)
     Label(wd[3], text="", width=70).grid(row=7)
-    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: (wd[0].destroy(), MainFrame().start())) \
+    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: MainFrame().start(frame=wd[0])) \
         .grid(row=0, column=0)
     rear_window(wd)
 
@@ -8988,8 +8657,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                "Build the carrier list/otdl before re-running Weekly Availability."
                                .format(projvar.invran_station, projvar.invran_date_week[0].strftime("%b %d, %Y")),
                                parent=frame)
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
     else:  # if there is an otdl then build array holding hours for each day
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         extra_hour_codes = ("49", "52", "55", "56", "57", "58", "59", "60")
@@ -9239,8 +8907,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                                      "Make sure that identically named spreadsheets are closed "
                                      "(the file can't be overwritten while open).",
                                      parent=frame)
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
 
 
 def station_rec_del(frame, tacs, kb):
@@ -9334,7 +9001,7 @@ def station_index_mgmt(frame):
         Button(wd[3], text="Delete All", width="15", command=lambda: (wd[0].destroy(), stationindexer_del_all())) \
             .grid(row=g + 1, column=0, columnspan=3, sticky="e")
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -9379,7 +9046,7 @@ def name_index_screen():
             x += 1
         Button(wd[3], text="Delete All", width="15", command=lambda: del_all_nameindexer(wd[0])) \
             .grid(row=x, column=0, columnspan=5, sticky="e")
-    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+    Button(wd[4], text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     wd[0].update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
@@ -9640,8 +9307,7 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
                                "converter. If you can obtain an Employee Everything Report from management in "
                                "csv format, you should have better results.",
                                parent=f)
-        f.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=f)
         return
 
     station_index.append("out of station")
@@ -9674,7 +9340,7 @@ def auto_indexer_1(frame, file_path):  # pair station from tacs to correct stati
     Button(ff, text="OK", width=8, command=lambda: apply_auto_indexer_1
     (f, file_path, tacs_station, station_sorter.get(), station_new.get(), t_date, t_range)) \
         .grid(row=12, column=2, sticky=W)
-    Button(ff, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).grid(row=12, column=3, sticky=W)
+    Button(ff, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).grid(row=12, column=3, sticky=W)
     if tacs_station in tacs_index:
         auto_indexer_2(f, file_path, t_date, tacs_station, t_range)
     else:
@@ -9889,7 +9555,7 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         c1.pack(fill=BOTH, side=BOTTOM),
         Button(c1, text="Continue", width=8, command=lambda: auto_indexer_3
         (f, file_path, tacs_list, name_sorter, tried_names, new_carrier, check_these)).grid(row=0, column=0)
-        Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).grid(row=0, column=1)
+        Button(c1, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
         s = Scrollbar(f)  # link up the canvas and scrollbar
         c = Canvas(f, width=1600)
         s.pack(side=RIGHT, fill=BOTH)
@@ -10018,7 +9684,7 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="Continue", width=8, command=lambda: apply_auto_indexer_3
     (f, c1, file_path, tacs_list, name_sorter, new_carrier, c_list, check_these)).grid(row=0, column=0)
-    Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).grid(row=0, column=1)
+    Button(c1, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
     s = Scrollbar(f)  # link up the canvas and scrollbar
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
@@ -10250,7 +9916,7 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="Continue", width=8, command=lambda: apply_auto_indexer_4
     (f, c1, file_path, to_addname, carrier_name, l_s, l_ns, route, check_these)).pack(side=LEFT)
-    Button(c1, text="Cancel", width=8, command=lambda: (f.destroy(), MainFrame().start())).pack(side=LEFT)
+    Button(c1, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
     s = Scrollbar(f)  # link up the canvas and scrollbar
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
@@ -10522,7 +10188,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     Button(wd[4], text="Continue", width=8,
            command=lambda: apply_auto_indexer_5(wd[0], wd[4], file_path, carrier_name, l_s, l_ns, e_route,
                                                 l_station, check_these)).pack(side=LEFT)
-    Button(wd[4], text="Cancel", width=8, command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+    Button(wd[4], text="Cancel", width=8, command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     if skip_this_screen == "yes":
         auto_indexer_6(wd[0], file_path)
     else:
@@ -10713,7 +10379,7 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
         Button(wd[4], text="Continue", width=8,
                command=lambda: apply_auto_indexer_6(wd[0], wd[4], file_path, carrier_name,
                                                     list_status, ns_day, route, station, new_station)).pack(side=LEFT)
-        Button(wd[4], text="Cancel", width=8, command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+        Button(wd[4], text="Cancel", width=8, command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
         rear_window(wd)
 
 
@@ -10815,11 +10481,9 @@ def auto_skimmer(frame, file_path):
         messagebox.showinfo("Auto Rings",
                             "The Employee Everything Report has been sucessfully inputed into the database",
                             parent=frame)
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
     else:
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
 
 
 def auto_weekly_analysis(array):
@@ -11812,9 +11476,6 @@ def about_klusterbox(frame):  # gives information about the program
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
-    # apply and close buttons
-    # Button(c1, text="Go Back", width=20, anchor="w",
-    #        command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
     Button(c1, text="Go Back", width=20, anchor="w",
            command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
     # link up the canvas and scrollbar
@@ -11959,8 +11620,7 @@ def apply_startup(switch, station, frame):
     del projvar.list_of_stations[:]
     for stat in results:
         projvar.list_of_stations.append(stat[0])
-    frame.destroy()  # destroy old frame
-    MainFrame().start()  # load new frame
+    MainFrame().start(frame=frame)  # load new frame
 
 
 def start_up():  # the start up screen when no information has been entered
@@ -11992,7 +11652,7 @@ def start_up():  # the start up screen when no information has been entered
     Label(ff, text="Or you can exit to the main screen and enter your\n"
                    "station by going to Management > list of stations.") \
         .grid(row=6, columnspan=2, sticky="w")
-    Button(ff, width=5, text="EXIT", command=lambda: [f.destroy(), MainFrame().start()]). \
+    Button(ff, width=5, text="EXIT", command=lambda: MainFrame().start(frame=f)). \
         grid(row=7, columnspan=2, sticky="e")
     projvar.root.update()
     mainloop()
@@ -12082,8 +11742,7 @@ def carrier_list_cleaning(frame):  # cleans the database of duplicate records
         messagebox.showinfo("Database Maintenance",
                             "All redundancies have been eliminated from the carrier list.",
                             parent=frame)
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
     if not ok:
         messagebox.showinfo("Database Maintenance",
                             "No redundancies have been found in the carrier list.",
@@ -12270,7 +11929,7 @@ def auto_data_entry_settings(frame):
     Button(wd[3], text="Set", width=5, command=lambda: data_entry_permit_zero(wd[0], zero_top, zero_bottom)) \
         .grid(row=r, column=0, columnspan=4, sticky="e")
 
-    Button(wd[4], text="Go Back", width=20, command=lambda: (wd[0].destroy(), MainFrame().start())) \
+    Button(wd[4], text="Go Back", width=20, command=lambda: (MainFrame().start(frame=wd[0]))) \
         .grid(row=0, column=0, sticky="w")
     rear_window(wd)
 
@@ -12390,7 +12049,7 @@ def spreadsheet_settings(frame):
     Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "zero")) \
         .grid(row=12, column=3)
     Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (wd[0].destroy(), MainFrame().start())).pack(side=LEFT)
+           command=lambda: (MainFrame().start(frame=wd[0]))).pack(side=LEFT)
     rear_window(wd)
 
 
@@ -12483,7 +12142,7 @@ def tolerances(frame):
     c1.pack(fill=BOTH, side=BOTTOM)
     # apply and close buttons
     Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -12637,7 +12296,7 @@ def station_list(frame):
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: [f.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -12785,7 +12444,7 @@ def mass_input(frame, day, sort):
            command=lambda: [apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route, pass_date),
                             mass_input(switch_f7, day, sort)]).pack(side=LEFT)
     Button(c1, text="Go Back", width=10, anchor="w",
-           command=lambda: [switch_f7.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=switch_f7)).pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(switch_f7)
     c = Canvas(switch_f7, height=800, width=1600)
@@ -12908,6 +12567,7 @@ def mass_input(frame, day, sort):
     # Display results XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     i = 1
     array_var = []
+    list_header = ""
     # set up first header
     if sort == "name":
         for car in carrier_list:
@@ -14508,7 +14168,7 @@ def output_tab(frame, list_carrier):
     Button(c1, text="spreadsheet", width=15, anchor="w",
            command=lambda: spreadsheet(switch_f5, list_carrier, r_rings)).pack(side=LEFT)
     Button(c1, text="Go Back", width=15, anchor="w",
-           command=lambda: [switch_f5.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=switch_f5)).pack(side=LEFT)
     dates = []  # array containing days
     if projvar.invran_weekly_span:  # if investigation range is weekly
         dates = projvar.invran_date_week
@@ -15070,273 +14730,9 @@ def output_tab(frame, list_carrier):
     projvar.root.mainloop()
 
 
-def apply_rings(origin_frame, frame, carrier, total, rs, code, lv_type, lv_time, go_return):
-    sql = ""
-    day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    days = (sat_mm, sun_mm, mon_mm, tue_mm, wed_mm, thr_mm, fri_mm)
-    cc = 0
-    for d in days:  # check for bad inputs in moves
-        x = len(d)
-        for i in range(x):
-            if triad_col_finder(i) == 0:  # find the first of the triad
-                if isfloat(d[i].get()) == False or isfloat(d[i + 1].get()) == False:
-                    if d[i].get().strip() == "" and d[i + 1].get().strip() == "":
-                        continue
-                    text = "You must enter a numeric value on moves for {}.".format(day[cc])
-                    messagebox.showerror("Move entry error", text, parent=frame)
-                    return
-                if float(d[i].get()) == float(d[i + 1].get()):  # if earlier greater than later
-                    text = "The earlier value can not be greater equal to the later value on moves for {}.".format(
-                        day[cc])
-                    messagebox.showerror("Move entry error", text, parent=frame)
-                    return
-                if float(d[i].get()) > float(d[i + 1].get()):  # if earlier greater than later
-                    text = "The earlier value can not be greater than the later value on moves for {}.".format(day[cc])
-                    messagebox.showerror("Move entry error", text, parent=frame)
-                    return
-                if float(d[i].get()) > 24 or float(d[i + 1].get()) > 24:
-                    text = "Values greater than 24 are not accepted on moves for {}.".format(day[cc])
-                    messagebox.showerror("Move entry error", text, parent=frame)
-                    return
-                if float(d[i].get()) <= 0 or float(d[i + 1].get()) < 0:
-                    text = "Values less than 0 are not accepted on moves for {}.".format(day[cc])
-                    messagebox.showerror("Move entry error", text, parent=frame)
-                    return
-            if triad_col_finder(i) == 2:  # find the third of the triad
-                if not int(d[i].get().isnumeric()):
-                    if d[i].get().strip() == "":
-                        continue
-                    text = "You must enter a numeric value on route for {}.".format(day[cc])
-                    messagebox.showerror("Move entry error", text, parent=frame)
-                    return
-                if d[i].get() != "":  # if the route field is not blank
-                    if len(d[i].get()) < 4 or len(d[i].get()) > 5:  # it must contain four or five digits.
-                        text = "The route number for {} must be four or five digits long.".format(day[cc])
-                        messagebox.showerror("Move entry error", text, parent=frame)
-                        return
-        cc += 1
-    cc = -1
-    for t in total:  # check for bad inputs in 5200 fields
-        cc += 1
-        if not isfloat(t.get()):
-            if t.get().strip() == "":
-                continue
-            text = "You must enter a numeric value in 5200 for {}.".format(day[cc])
-            messagebox.showerror("Move entry error", text, parent=frame)
-            return
-        if float(t.get()) > 24:
-            text = "Values greater than 24 are not accepted in 5200 for {}.".format(day[cc])
-            messagebox.showerror("Move entry error", text, parent=frame)
-            return
-        if float(t.get()) <= 0:
-            text = "Values less than or equal to 0 are not accepted in 5200 for {}.".format(day[cc])
-            messagebox.showerror("Move entry error", text, parent=frame)
-            return
-    ttotal = []
-    for t in total:
-        t = str(t.get()).strip()
-        if isfloat(t):
-            ttotal.append(format(float(str(t)), '.2f'))
-        else:
-            ttotal.append(str(t))
-    cc = -1
-    for r in rs:  # check for bad inputs in RS fields
-        cc += 1
-        if not isfloat(r.get()):
-            if r.get().strip() == "":
-                continue
-            text = "You must enter a numeric value in RS for {}.".format(day[cc])
-            messagebox.showerror("Move entry error", text, parent=frame)
-            return
-        if float(r.get()) > 24:
-            text = "Values greater than 24 are not accepted in RS for {}.".format(day[cc])
-            messagebox.showerror("Move entry error", text, parent=frame)
-            return
-        if float(r.get()) < 0:
-            text = "Values less than 0 are not accepted in RS for {}.".format(day[cc])
-            messagebox.showerror("Move entry error", text, parent=frame)
-            return
-    r_rs = []
-    for r in rs:
-        r = str(r.get()).strip()
-        if isfloat(r) == TRUE:
-            r_rs.append(format(float(str(r)), '.2f'))
-        else:
-            r_rs.append(str(r))
-    # check for bad inputs in lv_time fields
-    cc = -1
-    for t in lv_time:
-        cc += 1
-        if not isfloat(t.get()):
-            if t.get().strip() == "":
-                continue
-            text = "You must enter a numeric value for leave times {}.".format(day[cc])
-            messagebox.showerror("5200 entry error", text, parent=frame)
-            return
-        if float(t.get()) > 8:
-            text = "Values greater than 8 are not accepted for leave times for {}.".format(day[cc])
-            messagebox.showerror("5200 entry error", text, parent=frame)
-            return
-    llv_time = []  # create new array to keep formated leave times
-    for t in lv_time:
-        t = str(t.get()).strip()
-        if isfloat(t) == TRUE:  # if the leave time can be a float
-            if float(t) <= 0:  # if the leave time is less than or equal to zero
-                llv_time.append(str(""))  # insert a blank in the array
-            else:  # if the leave time can be a float
-                llv_time.append(format(float(str(t)), '.2f'))  # format it as a float with 2 decimal places
-        else:
-            llv_time.append(str(t))  # otherwise input the string as it appears
-    dates = []
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        dates = projvar.invran_date_week
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        dates.append(projvar.invran_date)
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date BETWEEN '%s' AND '%s'" \
-              % (carrier[1], dates[0], dates[6])
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" \
-              % (carrier[1], projvar.invran_date)
-    results = inquire(sql)
-    d_sat_mm = []  # format moves for database
-    d_sun_mm = []
-    d_mon_mm = []
-    d_tue_mm = []
-    d_wed_mm = []
-    d_thr_mm = []
-    d_fri_mm = []
-    d_mm = [d_sat_mm, d_sun_mm, d_mon_mm, d_tue_mm, d_wed_mm, d_thr_mm, d_fri_mm]
-    all_moves = []
-    # inserts moves into a daily list/ formats moves to float
-    i = 0
-    field1 = ""
-    field2 = ""
-    for d in days:
-        ii = 0
-        for each in d:
-            if triad_col_finder(ii) == 0:  # find the first of the triad
-                field1 = each.get().strip()
-            if triad_col_finder(ii) == 1:  # find the seoond of the triad
-                field2 = each.get().strip()
-            if triad_col_finder(ii) == 2:
-                # only write where MV fields are filled in
-                if field1 != "":
-                    d_mm[i].append(format(float(field1), '.2f'))
-                    d_mm[i].append(format(float(field2), '.2f'))
-                    d_mm[i].append(routes_adj(each.get()))
-                field1 = ""
-                field2 = ""
-            ii += 1
-        i += 1
-    # remove the quotes around the items in the list
-    for i in range(len(d_mm)):
-        x = ','.join(d_mm[i])
-        if x.replace(',', '') == "":
-            x = ""
-        all_moves.append(x)
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        xserts = [0, 1, 2, 3, 4, 5, 6, ]  # seven inserts for a week and one for a day
-    else:
-        xserts = [0]
-    for i in range(len(dates)):
-        for each in results:
-            if str(dates[i]) == each[0]:  # if there is a match
-                xserts.remove(i)
-                if ttotal[i] == "" and code[i].get() and llv_time[i] == "":
-                    sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
-                          % (dates[i], carrier[1])
-                else:
-                    sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type = '%s'," \
-                          "leave_time = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" \
-                          % (ttotal[i], r_rs[i], code[i].get(),
-                             all_moves[i], lv_type[i].get(), llv_time[i], dates[i], carrier[1])
-                commit(sql)  # commit / update the rings
-    for i in xserts:
-        if ttotal[i] == "" and code[i].get() and llv_time[i] == "":
-            pass
-        else:
-            sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time )" \
-                  "VALUES('%s','%s','%s','%s','%s','%s','%s','%s') " \
-                  % (
-                      dates[i], carrier[1], ttotal[i], r_rs[i], code[i].get(), all_moves[i], lv_type[i].get(),
-                      llv_time[i])
-            commit(sql)
-    # destroy the old rings entry window
-    if go_return == "no_return":
-        frame.destroy()
-    else:
-        frame.destroy()
-        rings2(carrier, origin_frame)
-
-
-def triad_row_finder(index):
-    row = 0
-    if index % 3 == 0:
-        row = index / 3
-    elif (index - 1) % 3 == 0:
-        row = (index - 1) / 3
-    elif (index - 2) % 3 == 0:
-        row = (index - 2) / 3
-    return int(row)
-
-
-def triad_col_finder(index):
-    col = 0
-    if index % 3 == 0:  # first column
-        col = 0
-    elif (index - 1) % 3 == 0:  # second column
-        col = 1
-    elif (index - 2) % 3 == 0:  # third column
-        col = 2
-    return int(col)
-
-
-
-def new_entry(frame, day, moves):  # creates new entry fields for "more move functionality"
-    mm = []
-    if day == "sat":
-        mm = sat_mm  # find the day in question and use the correlating  array
-    elif day == "sun":
-        mm = sun_mm
-    elif day == "mon":
-        mm = mon_mm
-    elif day == "tue":
-        mm = tue_mm
-    elif day == "wed":
-        mm = wed_mm
-    elif day == "thr":
-        mm = thr_mm
-    elif day == "fri":
-        mm = fri_mm
-    # what to do depending on the moves
-    if moves == 0:  # if there are no moves sent to the function
-        mm.append(StringVar(frame))  # create first entry field for new entries
-        Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
-            .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # route
-        mm.append(StringVar(frame))  # create second entry field for new entries
-        Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
-            .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move off
-        mm.append(StringVar(frame))  # create second entry field for new entries
-        Entry(frame, width=macadj(8, 5), textvariable=mm[len(mm) - 1]) \
-            .grid(row=triad_row_finder(len(mm) - 1) + 2, column=triad_col_finder(len(mm) - 1) + 2)  # move on
-    else:  # if there are moves which need to be set
-        moves = moves.split(",")
-        iterations = len(moves)
-        for i in range(int(iterations)):
-            mm.append(StringVar(frame))  # create entry field for moves from database
-            mm[i].set(moves[i])
-            if (i + 1) % 3 == 0:
-                ml = 5
-            else:
-                ml = 4
-            Entry(frame, width=macadj(8, ml), textvariable=mm[i]) \
-                .grid(row=triad_row_finder(i) + 2, column=triad_col_finder(i) + 2)
-
-
 class EnterRings:
-    def __init__(self, carrier, frame):
-        self.frame = frame
+    def __init__(self, carrier):
+        self.frame = None
         self.origin_frame = None  # defunct
         self.win = None
         self.carrier = carrier
@@ -15352,7 +14748,6 @@ class EnterRings:
         self.lvtypes = []
         self.lvtimes = []
         self.now_moves = ""  # default values of the stringvars
-        self.now_day = ""  # not used
         self.sat_mm = []  # holds daily stringvars for moves
         self.sun_mm = []
         self.mon_mm = []
@@ -15360,18 +14755,24 @@ class EnterRings:
         self.wed_mm = []
         self.thu_mm = []
         self.fri_mm = []
+        self.move_string = ""
         self.ot_rings_limiter = None
-        self.day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         self.chg_these = []
-        self.add5200 = []
         self.addrings = []
         if projvar.invran_weekly_span:
             for i in range(7):
                 self.addrings.append([])
+        self.status_update = ""
+        self.delete_report = 0
+        self.update_report = 0
+        self.insert_report = 0
+        self.day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 
-    def start(self):
+    def start(self, frame):
+        self.frame = frame
         self.win = MakeWindow()
         self.win.create(self.frame)
+        self.re_initialize()
         self.get_carrecs()
         self.get_ringrecs()
         self.get_dates()
@@ -15379,8 +14780,37 @@ class EnterRings:
         self.get_daily_ringrecs()
         self.get_rings_limiter()
         self.build_page()
+        self.write_report()
         self.buttons_frame()
+        self.zero_report_vars()
         self.win.finish()
+
+    def re_initialize(self):
+        self.carrecs = []  # get the carrier rec set
+        self.ringrecs = []  # get the rings for the week
+        self.dates = []  # get a datetime object for each day in the investigation range
+        self.daily_carrecs = []  # get the carrier record for each day
+        self.daily_ringrecs = []  # get the rings record for each day
+        self.totals = []  # arrays holding stringvars
+        self.rss = []
+        self.moves = []
+        self.codes = []
+        self.lvtypes = []
+        self.lvtimes = []
+        self.now_moves = ""  # default values of the stringvars
+        self.sat_mm = []  # holds daily stringvars for moves
+        self.sun_mm = []
+        self.mon_mm = []
+        self.tue_mm = []
+        self.wed_mm = []
+        self.thu_mm = []
+        self.fri_mm = []
+        self.move_string = ""
+        self.chg_these = []
+        self.addrings = []
+        if projvar.invran_weekly_span:
+            for i in range(7):
+                self.addrings.append([])
 
     def get_carrecs(self):  # get the carrier's carrier rec set
         if projvar.invran_weekly_span:
@@ -15413,14 +14843,18 @@ class EnterRings:
         match = False
         for d in self.dates:  # for each day in self.dates
             for rr in self.ringrecs:
-                if rr:
-                    if rr[0] == str(d):
-                        self.daily_ringrecs.append(rr)  # creates the daily_ringrecs array
+                if rr:  # if there is a ring rec
+                    if rr[0] == str(d):  # when the dates match
+                        self.daily_ringrecs.append(list(rr))  # creates the daily_ringrecs array
                         match = True
             if not match:  # if there is no match
-                add_this = (d, self.carrier, "", "", "none", "", "none", "")  # creates the daily_ringrecs array
-                self.daily_ringrecs.append(add_this)
+                add_this = [d, self.carrier, "", "", "none", "", "none", ""]  # insert an empty record
+                self.daily_ringrecs.append(add_this)  # creates the daily_ringrecs array
             match = False
+        # convert the time item from string to datetime object
+        for i in range(len(self.daily_ringrecs)):
+            if type(self.daily_ringrecs[i][0]) == str:
+                self.daily_ringrecs[i][0] = Convert(self.daily_ringrecs[i][0]).dt_converter()
 
     def get_rings_limiter(self):
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
@@ -15509,10 +14943,11 @@ class EnterRings:
                 self.rss[i].set(now_rs)  # set the starting value for RS
                 # Moves
                 if column == 6:  # don't show moves for aux, ptf and (maybe) otdl
-                    if self.now_moves.strip():
-                        self.new_entry(frame[i], day[i])  # MOVES on and off entry widgets
-                    else:
-                        self.new_entry(frame[i], day[i])
+                    self.new_entry(frame[i], day[i])  # MOVES on, off and route entry widgets
+                    # if self.now_moves.strip():
+                    #     self.new_entry(frame[i], day[i])  # MOVES on, off and route entry widgets
+                    # else:
+                    #     self.new_entry(frame[i], day[i])
                     Button(frame[i], text="more moves", command=lambda x=i: self.new_entry(frame[x], day[x])) \
                         .grid(row=grid_i, column=5)
                 self.now_moves = ""  # zero out self.now_moves so more moves button works properly
@@ -15599,53 +15034,79 @@ class EnterRings:
                 .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
                       column=self.triad_col_finder(len(mm) - 1) + 2)  # move on
         else:  # if there are moves which need to be set
-            moves = self.now_moves.split(",")
-            iterations = len(moves)
-            for i in range(int(iterations)):
+            moves = self.now_moves.split(",")  # turn now_moves into an array
+            iterations = len(moves)  # get the number of items in moves array
+            for i in range(int(iterations)):  # loop through all items in moves array
                 mm.append(StringVar(frame))  # create entry field for moves from database
-                mm[i].set(moves[i])
-                if (i + 1) % 3 == 0:
-                    ml = 5
+                mm[i].set(moves[i])  # set values for the StringVars
+                if (i + 1) % 3 == 0:  # adjust the lenght of the route widget pending os
+                    ml = 5  # on mac, the route widget lenght is 5
                 else:
-                    ml = 4
+                    ml = 4  # on mac, the rings widget lenght is 4
+                # build the widget
                 Entry(frame, width=macadj(8, ml), textvariable=mm[i]) \
                     .grid(row=self.triad_row_finder(i) + 2, column=self.triad_col_finder(i) + 2)
 
-    def buttons_frame(self):
-        Button(self.win.buttons, text="Submit", width=10, bg="light yellow", anchor="w",
-               command=lambda: [apply_rings(self.origin_frame, self.win.topframe, self.carrier,
-                                            self.totals, self.rss, self.codes,
-                               self.lvtypes, self.lvtimes, "no_return")]).pack(side=LEFT)
-        Button(self.win.buttons, text= "Apply", width=10, anchor="w",
-               command=lambda: self.apply_rings()).pack(side=LEFT)
-        Button(self.win.buttons, text="Go Back", width=10, bg="light yellow", anchor="w",
-               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+    def write_report(self):  # build the report to appear on bottom of screen
+        if not self.status_update:
+            return
+        if self.delete_report + self.update_report + self.insert_report == 0:
+            self.status_update = "No records changed. "  # if there are no changes
+            return
+        status_update = ""
+        if self.insert_report:  # new records
+            status_update += str(self.insert_report) + " new record{} added. "\
+                .format(Handler(self.insert_report).plurals())  # make "record" plural if necessary
+        if self.update_report:  # updated records
+            status_update += str(self.update_report) + " record{} updated. "\
+                .format(Handler(self.update_report).plurals())  # make "record" plural if necessary
+        if self.delete_report:  # deleted records
+            status_update += str(self.delete_report) + " record{} deleted. "\
+                .format(Handler(self.delete_report).plurals())  # make "record" plural if necessary
+        self.status_update = status_update
 
-    def apply_rings(self):
+    def buttons_frame(self):
+        Button(self.win.buttons, text="Submit", width=10, anchor="w",
+               command=lambda: self.apply_rings(True)).pack(side=LEFT)
+        Button(self.win.buttons, text= "Apply", width=10, anchor="w",
+               command=lambda: self.apply_rings(False)).pack(side=LEFT)
+        Button(self.win.buttons, text="Go Back", width=10, anchor="w",
+               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+        Label(self.win.buttons, text="{}".format(self.status_update), fg="red").pack(side=LEFT)
+
+    def zero_report_vars(self):
+        self.status_update = "No records changed."
+        self.delete_report = 0
+        self.update_report = 0
+        self.insert_report = 0
+
+    def apply_rings(self, go_home):
         self.empty_addrings()
         self.add_date()
         if not self.check_5200():
-            return  #abort if there is an error
+            return  # abort if there is an error
         if not self.check_rs():
-            return  #abort if there is an error
+            return  # abort if there is an error
         self.add_codes()
         if not self.check_moves():
-            return  #abort if there is an error
+            return  # abort if there is an error
         self.add_leavetype()
         if not self.check_leave():
-            return  #abort if there is an error
-        for line in self.addrings:
-            print(line)
-        self.addrecs()
+            return  # abort if there is an error
+        self.addrecs()  # insert rings into the database
+        if go_home:  # if True, then exit screen to main screen
+            MainFrame().start(frame=self.win.topframe)
+        else:  # if False, then rebuild the Enter Rings screen
+            self.start(self.win.topframe)
 
     def empty_addrings(self):  # empty out addring arrays
         for i in range(len(self.addrings)):
             self.addrings[i] = []
 
-    def add_date(self):
-        for i in range(len(self.dates)):
-            self.addrings[i].append(self.dates[i])
-            self.addrings[i].append(self.carrier)
+    def add_date(self):  # start the addrings array
+        for i in range(len(self.dates)):  # loop for each day in the investigation
+            self.addrings[i].append(self.dates[i])  # add the date
+            self.addrings[i].append(self.carrier)  # add the carrier name
 
     def check_5200(self):
         for i in range(len(self.totals)):
@@ -15669,7 +15130,8 @@ class EnterRings:
                 text = "Values with more than 2 decimal places are not accepted in 5200 for {}.".format(self.day[i])
                 messagebox.showerror("5200 Error", text, parent=self.win.topframe)
                 return False
-            total = format(float(total), '.2f')  # format it as a float with 2 decimal places
+            # total = format(float(total), '.2f')  # format it as a float with 2 decimal places
+            total = Convert(total).hundredths()  # format it as a number with 2 decimal places
             self.addrings[i].append(total)  # if all checks pass, add to addrings
         return True
 
@@ -15695,7 +15157,8 @@ class EnterRings:
                 text = "Values with more than 2 decimal places are not accepted in RS for {}.".format(self.day[i])
                 messagebox.showerror("RS Error", text, parent=self.win.topframe)
                 return False
-            rs = format(float(rs), '.2f')  # format it as a float with 2 decimal places
+            # rs = format(float(rs), '.2f')  # format it as a float with 2 decimal places
+            rs = Convert(rs).hundredths()  # format it as a number with 2 decimal places
             self.addrings[i].append(rs)  # if all checks pass, add to addrings
         return True
 
@@ -15703,15 +15166,35 @@ class EnterRings:
         for i in range(len(self.codes)):
             self.addrings[i].append(self.codes[i].get())
 
+    def bypass_moves(self):  # keep existing moves if otdl rings limiter is on/True
+        if projvar.invran_weekly_span:  # if investigation range is weekly
+            i_range = 7  # investigation range is seven days
+        else:
+            i_range = 1  # investigation range is one day
+        for i in range(i_range):  # loop for each day in investigation
+            moves = self.daily_ringrecs[i][5]  # get the preexisting record for that day
+            self.addrings[i].append(moves)  # add that record to addrings array
+
+    def move_string_constructor(self, first, second, third):
+        if self.move_string and first and second:
+            self.move_string += ","
+        if first and second:
+            self.move_string += first + "," + second + "," + third
+
     def check_moves(self):
+        if self.ot_rings_limiter:  # if the otdl rings limiter is on/True
+            self.bypass_moves()  # bypass all checks and put preexisting moves into addrings
+            return True  # mission accomplished
+        first_move = None
+        second_move = None
+        route = None
         days = (self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm)
         cc = 0  # increments one for each day
         for d in days:  # check for bad inputs in moves
-            move_string = ""
-            added_moves = False
+            self.move_string = ""  # emtpy out string where moves data is passed
             x = len(d)
             for i in range(x):
-                if triad_col_finder(i) == 0:  # find the first of the triad
+                if self.triad_col_finder(i) == 0:  # find the first of the triad
                     first_move = d[i].get().strip()
                     second_move = d[i + 1].get().strip()
                     if MovesChecker(first_move).check_for_zeros() or MovesChecker(second_move).check_for_zeros():
@@ -15745,15 +15228,12 @@ class EnterRings:
                         text = "Moves can not have more than two decimal places on moves for {}.".format(self.day[cc])
                         messagebox.showerror("Move entry error", text, parent=self.win.topframe)
                         return False
-                    if i > 2:
-                        move_string += ","
-                    move_string += first_move + "," + second_move + ","
-                    added_moves = True
-                if triad_col_finder(i) == 2:  # find the third of the triad
+                    first_move = Convert(first_move).hundredths()
+                    second_move = Convert(second_move).hundredths()
+                if self.triad_col_finder(i) == 2:  # find the third of the triad
                     route = d[i].get().strip()
                     if RouteChecker(route).is_empty():  # if the route is an empty string
-                        if added_moves:
-                            move_string += ""
+                        self.move_string_constructor(first_move, second_move, "")
                         continue  # skip the rest of the checks
                     if not RouteChecker(route).check_numeric():
                         text = "You must enter a numeric value on route for {}.".format(self.day[cc])
@@ -15771,10 +15251,8 @@ class EnterRings:
                         text = "The route number for {} must be four or five digits long.".format(self.day[cc])
                         messagebox.showerror("Move entry error", text, parent=self.win.topframe)
                         return False
-                    if added_moves:
-                        move_string += route
-                    added_moves = False
-            self.addrings[cc].append(move_string)
+                    self.move_string_constructor(first_move, second_move, route)
+            self.addrings[cc].append(self.move_string)
             cc += 1
         return True
 
@@ -15805,298 +15283,42 @@ class EnterRings:
                     .format(self.day[i])
                 messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
                 return False
-            lvtime = format(float(lvtime), '.2f')  # format it as a float with 2 decimal places
+            # lvtime = format(float(lvtime), '.2f')  # format it as a float with 2 decimal places
+            lvtime = Convert(lvtime).hundredths()  # format it as a number with 2 decimal places
             self.addrings[i].append(lvtime)  # if all checks pass, add to addrings
         return True
 
-    def addrecs(self):
+    def addrecs(self):  # add records to database
         sql = ""
         for i in range(len(self.dates)):
-            empty_rec = (self.dates[i], self.carrier, "", "", "none", "", "none", "")
+            empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", ""]
             if self.addrings[i] == self.daily_ringrecs[i]:
                 sql = ""  # if new and old are a match, take no action
-            elif not self.addrings[i][2] and not self.addrings[i][7]:
+            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call" \
+                    and self.daily_ringrecs[i] == empty_rec:
+                sql = ""  # if old is empty and new is not qualified as a legit record, take no action
+            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call":
                 # if new record has no total or lvtime
                 sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
                       % (self.dates[i], self.carrier)
-            elif self.daily_ringrecs != empty_rec and self.addrings[i] != empty_rec:
+                self.delete_report += 1
+            elif self.daily_ringrecs[i] != empty_rec and self.addrings[i] != empty_rec:
                 # if a record exist but is different from the new record
                 sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type = '%s'," \
                       "leave_time = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" \
                       % (self.addrings[i][2], self.addrings[i][3], self.addrings[i][4],
                          self.addrings[i][5], self.addrings[i][6], self.addrings[i][7],
                          self.dates[i], self.carrier)
-            elif self.daily_ringrecs == empty_rec and self.addrings[i] != empty_rec:
+                self.update_report += 1
+            elif self.daily_ringrecs[i] == empty_rec and self.addrings[i] != empty_rec:
                 # if a record doesn't exist and the new record is not empty
                 sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time )" \
                       "VALUES('%s','%s','%s','%s','%s','%s','%s','%s') " \
                       % (self.dates[i], self.carrier, self.addrings[i][2], self.addrings[i][3],
                          self.addrings[i][4], self.addrings[i][5], self.addrings[i][6], self.addrings[i][7])
+                self.insert_report += 1
             if sql:
-                print(sql)
                 commit(sql)
-
-
-def rings2(carrier, origin_frame):
-    root = Tk()
-    root.title("KLUSTERBOX - Carrier Rings")
-    titlebar_icon(root)  # place icon in titlebar
-    root.geometry("%dx%d+%d+%d" % (origin_frame.winfo_width(), origin_frame.winfo_height(),
-                                   origin_frame.winfo_rootx(), origin_frame.winfo_rooty() - 30))
-    switch_f2 = Frame(root)
-    switch_f2.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(switch_f2)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    # apply and close buttons
-    Button(c1, text="Submit", width=10, bg="light yellow", anchor="w",
-           command=lambda: [apply_rings(origin_frame, root, carrier, total, rs, code, lv_type, lv_time, "no_return")]) \
-        .pack(side=LEFT)
-    Button(c1, text="Apply", width=10, bg="light yellow", anchor="w",
-           command=lambda: [apply_rings(origin_frame, root, carrier, total, rs, code, lv_type, lv_time, "do_return")]) \
-        .pack(side=LEFT)
-    Button(c1, text="Go Back", width=10, bg="light yellow", anchor="w",
-           command=lambda: root.destroy()).pack(side=LEFT)
-    # define scrollbar and canvas
-    s = Scrollbar(switch_f2)
-    c = Canvas(switch_f2, width=1600)
-    # link up the canvas and scrollbar
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    f = Frame(c, height=1000)
-    c.create_window((0, 0), window=f, anchor=NW)
-    del sat_mm[:]  # initialize the daily arrays for moves...
-    del sun_mm[:]
-    del mon_mm[:]
-    del tue_mm[:]
-    del wed_mm[:]
-    del thr_mm[:]
-    del fri_mm[:]
-    date = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
-    dates = []
-    list_carrier = []
-    start_invest = date  # if investigation range is daily
-    end_invest = date
-    dates.append(date)
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        start_invest = date
-        end_invest = date + timedelta(days=6)
-        for i in range(7):
-            dates.append(date)
-            date += timedelta(days=1)
-    sql = "SELECT * FROM" \
-          " carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
-          "ORDER BY effective_date" % (carrier[1], end_invest)
-    results = inquire(sql)
-    day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
-    frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
-    color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
-    nolist_codes = ("none", "ns day")
-    ot_aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
-    lv_options = ("none", "annual", "sick", "holiday", "other")
-    option_menu = ["om0", "om1", "om2", "om3", "om4", "om5", "om6"]
-    lv_option_menu = ["lom0", "lom1", "lom2", "lom3", "lom4", "lom5", "lom6"]
-    total_widget = ["tw0", "tw1", "tw2", "tw3", "tw4", "tw5", "tw6"]
-    total = []
-    rs = []
-    lv_type = []
-    lv_time = []
-    code = []
-    daily_record = []  # reference before assignment
-    if projvar.invran_weekly_span:   # if investigation range is weekly
-        in_range = []  # Get carrier list information
-        candidates = []
-        station_anchor = "no"
-        sat_rec = "false"
-        in_station = "false"
-        is_winner = "false"
-        # create list carrier array: most recent records of carriers currently in the station for any day of the week
-        for r in results:
-            if str(start_invest) <= r[0] <= str(end_invest) and r[5] == projvar.invran_station:
-                station_anchor = "yes"
-                if str(start_invest) == r[0]:
-                    sat_rec = "true"  # hit on saturday is true
-                if r[5] == projvar.invran_station:
-                    in_station = "true"  # hit if in station at any time
-        for r in results:
-            if str(start_invest) <= r[0]:
-                in_range.append(r)
-            if r[0] < str(start_invest) and sat_rec == "false":
-                candidates.append(r)
-        if candidates and sat_rec == "false":
-            winner = max(candidates, key=itemgetter(0))
-            if winner[5] == projvar.invran_station or station_anchor == "yes":
-                list_carrier.append(winner)
-                if len(in_range) > 0:
-                    is_winner = "true"
-        if len(in_range) > 0 and in_station == "true" or station_anchor == "yes" or is_winner == "true":
-            for each in in_range:
-                list_carrier.append(each)
-        short_list = []  # create an array of candidates of possible valid records for each day
-        daily_record = []
-        for d in dates:
-            del short_list[:]
-            for ls in list_carrier:
-                if ls[0] <= str(d):
-                    short_list.append(ls)
-            try:
-                winner = max(short_list, key=itemgetter(0))
-                daily_record.append(winner)
-            except:
-                no_record = (str(d), ls[1], '', '', '', 'no record')
-                daily_record.append(no_record)
-    elif not projvar.invran_weekly_span:  # if investigation range is daily
-        daily_record = []
-        candidates = []
-        for record in results:
-            candidates.append(record)
-        if candidates:
-            winner = max(candidates, key=itemgetter(0))
-            if winner[5] == projvar.invran_station:
-                list_carrier.append(winner)
-                daily_record.append(winner)
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date BETWEEN '%s' AND '%s'" \
-              % (carrier[1], start_invest, end_invest)
-    else:
-        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" \
-              % (carrier[1], end_invest)
-    r_rings = inquire(sql)
-    frame_i = 0  # counter for the frame
-    header_frame = Frame(f, width=500)  # header  frame
-    header_frame.grid(row=frame_i, padx=5, sticky="w")
-    # Header at top of window: name
-    Label(header_frame, text="carrier name: ", fg="Grey", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=0, sticky="w")
-    Label(header_frame, text="{}".format(carrier[1]), font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=1, sticky="w")
-    Label(header_frame, text="list status: {}".format(carrier[2])) \
-        .grid(row=1, sticky="w", columnspan=2)
-    if carrier[4] != "":
-        Label(header_frame, text="route/s: {}".format(carrier[4])) \
-            .grid(row=2, sticky="w", columnspan=2)
-    frame_i += 2
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        i_range = 7  # loop 7 times for week or once for day
-    else:
-        i_range = 1
-    for i in range(i_range):
-        now_total = ""
-        now_rs = ""
-        now_code = "none"
-        now_moves = ""
-        now_lv_type = "none"
-        now_lv_time = ""
-        for ring in r_rings:
-            if ring[0] == str(dates[i]):  # if the dates match set the corresponding rings
-                now_total = ring[2]
-                now_rs = ring[3]
-                now_code = ring[4]
-                now_moves = ring[5]
-                if ring[6] == '':  # format the leave type
-                    now_lv_type = "none"
-                else:
-                    now_lv_type = ring[6]
-                if str(ring[7]) == 'None':  # format the leave time to be blank or a float
-                    now_lv_time = ""
-                elif isfloat(ring[7]) == TRUE and float(ring[7]) == 0:  # if the leave time can be a float
-                    now_lv_time = ""
-                else:
-                    now_lv_time = ring[7]
-        grid_i = 0  # counter for the grid within the frame
-        frame[i] = Frame(f, width=500)
-        frame[i].grid(row=frame_i, padx=5, sticky="w")
-        # Display the day and date
-        if projvar.ns_code[carrier[3]] == dates[i].strftime("%a"):
-            Label(frame[i], text="{} NS DAY".format(dates[i].strftime("%a %b %d, %Y")), fg="red") \
-                .grid(row=grid_i, column=0, columnspan=5, sticky="w")
-        else:
-            Label(frame[i], text=dates[i].strftime("%a %b %d, %Y"), fg="blue") \
-                .grid(row=grid_i, column=0, columnspan=5, sticky="w")
-        grid_i += 1
-        if daily_record[i][5] == projvar.invran_station:
-            Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=0)  # Display all labels
-            Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=1)
-            if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
-                Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=2)
-                Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=3)
-                Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=4)
-                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=6)
-                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=7)
-                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=8)
-            else:
-                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=3)
-                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=4)
-                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=5)
-            grid_i += 1
-            # Display the entry widgets
-            total.append(StringVar(frame[i]))  # 5200 entry widget
-            total_widget[i] = Entry(frame[i], width=macadj(8, 4), textvariable=total[i])
-            total_widget[i].grid(row=grid_i, column=0)
-            total[i].set(now_total)  # set the starting value for total
-            rs.append(StringVar(frame[i]))  # RS entry widget
-            Entry(frame[i], width=macadj(8, 4), textvariable=rs[i]).grid(row=grid_i, column=1)
-            rs[i].set(now_rs)  # set the starting value for RS
-            if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
-                if now_moves.strip() != "":
-                    new_entry(frame[i], day[i], now_moves)  # MOVES on and off entry widgets
-                else:
-                    new_entry(frame[i], day[i], 0)
-                Button(frame[i], text="more moves", command=lambda x=i: new_entry(frame[x], day[x], 0)) \
-                    .grid(row=grid_i, column=5)
-            code.append(StringVar(frame[i]))  # code entry widget
-            if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
-                option_menu[i] = OptionMenu(frame[i], code[i], *nolist_codes)
-            else:
-                option_menu[i] = OptionMenu(frame[i], code[i], *ot_aux_codes)
-            code[i].set(now_code)
-            option_menu[i].configure(width=macadj(7, 6))
-            lv_type.append(StringVar(frame[i]))  # leave type entry widget
-            lv_option_menu[i] = OptionMenu(frame[i], lv_type[i], *lv_options)
-            lv_option_menu[i].configure(width=macadj(7, 6))
-            lv_time.append(StringVar(frame[i]))  # leave time entry widget
-            lv_type[i].set(now_lv_type)  # set the starting value for leave type
-            lv_time[i].set(now_lv_time)  # set the starting value for leave type
-            # put code widgets on the grid
-            if daily_record[i][2] == "wal" or daily_record[i][2] == "nl":
-                option_menu[i].grid(row=grid_i, column=6)  # code widget
-                lv_option_menu[i].grid(row=grid_i, column=7)  # leave type widget
-                Entry(frame[i], width=macadj(8, 4), textvariable=lv_time[i]) \
-                    .grid(row=grid_i, column=8)  # leave time widget
-            else:
-                option_menu[i].grid(row=grid_i, column=3)  # code widget
-                lv_option_menu[i].grid(row=grid_i, column=4)  # leave type widget
-                Entry(frame[i], width=macadj(8, 4), textvariable=lv_time[i]) \
-                    .grid(row=grid_i, column=5)  # leave time widget
-
-        else:
-            total.append(StringVar(frame[i]))  # 5200 entry widget
-            rs.append(StringVar(frame[i]))  # RS entry
-
-            if daily_record[i][5] != "no record":  # display for records that are out of station
-                Label(frame[i], text="out of station: {}".format(daily_record[i][5]), fg="white", bg="grey", width=55,
-                      height=2, anchor="w") \
-                    .grid(row=grid_i, column=0)
-            else:  # display for when there is no record relevant for that day.
-                Label(frame[i], text="no record", fg="white", bg="grey", width=55,
-                      height=2, anchor="w") \
-                    .grid(row=grid_i, column=0)
-        frame_i += 1
-    f7 = Frame(f)
-    f7.grid(row=frame_i)
-    Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
-    root.update()
-    c.config(scrollregion=c.bbox("all"))
-    mainloop()
 
 
 def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, frame):
@@ -16272,8 +15494,7 @@ def name_change(name, c_name, frame):
         if result:
             sql = "UPDATE name_index SET kb_name = '%s' WHERE kb_name = '%s'" % (c_name, name)
             commit(sql)
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
 
 
 def purge_carrier(frame, carrier):
@@ -16291,8 +15512,7 @@ def purge_carrier(frame, carrier):
     commit(sql)
     sql = "DELETE FROM name_index WHERE kb_name = '%s'" % carrier
     commit(sql)
-    frame.destroy()
-    MainFrame().start()
+    MainFrame().start(frame=frame)
 
 
 def update_carrier(a):
@@ -16476,7 +15696,7 @@ def update_carrier(a):
            command=lambda: apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, switch_f4)) \
         .pack(side=LEFT)
     Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: [switch_f4.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=switch_f4)).pack(side=LEFT)
 
 
 def edit_carrier(e_name):
@@ -16566,7 +15786,7 @@ def edit_carrier(e_name):
     try:
         ls.set(value=results[0][2])
     except:
-        switch_f3.destroy(), MainFrame().start()
+        MainFrame().start(frame=switch_f3)
     Radiobutton(list_frame, text="OTDL", variable=ls, value='otdl', justify=LEFT) \
         .grid(row=1, column=0, sticky=W)
     Radiobutton(list_frame, text="Work Assignment", variable=ls, value='wal', justify=LEFT) \
@@ -16678,7 +15898,7 @@ def edit_carrier(e_name):
     report_frame = Frame(f, padx=2, )
     Label(report_frame, text="Status Change Report: ", anchor="w").grid(row=0, column=0, sticky=W, columnspan=4)
     Label(report_frame, text="Generate Report: ", anchor="w").grid(row=1, column=0, sticky=W)
-    Button(report_frame, text="Report", width=10, command=lambda: rpt_carrier_history(switch_f3, e_name)) \
+    Button(report_frame, text="Report", width=10, command=lambda: Reports(switch_f3).rpt_carrier_history(e_name)) \
         .grid(row=1, column=1, sticky=W, padx=10)
     report_frame.grid(row=8, sticky=W, pady=5)
     Label(f, text="").grid(row=9)
@@ -16719,10 +15939,10 @@ def edit_carrier(e_name):
     c.config(scrollregion=c.bbox("all"))
     # apply and close buttons
     Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
-           command=lambda: [apply(year, month, day, name, ls, ns, route, station, switch_f3), switch_f3.destroy(),
-                            MainFrame().start()]).pack(side=LEFT)
+           command=lambda: [apply(year, month, day, name, ls, ns, route, station, switch_f3),
+                            MainFrame().start(frame=switch_f3)]).pack(side=LEFT)
     Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: [switch_f3.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=switch_f3)).pack(side=LEFT)
 
 
 def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, frame):
@@ -16821,8 +16041,7 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
             match = True
     if not match:
         commit(sql)
-    frame.destroy()
-    MainFrame().start()
+    MainFrame().start(frame=frame)
 
 
 def input_carriers(frame):  # window for inputting new carriers
@@ -16850,7 +16069,7 @@ def input_carriers(frame):  # window for inputting new carriers
                nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, switch_f6))) \
         .pack(side=LEFT)
     Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: [switch_f6.destroy(), MainFrame().start()]).pack(side=LEFT)
+           command=lambda: MainFrame().start(frame=switch_f6)).pack(side=LEFT)
     # set up variable for scrollbar and canvas
     s = Scrollbar(switch_f6)
     c = Canvas(switch_f6, width=1600)
@@ -17017,8 +16236,7 @@ def reset(frame):
     projvar.invran_date = None
     projvar.ns_code = {}
     if frame != "none":
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
 
 
 def set_globals(s_year, s_mo, s_day, i_range, station, frame):
@@ -17115,8 +16333,7 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
         return
     projvar.invran_station = station
     if frame != "None":
-        frame.destroy()
-        MainFrame().start()
+        MainFrame().start(frame=frame)
 
 
 class MainFrame:
@@ -17277,7 +16494,7 @@ class MainFrame:
                     # Button(self.main_frame, text=rec[1], width=24, bg=color, anchor="w",
                     #                       command=lambda x=rec: rings2(x, projvar.root)).grid(row=r, column=1)
                     Button(self.main_frame, text=rec[1], width=24, bg=color, anchor="w",
-                           command=lambda x=rec: EnterRings(x[1], self.win.topframe).start()).grid(row=r, column=1)
+                           command=lambda x=rec: EnterRings(x[1]).start(self.win.topframe)).grid(row=r, column=1)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
                            command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
                         .grid(row=r, column=5)
@@ -17369,15 +16586,15 @@ class MainFrame:
         # reports menu
         reports_menu = Menu(menubar, tearoff=0)
         reports_menu.add_command(label="Carrier Route and NS Day", 
-                                 command=lambda: rpt_carrier(self.win.topframe, self.carrier_list))
+                                 command=lambda: Reports(self.win.topframe).rpt_carrier())
         reports_menu.add_command(label="Carrier Route", 
-                                 command=lambda: rpt_carrier_route(self.win.topframe, self.carrier_list))
+                                 command=lambda: Reports(self.win.topframe).rpt_carrier_route())
         reports_menu.add_command(label="Carrier NS Day", 
-                                 command=lambda: rpt_carrier_nsday(self.win.topframe, self.carrier_list))
+                                 command=lambda: Reports(self.win.topframe).rpt_carrier_nsday())
         reports_menu.add_command(label="Carrier by List", 
-                                 command=lambda: rpt_carrier_by_list(self.win.topframe, self.carrier_list))
+                                 command=lambda: Reports(self.win.topframe).rpt_carrier_by_list())
         reports_menu.add_command(label="Carrier Status History", 
-                                 command=lambda: rpt_find_carriers(self.win.topframe, projvar.invran_station))
+                                 command=lambda: Reports(self.win.topframe).rpt_find_carriers(projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Clock Rings Summary", 
                                  command=lambda: database_rings_report(self.win.topframe, projvar.invran_station))

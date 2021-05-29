@@ -1,8 +1,8 @@
 """
 holds all project variables for the klusterbox project
-call "import project_var" in any file using these variables
-to call:   x = project_var.invran_year
-to set:    project_var.invran_year = x
+call "import projvar" in any file using these variables
+to call:   x = projvar.invran_year
+to set:    projvar.invran_year = x
 """
 
 root = None
