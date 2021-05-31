@@ -1,9 +1,12 @@
-# Standard Libraries
+# custom modules
 import projvar  # holds variables, including root, for use in all modules
+from kbreports import Reports, Messenger
+from kbtoolbox import *
+from kbspreadsheets import OvermaxSpreadsheet
+# Standard Libraries
 from tkinter import *
 from tkinter import messagebox
 from tkinter import filedialog
-from tkinter import simpledialog
 from tkinter import ttk
 from datetime import datetime
 from datetime import timedelta
@@ -14,7 +17,6 @@ import shutil
 import csv
 import sys
 import subprocess
-import io
 from io import StringIO  # change from cStringIO to io for py 3x
 import time
 import webbrowser  # for hyper link at about_klusterbox()
@@ -24,8 +26,7 @@ from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
 from openpyxl import load_workbook
 from openpyxl import Workbook
-from openpyxl.styles import colors
-from openpyxl.styles import NamedStyle, Font, Color, Border, Side, Alignment, PatternFill, Protection
+from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill, Protection
 from openpyxl.worksheet.pagebreak import Break
 # PDF Converter Libraries
 import chardet
@@ -63,64 +64,6 @@ This version of Klusterbox is being released under the GNU General Public Licens
 """
 
 
-def inquire(sql):
-    # query the database
-    if projvar.platform == "macapp":
-        path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    elif projvar.platform == "winapp":
-        path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    elif projvar.platform == "py":
-        path = "kb_sub/mandates.sqlite"
-    else:
-        path = "kb_sub/mandates.sqlite"
-    db = sqlite3.connect(path)
-    cursor = db.cursor()
-    try:
-        cursor.execute(sql)
-        results = cursor.fetchall()
-        return results
-    except sqlite3.OperationalError:
-        messagebox.showerror("Database Error",
-                             "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql))
-    db.close()
-
-
-# write to the database
-def commit(sql):
-    if projvar.platform == "macapp":
-        path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    elif projvar.platform == "winapp":
-        path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    elif projvar.platform == "py":
-        path = "kb_sub/mandates.sqlite"
-    else:
-        path = "kb_sub/mandates.sqlite"
-    db = sqlite3.connect(path)
-    cursor = db.cursor()
-    try:
-        cursor.execute(sql)
-        db.commit()
-        db.close()
-    except sqlite3.OperationalError:
-        messagebox.showerror("Database Error",
-                             "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql))
-
-
-def dt_converter(string):  # converts a string of a datetime to an actual datetime
-    dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
-    return dt
-
-
-def macadj(win, mac):  # switch between variables depending on platform
-    if sys.platform == "darwin":
-        arg = mac
-    else:
-        arg = win
-    return arg
-
-
 def titlebar_icon(root):  # place icon in titlebar
     if sys.platform == "win32" and projvar.platform == "py":
         try:
@@ -143,408 +86,6 @@ def titlebar_icon(root):  # place icon in titlebar
             root.tk.call('wm', 'iconphoto', root._w, img)
         except TclError:
             pass
-
-
-class MakeWindow:
-    def __init__(self):
-        self.topframe = Frame(projvar.root)
-        self.s = Scrollbar(self.topframe)
-        self.c = Canvas(self.topframe, width=1600)
-        self.buttons = Canvas(self.topframe)  # button bar
-        self.body = Frame(self.c)
-
-    def create(self, frame):
-        if frame is not None:
-            frame.destroy()  # close out the previous frame
-        self.topframe.pack(fill=BOTH, side=LEFT)
-        self.buttons.pack(fill=BOTH, side=BOTTOM)
-        # link up the canvas and scrollbar
-        self.s.pack(side=RIGHT, fill=BOTH)
-        self.c.pack(side=LEFT, fill=BOTH)
-        self.s.configure(command=self.c.yview, orient="vertical")
-        self.c.configure(yscrollcommand=self.s.set)
-        # link the mousewheel - implementation varies by platform
-        if sys.platform == "win32":
-            self.c.bind_all ('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * (event.delta / 120)), "units"))
-        elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * event.delta), "units"))
-        elif sys.platform == "linux":
-            self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
-            self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
-        self.c.create_window((0, 0), window=self.body, anchor=NW)
-
-    def finish(self):  # This closes the window created by front_window()
-        projvar.root.update()
-        self.c.config(scrollregion=self.c.bbox("all"))
-        mainloop()
-
-    def fill(self, last, count):  # fill bottom of screen to for scrolling.
-        for i in range(count):
-            Label(self.body, text="").grid(row=last + i)
-        Label(self.body, text="kluster end", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
-
-
-def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
-    if frame != "none":
-        frame.destroy()  # close out the previous frame
-    f = Frame(projvar.root)  # create new frame
-    f.pack(fill=BOTH, side=LEFT)
-    buttons = Canvas(f)  # button bar
-    buttons.pack(fill=BOTH, side=BOTTOM)
-    # link up the canvas and scrollbar
-    s = Scrollbar(f)
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    # link the mousewheel - implementation varies by platform
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    ff = Frame(c)
-    c.create_window((0, 0), window=ff, anchor=NW)
-    return f, s, c, ff, buttons
-    # page contents - then call rear_window(wd)
-
-
-def rear_window(wd):  # This closes the window created by front_window()
-    projvar.root.update()
-    wd[2].config(scrollregion=wd[2].bbox("all"))
-    mainloop()
-
-
-class SaturdayInRange:  # recieves a datetime object
-    def __init__(self, dt):
-        self.dt = dt
-
-    def get(self):  # returns the sat range
-        wkdy_name = self.dt.strftime("%a")
-        while wkdy_name != "Sat":  # while date enter is not a saturday
-            self.dt -= timedelta(days=1)  # walk back the date until it is a saturday
-            wkdy_name = self.dt.strftime("%a")
-        return self.dt
-
-
-class NameChecker:
-    def __init__(self, name):
-        self.name = name.lower()
-
-    def check_characters(self):  # checks if characters in name are in approved tuple
-        for char in self.name:
-            if char in ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
-                        "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "-", "'", ".", ","):
-                pass
-            else:
-                return False
-        return True
-
-    def check_length(self):  # checks that the name is not too long
-        if len(self.name) < 29:
-            return True
-        else:
-            return False
-
-    def check_comma(self):  # checks if there is a comma in the name
-        s_name = self.name.split(",")
-        if len(s_name) == 2:
-            return True
-        else:
-            return False
-
-    def check_initial(self):  # checks if theres is an initial in the variable
-        s_name = self.name.split(",")
-        if len(s_name) > 1:
-            if len(s_name[1].strip()) == 1:
-                return True
-        else:
-            return False
-
-
-class RouteChecker:
-    def __init__(self, route):
-        self.route = route
-        self.routearray = self.route.split("/")
-
-    def is_empty(self):
-        if self.route == "":
-            return True
-        return False
-
-    def check_numeric(self):  # is the route numeric?
-        if self.route == "":
-            return True
-        for r in self.routearray:
-            if not r.isnumeric():
-                return False
-        return True
-
-    def check_array(self):  # are there 1 or 5 items in the route string
-        if len(self.routearray) == 1:
-            return True
-        elif len(self.routearray) == 5:
-            return True
-        else:
-            return False
-
-    def check_length(self):  # are the routes 4 or 5 digits long
-        if self.route == "":
-            return True
-        for r in self.routearray:
-            if len(r) < 4 or len(r) > 5:
-                return False
-        return True
-
-    def only_one(self):  # returns False if there is more than one route given
-        if len(self.routearray) > 1:
-            return False
-        return True
-
-    def only_numbers(self):  # returns True if variable is empty string or contains only numbers
-        if self.route == "":
-            return True
-        try:
-            num = int(self.route)
-        except ValueError:
-            return False
-
-    def check_all(self):  # do all checks, return False if any fail.
-        if not self.check_numeric():
-            return False
-        if not self.check_array():
-            return False
-        if not self.check_length():
-            return False
-        return True
-
-
-class RingTimeChecker:
-    def __init__(self, ring):
-        self.ring = ring
-
-    def make_float(self):  # converts self.ring to a floatType or returns False
-        try:
-            self.ring = float(self.ring)
-            return self.ring
-        except ValueError:
-            return False
-
-    def check_for_zeros(self):  # returns True if zero or empty
-        try:
-            if float(self.ring) == 0:
-                return True
-        except ValueError:
-            pass
-        if self.ring == "":
-            return True
-        return False
-
-    def check_numeric(self):  # is the ring numeric?
-        try:
-            float(self.ring)
-            return True
-        except ValueError:
-            return False
-
-    def over_24(self):  # is the time greater than 24 hours
-        if float(self.ring) > 24:
-            return False
-        return True
-
-    def over_8(self):  # is the time greater than 8 hours
-        if float(self.ring) > 8:
-            return False
-        return True
-
-    def less_than_zero(self):  # disappear here
-        if float(self.ring) < 0:
-            return False
-        return True
-
-    def count_decimals_place(self):  # limit time to two decimal places
-        return round(float(self.ring), 2) == float(self.ring)  # returns False if self.ring has > two decimal places
-
-
-class MovesChecker:
-    def __init__(self, moves):
-        self.moves = moves
-
-    def length(self):  # return False if not a multiple of three
-        return len(self.moves) % 3 == 0
-
-    def check_for_zeros(self):  # returns True if zero or empty
-        if self.moves == "":
-            return True
-        try:
-            if float(self.moves) == 0:
-                return True
-        except ValueError:
-            pass
-        return False
-
-    def compare(self, second):  # return False if first move is greater than second move
-        if float(self.moves) > float(second):
-            return False
-        return True
-
-
-class NsDayDict:
-    def __init__(self, date):
-        self.date = date  # is a datetime object
-        self.pat = ("blue", "green", "brown", "red", "black", "yellow")  # define color sequence tuple
-
-    def get_sat_range(self):  # calculate the n/s day of sat/first day of investigation range
-        sat_range = self.date  # saturday range, first day of the investigation range
-        wkdy_name = self.date.strftime("%a")
-        while wkdy_name != "Sat":  # while date enter is not a saturday
-            sat_range -= timedelta(days=1)  # walk back the date until it is a saturday
-            wkdy_name = sat_range.strftime("%a")
-        return sat_range
-
-    def get(self):  # Dictionary of NS days
-        sat_range = self.get_sat_range()  # calculate the n/s day of sat/first day of investigation range
-        end_date = sat_range + timedelta(days=-1)
-        cdate = datetime(2017, 1, 7)  #
-        x = 0  # x is the index of self.pattern
-        if sat_range > cdate:
-            while cdate < end_date:
-                if x > 0:
-                    x -= 1
-                    cdate += timedelta(days=7)
-                else:
-                    x = 5
-                    cdate += timedelta(days=7)
-        else:
-            # IN REVERSE
-            while cdate > sat_range:
-                if x < 5:
-                    x += 1
-                    cdate -= timedelta(days=7)
-                else:
-                    x = 0
-                    cdate -= timedelta(days=7)
-        # find ns day for each day in range
-        date = sat_range
-        ns_xlate = {}  # ns translate dictionary
-        for i in range(7):
-            if i == 0:
-                ns_xlate[self.pat[x]] = date.strftime("%a")
-                date += timedelta(days=1)
-            elif i == 1:
-                date += timedelta(days=1)
-                if x > 4:
-                    x = 0
-                else:
-                    x += 1
-            else:
-                ns_xlate[self.pat[x]] = date.strftime("%a")
-                date += timedelta(days=1)
-                if x > 4:
-                    x = 0
-                else:
-                    x += 1
-        ns_xlate["none"] = "  "  # if there is no ns day, such as auxiliary assistance
-        ns_xlate["sat"] = "Sat"  # if there are fixed ns days
-        ns_xlate["mon"] = "Mon"
-        ns_xlate["tue"] = "Tue"
-        ns_xlate["wed"] = "Wed"
-        ns_xlate["thu"] = "Thu"
-        ns_xlate["fri"] = "Fri"
-        return ns_xlate
-
-    def ssn_ns(self, rotation):  # SpreadSheet Notation NS Day dictionary
-        ssn_ns_code = {}
-        # rotation is boolean -
-        dic = self.get()
-        if rotation:
-            for p in self.pat:  # if rotation is True, annotate fixed ns days
-                ssn_ns_code[p] = dic[p]
-            ssn_ns_code["none"] = "  "  # if there is no ns day, such as auxiliary assistance
-            ssn_ns_code["sat"] = "fSat"  # if there are fixed ns days
-            ssn_ns_code["mon"] = "fMon"
-            ssn_ns_code["tue"] = "fTue"
-            ssn_ns_code["wed"] = "fWed"
-            ssn_ns_code["thu"] = "fThu"
-            ssn_ns_code["fri"] = "fFri"
-        else:
-            for p in self.pat:  # if rotation is false, annotate rotating nsdays
-                ssn_ns_code[p] = "r{}".format(dic[p])
-            ssn_ns_code["none"] = "  "  # if there is no ns day, such as auxiliary assistance
-            ssn_ns_code["sat"] = "Sat"  # if there are fixed ns days
-            ssn_ns_code["mon"] = "Mon"
-            ssn_ns_code["tue"] = "Tue"
-            ssn_ns_code["wed"] = "Wed"
-            ssn_ns_code["thu"] = "Thu"
-            ssn_ns_code["fri"] = "Fri"
-        return ssn_ns_code
-
-    def get_rev(self, rotation):  # Dictionary NS days - keys/values reversed
-        dic = self.get()
-        rev_rotate_dic = {}
-        rev_fixed_dic = {}
-        for (key, value) in dic.items():
-            if key in self.pat:
-                rev_rotate_dic[value.lower()] = key
-            else:
-                rev_fixed_dic[value.lower()] = key
-        if rotation:
-            return rev_rotate_dic
-        else:
-            return rev_fixed_dic
-
-    @staticmethod
-    def custom_config(self):  # shows custom ns day configurations for  printout / reports
-        sql = "SELECT * FROM ns_configuration"
-        ns_results = inquire(sql)
-        custom_ns_dict = {}  # build dictionary for ns days
-        days = ("sat", "mon", "tue", "wed", "thu", "fri")
-        for r in ns_results:  # build dictionary for rotating ns days
-            custom_ns_dict[r[0]] = "rotating: " + r[2]
-        for d in days:  # expand dictionary for fixed days
-            custom_ns_dict[d] = "fixed: " + d
-        custom_ns_dict["none"] = "none"  # add "none" to dictionary
-        return custom_ns_dict
-
-    @staticmethod
-    def get_custom_nsday(self):  # get ns day color configurations from dbase and make dictionary
-        sql = "SELECT * FROM ns_configuration"
-        ns_results = inquire(sql)
-        ns_dict = {}  # build dictionary for ns days
-        days = ("sat", "mon", "tue", "wed", "thu", "fri")
-        for r in ns_results:  # build dictionary for rotating ns days
-            ns_dict[r[0]] = r[2]  # build dictionary for ns fill colors
-        for d in days:  # expand dictionary for fixed days
-            ns_dict[d] = "fixed: " + d
-        ns_dict["none"] = "none"  # add "none" to dictionary
-        return ns_dict
-
-    @staticmethod
-    def gen_rev_ns_dict(self):  # creates full day/color ns day dictionary
-        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-        color_pat = ("blue", "green", "brown", "red", "black", "yellow")
-        code_ns = {}
-        for d in days:
-            for c in color_pat:
-                if d[:3] == projvar.ns_code[c]:
-                    code_ns[d] = c
-        code_ns["None"] = "none"
-        return code_ns
-
-
-class ReportName:  # returns a file name which is stamped with the datetime
-    def __init__(self, filename):
-        self.filename = filename
-
-    def create(self):
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
-        return self.filename + "_" + stamp + ".txt"
 
 
 class ProgressBarIn:  # Indeterminate Progress Bar
@@ -616,311 +157,6 @@ class ProgressBarDe:  # determinate Progress Bar
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
-
-
-class Convert:
-    def __init__(self, data):
-        self.data = data
-
-    def datetime_separation(self):  # converts a datetime object into an array with year, month and day
-        year = self.data.strftime("%Y")
-        month = self.data.strftime("%m")
-        day = self.data.strftime("%d")
-        date = [year, month, day]
-        return date
-
-    def str_to_bool(self):  # change a string into a boolean variable type
-        if self.data == 'True':
-            return True
-        return False
-
-    def bool_to_onoff(self): # takes a boolean and returns on for true, off for false
-        if int(self.data):
-            return "on"
-        return "off"
-
-    def backslashdate_to_datetime(self):  # convert a date with backslashes into a datetime
-        date = self.data.split("/")
-        string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
-        return dt_converter(string)
-
-    def array_to_string(self):  # make an array into a string (with commas)
-        string = ""
-        for i in range(len(self.data)):
-            string += self.data[i]
-            if i != len(self.data) - 1:
-                string += ","
-        return string
-
-    def string_to_array(self):  # make string into array, remove whitespace
-        new_array = []
-        array = self.data.split(",")
-        for a in array:
-            a = a.strip()
-            new_array.append(a)
-        return new_array
-
-    # takes day (eg "mon","wed") and converts to datetime. needs saturday in range
-    def day_to_datetime_str(self, sat_range):
-        if self.data == sat_range.strftime("%a").lower():  # saturday
-            return str(sat_range)
-        sat_range += timedelta(days=1)
-        if self.data == sat_range.strftime("%a").lower():  # sunday
-            return str(sat_range)
-        sat_range += timedelta(days=1)
-        if self.data == sat_range.strftime("%a").lower():  # monday
-            return str(sat_range)
-        sat_range += timedelta(days=1)
-        if self.data == sat_range.strftime("%a").lower():  # tueday
-            return str(sat_range)
-        sat_range += timedelta(days=1)
-        if self.data == sat_range.strftime("%a").lower():  # wednesday
-            return str(sat_range)
-        sat_range += timedelta(days=1)
-        if self.data == sat_range.strftime("%a").lower():  # thursday
-            return str(sat_range)
-        sat_range += timedelta(days=1)
-        if self.data == sat_range.strftime("%a").lower():  # friday
-            return str(sat_range)
-
-    def dt_converter(self):  # converts a string of a datetime to an actual datetime
-        dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
-        return dt
-
-    def empty_not_zero(self):  # returns an empty string for any value equal to zero
-        if self.data == "0":
-            return ""
-        if self.data == "0.0":
-            return ""
-        return self.data
-
-    def none_not_empty(self):  # returns none instead of empty string for option menus
-        if self.data == "":
-            return "none"
-        return self.data
-
-    def hundredths(self):  # returns a number (as a string) into a number with 2 decimal places
-        number = float(self.data)  # convert the number to a float
-        return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
-
-
-class Handler:
-    def __init__(self, data):
-        self.data = data
-
-    def nonetype(self):
-        if self.data is None:
-            return str("")
-        else:
-            return self.data
-
-    def ns_nonetype(self):
-        if self.data is None:
-            return str("  ")
-        else:
-            return self.data
-
-    def nsblank2none(self):
-        if self.data.strip() == "":
-            return str("none")
-        else:
-            return self.data
-
-    def plurals(self):  # put an "s" on the end of words to make them plural
-        if self.data == 1:
-            return ""
-        else:
-            return "s"
-
-
-def isfloat(value):
-    try:
-        float(value)
-        return True
-    except ValueError:
-        return False
-
-
-def isint(value):
-    try:
-        int(value)
-        return True
-    except ValueError:
-        return False
-
-
-def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
-    if sys.platform == "darwin":
-        if projvar.platform == "macapp":
-            if not os.path.isdir(os.path.expanduser("~") + '/Documents'):
-                os.makedirs(os.path.expanduser("~") + '/Documents')
-            if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox'):
-                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox')
-            if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dirr):
-                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dirr)
-            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dirr + '/'
-        else:
-            if not os.path.isdir('kb_sub/' + dirr):
-                os.makedirs(('kb_sub/' + dirr))
-            path = 'kb_sub/' + dirr + '/'
-    if sys.platform == "win32":
-        if projvar.platform == "winapp":
-            if not os.path.isdir(os.path.expanduser("~") + '\\Documents'):
-                os.makedirs(os.path.expanduser("~") + '\\Documents')
-            if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox'):
-                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
-            if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr):
-                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr)
-            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr + '\\'
-        else:
-            if not os.path.isdir('kb_sub\\' + dirr):
-                os.makedirs(('kb_sub\\' + dirr))
-            path = 'kb_sub\\' + dirr + '\\'
-    return path
-
-
-def dir_path_check(dirr):  # return appropriate path depending on platorm
-    if sys.platform == "darwin":
-        if projvar.platform == "macapp":
-            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dirr
-        else:
-            path = 'kb_sub/' + dirr
-    if sys.platform == "win32":
-        if projvar.platform == "winapp":
-            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr
-        else:
-            path = 'kb_sub\\' + dirr
-    return path
-
-
-def dir_filedialog():
-    # determine where the file dialog opens
-    if sys.platform == "darwin":
-        path = os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')
-    elif sys.platform == "win32":
-        path = os.path.expanduser("~") + '\\Documents'
-    else:
-        path = os.path.expanduser("~")
-    return path
-
-
-class CarrierRecSet:
-    def __init__(self, carrier, start, end, station):
-        self.carrier = carrier
-        self.start = start
-        self.end = end
-        self.station = station
-        if self.start == self.end:
-            self.range = "day"
-        else:
-            self.range = "week"
-
-    def get(self):  # returns carrier records for one day or a week
-        if self.range == "day":
-            sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
-                  "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
-                  % (self.carrier, self.start)
-            daily_rec = inquire(sql)
-            rec_set = []
-            if daily_rec[0][5] == self.station:
-                rec_set.append(daily_rec[0])  # since all weekly rings are in a rec_set, be consistant
-                return rec_set
-            else:
-                return
-        else:
-            sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' AND '%s' " \
-                  "ORDER BY effective_date DESC" \
-                  % (self.carrier, self.start, self.end)
-            rec = inquire(sql)
-            sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
-                  "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
-                  "ORDER BY effective_date DESC" \
-                  % (self.carrier, self.start - timedelta(days=1))
-            before_range = inquire(sql)
-            #  append before_range if there is no record for saturday or invest range is daily
-            add_it = True
-            if len(rec) > 0:
-                for r in rec:
-                    if r[0] == str(self.start):
-                        add_it = False
-            if add_it:
-                rec.append(before_range[0])
-            #  filter out record sets with no station matches
-            station_anchor = False
-            for r in rec:
-                if r[5] == self.station:
-                    station_anchor = True
-            rec_set = []  # initialize array to put record sets into carrier list
-            #  filter out any consecutive duplicate records
-            if station_anchor:
-                last_rec = ["xxx", "xxx", "xxx", "xxx", "xxx", "xxx"]
-                for r in reversed(rec):
-                    if r[2] != last_rec[2] or r[3] != last_rec[3] or r[4] != last_rec[4] or r[5] != last_rec[5]:
-                        last_rec = r
-                        rec_set.insert(0, r)  # add to the front of the list
-                return rec_set
-            else:
-                return  # will return None - NoneType
-
-
-class CarrierList:
-    def __init__(self, start, end, station):
-        self.start = start
-        self.end = end
-        self.station = station
-
-    def get(self):  # get a weekly or daily carrier list
-        c_list = []
-        sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' AND effective_date <= '%s' " \
-              "ORDER BY carrier_name, effective_date desc" \
-              % (self.station, self.end)
-        distinct = inquire(sql)  # call function to access database
-        for carrier in distinct:
-            rec_set = CarrierRecSet(carrier[0], self.start, self.end, self.station).get()  # get rec set per carrier
-            if rec_set is not None:  # only add rec sets if there is something there
-                c_list.append(rec_set)
-        return c_list
-
-
-class Rings:
-    def __init__(self, name, date):
-        self.name = name
-        self.date = date  # provide any date in investigation range
-        self.ring_recs = []  # put all results in an array
-
-    def get(self, day):
-        sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (self.name, day)
-        return inquire(sql)
-
-    def get_for_day(self):
-        ring = self.get(self.date)
-        if not ring:  # if the results are empty
-            self.ring_recs.append(ring)  # return empty list
-        else:  # if results are not empty
-            self.ring_recs.append(ring[0])  # return first result of list
-        return self.ring_recs
-
-    def get_for_week(self):
-        sat_range = SaturdayInRange(self.date).get()
-        for i in range(7):
-            ring = self.get(sat_range)
-            if not ring:  # if the results are empty
-                self.ring_recs.append(ring)  # return empty list
-            else:  # if results are not empty
-                self.ring_recs.append(ring[0])  # return first result of list
-            sat_range += timedelta(days=1)
-        return self.ring_recs
-
-
-class SpeedSettings:
-    def __init__(self):
-        sql = "SELECT tolerance FROM tolerances"
-        results = inquire(sql)  # get spreadsheet settings from database
-        self.abc_breakdown = Convert(results[15][0]).str_to_bool()
-        self.min_empid = int(results[16][0])
-        self.min_alpha = int(results[17][0])
-        self.min_abc = int(results[18][0])
-        self.speedcell_ns_rotate_mode = Convert(results[19][0]).str_to_bool()
 
 
 class SpeedConfigGui:
@@ -1294,7 +530,7 @@ class SpeedSheetCheck:
         self.ns_xlate = ns_obj.get()  # get ns day dictionary
         self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
         self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
-        self.ns_custom = ns_obj.custom_config(ns_obj)
+        self.ns_custom = ns_obj.custom_config()  # shows custom ns day configurations for  printout / reports
 
     def set_station(self):
         self.station = self.wb[self.sheets[0]].cell(row=2, column=9).value  # get the station.
@@ -2288,91 +1524,6 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                 # self.parent.fatal_rpt += 1
             for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.parent.report.write(rpt)
-
-
-class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
-    def __init__(self, recset, startdate):
-        self.recset = []  # initialize vars as empty for new carriers
-        self.startdate = ""
-        self.carrier = ""
-        self.nsday = ""
-        self.route = ""
-        self.station = ""
-        lastrec = None
-        if recset is not None:  # handle carriers who are not new carriers
-            if len(recset) != 0:  # new carriers can appear as NoneType or an empty list
-                self.recset = recset
-                for r in reversed(recset):  # get the earliest record in the recset. use reversed()
-                    lastrec = r
-                    break
-                self.startdate = startdate
-                self.date = lastrec[0]
-                self.carrier = lastrec[1]
-                self.nsday = lastrec[3]
-                self.route = lastrec[4]
-                self.station = lastrec[5]
-
-    def filter_nonlist_recs(self):  # filters out any records were the list status hasn't changed.
-        filtered_set = []
-        last_rec = ["xxx", "xxx", "xxx", "xxx", "xxx", "xxx"]
-        for r in reversed(self.recset):
-            if r[2] != last_rec[2]:
-                last_rec = r
-                filtered_set.insert(0, r)  # add to the front of the list
-        return filtered_set
-
-    def condense_recs(self, ns_rotate_mode):  # condense multiple recs into format used by speedsheets
-        ns_dic = NsDayDict(self.startdate).ssn_ns(ns_rotate_mode)  # get speedsheet notation for nsdays
-        date_str = ""
-        list_str = ""
-        i = 1
-        for rec in reversed(self.recset):
-            if i == 1:
-                date_str = ""
-            else:
-                date_str = date_str + dt_converter(rec[0]).strftime('%a').lower()
-            list_str = list_str + rec[2]
-            if i != len(self.recset):
-                if i == 1:
-                    date_str = ""
-                else:
-                    date_str = date_str + ","
-                list_str = list_str + ","
-            i += 1
-        ns = ns_dic[self.nsday]  # ns day is given with speedsheet notation for nsdays
-        return date_str, self.carrier, list_str, ns, self.route, self.station
-
-    def condense_recs_ns(self):  # condense multiple recs into format used by speedsheets
-        date_str = ""
-        list_str = ""
-        i = 1
-        for rec in reversed(self.recset):
-            if i == 1:
-                date_str = ""
-            else:
-                date_str = date_str + dt_converter(rec[0]).strftime('%a').lower()
-            list_str = list_str + rec[2]
-            if i != len(self.recset):
-                if i == 1:
-                    date_str = ""
-                else:
-                    date_str = date_str + ","
-                list_str = list_str + ","
-            i += 1
-        return date_str, self.carrier, list_str, self.nsday, self.route, self.station
-
-    def detect_outofstation(self, station):  # returns a rec with only the date and name
-        record_set = []
-        if Convert(self.date).dt_converter() > self.startdate:
-            to_add = [self.startdate, self.carrier]  # out of station records only have one item
-            record_set.append(to_add)
-        for rec in reversed(self.recset):
-            if rec[5] == station:
-                record_set.append(rec)
-            else:
-                to_add = [self.startdate, self.carrier]  # out of station records only date and name
-                record_set.append(to_add)
-        return record_set
 
 
 class SpeedSheetGen:
@@ -3802,229 +2953,9 @@ def database_maintenance(frame):
     rear_window(wd)
 
 
-class Reports:
+class RptWin:
     def __init__(self, frame):
         self.frame = frame
-        self.start_date = projvar.invran_date
-        self.end_date = projvar.invran_date
-        if projvar.invran_weekly_span:
-            self.start_date = projvar.invran_date_week[0]
-            self.end_date = projvar.invran_date_week[6]
-        self.carrier_list = []
-
-    def get_carrierlist(self):
-        # get carrier list
-        self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
-
-    @staticmethod
-    def rpt_dt_limiter(date, first_date):  # return the first day if it is earlier than the date
-        if date < first_date:
-            return first_date
-        else:
-            return date
-    @staticmethod
-    def rpt_ns_fixer(nsday_code):  # remove the day from the ns_code if fixed
-        fix = []
-        if "fixed" in nsday_code:
-            fix = nsday_code.split(":")
-            return fix[0]
-        else:
-            return nsday_code
-
-    def rpt_carrier(self):  # Generate and display a report of carrier routes and nsday
-        self.get_carrierlist()
-        ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
-        filename = "report_carrier_route_nsday" + "_" + stamp + ".txt"
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier Route and NS Day Report\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        if not projvar.invran_weekly_span:  # if investigation range is daily
-            f_date = projvar.invran_date
-            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-        else:  # if investigation range is weekly
-            f_date = projvar.invran_date_week[0]  # use the first day of the service week
-            report.write('      Dates: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
-                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
-        report.write('{:>4} {:<23} {:<13} {:<29} {:<10}\n'.format("", "Carrier Name", "N/S Day", "Route/s",
-                                                                  "Start Date"))
-        report.write('     ------------------------------------------------------------------- ----------\n')
-        i = 1
-        for line in self.carrier_list:
-            ii = 0
-            for rec in reversed(line):
-                if not ii:
-                    report.write('{:>4} {:<23} {:<4} {:<8} {:<29}\n'
-                        .format(i, rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]]),
-                        rec[4]))
-                else:
-                    report.write('{:>4} {:<23} {:<4} {:<8} {:<29} {:<10}\n'
-                        .format("", rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]]),
-                        rec[4], self.rpt_dt_limiter(dt_converter(rec[0]), f_date).strftime("%A")))
-                ii += 1
-            if i % 3 == 0:
-                report.write('     ------------------------------------------------------------------- ----------\n')
-            i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-
-    def rpt_carrier_route(self):  # Generate and display a report of carrier routes
-        self.get_carrierlist()
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = "report_carrier_route" + "_" + stamp + ".txt"
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier Route Report\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        if not projvar.invran_weekly_span:  # if investigation range is daily
-            f_date = projvar.invran_date
-            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-        else:
-            f_date = projvar.invran_date_week[0]
-            report.write('      Date: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
-                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
-        report.write('{:>4}  {:<22} {:<29}\n'.format("", "Carrier Name", "Route/s"))
-        report.write('      ---------------------------------------------------- -------------------\n')
-        i = 1
-        for line in self.carrier_list:
-            ii = 0
-            for rec in reversed(line):  # reverse order so earliest one appears first
-                if not ii:  # if the first record
-                    report.write('{:>4}  {:<22} {:<29}\n'.format(i, rec[1], rec[4]))
-                else:  # if not the first record, use alternate format
-                    report.write('{:>4}  {:<22} {:<29} effective {:<10}\n'
-                             .format("", rec[1], rec[4],
-                                     self.rpt_dt_limiter(dt_converter(rec[0]), f_date).strftime("%A")))
-                ii += 1
-            if i % 3 == 0:
-                report.write('      ---------------------------------------------------- -------------------\n')
-            i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-
-    def rpt_carrier_nsday(self):  # Generate and display a report of carrier ns day
-        self.get_carrierlist()
-        ns_dict = NsDayDict.get_custom_nsday(NsDayDict)  # get the ns day names from the dbase
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = "report_carrier_nsday" + "_" + stamp + ".txt"
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier NS Day\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        if not projvar.invran_weekly_span:  # if investigation range is daily
-            f_date = projvar.invran_date
-            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-        else:
-            f_date = projvar.invran_date_week[0]
-            report.write('      Date: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
-                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
-        report.write('{:>4}  {:<22} {:<17}\n'.format("", "Carrier Name", "N/S Day"))
-        report.write('      ----------------------------------------  -------------------\n')
-        i = 1
-        for line in self.carrier_list:
-            ii = 0
-            for rec in reversed(line):
-                if not ii:
-                    report.write('{:>4}  {:<22} {:<5}{:<12}\n'
-                             .format(i, rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]])))
-                else:
-                    report.write('{:>4}  {:<22} {:<5}{:<12}  effective {:<10}\n'
-                             .format("", rec[1], projvar.ns_code[rec[3]], self.rpt_ns_fixer(ns_dict[rec[3]]),
-                                     self.rpt_dt_limiter(dt_converter(rec[0]), f_date).strftime("%A")))
-                ii += 1
-            if i % 3 == 0:
-                report.write('      ----------------------------------------  -------------------\n')
-            i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-
-    def rpt_carrier_by_list(self):
-        self.get_carrierlist()
-        list_dict = {"nl": "No List", "wal": "Work Assignment List",
-                     "otdl": "Overtime Desired List", "ptf": "Part Time Flexible", "aux": "Auxiliary Carrier"}
-        # initialize arrays for data sorting
-        otdl_array = []
-        wal_array = []
-        nl_array = []
-        ptf_array = []
-        aux_array = []
-        for line in self.carrier_list:
-            for carrier in line:
-                if carrier[2] == "otdl":
-                    otdl_array.append(carrier)
-                if carrier[2] == "wal":
-                    wal_array.append(carrier)
-                if carrier[2] == "nl":
-                    nl_array.append(carrier)
-                if carrier[2] == "ptf":
-                    ptf_array.append(carrier)
-                if carrier[2] == "aux":
-                    aux_array.append(carrier)
-        array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array  #
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
-        filename = "report_carrier_by_list" + "_" + stamp + ".txt"
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier by List\n\n")
-        report.write('   Showing results for:\n')
-        report.write('      Station: {}\n'.format(projvar.invran_station))
-        if not projvar.invran_weekly_span:  # if investigation range is daily
-            f_date = projvar.invran_date
-            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
-        else:
-            f_date = projvar.invran_date_week[0]
-            report.write('      Dates: {} through {}\n'
-                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
-                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
-        report.write('      Pay Period: {}\n'.format(projvar.pay_period))
-        i = 1
-        last_list = ""  # this is a indicator for when a new list is starting
-        for line in array_var:
-            if last_list != line[2]:  # if the new record is in a different list that the last
-                report.write('\n\n      {:<20}\n\n'
-                             .format(list_dict[line[2]]))  # write new headers
-                report.write('{:>4}  {:<22} {:>4}\n'.format("", "Carrier Name", "List"))
-                report.write('      ---------------------------  -------------------\n')
-                i = 1
-            if dt_converter(line[0]) not in projvar.invran_date_week:
-            # if line[1] not in reoccurring_names:
-                report.write('{:>4}  {:<22} {:>4}\n'.format(i, line[1], line[2]))
-            else:
-                report.write('{:>4}  {:<22} {:>4}  effective {:<10}\n'
-                             .format(i, line[1], line[2],
-                                     self.rpt_dt_limiter(dt_converter(line[0]), f_date).strftime("%A")))
-            if i % 3 == 0:
-                report.write('      ---------------------------  -------------------\n')
-            last_list = line[2]
-            i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
 
     def rpt_chg_station(self, frame, station):
         self.frame = frame
@@ -4091,7 +3022,7 @@ class Reports:
             Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
             Label(results_frame, text="     ", anchor="w").grid(row=i, column=4, sticky="w")
             Button(results_frame, text="Report", anchor="w",
-                   command=lambda in_line=name: self.rpt_carrier_history(in_line[0])) \
+                   command=lambda in_line=name: Reports(self.frame).rpt_carrier_history(in_line[0])) \
                 .grid(row=i, column=5, sticky="w")
             Label(results_frame, text="         ", anchor="w").grid(row=i, column=6, sticky="w")
             i += 1
@@ -4100,43 +3031,16 @@ class Reports:
                command=lambda: MainFrame().start(frame=win.topframe)).pack(side=LEFT)
         win.finish()
 
-    def rpt_carrier_history(self, carrier):
-        sql = "SELECT effective_date, list_status, ns_day, route_s, station" \
-              " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % carrier
-        results = inquire(sql)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = "report_carrier_history" + "_" + stamp + ".txt"
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nCarrier Status Change History\n\n")
-        report.write('   Showing all status changes in the klusterbox database for {}\n\n'.format(carrier))
-        report.write('{:<16}{:<8}{:<10}{:<31}{:<25}\n'
-                     .format("Date Effective", "List", "N/S Day", "Route/s", "Station"))
-        report.write('----------------------------------------------------------------------------------\n')
-        i = 1
-        for line in results:
-            report.write('{:<16}{:<8}{:<10}{:<31}{:<25}\n'
-                         .format(dt_converter(line[0]).strftime("%m/%d/%Y"), line[1], line[2], line[3], line[4]))
-            if i % 3 == 0:
-                report.write('----------------------------------------------------------------------------------\n')
-            i += 1
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-
 
 def clean_rings3_table():  # database maintenance
     sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
     result = inquire(sql)
-    type = ""
-    time = float(0.0)
+    types = ""
+    times = float(0.0)
     if result:
         sql = "UPDATE rings3 SET leave_type='%s',leave_time='%s'" \
               "WHERE leave_type IS NULL" \
-              % (type, time)
+              % (types, times)
         commit(sql)
         messagebox.showinfo("Clean Rings",
                             "Rings table has been cleared of NULL values in leave type and leave time columns.")
@@ -4145,1104 +3049,6 @@ def clean_rings3_table():  # database maintenance
                             "No NULL values in leave type and leave time columns were found in the Rings3 "
                             "table of the database. No action taken.")
     return
-
-
-def overmax_spreadsheet(frame, pre_carrier_list):  # generate the overmax spreadsheet
-    carrier_list = []  # remove any duplicate multiple occurances of the same carrier
-    unique_name = []
-    for pre in pre_carrier_list:
-        if pre[1] not in unique_name:
-            unique_name.append(pre[1])
-            carrier_list.append(pre)  # the carrier_list is now ready and has no duplicates
-    date = projvar.invran_date_week[0]
-    dates = []  # array containing days.
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        for i in range(7):
-            dates.append(date)
-            date += timedelta(days=1)
-    sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-          % (projvar.invran_date_week[0], projvar.invran_date_week[6])
-    r_rings = inquire(sql)
-    # get minimum rows
-    sql = "SELECT tolerance FROM tolerances"
-    result = inquire(sql)
-    min_rows = int(result[14][0])
-    # Named styles for workbook
-    bd = Side(style='thin', color="80808080")  # defines borders
-    ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-    date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
-    date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
-                                alignment=Alignment(horizontal='right'))
-    col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                            border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                            alignment=Alignment(horizontal='left'))
-    col_center_header = NamedStyle(name="col_center_header", font=Font(bold=True, name='Arial', size=8),
-                                   alignment=Alignment(horizontal='center'),
-                                   border=Border(left=bd, right=bd, top=bd, bottom=bd))
-    vert_header = NamedStyle(name="vert_header", font=Font(bold=True, name='Arial', size=8),
-                             border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                             alignment=Alignment(horizontal='right', text_rotation=90))
-    input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                            border=Border(left=bd, right=bd, top=bd, bottom=bd))
-    input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                         border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                         alignment=Alignment(horizontal='right'))
-    calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
-                       border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                       fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                       alignment=Alignment(horizontal='right'))
-    vert_calcs = NamedStyle(name="vert_calcs", font=Font(name='Arial', size=8),
-                            border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                            fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                            alignment=Alignment(horizontal='right', text_rotation=90))
-    instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=8),
-                               alignment=Alignment(horizontal='left', vertical='top'))
-    wb = Workbook()  # define the workbook
-    violations = wb.active  # create first worksheet
-    summary = wb.create_sheet("summary")
-    instructions = wb.create_sheet("instructions")
-    for x in range(2, 8):
-        violations.row_dimensions[x].height = 10  # adjust all row height
-    violations.title = "violations"  # title first worksheet
-    violations.oddFooter.center.text = "&A"
-    sheets = (violations, instructions)
-    for sheet in sheets:
-        sheet.column_dimensions["A"].width = 13
-        sheet.column_dimensions["B"].width = 3
-        sheet.column_dimensions["C"].width = 5
-        sheet.column_dimensions["D"].width = 4
-        sheet.column_dimensions["E"].width = 2
-        sheet.column_dimensions["F"].width = 4
-        sheet.column_dimensions["G"].width = 2
-        sheet.column_dimensions["H"].width = 4
-        sheet.column_dimensions["I"].width = 2
-        sheet.column_dimensions["J"].width = 4
-        sheet.column_dimensions["K"].width = 2
-        sheet.column_dimensions["L"].width = 4
-        sheet.column_dimensions["M"].width = 2
-        sheet.column_dimensions["N"].width = 4
-        sheet.column_dimensions["O"].width = 2
-        sheet.column_dimensions["P"].width = 4
-        sheet.column_dimensions["Q"].width = 2
-        sheet.column_dimensions["R"].width = 4
-        sheet.column_dimensions['R'].hidden = True
-        sheet.column_dimensions["S"].width = 5
-        sheet.column_dimensions["T"].width = 5
-        sheet.column_dimensions["U"].width = 2
-        sheet.column_dimensions["V"].width = 2
-        sheet.column_dimensions["W"].width = 2
-        sheet.column_dimensions["X"].width = 5
-    # summary worksheet - format cells
-    summary.oddFooter.center.text = "&A"
-    summary.merge_cells('A1:R1')
-    summary['A1'] = "12 and 60 Hour Violations Summary"
-    summary['A1'].style = ws_header
-    summary.column_dimensions["A"].width = 15
-    summary.column_dimensions["B"].width = 8
-    summary['A3'] = "Date:"
-    summary['A3'].style = date_dov_title
-    summary.merge_cells('B3:D3')  # blank field for date
-    summary['B3'] = dates[0].strftime("%x") + " - " + dates[6].strftime("%x")
-    summary['B3'].style = date_dov
-    summary.merge_cells('K3:N3')
-    summary['F3'] = "Pay Period:"  # Pay Period Header
-    summary['F3'].style = date_dov_title
-    summary.merge_cells('G3:I3')  # blank field for pay period
-    summary['G3'] = projvar.pay_period
-    summary['G3'].style = date_dov
-    summary['A4'] = "Station:"  # Station Header
-    summary['A4'].style = date_dov_title
-    summary.merge_cells('B4:D4')  # blank field for station
-    summary['B4'] = projvar.invran_station
-    summary['B4'].style = date_dov
-    summary['A6'] = "name"
-    summary['A6'].style = col_center_header
-    summary['B6'] = "violation"
-    summary['B6'].style = col_center_header
-    # violations worksheet - format cells
-    violations.merge_cells('A1:R1')
-    violations['A1'] = "12 and 60 Hour Violations Worksheet"
-    violations['A1'].style = ws_header
-    violations['A3'] = "Date:"
-    violations['A3'].style = date_dov_title
-    violations.merge_cells('B3:J3')  # blank field for date
-    violations['B3'] = dates[0].strftime("%x") + " - " + dates[6].strftime("%x")
-    violations['B3'].style = date_dov
-    violations.merge_cells('K3:N3')
-    violations['K3'] = "Pay Period:"
-    violations['k3'].style = date_dov_title
-    violations.merge_cells('O3:S3')  # blank field for pay period
-    violations['O3'] = projvar.pay_period
-    violations['O3'].style = date_dov
-    violations['A4'] = "Station:"
-    violations['A4'].style = date_dov_title
-    violations.merge_cells('B4:J4')  # blank field for station
-    violations['B4'] = projvar.invran_station
-    violations['B4'].style = date_dov
-    violations.merge_cells('D6:Q6')
-    violations['D6'] = "Daily Paid Leave times with type"
-    violations['D6'].style = col_center_header
-    violations.merge_cells('D7:Q7')
-    violations['D7'] = "Daily 5200 times"
-    violations['D7'].style = col_center_header
-    violations['A8'] = "name"
-    violations['A8'].style = col_header
-    violations['B8'] = "list"
-    violations['B8'].style = col_header
-    violations.merge_cells('C5:C8')
-    violations['C5'] = "Weekly\n5200"
-    violations['C5'].style = vert_header
-    violations.merge_cells('D8:E8')
-    violations['D8'] = "sat"
-    violations['D8'].style = col_center_header
-    violations.merge_cells('F8:G8')
-    violations['F8'] = "sun"
-    violations['F8'].style = col_center_header
-    violations.merge_cells('H8:I8')
-    violations['H8'] = "mon"
-    violations['H8'].style = col_center_header
-    violations.merge_cells('J8:K8')
-    violations['J8'] = "tue"
-    violations['J8'].style = col_center_header
-    violations.merge_cells('L8:M8')
-    violations['L8'] = "wed"
-    violations['L8'].style = col_center_header
-    violations.merge_cells('N8:O8')
-    violations['N8'] = "thr"
-    violations['N8'].style = col_center_header
-    violations.merge_cells('P8:Q8')
-    violations['P8'] = "fri"
-    violations['P8'].style = col_center_header
-    violations.merge_cells('S4:S8')
-    violations['S4'] = " Weekly\nViolation"
-    violations['S4'].style = vert_header
-    violations.merge_cells('T4:T8')
-    violations['T4'] = "Daily\nViolation"
-    violations['T4'].style = vert_header
-    violations.merge_cells('U4:U8')
-    violations['U4'] = "Wed Adj"
-    violations['U4'].style = vert_header
-    violations.merge_cells('V4:V8')
-    violations['V4'] = "Thr Adj"
-    violations['V4'].style = vert_header
-    violations.merge_cells('W4:W8')
-    violations['W4'] = "Fri Adj"
-    violations['W4'].style = vert_header
-    violations.merge_cells('X4:X8')
-    violations['X4'] = "Total\nViolation"
-    violations['X4'].style = vert_header
-    # format the instructions cells
-    instructions.merge_cells('A1:R1')
-    instructions['A1'] = "12 and 60 Hour Violations Instructions"
-    instructions['A1'].style = ws_header
-    instructions.row_dimensions[3].height = 165
-    instructions['A3'].style = instruct_text
-    instructions.merge_cells('A3:X3')
-    instructions['A3'] = "Instructions: \n1. Fill in the name \n" \
-                         "2. Fill in the list. Enter either “otdl”,”wal”,”nl”,“aux” or “ptf” in list columns. " \
-                         "Use only lowercase. \n" \
-                         "   If you do not enter anything, the default is “otdl\n" \
-                         "\totdl = overtime desired list\n" \
-                         "\twal = work assignment list\n" \
-                         "\tnl = no list \n" \
-                         "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
-                         "\tptf = part time flexible" \
-                         "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours " \
-                         "or if the sum of all daily non 5200 times (all fields D) plus \n" \
-                         "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
-                         "4. Fill in any daily non 5200 times and types in fields D and E. " \
-                         "Enter only paid leave types such as sick leave, annual\n" \
-                         "   leave and holiday leave. Do not enter unpaid leave types such as LWOP " \
-                         "(leave without pay) or AWOL (absent \n" \
-                         "   without leave).\n" \
-                         "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers " \
-                         "or 11.50 hours for any other carrier in fields F.\n" \
-                         "   Failing to fill out the daily values for Wednesday, Thursday and Friday " \
-                         "could cause errors in calculating the adjustments,\n" \
-                         "   so fill those in.\n" \
-                         "6. The gray fields will fill automatically. Do not enter an information in " \
-                         "these fields as it will delete the formulas.\n" \
-                         "7. Field O will show the violation in hours which you should seek a remedy for. \n"
-    for x in range(4, 20):
-        instructions.row_dimensions[x].height = 10  # adjust all row height
-    instructions.merge_cells('D6:Q6')
-    instructions['D6'] = "Daily Paid Leave times with type"
-    instructions['D6'].style = col_center_header
-    instructions.merge_cells('D7:Q7')
-    instructions['D7'] = "Daily 5200 times"
-    instructions['D7'].style = col_center_header
-    instructions['A8'] = "name"
-    instructions['A8'].style = col_header
-    instructions['B8'] = "list"
-    instructions['B8'].style = col_header
-    instructions.merge_cells('C5:C8')
-    instructions['C5'] = "Weekly\n5200"
-    instructions['C5'].style = vert_header
-    instructions.merge_cells('D8:E8')
-    instructions['D8'] = "sat"
-    instructions['D8'].style = col_center_header
-    instructions.merge_cells('F8:G8')
-    instructions['F8'] = "sun"
-    instructions['F8'].style = col_center_header
-    instructions.merge_cells('H8:I8')
-    instructions['H8'] = "mon"
-    instructions['H8'].style = col_center_header
-    instructions.merge_cells('J8:K8')
-    instructions['J8'] = "tue"
-    instructions['J8'].style = col_center_header
-    instructions.merge_cells('L8:M8')
-    instructions['L8'] = "wed"
-    instructions['L8'].style = col_center_header
-    instructions.merge_cells('N8:O8')
-    instructions['N8'] = "thr"
-    instructions['N8'].style = col_center_header
-    instructions.merge_cells('P8:Q8')
-    instructions['P8'] = "fri"
-    instructions['P8'].style = col_center_header
-    instructions.merge_cells('S4:S8')
-    instructions['S4'] = " Weekly\nViolation"
-    instructions['S4'].style = vert_header
-    instructions.merge_cells('T4:T8')
-    instructions['T4'] = "Daily\nViolation"
-    instructions['T4'].style = vert_header
-    instructions.merge_cells('U4:U8')
-    instructions['U4'] = "Wed Adj"
-    instructions['U4'].style = vert_header
-    instructions.merge_cells('V4:V8')
-    instructions['V4'] = "Thr Adj"
-    instructions['V4'].style = vert_header
-    instructions.merge_cells('W4:W8')
-    instructions['W4'] = "Fri Adj"
-    instructions['W4'].style = vert_header
-    instructions.merge_cells('X4:X8')
-    instructions['X4'] = "Total\nViolation"
-    instructions['X4'].style = vert_header
-    instructions['A9'] = "A"
-    instructions['A9'].style = col_center_header
-    instructions['B9'] = "B"
-    instructions['B9'].style = col_center_header
-    instructions['C9'] = "C"
-    instructions['C9'].style = col_center_header
-    instructions['D9'] = "D"
-    instructions['D9'].style = col_center_header
-    instructions['E9'] = "E"
-    instructions['E9'].style = col_center_header
-    instructions['F9'] = "G"
-    instructions['F9'].style = col_center_header
-    instructions.merge_cells('F9:G9')
-    instructions['H9'] = "D"
-    instructions['H9'].style = col_center_header
-    instructions['I9'] = "E"
-    instructions['I9'].style = col_center_header
-    instructions['J9'] = "D"
-    instructions['J9'].style = col_center_header
-    instructions['K9'] = "E"
-    instructions['K9'].style = col_center_header
-    instructions['L9'] = "D"
-    instructions['L9'].style = col_center_header
-    instructions['M9'] = "E"
-    instructions['M9'].style = col_center_header
-    instructions['N9'] = "D"
-    instructions['N9'].style = col_center_header
-    instructions['O9'] = "E"
-    instructions['O9'].style = col_center_header
-    instructions['P9'] = "D"
-    instructions['P9'].style = col_center_header
-    instructions['Q9'] = "E"
-    instructions['Q9'].style = col_center_header
-    instructions['S9'] = "J"
-    instructions['S9'].style = col_center_header
-    instructions['T9'] = "K"
-    instructions['T9'].style = col_center_header
-    instructions['U9'] = "L"
-    instructions['U9'].style = col_center_header
-    instructions['V9'] = "M"
-    instructions['V9'].style = col_center_header
-    instructions['W9'] = "N"
-    instructions['W9'].style = col_center_header
-    instructions['X9'] = "O"
-    instructions['X9'].style = col_center_header
-    i = 10
-    # instructions name
-    instructions.merge_cells('A' + str(i) + ':A' + str(i + 1))  # merge box for name
-    instructions['A10'] = "kubrick, s"
-    instructions['A10'].style = input_name
-    # instructions list
-    instructions.merge_cells('B' + str(i) + ':B' + str(i + 1))  # merge box for list type input
-    instructions['B10'] = "wal"
-    instructions['B10'].style = input_s
-    # instructions weekly
-    instructions.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly input
-    instructions['C10'] = 75.00
-    instructions['C10'].style = input_s
-    instructions['C10'].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions saturday
-    instructions.merge_cells('D' + str(i + 1) + ':E' + str(i + 1))  # merge box for sat 5200
-    instructions['D' + str(i)] = ""  # leave time
-    instructions['D' + str(i)].style = input_s
-    instructions['D' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    instructions['E' + str(i)] = ""  # leave type
-    instructions['E' + str(i)].style = input_s
-    instructions['D' + str(i + 1)] = 13.00  # 5200 time
-    instructions['D' + str(i + 1)].style = input_s
-    instructions['D' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions sunday
-    instructions.merge_cells('F' + str(i + 1) + ':G' + str(i + 1))  # merge box for sun 5200
-    instructions['F' + str(i)] = ""  # leave time
-    instructions['F' + str(i)].style = input_s
-    instructions['F' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    instructions['G' + str(i)] = ""  # leave type
-    instructions['G' + str(i)].style = input_s
-    instructions['F' + str(i + 1)] = ""  # 5200 time
-    instructions['F' + str(i + 1)].style = input_s
-    instructions['F' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions monday
-    instructions.merge_cells('H' + str(i + 1) + ':I' + str(i + 1))  # merge box for mon 5200
-    instructions['H' + str(i)] = 8  # leave time
-    instructions['H' + str(i)].style = input_s
-    instructions['H' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    instructions['I' + str(i)] = "h"  # leave type
-    instructions['I' + str(i)].style = input_s
-    instructions['H' + str(i + 1)] = ""  # 5200 time
-    instructions['H' + str(i + 1)].style = input_s
-    instructions['H' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions tuesday
-    instructions.merge_cells('J' + str(i + 1) + ':K' + str(i + 1))  # merge box for tue 5200
-    instructions['J' + str(i)] = ""  # leave time
-    instructions['J' + str(i)].style = input_s
-    instructions['J' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    instructions['K' + str(i)] = ""  # leave type
-    instructions['K' + str(i)].style = input_s
-    instructions['J' + str(i + 1)] = 14  # 5200 time
-    instructions['J' + str(i + 1)].style = input_s
-    instructions['J' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions wednesday
-    instructions.merge_cells('L' + str(i + 1) + ':M' + str(i + 1))  # merge box for wed 5200
-    instructions['L' + str(i)] = ""  # leave time
-    instructions['L' + str(i)].style = input_s
-    instructions['L' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    instructions['M' + str(i)] = ""  # leave type
-    instructions['M' + str(i)].style = input_s
-    instructions['L' + str(i + 1)] = 14  # 5200 time
-    instructions['L' + str(i + 1)].style = input_s
-    instructions['M' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions thursday
-    instructions.merge_cells('N' + str(i + 1) + ':O' + str(i + 1))  # merge box for thr 5200
-    instructions['N' + str(i)] = ""  # leave time
-    instructions['N' + str(i)].style = input_s
-    instructions['N' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    instructions['O' + str(i)] = ""  # leave type
-    instructions['O' + str(i)].style = input_s
-    instructions['N' + str(i + 1)] = 13  # 5200 time
-    instructions['N' + str(i + 1)].style = input_s
-    instructions['N' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions friday
-    instructions.merge_cells('P' + str(i + 1) + ':Q' + str(i + 1))  # merge box for fri 5200
-    instructions['P' + str(i)] = ""  # leave time
-    instructions['P' + str(i)].style = input_s
-    instructions['P' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    instructions['Q' + str(i)] = ""  # leave type
-    instructions['Q' + str(i)].style = input_s
-    instructions['P' + str(i + 1)] = 13  # 5200 time
-    instructions['P' + str(i + 1)].style = input_s
-    instructions['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions hidden columns
-    page = "instructions"
-    formula = "=SUM(%s!D%s:P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
-              "%s!N%s + %s!P%s" % (page, str(i + 1), str(i + 1),
-                                   page, str(i), page, str(i), page, str(i),
-                                   page, str(i), page, str(i), page, str(i))
-    instructions['R' + str(i)] = formula
-    instructions['R' + str(i)].style = calcs
-    instructions['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-    formula = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
-              (page, str(i), page, str(i), page, str(i),
-               page, str(i), page, str(i), page, str(i),
-               page, str(i))
-    instructions['R' + str(i + 1)] = formula
-    instructions['R' + str(i + 1)].style = calcs
-    instructions['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions weekly violations
-    instructions.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-    formula = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % \
-              (page, str(i), page, str(i + 1), page, str(i), page, str(i + 1),)
-    instructions['S10'] = formula
-    instructions['S10'].style = calcs
-    instructions['S10'].number_format = "#,###.00;[RED]-#,###.00"
-    # instructions daily violations
-    formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
-                "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
-                "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
-                "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                % (page, str(i), page, str(i), page, str(i), page, str(i),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                   page, str(i + 1), page, str(i + 1), page, str(i + 1))
-    instructions['T' + str(i)] = formula_d
-    instructions.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
-    instructions['T' + str(i)].style = calcs
-    instructions['T' + str(i)].number_format = "#,###.00"
-    # instructions wed adjustment
-    instructions.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-    formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
-                "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
-                "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
-                "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
-                "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                % (page, str(i), page, str(i), page, str(i), page, str(i),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i), page, str(i + 1),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i), page, str(i + 1),
-                   page, str(i + 1), page, str(i), page, str(i + 1),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i), page, str(i + 1),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i), page, str(i + 1),
-                   page, str(i + 1), page, str(i), page, str(i + 1),
-                   page, str(i), page, str(i + 1), page, str(i))
-    instructions['U' + str(i)] = formula_e
-    instructions['U' + str(i)].style = vert_calcs
-    instructions['U' + str(i)].number_format = "#,###.00"
-    # instructions thr adjustment
-    formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
-                "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
-                "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
-                "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                % (page, str(i), page, str(i), page, str(i), page, str(i),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i)
-                   )
-    instructions.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
-    instructions['V' + str(i)] = formula_f
-    instructions['V' + str(i)].style = vert_calcs
-    instructions['V' + str(i)].number_format = "#,###.00"
-    # instructions fri adjustment
-    instructions.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-    formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\",%s!B%s=\"ptf\")," \
-                "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
-                "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
-                "IF(AND(%s!S%s>0,%s!P%s>12)," \
-                "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                % (page, str(i), page, str(i), page, str(i), page, str(i),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i + 1), page, str(i),
-                   page, str(i), page, str(i + 1), page, str(i),
-                   page, str(i + 1), page, str(i + 1), page, str(i))
-    instructions['W' + str(i)] = formula_g
-    instructions['W' + str(i)].style = vert_calcs
-    instructions['W' + str(i)].number_format = "#,###.00"
-    # instructions total violation
-    instructions.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
-    formula_h = "=SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
-                % (page, str(i), str(i), page, str(i),
-                   page, str(i), page, str(i))
-    instructions['X' + str(i)] = formula_h
-    instructions['X' + str(i)].style = calcs
-    instructions['X' + str(i)].number_format = "#,###.00"
-    instructions['D12'] = "F"
-    instructions['D12'].style = col_center_header
-    instructions.merge_cells('D12:E12')
-    instructions['F12'] = "F"
-    instructions['F12'].style = col_center_header
-    instructions.merge_cells('F12:G12')
-    instructions['H12'] = "F"
-    instructions['H12'].style = col_center_header
-    instructions.merge_cells('H12:I12')
-    instructions['J12'] = "F"
-    instructions['J12'].style = col_center_header
-    instructions.merge_cells('J12:K12')
-    instructions['L12'] = "F"
-    instructions['L12'].style = col_center_header
-    instructions.merge_cells('L12:M12')
-    instructions['N12'] = "F"
-    instructions['N12'].style = col_center_header
-    instructions.merge_cells('N12:O12')
-    instructions['P12'] = "F"
-    instructions['P12'].style = col_center_header
-    instructions.merge_cells('P12:Q12')
-    # legend section
-    instructions.row_dimensions[14].height = 180
-    instructions['A14'].style = instruct_text
-    instructions.merge_cells('A14:X14')
-    instructions['A14'] = "Legend: \n" \
-                          "A.  Name \n" \
-                          "B.  List: Either otdl, wal, nl, ptf or aux (always use lowercase to preserve " \
-                          "operation of the formulas).\n" \
-                          "C.  Weekly 5200 Time: Enter the 5200 time for the week. \n" \
-                          "D.  Daily Non 5200 Time: Enter daily hours for either holiday, annual sick leave or " \
-                          "other type of paid leave.\n" \
-                          "E.  Daily Non 5200 Type: Enter “a” for annual, “s” for sick, “h” for holiday, etc. \n" \
-                          "F.  Daily 5200 Hours: Enter 5200 hours or hours worked for the day. \n" \
-                          "G.  No value allowed: No non 5200 times allowed for Sundays.\n" \
-                          "J.   Weekly Violations: This is the total of violations over 60 hours in a week.\n" \
-                          "K.  Daily Violations: This is the total of daily violations which have exceeded 11.50 " \
-                          "(for wal, nl, ptf or aux)\n" \
-                          "     or 12 hours in a day (for otdl).\n" \
-                          "L.  Wednesday Adjustment: In cases were the 60 hour limit is reached " \
-                          "and a daily violation happens (on Wednesday),\n" \
-                          "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                          "M.  Thursday Adjustment: In cases were the 60 hour limit is reached and " \
-                          "a daily violation happens (on Thursday), \n" \
-                          "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                          "N.  Friday Adjustment: In cases were the 60 hour limit is reached and " \
-                          "a daily violation happens (on Friday),\n" \
-                          "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                          "O.  Total Violation: This field is the end result of the calculation. " \
-                          "This is the addition of the total daily  " \
-                          "violations and the\n" \
-                          "     weekly violation, it shows the sum of the two. " \
-                          "This is the value which the steward should seek a remedy for."
-    daily_list = []  # array
-    candidates = []
-    for day in dates:
-        del daily_list[:]
-        # create a list of carriers for each day.
-        for ii in range(len(carrier_list)):
-            if carrier_list[ii][0] <= str(day):
-                candidates.append(carrier_list[ii])  # put name into candidates array
-            jump = "no"  # triggers an analysis of the candidates array
-            if ii != len(carrier_list) - 1:  # if the loop has not reached the end of the list
-                if carrier_list[ii][1] == carrier_list[ii + 1][1]:  # if the name current and next name are the same
-                    jump = "yes"  # bypasses an analysis of the candidates array
-            if jump == "no":  # review the list of candidates
-                winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == projvar.invran_station:
-                    daily_list.append(winner)  # add the record if it matches the station
-                del candidates[:]  # empty out the candidates array.
-    summary_i = 7
-    i = 9
-    row_count = 0
-    for line in carrier_list:
-        # if there is a ring to match the carrier/ date then printe
-        carrier_rings = []
-        total = 0.0
-        grandtotal = 0.0
-        totals_array = ["", "", "", "", "", "", ""]
-        leavetype_array = ["", "", "", "", "", "", ""]
-        leavetime_array = ["", "", "", "", "", "", ""]
-        cc = 0
-        daily_violation = False
-        for day in dates:
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # find if there are rings for the carrier
-                    carrier_rings.append(each)  # add any rings to an array
-                    if isfloat(each[2]):
-                        totals_array[cc] = float(each[2])
-                        if float(each[2]) > 12 and line[2] == "otdl":
-                            daily_violation = True
-                        if float(each[2]) > 11.5 and line[2] != "otdl":
-                            daily_violation = True
-                    else:
-                        totals_array[cc] = each[2]
-                    if each[6] == "annual":
-                        leavetype_array[cc] = "A"
-                    if each[6] == "sick":
-                        leavetype_array[cc] = "S"
-                    if each[6] == "holiday":
-                        leavetype_array[cc] = "H"
-                    if each[6] == "other":
-                        leavetype_array[cc] = "O"
-                    if each[7] == "0.0" or each[7] == "0":
-                        leavetime_array[cc] = ""
-                    elif isfloat(each[7]):
-                        leavetime_array[cc] = float(each[7])
-                    else:
-                        leavetime_array[cc] = each[7]
-            cc += 1
-        for item in carrier_rings:
-            if item[2] == "":  # convert empty 5200 strings to zero
-                t = 0.0
-            else:
-                t = float(item[2])
-            if item[7] == "":  # convert leave time strings to zero
-                l = 0.0
-            else:
-                l = float(item[7])
-            total = total + t
-            grandtotal = grandtotal + t + l
-
-        if grandtotal > 60 or daily_violation is True:
-            row_count += 1
-            # output to the gui
-            violations.row_dimensions[i].height = 10  # adjust all row height
-            violations.row_dimensions[i + 1].height = 10
-            violations.merge_cells('A' + str(i) + ':A' + str(i + 1))
-            violations['A' + str(i)] = line[1]  # name
-            violations['A' + str(i)].style = input_name
-            violations.merge_cells('B' + str(i) + ':B' + str(i + 1))  # merge box for list
-            violations['B' + str(i)] = line[2]  # list
-            violations['B' + str(i)].style = input_s
-            violations.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly 5200
-            violations['C' + str(i)] = float(total)  # total
-            violations['C' + str(i)].style = input_s
-            violations['C' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            # saturday
-            violations.merge_cells('D' + str(i + 1) + ':E' + str(i + 1))  # merge box for sat 5200
-            violations['D' + str(i)] = leavetime_array[0]  # leave time
-            violations['D' + str(i)].style = input_s
-            violations['D' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            violations['E' + str(i)] = leavetype_array[0]  # leave type
-            violations['E' + str(i)].style = input_s
-            violations['D' + str(i + 1)] = totals_array[0]  # 5200 time
-            violations['D' + str(i + 1)].style = input_s
-            violations['D' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # sunday
-            violations.merge_cells('F' + str(i + 1) + ':G' + str(i + 1))  # merge box for sun 5200
-            violations['F' + str(i)] = leavetime_array[1]  # leave time
-            violations['F' + str(i)].style = input_s
-            violations['F' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            violations['G' + str(i)] = leavetype_array[1]  # leave type
-            violations['G' + str(i)].style = input_s
-            violations['F' + str(i + 1)] = totals_array[1]  # 5200 time
-            violations['F' + str(i + 1)].style = input_s
-            violations['F' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # monday
-            violations.merge_cells('H' + str(i + 1) + ':I' + str(i + 1))  # merge box for mon 5200
-            violations['H' + str(i)] = leavetime_array[2]  # leave time
-            violations['H' + str(i)].style = input_s
-            violations['H' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            violations['I' + str(i)] = leavetype_array[2]  # leave type
-            violations['I' + str(i)].style = input_s
-            violations['H' + str(i + 1)] = totals_array[2]  # 5200 time
-            violations['H' + str(i + 1)].style = input_s
-            violations['H' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # tuesday
-            violations.merge_cells('J' + str(i + 1) + ':K' + str(i + 1))  # merge box for tue 5200
-            violations['J' + str(i)] = leavetime_array[3]  # leave time
-            violations['J' + str(i)].style = input_s
-            violations['J' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            violations['K' + str(i)] = leavetype_array[3]  # leave type
-            violations['K' + str(i)].style = input_s
-            violations['J' + str(i + 1)] = totals_array[3]  # 5200 time
-            violations['J' + str(i + 1)].style = input_s
-            violations['J' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # wednesday
-            violations.merge_cells('L' + str(i + 1) + ':M' + str(i + 1))  # merge box for wed 5200
-            violations['L' + str(i)] = leavetime_array[4]  # leave time
-            violations['L' + str(i)].style = input_s
-            violations['L' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            violations['M' + str(i)] = leavetype_array[4]  # leave type
-            violations['M' + str(i)].style = input_s
-            violations['L' + str(i + 1)] = totals_array[4]  # 5200 time
-            violations['L' + str(i + 1)].style = input_s
-            violations['L' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # thursday
-            violations.merge_cells('N' + str(i + 1) + ':O' + str(i + 1))  # merge box for thr 5200
-            violations['N' + str(i)] = leavetime_array[5]  # leave time
-            violations['N' + str(i)].style = input_s
-            violations['N' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            violations['O' + str(i)] = leavetype_array[5]  # leave type
-            violations['O' + str(i)].style = input_s
-            violations['N' + str(i + 1)] = totals_array[5]  # 5200 time
-            violations['N' + str(i + 1)].style = input_s
-            violations['N' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # friday
-            violations.merge_cells('P' + str(i + 1) + ':Q' + str(i + 1))  # merge box for fri 5200
-            violations['P' + str(i)] = leavetime_array[6]  # leave time
-            violations['P' + str(i)].style = input_s
-            violations['P' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            violations['Q' + str(i)] = leavetype_array[6]  # leave type
-            violations['Q' + str(i)].style = input_s
-            violations['P' + str(i + 1)] = totals_array[6]  # 5200 time
-            violations['P' + str(i + 1)].style = input_s
-            violations['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # calculated fields
-            # hidden columns
-            formula_a = "=SUM(%s!D%s:P%s)+%s!D%s + %s!F%s + %s!H%s + %s!J%s + %s!L%s + " \
-                        "%s!N%s + %s!P%s" % ("violations", str(i + 1), str(i + 1),
-                                             "violations", str(i), "violations", str(i), "violations", str(i),
-                                             "violations", str(i), "violations", str(i), "violations", str(i),
-                                             "violations", str(i))
-            violations['R' + str(i)] = formula_a
-            violations['R' + str(i)].style = calcs
-            violations['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            formula_b = "=SUM(%s!C%s+%s!D%s+%s!F%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
-                        ("violations", str(i), "violations", str(i), "violations", str(i),
-                         "violations", str(i), "violations", str(i), "violations", str(i),
-                         "violations", str(i), "violations", str(i))
-            violations['R' + str(i + 1)] = formula_b
-            violations['R' + str(i + 1)].style = calcs
-            violations['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            # weekly violation
-            violations.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-            formula_c = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % ("violations", str(i),
-                                                                                       "violations", str(i + 1),
-                                                                                       "violations", str(i),
-                                                                                       "violations", str(i + 1),)
-            violations['S' + str(i)] = formula_c
-            violations['S' + str(i)].style = calcs
-            violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-            # daily violation
-            formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!F%s>11.5,%s!F%s-11.5,0)" \
-                        "+IF(%s!H%s>11.5,%s!H%s-11.5,0)+" \
-                        "IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
-                        "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+" \
-                        "IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
-                        "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!F%s>12,%s!F%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)" \
-                        "+IF(%s!J%s>12,%s!J%s-12,0)" \
-                        "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1))
-            violations['T' + str(i)] = formula_d
-            violations.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
-            violations['T' + str(i)].style = calcs
-            violations['T' + str(i)].number_format = "#,###.00"
-            # wed adjustment
-            violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-            formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
-                        "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
-                        "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
-                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
-                        "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i))
-            violations['U' + str(i)] = formula_e
-            violations['U' + str(i)].style = vert_calcs
-            violations['U' + str(i)].number_format = "#,###.00"
-            # thr adjustment
-            formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
-                        "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
-                        "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
-                        "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i)
-                           )
-            violations.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
-            violations['V' + str(i)] = formula_f
-            violations['V' + str(i)].style = vert_calcs
-            violations['V' + str(i)].number_format = "#,###.00"
-            # fri adjustment
-            violations.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-            formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
-                        "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
-                        "IF(AND(%s!S%s>0,%s!P%s>12)," \
-                        "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i))
-            violations['W' + str(i)] = formula_g
-            violations['W' + str(i)].style = vert_calcs
-            violations['W' + str(i)].number_format = "#,###.00"
-            # total violation
-            violations.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
-            formula_h = "=SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
-                        % ("violations", str(i), str(i), "violations", str(i),
-                           "violations", str(i), "violations", str(i))
-            violations['X' + str(i)] = formula_h
-            violations['X' + str(i)].style = calcs
-            violations['X' + str(i)].number_format = "#,###.00"
-            formula_i = "=%s!A%s" % ("violations", str(i))
-            summary['A' + str(summary_i)] = formula_i
-            summary['A' + str(summary_i)].style = input_name
-            formula_j = "=%s!X%s" % ("violations", str(i))
-            summary['B' + str(summary_i)] = formula_j
-            summary['B' + str(summary_i)].style = input_s
-            summary['B' + str(summary_i)].number_format = "#,###.00"
-            summary.row_dimensions[summary_i].height = 10  # adjust all row height
-            i += 2
-            summary_i += 1
-    # insert rows if minimum rows is not reached
-    if row_count < min_rows:
-        add_rows = min_rows - row_count
-    else:
-        add_rows = 0
-    for add in range(add_rows):
-        # output to the gui
-        violations.row_dimensions[i].height = 10  # adjust all row height
-        violations.row_dimensions[i + 1].height = 10
-        violations.merge_cells('A' + str(i) + ':A' + str(i + 1))
-        violations['A' + str(i)] = ""  # name
-        violations['A' + str(i)].style = input_name
-        violations.merge_cells('B' + str(i) + ':B' + str(i + 1))  # merge box for list
-        violations['B' + str(i)] = ""  # list
-        violations['B' + str(i)].style = input_s
-        violations.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly 5200
-        violations['C' + str(i)] = ""  # total
-        violations['C' + str(i)].style = input_s
-        violations['C' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        # saturday
-        violations.merge_cells('D' + str(i + 1) + ':E' + str(i + 1))  # merge box for sat 5200
-        violations['D' + str(i)] = ""  # leave time
-        violations['D' + str(i)].style = input_s
-        violations['D' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        violations['E' + str(i)] = ""  # leave type
-        violations['E' + str(i)].style = input_s
-        violations['D' + str(i + 1)] = ""  # 5200 time
-        violations['D' + str(i + 1)].style = input_s
-        violations['D' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # sunday
-        violations.merge_cells('F' + str(i + 1) + ':G' + str(i + 1))  # merge box for sun 5200
-        violations['F' + str(i)] = ""  # leave time
-        violations['F' + str(i)].style = input_s
-        violations['F' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        violations['G' + str(i)] = ""  # leave type
-        violations['G' + str(i)].style = input_s
-        violations['F' + str(i + 1)] = ""  # 5200 time
-        violations['F' + str(i + 1)].style = input_s
-        violations['F' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # monday
-        violations.merge_cells('H' + str(i + 1) + ':I' + str(i + 1))  # merge box for mon 5200
-        violations['H' + str(i)] = ""  # leave time
-        violations['H' + str(i)].style = input_s
-        violations['H' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        violations['I' + str(i)] = ""  # leave type
-        violations['I' + str(i)].style = input_s
-        violations['H' + str(i + 1)] = ""  # 5200 time
-        violations['H' + str(i + 1)].style = input_s
-        violations['H' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # tuesday
-        violations.merge_cells('J' + str(i + 1) + ':K' + str(i + 1))  # merge box for tue 5200
-        violations['J' + str(i)] = ""  # leave time
-        violations['J' + str(i)].style = input_s
-        violations['J' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        violations['K' + str(i)] = ""  # leave type
-        violations['K' + str(i)].style = input_s
-        violations['J' + str(i + 1)] = ""  # 5200 time
-        violations['J' + str(i + 1)].style = input_s
-        violations['J' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # wednesday
-        violations.merge_cells('L' + str(i + 1) + ':M' + str(i + 1))  # merge box for wed 5200
-        violations['L' + str(i)] = ""  # leave time
-        violations['L' + str(i)].style = input_s
-        violations['L' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        violations['M' + str(i)] = ""  # leave type
-        violations['M' + str(i)].style = input_s
-        violations['L' + str(i + 1)] = ""  # 5200 time
-        violations['L' + str(i + 1)].style = input_s
-        violations['M' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # thursday
-        violations.merge_cells('N' + str(i + 1) + ':O' + str(i + 1))  # merge box for thr 5200
-        violations['N' + str(i)] = ""  # leave time
-        violations['N' + str(i)].style = input_s
-        violations['N' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        violations['O' + str(i)] = ""  # leave type
-        violations['O' + str(i)].style = input_s
-        violations['N' + str(i + 1)] = ""  # 5200 time
-        violations['N' + str(i + 1)].style = input_s
-        violations['N' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # friday
-        violations.merge_cells('P' + str(i + 1) + ':Q' + str(i + 1))  # merge box for fri 5200
-        violations['P' + str(i)] = ""  # leave time
-        violations['P' + str(i)].style = input_s
-        violations['P' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        violations['Q' + str(i)] = ""  # leave type
-        violations['Q' + str(i)].style = input_s
-        violations['P' + str(i + 1)] = ""  # 5200 time
-        violations['P' + str(i + 1)].style = input_s
-        violations['P' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # calculated fields
-        # hidden columns
-        formula_a = "=SUM(%s!D%s:P%s)+%s!D%s + %s!H%s + %s!J%s + %s!L%s + " \
-                    "%s!N%s + %s!P%s" % ("violations", str(i + 1), str(i + 1),
-                                         "violations", str(i), "violations", str(i), "violations", str(i),
-                                         "violations", str(i), "violations", str(i), "violations", str(i))
-        violations['R' + str(i)] = formula_a
-        violations['R' + str(i)].style = calcs
-        violations['R' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        formula_b = "=SUM(%s!C%s+%s!D%s+%s!H%s+%s!J%s+%s!L%s+%s!N%s+%s!P%s)" % \
-                    ("violations", str(i), "violations", str(i), "violations", str(i),
-                     "violations", str(i), "violations", str(i), "violations", str(i),
-                     "violations", str(i))
-        violations['R' + str(i + 1)] = formula_b
-        violations['R' + str(i + 1)].style = calcs
-        violations['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
-        # weekly violation
-        violations.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-        formula_c = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" \
-                    % ("violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1),)
-        violations['S' + str(i)] = formula_c
-        violations['S' + str(i)].style = calcs
-        violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
-        # daily violation
-        formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                    "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
-                    "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
-                    "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
-                    "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1))
-        violations['T' + str(i)] = formula_d
-        violations.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
-        violations['T' + str(i)].style = calcs
-        violations['T' + str(i)].number_format = "#,###.00"
-        # wed adjustment
-        violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-        formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                    "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
-                    "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
-                    "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
-                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
-                    "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                       "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i))
-        violations['U' + str(i)] = formula_e
-        violations['U' + str(i)].style = vert_calcs
-        violations['U' + str(i)].number_format = "#,###.00"
-        # thr adjustment
-        formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                    "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
-                    "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
-                    "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
-                    "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i)
-                       )
-        violations.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
-        violations['V' + str(i)] = formula_f
-        violations['V' + str(i)].style = vert_calcs
-        violations['V' + str(i)].number_format = "#,###.00"
-        # fri adjustment
-        violations.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-        formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                    "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
-                    "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
-                    "IF(AND(%s!S%s>0,%s!P%s>12)," \
-                    "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                    % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                       "violations", str(i + 1), "violations", str(i + 1), "violations", str(i))
-        violations['W' + str(i)] = formula_g
-        violations['W' + str(i)].style = vert_calcs
-        violations['W' + str(i)].number_format = "#,###.00"
-        # total violation
-        violations.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
-        formula_h = "=SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
-                    % ("violations", str(i), str(i), "violations", str(i),
-                       "violations", str(i), "violations", str(i))
-        violations['X' + str(i)] = formula_h
-        violations['X' + str(i)].style = calcs
-        violations['X' + str(i)].number_format = "#,###.00"
-        formula_i = "=IF(%s!A%s=0,\"\",%s!A%s)" % ("violations", str(i), "violations", str(i))
-        summary['A' + str(summary_i)] = formula_i
-        summary['A' + str(summary_i)].style = input_name
-        formula_j = "=%s!X%s" % ("violations", str(i))
-        summary['B' + str(summary_i)] = formula_j
-        summary['B' + str(summary_i)].style = input_s
-        summary['B' + str(summary_i)].number_format = "#,###.00"
-        summary.row_dimensions[summary_i].height = 10  # adjust all row height
-        i += 2
-        summary_i += 1
-    # display totals for all violations
-    violations.merge_cells('P' + str(i + 1) + ':T' + str(i + 1))
-    violations['P' + str(i + 1)] = "Total Violations"
-    violations['P' + str(i + 1)].style = col_header
-    violations.merge_cells('V' + str(i + 1) + ':X' + str(i + 1))
-    formula_k = "=SUM(%s!X%s:X%s)" % ("violations", "9", str(i))
-    violations['V' + str(i + 1)] = formula_k
-    violations['V' + str(i + 1)].style = calcs
-    violations['V' + str(i + 1)].number_format = "#,###.00"
-    violations.row_dimensions[i].height = 10  # adjust all row height
-    violations.row_dimensions[i + 1].height = 10  # adjust all row height
-    # name the excel file
-    xl_filename = "kb_om" + str(format(projvar.invran_date_week[0], "_%y_%m_%d")) + ".xlsx"
-    if messagebox.askokcancel("Spreadsheet generator",
-                              "Do you want to generate a spreadsheet?",
-                              parent=frame):
-        try:
-            wb.save(dir_path('over_max_spreadsheet') + xl_filename)
-            messagebox.showinfo("Spreadsheet generator",
-                                "Your spreadsheet was successfully generated. \n"
-                                "File is named: {}".format(xl_filename),
-                                parent=frame)
-            if sys.platform == "win32":  # open the text document
-                os.startfile(dir_path('over_max_spreadsheet') + xl_filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/over_max_spreadsheet/' + xl_filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('over_max_spreadsheet') + xl_filename])
-        except:
-            messagebox.showerror("Spreadsheet generator",
-                                 "The spreadsheet was not generated. \n"
-                                 "Suggestion: "
-                                 "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).",
-                                 parent=frame)
 
 
 def ns_config_apply(frame, text_array, color_array):
@@ -7240,89 +5046,89 @@ def informalc_rptgrvsum(frame, result):
         result = list(result)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
-        try:
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Settlement List\n\n")
-            i = 1
-            for sett in result:
-                sett = list(sett)  # correct for legacy problem of NULL Settlement Levels
-                if sett[8] is None:
-                    sett[8] = "unknown"
-                sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
-                query = inquire(sql)
-                num_space = 3 - (len(str(i)))  # number of spaces for number
-                awardxhour = 0
-                awardxamt = 0
-                for rec in query:
-                    hour = 0.0
-                    rate = 0.0
-                    amt = 0
-                    if rec[2]:
-                        hour = float(rec[2])
-                    if rec[3]:
-                        rate = float(rec[3])
-                    if rec[4]:
-                        amt = float(rec[4])
-                    if hour and rate:
-                        awardxhour = awardxhour + (hour * rate)
-                    if amt:
-                        awardxamt = awardxamt + amt
-                space = " "
-                space = space + (num_space * " ")
-                if i > 99:
-                    report.write(str(i) + "\n" + "    Grievance Number:   " + sett[0] + "\n")
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("Settlement List\n\n")
+        i = 1
+        for sett in result:
+            sett = list(sett)  # correct for legacy problem of NULL Settlement Levels
+            if sett[8] is None:
+                sett[8] = "unknown"
+            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
+            query = inquire(sql)
+            num_space = 3 - (len(str(i)))  # number of spaces for number
+            awardxhour = 0
+            awardxamt = 0
+            for rec in query:
+                hour = 0.0
+                rate = 0.0
+                amt = 0
+                if rec[2]:
+                    hour = float(rec[2])
+                if rec[3]:
+                    rate = float(rec[3])
+                if rec[4]:
+                    amt = float(rec[4])
+                if hour and rate:
+                    awardxhour = awardxhour + (hour * rate)
+                if amt:
+                    awardxamt = awardxamt + amt
+            space = " "
+            space = space + (num_space * " ")
+            if i > 99:
+                report.write(str(i) + "\n" + "    Grievance Number:   " + sett[0] + "\n")
+            else:
+                report.write(str(i) + space + "Grievance Number:   " + sett[0] + "\n")
+            start = dt_converter(sett[1]).strftime("%m/%d/%Y")
+            end = dt_converter(sett[2]).strftime("%m/%d/%Y")
+            sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
+            report.write("    Dates of Violation: " + start + " - " + end + "\n")
+            report.write("    Signing Date:       " + sign + "\n")
+            report.write("    Settlement Level    " + sett[8] + "\n")
+            report.write("    Station:            " + sett[4] + "\n")
+            report.write("    GATS Number:        " + sett[5] + "\n")
+            report.write("    Documentation:      " + sett[6] + "\n")
+            report.write("    Description:        " + sett[7] + "\n\n")
+            report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
+            report.write("    -----------------------------------------------------------------\n")
+            if len(query) == 0:
+                report.write("         No awards recorded for this settlement.\n")
+            cc = 1
+            for rec in query:
+                if rec[2]:
+                    hours = "{0:.2f}".format(float(rec[2]))
                 else:
-                    report.write(str(i) + space + "Grievance Number:   " + sett[0] + "\n")
-                start = dt_converter(sett[1]).strftime("%m/%d/%Y")
-                end = dt_converter(sett[2]).strftime("%m/%d/%Y")
-                sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
-                report.write("    Dates of Violation: " + start + " - " + end + "\n")
-                report.write("    Signing Date:       " + sign + "\n")
-                report.write("    Settlement Level    " + sett[8] + "\n")
-                report.write("    Station:            " + sett[4] + "\n")
-                report.write("    GATS Number:        " + sett[5] + "\n")
-                report.write("    Documentation:      " + sett[6] + "\n")
-                report.write("    Description:        " + sett[7] + "\n\n")
-                report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
-                report.write("    -----------------------------------------------------------------\n")
-                if len(query) == 0:
-                    report.write("         No awards recorded for this settlement.\n")
-                cc = 1
-                for rec in query:
-                    if rec[2]:
-                        hours = "{0:.2f}".format(float(rec[2]))
-                    else:
-                        hours = "---"
-                    if rec[3]:
-                        rate = "{0:.2f}".format(float(rec[3]))
-                    else:
-                        rate = "---"
-                    if rec[2] and rec[3]:
-                        adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
-                    else:
-                        adj = "---"
-                    if rec[4]:
-                        amt = "{0:.2f}".format(float(rec[4]))
-                    else:
-                        amt = "---"
-                    report.write(
-                        '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
-                    cc += 1
-                report.write("    -----------------------------------------------------------------\n")
-                report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
-                                                              .format(float(awardxhour))))
-                report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
-                                                              .format(float(awardxamt))))
-                report.write("\n\n\n")
-                i += 1
-            report.close()
+                    hours = "---"
+                if rec[3]:
+                    rate = "{0:.2f}".format(float(rec[3]))
+                else:
+                    rate = "---"
+                if rec[2] and rec[3]:
+                    adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
+                else:
+                    adj = "---"
+                if rec[4]:
+                    amt = "{0:.2f}".format(float(rec[4]))
+                else:
+                    amt = "---"
+                report.write(
+                    '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
+                cc += 1
+            report.write("    -----------------------------------------------------------------\n")
+            report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
+                                                          .format(float(awardxhour))))
+            report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
+                                                          .format(float(awardxamt))))
+            report.write("\n\n\n")
+            i += 1
+        report.close()
+        try:
             if sys.platform == "win32":
                 os.startfile(dir_path('infc_grv') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('infc_grv') + filename])
-        except:
+        except PermissionError:
             messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
@@ -7334,95 +5140,19 @@ def informalc_bycarriers(frame, result):
             unique_grv.append(grv[0])  # put these in "unique_grv"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('infc_grv') + filename, "w")
-        report.write("Settlement Report By Carriers\n\n")
-        for name in unique_carrier:
-            report.write("{:<30}\n\n".format(name))
-            report.write("        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
-            report.write("    ------------------------------------------------------------------------------------\n")
-            results = []
-            for ug in unique_grv:  # do search for each grievance in list of unique grievances
-                sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
-                      "FROM informalc_awards, informalc_grv " \
-                      "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s'" \
-                      "and informalc_awards.grv_no = '%s' " \
-                      "ORDER BY informalc_grv.date_signed" % (name, ug)
-                query = inquire(sql)
-                if query:
-                    for q in query:
-                        q = list(q)
-                        results.append(q)
-            if len(results) == 0:
-                report.write("    There are no awards on record for this carrier.\n")
-            total_adj = 0
-            total_amt = 0
-            i = 1
-            for r in results:
-                if r[1]:
-                    hours = "{0:.2f}".format(float(r[1]))
-                else:
-                    hours = "---"
-                if r[2]:
-                    rate = "{0:.2f}".format(float(r[2]))
-                else:
-                    rate = "---"
-                if r[1] and r[2]:
-                    adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
-                    total_adj = total_adj + (float(r[1]) * float(r[2]))
-                else:
-                    adj = "---"
-                if r[3]:
-                    amt = "{0:.2f}".format(float(r[3]))
-                    total_amt = total_amt + float(r[3])
-                else:
-                    amt = "---"
-                if r[5] is None or r[5] == "unknown":
-                    r[5] = "---"
-                report.write("    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
-                             .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
-                i += 1
-            report.write("    ------------------------------------------------------------------------------------\n")
-            t_adj = "{0:.2f}".format(float(total_adj))
-            t_amt = "{0:.2f}".format(float(total_amt))
-            report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
-            report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
-            report.write("\n\n\n")
-        report.close()
-        if sys.platform == "win32":
-            os.startfile(dir_path('infc_grv') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('infc_grv') + filename])
-    except:
-        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
-
-
-def informalc_apply_bycarrier(frame, result, names, cursor):
-    if len(cursor) == 0:
-        return
-    unique_grv = []  # get a list of all grv numbers in search range
-    for grv in result:
-        if grv[0] not in unique_grv:
-            unique_grv.append(grv[0])  # put these in "unique_grv"
-    name = names[cursor[0]]
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = "infc_grv_list" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('infc_grv') + filename, "w")
-        report.write("Settlement Report By Carrier\n\n")
+    report = open(dir_path('infc_grv') + filename, "w")
+    report.write("Settlement Report By Carriers\n\n")
+    for name in unique_carrier:
         report.write("{:<30}\n\n".format(name))
-        report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
+        report.write("        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
         report.write("    ------------------------------------------------------------------------------------\n")
         results = []
         for ug in unique_grv:  # do search for each grievance in list of unique grievances
             sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
                   "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
                   "FROM informalc_awards, informalc_grv " \
-                  "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
-                  "and informalc_awards.grv_no = '%s'" \
+                  "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s'" \
+                  "and informalc_awards.grv_no = '%s' " \
                   "ORDER BY informalc_grv.date_signed" % (name, ug)
             query = inquire(sql)
             if query:
@@ -7455,7 +5185,7 @@ def informalc_apply_bycarrier(frame, result, names, cursor):
                 amt = "---"
             if r[5] is None or r[5] == "unknown":
                 r[5] = "---"
-            report.write("    {:<4}{:<18}{:>7}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+            report.write("    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
                          .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
             i += 1
         report.write("    ------------------------------------------------------------------------------------\n")
@@ -7463,14 +5193,90 @@ def informalc_apply_bycarrier(frame, result, names, cursor):
         t_amt = "{0:.2f}".format(float(total_amt))
         report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
         report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
-        report.close()
+        report.write("\n\n\n")
+    report.close()
+    try:
         if sys.platform == "win32":
             os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
-    except:
+    except PermissionError:
+        messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
+
+
+def informalc_apply_bycarrier(frame, result, names, cursor):
+    if len(cursor) == 0:
+        return
+    unique_grv = []  # get a list of all grv numbers in search range
+    for grv in result:
+        if grv[0] not in unique_grv:
+            unique_grv.append(grv[0])  # put these in "unique_grv"
+    name = names[cursor[0]]
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = "infc_grv_list" + "_" + stamp + ".txt"
+    report = open(dir_path('infc_grv') + filename, "w")
+    report.write("Settlement Report By Carrier\n\n")
+    report.write("{:<30}\n\n".format(name))
+    report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
+    report.write("    ------------------------------------------------------------------------------------\n")
+    results = []
+    for ug in unique_grv:  # do search for each grievance in list of unique grievances
+        sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
+              "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
+              "FROM informalc_awards, informalc_grv " \
+              "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
+              "and informalc_awards.grv_no = '%s'" \
+              "ORDER BY informalc_grv.date_signed" % (name, ug)
+        query = inquire(sql)
+        if query:
+            for q in query:
+                q = list(q)
+                results.append(q)
+    if len(results) == 0:
+        report.write("    There are no awards on record for this carrier.\n")
+    total_adj = 0
+    total_amt = 0
+    i = 1
+    for r in results:
+        if r[1]:
+            hours = "{0:.2f}".format(float(r[1]))
+        else:
+            hours = "---"
+        if r[2]:
+            rate = "{0:.2f}".format(float(r[2]))
+        else:
+            rate = "---"
+        if r[1] and r[2]:
+            adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
+            total_adj = total_adj + (float(r[1]) * float(r[2]))
+        else:
+            adj = "---"
+        if r[3]:
+            amt = "{0:.2f}".format(float(r[3]))
+            total_amt = total_amt + float(r[3])
+        else:
+            amt = "---"
+        if r[5] is None or r[5] == "unknown":
+            r[5] = "---"
+        report.write("    {:<4}{:<18}{:>7}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+                     .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
+        i += 1
+    report.write("    ------------------------------------------------------------------------------------\n")
+    t_adj = "{0:.2f}".format(float(total_adj))
+    t_amt = "{0:.2f}".format(float(total_amt))
+    report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
+    report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
+    report.close()
+    try:
+        if sys.platform == "win32":
+            os.startfile(dir_path('infc_grv') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('infc_grv') + filename])
+    except PermissionError:
         messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
@@ -7517,75 +5323,75 @@ def informalc_rptbygrv(frame, grv_info):
         grv_info[8] = "unknown"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = "infc_grv_list" + "_" + stamp + ".txt"
+    report = open(dir_path('infc_grv') + filename, "w")
+    report.write("Settlement Summary\n\n")
+    sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[0]
+    query = inquire(sql)
+    awardxhour = 0
+    awardxamt = 0
+    report.write("    Grievance Number:   " + grv_info[0] + "\n")
+    start = dt_converter(grv_info[1]).strftime("%m/%d/%Y")
+    end = dt_converter(grv_info[2]).strftime("%m/%d/%Y")
+    sign = dt_converter(grv_info[3]).strftime("%m/%d/%Y")
+    report.write("    Dates of Violation: " + start + " - " + end + "\n")
+    report.write("    Signing Date:       " + sign + "\n")
+    report.write("    Settlement Level    " + grv_info[8] + "\n")
+    report.write("    Station:            " + grv_info[4] + "\n")
+    report.write("    GATS Number:        " + grv_info[5] + "\n")
+    report.write("    Documentation:      " + grv_info[6] + "\n")
+    report.write("    Description:        " + grv_info[7] + "\n\n")
+    report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
+    report.write("    -----------------------------------------------------------------\n")
+    if len(query) == 0:
+        report.write("         No awards recorded for this settlement.\n")
+    cc = 1
+    for rec in query:
+        hour = 0.0
+        rate = 0.0
+        amt = 0
+        if rec[2]:
+            hour = float(rec[2])
+        if rec[3]:
+            rate = float(rec[3])
+        if rec[4]:
+            amt = float(rec[4])
+        if hour and rate:
+            awardxhour = awardxhour + (hour * rate)
+        if amt:
+            awardxamt = awardxamt + amt
+        if rec[2]:
+            hours = "{0:.2f}".format(float(rec[2]))
+        else:
+            hours = "---"
+        if rec[3]:
+            rate = "{0:.2f}".format(float(rec[3]))
+        else:
+            rate = "---"
+        if rec[2] and rec[3]:
+            adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
+        else:
+            adj = "---"
+        if rec[4]:
+            amt = "{0:.2f}".format(float(rec[4]))
+        else:
+            amt = "---"
+        report.write('    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
+        cc += 1
+    report.write("    -----------------------------------------------------------------\n")
+    report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
+                                                  .format(float(awardxhour))))
+    report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
+                                                  .format(float(awardxamt))))
+    report.write("\n\n\n")
+    report.close()
     try:
-        report = open(dir_path('infc_grv') + filename, "w")
-        report.write("Settlement Summary\n\n")
-        sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[0]
-        query = inquire(sql)
-        awardxhour = 0
-        awardxamt = 0
-        report.write("    Grievance Number:   " + grv_info[0] + "\n")
-        start = dt_converter(grv_info[1]).strftime("%m/%d/%Y")
-        end = dt_converter(grv_info[2]).strftime("%m/%d/%Y")
-        sign = dt_converter(grv_info[3]).strftime("%m/%d/%Y")
-        report.write("    Dates of Violation: " + start + " - " + end + "\n")
-        report.write("    Signing Date:       " + sign + "\n")
-        report.write("    Settlement Level    " + grv_info[8] + "\n")
-        report.write("    Station:            " + grv_info[4] + "\n")
-        report.write("    GATS Number:        " + grv_info[5] + "\n")
-        report.write("    Documentation:      " + grv_info[6] + "\n")
-        report.write("    Description:        " + grv_info[7] + "\n\n")
-        report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
-        report.write("    -----------------------------------------------------------------\n")
-        if len(query) == 0:
-            report.write("         No awards recorded for this settlement.\n")
-        cc = 1
-        for rec in query:
-            hour = 0.0
-            rate = 0.0
-            amt = 0
-            if rec[2]:
-                hour = float(rec[2])
-            if rec[3]:
-                rate = float(rec[3])
-            if rec[4]:
-                amt = float(rec[4])
-            if hour and rate:
-                awardxhour = awardxhour + (hour * rate)
-            if amt:
-                awardxamt = awardxamt + amt
-            if rec[2]:
-                hours = "{0:.2f}".format(float(rec[2]))
-            else:
-                hours = "---"
-            if rec[3]:
-                rate = "{0:.2f}".format(float(rec[3]))
-            else:
-                rate = "---"
-            if rec[2] and rec[3]:
-                adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
-            else:
-                adj = "---"
-            if rec[4]:
-                amt = "{0:.2f}".format(float(rec[4]))
-            else:
-                amt = "---"
-            report.write('    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
-            cc += 1
-        report.write("    -----------------------------------------------------------------\n")
-        report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
-                                                      .format(float(awardxhour))))
-        report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
-                                                      .format(float(awardxamt))))
-        report.write("\n\n\n")
-        report.close()
         if sys.platform == "win32":
             os.startfile(dir_path('infc_grv') + filename)
         if sys.platform == "linux":
             subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
-    except:
+    except PermissionError:
         messagebox.showerror("Report Generator", "The report was not generated.", parent=frame)
 
 
@@ -8900,7 +6706,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
                     subprocess.call(["xdg-open", 'kb_sub/weekly_availability/' + xl_filename])
                 if sys.platform == "darwin":
                     subprocess.call(["open", dir_path('weekly_availability') + xl_filename])
-            except:
+            except PermissionError:
                 messagebox.showerror("Spreadsheet generator",
                                      "The spreadsheet was not generated. \n"
                                      "Suggestion: "
@@ -10902,61 +8708,6 @@ def ee_skimmer(frame):
         return
 
 
-def pay_period_guide(frame):
-    i = 0
-    year = simpledialog.askinteger("Pay Period Guide", "Enter the year you want generated.", parent=frame,
-                                   minvalue=2, maxvalue=9999)
-    if year is not None:
-        firstday = datetime(1, 12, 22, 0, 0, 0)
-        while int(firstday.strftime("%Y")) != year - 1:
-            firstday += timedelta(weeks=52)
-            if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
-                firstday += timedelta(weeks=2)
-        filename = "pp_guide" + "_" + str(year) + ".txt"  # create the filename for the text doc
-        try:
-            report = open(dir_path('pp_guide') + filename, "w")  # create the document
-            report.write("\nPay Period Guide\n")
-            report.write("Year: " + str(year) + "\n")
-            report.write("---------------------------------------------\n\n")
-            report.write("                 START (Sat):   END (Fri):         \n")
-            for i in range(1, 27):
-                # calculate dates
-                wk1_start = firstday
-                wk1_end = firstday + timedelta(days=6)
-                wk2_start = firstday + timedelta(days=7)
-                wk2_end = firstday + timedelta(days=13)
-                report.write("PP: " + str(i).zfill(2) + "\n")
-                report.write(
-                    "\t week 1: " + wk1_start.strftime("%b %d, %Y") + " - " + wk1_end.strftime("%b %d, %Y") + "\n")
-                report.write(
-                    "\t week 2: " + wk2_start.strftime("%b %d, %Y") + " - " + wk2_end.strftime("%b %d, %Y") + "\n")
-                # increment the first day by two weeks
-                firstday += timedelta(days=14)
-            # handle cases where there are 27 pay periods
-            if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
-                i += 1
-                wk1_start = firstday
-                wk1_end = firstday + timedelta(days=6)
-                wk2_start = firstday + timedelta(days=7)
-                wk2_end = firstday + timedelta(days=13)
-                report.write("PP: " + str(i).zfill(2) + "\n")
-                report.write(
-                    "\t week 1: " + wk1_start.strftime("%b %d, %Y") + " - " + wk1_end.strftime("%b %d, %Y") + "\n")
-                report.write(
-                    "\t week 2: " + wk2_start.strftime("%b %d, %Y") + " - " + wk2_end.strftime("%b %d, %Y") + "\n")
-            report.close()
-            if sys.platform == "win32":
-                os.startfile(dir_path('pp_guide') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/pp_guide/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('pp_guide') + filename])
-        except:  # ???
-            messagebox.showerror("Report Generator",
-                                 "The report was not generated.",
-                                 parent=frame)
-
-
 def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
     year = sat_range.strftime("%Y")
     pp_end = find_pp(int(year) + 1, "011")
@@ -11159,204 +8910,204 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
     if len(max_hr) > 0 or len(max_ft_day) > 0 or len(max_aux_day) > 0:
         pp_str = pp[:-3] + "_" + pp[4] + pp[5] + "_" + pp[6]
         filename = "max" + "_" + pp_str + ".txt"
-        try:
-            report = open(dir_path('over_max') + filename, "w")
-            report.write("12 and 60 Hour Violations Report\n\n")
-            report.write("pay period: " + pp[:-3] + " " + pp[4] + pp[5] + "-" + pp[6] + "\n")  # printe pay period
-            pp_date = find_pp(int(pp[:-3]), pp[-3:])  # send year and pp to get the date
-            pp_date_end = pp_date + timedelta(days=6)  # add six days to get the last part of the range
-            report.write(
-                "week of: " + pp_date.strftime("%x") + " - " + pp_date_end.strftime("%x") + "\n")  # printe date
-            report.write("\n60 hour violations \n\n")
-            report.write("name                              total   over\n")
-            report.write("-----------------------------------------------\n")
-            if len(max_hr) == 0:
-                report.write("no violations" + "\n")
-            else:
-                diff_total = 0
-                max_hr.sort(key=itemgetter(0))
-                for item in max_hr:
-                    tabs = 30 - (len(item[0]))
-                    period = "."
-                    period = period + (tabs * ".")
-                    diff = float(item[2]) - 60
-                    diff_total = diff_total + diff
-                    report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2]))
-                                 + "   " + "{0:.2f}".format(float(diff)).rjust(5, " ") + "\n")
-                    wmax_add = (item[0], item[1], diff)
-                    weekly_max.append(wmax_add)  # catch totals of violations for the week
-                report.write("\n" + "                                   total:  " + "{0:.2f}".format(float(diff_total))
-                             + "\n")
-            all_extra.sort(key=itemgetter(0))
-            report.write("\nNon 5200 codes contributing to 60 hour violations  \n\n")
-            report.write("day   name                            hr type   hours\n")
-            report.write("-----------------------------------------------------\n")
-            if len(all_extra) == 0:
-                report.write("no contributions" + "\n")
-            for i in range(len(all_extra)):
-                tabs = 28 - (len(all_extra[i][0]))
+        report = open(dir_path('over_max') + filename, "w")
+        report.write("12 and 60 Hour Violations Report\n\n")
+        report.write("pay period: " + pp[:-3] + " " + pp[4] + pp[5] + "-" + pp[6] + "\n")  # printe pay period
+        pp_date = find_pp(int(pp[:-3]), pp[-3:])  # send year and pp to get the date
+        pp_date_end = pp_date + timedelta(days=6)  # add six days to get the last part of the range
+        report.write(
+            "week of: " + pp_date.strftime("%x") + " - " + pp_date_end.strftime("%x") + "\n")  # printe date
+        report.write("\n60 hour violations \n\n")
+        report.write("name                              total   over\n")
+        report.write("-----------------------------------------------\n")
+        if len(max_hr) == 0:
+            report.write("no violations" + "\n")
+        else:
+            diff_total = 0
+            max_hr.sort(key=itemgetter(0))
+            for item in max_hr:
+                tabs = 30 - (len(item[0]))
                 period = "."
                 period = period + (tabs * ".")
-                report.write(day_xlr[all_extra[i][2]] + "   " + all_extra[i][0] + ", " + all_extra[i][1] + period +
-                             leave_xlr[all_extra[i][3]] + "  " + "{0:.2f}".format(float(all_extra[i][4])).rjust(5, " ")
-                             + "\n")
-            report.write("\n\n12 hour full time carrier violations \n\n")
-            report.write("day   name                        total   over   sum\n")
-            report.write("-----------------------------------------------------\n")
-            if len(max_ft_day) == 0:
-                report.write("no violations" + "\n")
-            diff_sum = 0
-            sum_total = 0
-            max_ft_day.sort(key=itemgetter(0))
-            for i in range(len(max_ft_day)):
-                jump = "no"  # triggers an analysis of the candidates array
-                diff = float(max_ft_day[i][3]) - 12
-                diff_sum = diff_sum + diff
-                if i != len(max_ft_day) - 1:  # if the loop has not reached the end of the list
-                    # if the name current and next name are the same
-                    if max_ft_day[i][0] == max_ft_day[i + 1][0] and max_ft_day[i][1] == max_ft_day[i + 1][1]:
-                        jump = "yes"  # bypasses an analysis of the candidates array
-                        tabs = 24 - (len(max_ft_day[i][0]))
-                        period = "."
-                        period = period + (tabs * ".")
-                        report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] +
-                                     period + "{0:.2f}".format(
-                            float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) + "\n")
-                if jump == "no":
+                diff = float(item[2]) - 60
+                diff_total = diff_total + diff
+                report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2]))
+                             + "   " + "{0:.2f}".format(float(diff)).rjust(5, " ") + "\n")
+                wmax_add = (item[0], item[1], diff)
+                weekly_max.append(wmax_add)  # catch totals of violations for the week
+            report.write("\n" + "                                   total:  " + "{0:.2f}".format(float(diff_total))
+                         + "\n")
+        all_extra.sort(key=itemgetter(0))
+        report.write("\nNon 5200 codes contributing to 60 hour violations  \n\n")
+        report.write("day   name                            hr type   hours\n")
+        report.write("-----------------------------------------------------\n")
+        if len(all_extra) == 0:
+            report.write("no contributions" + "\n")
+        for i in range(len(all_extra)):
+            tabs = 28 - (len(all_extra[i][0]))
+            period = "."
+            period = period + (tabs * ".")
+            report.write(day_xlr[all_extra[i][2]] + "   " + all_extra[i][0] + ", " + all_extra[i][1] + period +
+                         leave_xlr[all_extra[i][3]] + "  " + "{0:.2f}".format(float(all_extra[i][4])).rjust(5, " ")
+                         + "\n")
+        report.write("\n\n12 hour full time carrier violations \n\n")
+        report.write("day   name                        total   over   sum\n")
+        report.write("-----------------------------------------------------\n")
+        if len(max_ft_day) == 0:
+            report.write("no violations" + "\n")
+        diff_sum = 0
+        sum_total = 0
+        max_ft_day.sort(key=itemgetter(0))
+        for i in range(len(max_ft_day)):
+            jump = "no"  # triggers an analysis of the candidates array
+            diff = float(max_ft_day[i][3]) - 12
+            diff_sum = diff_sum + diff
+            if i != len(max_ft_day) - 1:  # if the loop has not reached the end of the list
+                # if the name current and next name are the same
+                if max_ft_day[i][0] == max_ft_day[i + 1][0] and max_ft_day[i][1] == max_ft_day[i + 1][1]:
+                    jump = "yes"  # bypasses an analysis of the candidates array
                     tabs = 24 - (len(max_ft_day[i][0]))
                     period = "."
                     period = period + (tabs * ".")
-                    report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] + period
-                                 + "{0:.2f}".format(float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) +
-                                 "   " + "{0:.2f}".format(float(diff_sum)) + "\n")
-                    dmax_add = (max_ft_day[i][0], max_ft_day[i][1], diff_sum)
-                    daily_max.append(dmax_add)  # catch sum of daily violations for the week
-                    sum_total = sum_total + diff_sum
-                    diff_sum = 0
-            report.write("\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total))
-                         + "\n")
-            report.write("\n11.50 hour auxiliary carrier violations \n\n")
-            report.write("day   name                        total   over   sum\n")
-            report.write("-----------------------------------------------------\n")
-            if len(max_aux_day) == 0:
-                report.write("no violations" + "\n")
-            diff_sum = 0
-            sum_total = 0
-            max_aux_day.sort(key=itemgetter(0))
-            for i in range(len(max_aux_day)):
-                jump = "no"  # triggers an analysis of the candidates array
-                diff = float(max_aux_day[i][3]) - 11.5
-                diff_sum = diff_sum + diff
-                if i != len(max_aux_day) - 1:  # if the loop has not reached the end of the list
-                    # if the current and next name are the same
-                    if max_aux_day[i][0] == max_aux_day[i + 1][0] and max_aux_day[i][1] == max_aux_day[i + 1][1]:
-                        jump = "yes"  # bypasses an analysis of the candidates array
-                        tabs = 24 - (len(max_aux_day[i][0]))
-                        period = "."
-                        period = period + (tabs * ".")
-                        report.write(day_xlr[max_aux_day[i][2]] + "   " + max_aux_day[i][0] + ", "
-                                     + max_aux_day[i][1] + period + "{0:.2f}".format(float(max_aux_day[i][3]))
-                                     + "   " + "{0:.2f}".format(float(diff)) + "\n")
-                if jump == "no":
+                    report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] +
+                                 period + "{0:.2f}".format(
+                        float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) + "\n")
+            if jump == "no":
+                tabs = 24 - (len(max_ft_day[i][0]))
+                period = "."
+                period = period + (tabs * ".")
+                report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] + period
+                             + "{0:.2f}".format(float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) +
+                             "   " + "{0:.2f}".format(float(diff_sum)) + "\n")
+                dmax_add = (max_ft_day[i][0], max_ft_day[i][1], diff_sum)
+                daily_max.append(dmax_add)  # catch sum of daily violations for the week
+                sum_total = sum_total + diff_sum
+                diff_sum = 0
+        report.write("\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total))
+                     + "\n")
+        report.write("\n11.50 hour auxiliary carrier violations \n\n")
+        report.write("day   name                        total   over   sum\n")
+        report.write("-----------------------------------------------------\n")
+        if len(max_aux_day) == 0:
+            report.write("no violations" + "\n")
+        diff_sum = 0
+        sum_total = 0
+        max_aux_day.sort(key=itemgetter(0))
+        for i in range(len(max_aux_day)):
+            jump = "no"  # triggers an analysis of the candidates array
+            diff = float(max_aux_day[i][3]) - 11.5
+            diff_sum = diff_sum + diff
+            if i != len(max_aux_day) - 1:  # if the loop has not reached the end of the list
+                # if the current and next name are the same
+                if max_aux_day[i][0] == max_aux_day[i + 1][0] and max_aux_day[i][1] == max_aux_day[i + 1][1]:
+                    jump = "yes"  # bypasses an analysis of the candidates array
                     tabs = 24 - (len(max_aux_day[i][0]))
                     period = "."
                     period = period + (tabs * ".")
                     report.write(day_xlr[max_aux_day[i][2]] + "   " + max_aux_day[i][0] + ", "
                                  + max_aux_day[i][1] + period + "{0:.2f}".format(float(max_aux_day[i][3]))
-                                 + "   " + "{0:.2f}".format(float(diff)) + "   " + "{0:.2f}".format(float(diff_sum))
-                                 + "\n")
-                    dmax_add = (max_aux_day[i][0], max_aux_day[i][1], diff_sum)
-                    daily_max.append(dmax_add)  # catch sum of daily violations for the week
-                    sum_total = sum_total + diff_sum
-                    diff_sum = 0
-            report.write(
-                "\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total)) + "\n")
-            weekly_and_daily = []
-            d_max_remove = []
-            w_max_remove = []
-            # find the write the adjustments
-            # get the adjustment
-            adjustment.sort(key=itemgetter(1))
-            adj_sum = 0
-            adj_total = []
-            report.write("\nPost 60 Hour Adjustments \n\n")
-            report.write("day   name                   daily adj    total\n")
-            report.write("-----------------------------------------------\n")
-            if len(adjustment) == 0:
-                report.write("no adjustments" + "\n")
-            for i in range(len(adjustment)):
-                jump = "no"  # triggers an analysis of the adjustment array
-                adj_sum = adj_sum + adjustment[i][3]
-                if i != len(adjustment) - 1:  # if the loop has not reached the end of the list
-                    # if the current and next name are the same
-                    if adjustment[i][1] == adjustment[i + 1][1] and adjustment[i][2] == adjustment[i + 1][2]:
-                        jump = "yes"  # bypasses an analysis of the candidates array
-                        tabs = 24 - (len(adjustment[i][1]))
-                        period = "."
-                        period = period + (tabs * ".")
-                        report.write(adjustment[i][0] + "   " + adjustment[i][1] + ", "
-                                     + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3])) + "\n")
-                if jump == "no":
+                                 + "   " + "{0:.2f}".format(float(diff)) + "\n")
+            if jump == "no":
+                tabs = 24 - (len(max_aux_day[i][0]))
+                period = "."
+                period = period + (tabs * ".")
+                report.write(day_xlr[max_aux_day[i][2]] + "   " + max_aux_day[i][0] + ", "
+                             + max_aux_day[i][1] + period + "{0:.2f}".format(float(max_aux_day[i][3]))
+                             + "   " + "{0:.2f}".format(float(diff)) + "   " + "{0:.2f}".format(float(diff_sum))
+                             + "\n")
+                dmax_add = (max_aux_day[i][0], max_aux_day[i][1], diff_sum)
+                daily_max.append(dmax_add)  # catch sum of daily violations for the week
+                sum_total = sum_total + diff_sum
+                diff_sum = 0
+        report.write(
+            "\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total)) + "\n")
+        weekly_and_daily = []
+        d_max_remove = []
+        w_max_remove = []
+        # find the write the adjustments
+        # get the adjustment
+        adjustment.sort(key=itemgetter(1))
+        adj_sum = 0
+        adj_total = []
+        report.write("\nPost 60 Hour Adjustments \n\n")
+        report.write("day   name                   daily adj    total\n")
+        report.write("-----------------------------------------------\n")
+        if len(adjustment) == 0:
+            report.write("no adjustments" + "\n")
+        for i in range(len(adjustment)):
+            jump = "no"  # triggers an analysis of the adjustment array
+            adj_sum = adj_sum + adjustment[i][3]
+            if i != len(adjustment) - 1:  # if the loop has not reached the end of the list
+                # if the current and next name are the same
+                if adjustment[i][1] == adjustment[i + 1][1] and adjustment[i][2] == adjustment[i + 1][2]:
+                    jump = "yes"  # bypasses an analysis of the candidates array
                     tabs = 24 - (len(adjustment[i][1]))
                     period = "."
                     period = period + (tabs * ".")
                     report.write(adjustment[i][0] + "   " + adjustment[i][1] + ", "
-                                 + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3]))
-                                 + "     " + "{0:.2f}".format(float(adj_sum))
-                                 + "\n")
-                    adj_add = [adjustment[i][1], adjustment[i][2], adj_sum]
-                    adj_sum = 0
-                    adj_total.append(adj_add)  # catch sum of adjustments for the week
-            for w_max in weekly_max:  # find the total violation
-                for d_max in daily_max:
-                    if w_max[0] + w_max[1] == d_max[0] + d_max[
-                        1]:  # look for names with both weekly and daily violations
-                        wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
-                        to_add = [w_max[0], w_max[1], wk_dy_sum]
-                        weekly_and_daily.append(to_add)
-                        d_max_remove.append(d_max)
-                        w_max_remove.append(w_max)
-            weekly_max = [x for x in weekly_max if x not in w_max_remove]
-            daily_max = [x for x in daily_max if x not in d_max_remove]
-            d_max_remove = []
-            w_max_remove = []
-            for d_max in daily_max:
-                for w_max in weekly_max:
-                    if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # if the names match
-                        wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
-                        to_add = [w_max[0], w_max[1], wk_dy_sum]
-                        weekly_and_daily.append(to_add)
-                        d_max_remove.append(d_max)
-                        w_max_remove.append(w_max)
-            weekly_max = [x for x in weekly_max if x not in w_max_remove]  # remove
-            daily_max = [x for x in daily_max if x not in d_max_remove]
-            joint_max = (weekly_max + daily_max + weekly_and_daily)  # add all arrays to get the final array
-            joint_max.sort(key=itemgetter(0, 1))
-            for j in joint_max:  # cycle through the totals and adjustments
-                for a in adj_total:
-                    if j[0] + j[1] == a[0] + a[1]:  # if the names match
-                        j[2] = j[2] - a[2]  # subtract the adjustment from the total
-            report.write("\n\nTotal of the two violations (with adjustments)\n\n")
-            report.write("name                              total\n")
-            report.write("---------------------------------------\n")
-            if len(joint_max) == 0: report.write("no violations" + "\n")
-            great_total = 0
-            for item in joint_max:
-                tabs = 30 - (len(item[0]))
+                                 + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3])) + "\n")
+            if jump == "no":
+                tabs = 24 - (len(adjustment[i][1]))
                 period = "."
                 period = period + (tabs * ".")
-                great_total = great_total + item[2]
-                report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2])).rjust(5, ".") + "\n")
-            report.write(
-                "\n" + "                           total:  " + "{0:.2f}".format(float(great_total)) + "\n")
-            report.close()
+                report.write(adjustment[i][0] + "   " + adjustment[i][1] + ", "
+                             + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3]))
+                             + "     " + "{0:.2f}".format(float(adj_sum))
+                             + "\n")
+                adj_add = [adjustment[i][1], adjustment[i][2], adj_sum]
+                adj_sum = 0
+                adj_total.append(adj_add)  # catch sum of adjustments for the week
+        for w_max in weekly_max:  # find the total violation
+            for d_max in daily_max:
+                if w_max[0] + w_max[1] == d_max[0] + d_max[
+                    1]:  # look for names with both weekly and daily violations
+                    wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
+                    to_add = [w_max[0], w_max[1], wk_dy_sum]
+                    weekly_and_daily.append(to_add)
+                    d_max_remove.append(d_max)
+                    w_max_remove.append(w_max)
+        weekly_max = [x for x in weekly_max if x not in w_max_remove]
+        daily_max = [x for x in daily_max if x not in d_max_remove]
+        d_max_remove = []
+        w_max_remove = []
+        for d_max in daily_max:
+            for w_max in weekly_max:
+                if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # if the names match
+                    wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
+                    to_add = [w_max[0], w_max[1], wk_dy_sum]
+                    weekly_and_daily.append(to_add)
+                    d_max_remove.append(d_max)
+                    w_max_remove.append(w_max)
+        weekly_max = [x for x in weekly_max if x not in w_max_remove]  # remove
+        daily_max = [x for x in daily_max if x not in d_max_remove]
+        joint_max = (weekly_max + daily_max + weekly_and_daily)  # add all arrays to get the final array
+        joint_max.sort(key=itemgetter(0, 1))
+        for j in joint_max:  # cycle through the totals and adjustments
+            for a in adj_total:
+                if j[0] + j[1] == a[0] + a[1]:  # if the names match
+                    j[2] = j[2] - a[2]  # subtract the adjustment from the total
+        report.write("\n\nTotal of the two violations (with adjustments)\n\n")
+        report.write("name                              total\n")
+        report.write("---------------------------------------\n")
+        if len(joint_max) == 0: report.write("no violations" + "\n")
+        great_total = 0
+        for item in joint_max:
+            tabs = 30 - (len(item[0]))
+            period = "."
+            period = period + (tabs * ".")
+            great_total = great_total + item[2]
+            report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2])).rjust(5, ".") + "\n")
+        report.write(
+            "\n" + "                           total:  " + "{0:.2f}".format(float(great_total)) + "\n")
+        report.close()
+        try:
             if sys.platform == "win32":
                 os.startfile(dir_path('over_max') + filename)
             if sys.platform == "linux":
                 subprocess.call(["xdg-open", 'kb_sub/over_max/' + filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('over_max') + filename])
-        except:
+        except PermissionError:
             messagebox.showerror("Report Generator",
                                  "The report was not generated.",
                                  parent=frame)
@@ -11402,7 +9153,7 @@ def remove_file_var(frame, folder):  # removes a file and all contents
                                         .format(folder_name),
                                         parent=frame)
 
-            except:
+            except PermissionError:
                 messagebox.showerror("Delete Folder Contents",
                                      "Failure! {} can not be deleted because it is being used by another program."
                                      .format(folder_name),
@@ -11413,43 +9164,13 @@ def remove_file_var(frame, folder):  # removes a file and all contents
                                parent=frame)
 
 
-def location_klusterbox(frame):  # provides the location of the program
-    archive = ""
-    dbase = None
-    if sys.platform == "darwin":
-        if projvar.platform == "macapp":
-            path = "Applications"
-            dbase = os.path.expanduser("~") + '/Documents/.klusterbox/' + 'mandates.sqlite'
-            archive = os.path.expanduser("~") + '/Documents/klusterbox'
-        if projvar.platform == "py":
-            path = os.getcwd()
-            dbase = os.getcwd() + '/kb_sub/mandates.sqlite'
-            archive = os.getcwd() + '/kb_sub'
-    else:
-        if projvar.platform == "winapp":
-            path = os.getcwd()
-            dbase = os.path.expanduser("~") + '\Documents\.klusterbox\\' + 'mandates.sqlite'
-            archive = os.path.expanduser("~") + '\Documents\klusterbox'
-        else:
-            path = os.getcwd()
-            dbase = os.getcwd() + '\kb_sub\mandates.sqlite'
-            archive = os.getcwd() + '\kb_sub'
-
-    messagebox.showinfo("KLUSTERBOX ",
-                        "On this computer Klusterbox is located at:\n"
-                        "{}\n\nThe Klusterbox database is located at \n"
-                        "{}\n\nThe Klusterbox archive is located at \n"
-                        "{}".format(path, dbase, archive),
-                        parent=frame)
-
-
 def open_docs(frame, doc):  # opens docs in the about_klusterbox() function
     try:
         if sys.platform == "win32":
             if projvar.platform == "py":
                 try:
                     os.startfile(doc)  # in IDE the files are in the project folder
-                except:
+                except FileNotFoundError:
                     os.startfile('kb_sub\\' + doc)  # in KB legacy the files are in the kb_sub folder
             if projvar.platform == "winapp":
                 os.startfile(os.getcwd() + "\\" + doc)
@@ -11460,7 +9181,7 @@ def open_docs(frame, doc):  # opens docs in the about_klusterbox() function
                 subprocess.call(["open", 'Applications/klusterbox.app/Contents/Resources/' + doc])
             if projvar.platform == "py":
                 subprocess.call(["open", doc])
-    except:
+    except FileNotFoundError:
         messagebox.showerror("Project Documents",
                              "The document was not opened or found.",
                              parent=frame)
@@ -12003,28 +9724,28 @@ def spreadsheet_settings(frame):
     Entry(wd[3], width=5, textvariable=min_nl).grid(row=2, column=1, padx=4)
     Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_nl.get(), "min_ss_nl")) \
         .grid(row=2, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_nl")) \
+    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_nl")) \
         .grid(row=2, column=3, padx=4)
     Label(wd[3], text="Minimum rows for Work Assignment", width=30, anchor="w") \
         .grid(row=3, column=0, ipady=5, sticky="w")
     Entry(wd[3], width=5, textvariable=min_wal).grid(row=3, column=1, padx=4)
     Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_wal.get(), "min_ss_wal")) \
         .grid(row=3, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_wal")) \
+    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_wal")) \
         .grid(row=3, column=3, padx=4)
     Label(wd[3], text="Minimum rows for OT Desired", width=30, anchor="w") \
         .grid(row=4, column=0, ipady=5, sticky="w")
     Entry(wd[3], width=5, textvariable=min_otdl).grid(row=4, column=1, padx=4)
     Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_otdl.get(), "min_ss_otdl")) \
         .grid(row=4, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_otdl")) \
+    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_otdl")) \
         .grid(row=4, column=3, padx=4)
     Label(wd[3], text="Minimum rows for Auxiliary", width=30, anchor="w") \
         .grid(row=5, column=0, ipady=5, sticky="w")
     Entry(wd[3], width=5, textvariable=min_aux).grid(row=5, column=1, padx=4)
     Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_aux.get(), "min_ss_aux")) \
         .grid(row=5, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_aux")) \
+    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_aux")) \
         .grid(row=5, column=3, padx=4)
     # Display header for 12 and 60 Hour Violations Spread Sheet
     Label(wd[3], text="").grid(row=6, column=0)
@@ -12038,7 +9759,7 @@ def spreadsheet_settings(frame):
     Button(wd[3], width=5, text="change",
            command=lambda: apply_ss_min(wd[0], min_overmax.get(), "min_ss_overmax")) \
         .grid(row=9, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: tolerance_info(wd[0], "min_overmax")) \
+    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_overmax")) \
         .grid(row=9, column=3, padx=4)
     Label(wd[3], text="_______________________________________________________________________", pady=5) \
         .grid(row=10, columnspan=4, sticky="w")
@@ -12051,43 +9772,6 @@ def spreadsheet_settings(frame):
     Button(wd[4], text="Go Back", width=20, anchor="w",
            command=lambda: (MainFrame().start(frame=wd[0]))).pack(side=LEFT)
     rear_window(wd)
-
-
-def tolerance_info(frame, switch):
-    if switch == "OT_own_route":
-        text = "Sets the tolerance for no list carrier overtime\n" \
-               "\n" \
-               "Enter a value in clicks between 0 and .99"
-    if switch == "OT_off_route":
-        text = "Sets the tolerance for no list and work assignment \n" \
-               "list carriers for overtime off their own routes.\n\n" \
-               "Enter a value in clicks between 0 and .99"
-    if switch == "availability":
-        text = "Sets the tolerance for availability of otdl and " \
-               "aux carriers. Applies to availability to 10, 11.5 \n" \
-               "and 12 hour columns.\n\n" \
-               "Enter a value in clicks between 0 and .99"
-    if switch == "min_nl":
-        text = "Sets the minimum number of rows for the No List " \
-               "section of the spreadsheet. \n\n" \
-               "Enter a value between 0 and 100"
-    if switch == "min_wal":
-        text = "Sets the minimum number of rows for the Work Assignment " \
-               "section of the spreadsheet. \n\n" \
-               "Enter a value between 0 and 100"
-    if switch == "min_otdl":
-        text = "Sets the minimum number of rows for the OT Desired " \
-               "section of the spreadsheet. \n\n" \
-               "Enter a value between 0 and 100"
-    if switch == "min_aux":
-        text = "Sets the minimum number of rows for the Auxiliary " \
-               "section of the spreadsheet. \n\n" \
-               "Enter a value between 0 and 100"
-    if switch == "min_overmax":
-        text = "Sets the minimum number of rows for the " \
-               "12 and 60 Hour Violations spreadsheet. \n\n" \
-               "Enter a value between 0 and 100"
-    messagebox.showinfo("About Tolerances", text, parent=frame)
 
 
 def apply_tolerance(frame, tolerance, type):
@@ -12174,19 +9858,19 @@ def tolerances(frame):
     Entry(ff, width=5, textvariable=ot_own_rt).grid(row=2, column=1, padx=4)
     Button(ff, width=5, text="change", command=lambda: apply_tolerance(f, ot_own_rt.get(), "ot_own_rt")) \
         .grid(row=2, column=2, padx=4)
-    Button(ff, width=5, text="info", command=lambda: tolerance_info(f, "OT_own_route")) \
+    Button(ff, width=5, text="info", command=lambda: Messenger(f).tolerance_info("OT_own_route")) \
         .grid(row=2, column=3, padx=4)
     Label(ff, text="Overtime off own route").grid(row=3, column=0, ipady=5, sticky="w")
     Entry(ff, width=5, textvariable=ot_tol).grid(row=3, column=1)
     Button(ff, width=5, text="change", command=lambda: apply_tolerance(f, ot_tol.get(), "ot_tol")) \
         .grid(row=3, column=2)
-    Button(ff, width=5, text="info", command=lambda: tolerance_info(f, "OT_off_route")) \
+    Button(ff, width=5, text="info", command=lambda: Messenger(f).tolerance_info("OT_off_route")) \
         .grid(row=3, column=3)
     Label(ff, text="Availability tolerance").grid(row=4, column=0, ipady=5, sticky="w")
     Entry(ff, width=5, textvariable=av_tol).grid(row=4, column=1)
     Button(ff, width=5, text="change", command=lambda: apply_tolerance(f, av_tol.get(), "av_tol")) \
         .grid(row=4, column=2)
-    Button(ff, width=5, text="info", command=lambda: tolerance_info(f, "availability")) \
+    Button(ff, width=5, text="info", command=lambda: Messenger(f).tolerance_info("availability")) \
         .grid(row=4, column=3)
     Label(ff, text="____________________________________________________________", pady=5) \
         .grid(row=5, columnspan=4, sticky="w")
@@ -14131,7 +11815,7 @@ def spreadsheet(frame, list_carrier, r_rings):
                                 "Your spreadsheet was successfully generated. \n"
                                 "File is named: {}".format(xl_filename),
                                 parent=frame)
-        except:
+        except PermissionError:
             messagebox.showerror("Spreadsheet generator",
                                  "The spreadsheet was not generated. \n"
                                  "Suggestion: "
@@ -14145,7 +11829,7 @@ def spreadsheet(frame, list_carrier, r_rings):
                 subprocess.call(["xdg-open", 'kb_sub/spreadsheets/' + xl_filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('spreadsheets') + xl_filename])
-        except:
+        except PermissionError:
             messagebox.showerror("Spreadsheet generator",
                                  "The spreadsheet was not opened. \n"
                                  "Suggestion: "
@@ -16356,13 +14040,13 @@ class MainFrame:
             self.end_date = projvar.invran_date_week[6]
         self.carrier_list = []
 
-    def start(self, frame=None):
+    def start(self, frame=None):  # master method for controlling methods in class
         self.win.create(frame)  # create the window
-        self.get_carrierlist()
-        self.pulldown_menu()
-        self.invest_frame.pack()
-        self.investigation_range()
-        self.main_frame.pack()
+        self.get_carrierlist()  # call CarrierList to get Carrier Rec Set
+        self.pulldown_menu()  # create a pulldown menu, and add it to the menu bar
+        self.invest_frame.pack()  # create frame for investigation range widgets
+        self.investigation_range()  # configure widgets for setting investigation range
+        self.main_frame.pack()  # create the main frame for carrier list
         if projvar.invran_station is None:  # if the investigation range is not set
             self.invran_not_set()  # investigation range not set screen
         else:
@@ -16370,14 +14054,14 @@ class MainFrame:
                 self.show_carrierlist()  # show the carrier list
             else:  # if the carrier list is empty
                 self.empty_carrierlist()  # the carrier list is empty screen
-        self.bottom_of_frame()
+        self.bottom_of_frame()  # place necessary code to mainloop the window
         self.win.finish()  # close the window
 
-    def get_carrierlist(self):
+    def get_carrierlist(self):  # call CarrierList to get Carrier Rec Set
         # get carrier list
         self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
-    def investigation_range(self):
+    def investigation_range(self):  # configure widgets for setting investigation range
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=1, columnspan=2)
 
         if projvar.invran_month is None:
@@ -16453,7 +14137,7 @@ class MainFrame:
             Label(self.invest_frame, text="Pay Period: {0}".format(projvar.pay_period),
                   foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
 
-    def invran_not_set(self):
+    def invran_not_set(self):  #investigation range is not set
         Button(self.main_frame, text="Automatic Data Entry", width=30,
                command=lambda: call_indexers(self.win.topframe)).grid(row=0, column=1, pady=5)
         Button(self.main_frame, text="Informal C", width=30,
@@ -16462,7 +14146,7 @@ class MainFrame:
             .grid(row=2, column=1,pady=5)
         Label(self.main_frame, text="", width=macadj(20, 16)).grid(row=0, column=0)  # spacer
 
-    def empty_carrierlist(self):
+    def empty_carrierlist(self):  # the carrier list is empty
         Label(self.main_frame, text="").grid(row=0, column=0)
         Label(self.main_frame, text="The carrier list is empty. ", font=macadj("bold", "Helvetica 18")) \
             .grid(row=1, column=0, sticky="w")
@@ -16470,7 +14154,7 @@ class MainFrame:
         Label(self.main_frame, text="Build the carrier list with the New Carrier feature\nor by running "
                                     "the Automatic Data Entry Feature.").grid(row=3, column=0)
 
-    def show_carrierlist(self):
+    def show_carrierlist(self):  # investigation range is set and carrier list is not empty
         Label(self.main_frame, text="Name (click for Rings)", fg="grey").grid(row=0, column=1, sticky="w")
         Label(self.main_frame, text="List", fg="grey").grid(row=0, column=2, sticky="w")
         Label(self.main_frame, text="N/S", fg="grey").grid(row=0, column=3, sticky="w")
@@ -16520,8 +14204,7 @@ class MainFrame:
             i += 1
             r += 1
 
-    def pulldown_menu(self):
-        # create a pulldown menu, and add it to the menu bar
+    def pulldown_menu(self):  # create a pulldown menu, and add it to the menu bar
         menubar = Menu(self.win.topframe)
         # file menu
         basic_menu = Menu(menubar, tearoff=0)
@@ -16534,7 +14217,7 @@ class MainFrame:
         basic_menu.add_command(label="Mandates Spreadsheet",
                                command=lambda r_rings="x": spreadsheet(self.win.topframe, self.carrier_list, r_rings))
         basic_menu.add_command(label="Over Max Spreadsheet",
-                               command=lambda r_rings="x": overmax_spreadsheet(self.win.topframe, self.carrier_list))
+                               command=lambda r_rings="x": OvermaxSpreadsheet().create(self.win.topframe))
         if projvar.invran_day is None:
             basic_menu.entryconfig(2, state=DISABLED)
             basic_menu.entryconfig(3, state=DISABLED)
@@ -16545,7 +14228,7 @@ class MainFrame:
         basic_menu.add_separator()
         basic_menu.add_command(label="Informal C", command=lambda: informalc(self.win.topframe))
         basic_menu.add_separator()
-        basic_menu.add_command(label="Location", command=lambda: location_klusterbox(self.win.topframe))
+        basic_menu.add_command(label="Location", command=lambda: Messenger(self.win.topframe).location_klusterbox())
         basic_menu.add_command(label="About Klusterbox", command=lambda: about_klusterbox(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="View Out of Station",
@@ -16594,13 +14277,13 @@ class MainFrame:
         reports_menu.add_command(label="Carrier by List", 
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_by_list())
         reports_menu.add_command(label="Carrier Status History", 
-                                 command=lambda: Reports(self.win.topframe).rpt_find_carriers(projvar.invran_station))
+                                 command=lambda: RptWin(self.win.topframe).rpt_find_carriers(projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Clock Rings Summary", 
                                  command=lambda: database_rings_report(self.win.topframe, projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Pay Period Guide Generator", 
-                                 command=lambda: pay_period_guide(self.win.topframe))
+                                 command=lambda: Reports(self.win.topframe).pay_period_guide())
         if projvar.invran_day is None:
             reports_menu.entryconfig(0, state=DISABLED)
             reports_menu.entryconfig(1, state=DISABLED)
@@ -16676,7 +14359,7 @@ class MainFrame:
         menubar.add_cascade(label="Management", menu=management_menu)
         projvar.root.config(menu=menubar)
         
-    def bottom_of_frame(self):
+    def bottom_of_frame(self):  # configure buttons on the bottom of the frame
         if projvar.invran_day is not None:
             Button(self.win.buttons, text="New Carrier", command=lambda: input_carriers(self.win.topframe),
                    width=macadj(13, 13)).pack(side=LEFT)
@@ -16864,14 +14547,6 @@ if __name__ == "__main__":
     global current_tab
     # global workbook
     global pb_flag
-    # initialize arrays for multiple move functionality
-    sat_mm = []
-    sun_mm = []
-    mon_mm = []
-    tue_mm = []
-    wed_mm = []
-    thr_mm = []
-    fri_mm = []
     # set up platform variable
     projvar.platform = "py"  # initialize projvar.platform variable
     split_home = os.getcwd().split("\\")
