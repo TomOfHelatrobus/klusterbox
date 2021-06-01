@@ -1,4 +1,5 @@
-from tkinter import Frame, Scrollbar, Canvas, BOTH, LEFT, BOTTOM, RIGHT, NW, Label, mainloop, messagebox
+from tkinter import Tk, ttk, Frame, Scrollbar, Canvas, BOTH, LEFT, BOTTOM, RIGHT, NW, Label, mainloop, \
+    messagebox, TclError, PhotoImage
 import projvar
 import os
 import sys
@@ -49,6 +50,31 @@ def commit(sql):
         messagebox.showerror("Database Error",
                              "Unable to access database.\n"
                              "\n Attempted Query: {}".format(sql))
+
+
+def titlebar_icon(root):  # place icon in titlebar
+    if sys.platform == "win32" and projvar.platform == "py":
+        try:
+            root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
+        except TclError:
+            pass
+    if sys.platform == "win32" and projvar.platform == "winapp":
+        try:
+            root.iconbitmap(os.getcwd() + "\\" + "kb_icon2.ico")
+        except TclError:
+            pass
+    if sys.platform == "darwin" and projvar.platform == "py":
+        try:
+            root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
+        except TclError:
+            pass
+    if sys.platform == "linux":
+        try:
+            img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
+            # root.tk.call('wm', 'iconphoto', root._w, img)
+            root.tk.call('wm', 'iconphoto', root.w, img)
+        except TclError:
+            pass
 
 
 def dt_converter(string):  # converts a string of a datetime to an actual datetime
@@ -495,6 +521,13 @@ class Convert:
             return ""
         return self.data
 
+    def empty_or_float(self):
+        if self.data == 0.0:
+            return ""
+        if self.data == 0:
+            return ""
+        return self.data
+
     def none_not_empty(self):  # returns none instead of empty string for option menus
         if self.data == "":
             return "none"
@@ -862,3 +895,46 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
                 to_add = [self.startdate, self.carrier]  # out of station records only date and name
                 record_set.append(to_add)
         return record_set
+
+
+class ProgressBarDe:  # determinate Progress Bar
+    def __init__(self, title="Klusterbox", label="working", text="Stand by..."):
+        self.title = title
+        self.label = label
+        self.text = text
+        self.pb_root = Tk()  # create a window for the progress bar
+        self.pb_label = Label(self.pb_root, text=self.label)  # make label for progress bar
+        self.pb = ttk.Progressbar(self.pb_root, length=400, mode="determinate")  # create progress bar
+        self.pb_text = Label(self.pb_root, text=self.text, anchor="w")
+
+    def delete(self):  # self destruct the progress bar object for keyerror exceptions
+        self.pb_root.update_idletasks()
+        self.pb_root.update()
+        self.pb_root.destroy()
+        del self.pb_root
+
+    def max_count(self, maxx):  # set length of progress bar
+        self.pb["maximum"] = maxx
+
+    def start_up(self):
+        titlebar_icon(self.pb_root)  # place icon in titlebar
+        self.pb_root.title(self.title)
+        self.pb_label.grid(row=0, column=0, sticky="w")
+        self.pb.grid(row=1, column=0, sticky="w")
+        self.pb_text.grid(row=2, column=0, sticky="w")
+
+    def move_count(self, count):  # changes the count of the progress bar
+        self.pb['value'] = count
+        projvar.root.update()
+
+    def change_text(self, text):  # changes the text of the progress bar
+        self.pb_text.config(text="{}".format(text))
+        projvar.root.update()
+
+    def stop(self):
+        self.pb.stop()  # stop and destroy the progress bar
+        self.pb_text.destroy()
+        self.pb_label.destroy()  # destroy the label for the progress bar
+        self.pb.destroy()
+        self.pb_root.destroy()
+
