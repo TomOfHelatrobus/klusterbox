@@ -12686,23 +12686,6 @@ class MainFrame:
         basic_menu.add_separator()
         basic_menu.add_command(label="Quit", command=lambda: projvar.root.destroy())
         menubar.add_cascade(label="Basic", menu=basic_menu)
-        # speedsheeet menu
-        speed_menu = Menu(menubar, tearoff=0)
-        speed_menu.add_command(label="Generate All Inclusive", 
-                               command=lambda: SpeedSheetGen(self.win.topframe, True).gen())
-        speed_menu.add_command(label="Generate Carrier", 
-                               command=lambda: SpeedSheetGen(self.win.topframe, False).gen())
-        speed_menu.add_command(label="Pre-check", 
-                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, False))
-        speed_menu.add_command(label="Input to Database", 
-                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, True))
-        if projvar.invran_day is None:
-            speed_menu.entryconfig(0, state=DISABLED)
-            speed_menu.entryconfig(1, state=DISABLED)
-        speed_menu.add_separator()
-        speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
-        speed_menu.add_command(label="Speedsheet Archive", command=lambda: file_dialogue(dir_path('speedsheets')))
-        menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
         automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(self.win.topframe))
@@ -12739,6 +12722,23 @@ class MainFrame:
             reports_menu.entryconfig(3, state=DISABLED)
             reports_menu.entryconfig(6, state=DISABLED)
         menubar.add_cascade(label="Reports", menu=reports_menu)
+        # speedsheeet menu
+        speed_menu = Menu(menubar, tearoff=0)
+        speed_menu.add_command(label="Generate All Inclusive",
+                               command=lambda: SpeedSheetGen(self.win.topframe, True).gen())
+        speed_menu.add_command(label="Generate Carrier",
+                               command=lambda: SpeedSheetGen(self.win.topframe, False).gen())
+        speed_menu.add_command(label="Pre-check",
+                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, False))
+        speed_menu.add_command(label="Input to Database",
+                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, True))
+        if projvar.invran_day is None:
+            speed_menu.entryconfig(0, state=DISABLED)
+            speed_menu.entryconfig(1, state=DISABLED)
+        speed_menu.add_separator()
+        speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
+        speed_menu.add_command(label="Speedsheet Archive", command=lambda: file_dialogue(dir_path('speedsheets')))
+        menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         # library menu
         reportsarchive_menu = Menu(menubar, tearoff=0)
         reportsarchive_menu.add_command(label="Mandates Spreadsheet",

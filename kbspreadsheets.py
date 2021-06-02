@@ -38,6 +38,13 @@ class ImpManSpreadsheet:
         self.min_ss_wal = 0
         self.min_ss_otdl = 0
         self.min_ss_aux = 0
+        self.day = None  # build worksheet loop
+        self.i = 0  # build worksheet loop iteration
+        self.lsi = 0  # list loop iteration
+        self.pref = ("nl", "wal", "otdl", "aux")
+        self.ot_list = ("No List Carriers", "Work Assignment Carriers", "Overtime Desired List Carriers",
+                   "Auxiliary Assistance")  # list loop iteration
+        self.row = 0  # list loop iteration/ the row placement
 
     def create(self, frame):
         self.frame = frame
@@ -49,6 +56,8 @@ class ImpManSpreadsheet:
         self.get_styles()
         self.build_workbook()
         self.set_dimensions()
+        self.build_ws_loop()
+        self.build_summary_header()
         self.save_open()
 
     def ask_ok(self):
@@ -66,8 +75,8 @@ class ImpManSpreadsheet:
             date = projvar.invran_date_week[0]
             self.startdate = projvar.invran_date_week[0]
             self.enddate = projvar.invran_date_week[6]
-            date += timedelta(days=1)  # increment because first day is already in self.dates
-            for i in range(6):
+            self.dates = []
+            for i in range(7):
                 self.dates.append(date)
                 date += timedelta(days=1)
 
@@ -81,7 +90,6 @@ class ImpManSpreadsheet:
             wal_array = []
             otdl_array = []
             aux_array = []
-            ptf_array = []
             for carrier in self.carrierlist:
                 for rec in reversed(carrier):
                     if Convert(rec[0]).dt_converter() <= day:
@@ -92,11 +100,9 @@ class ImpManSpreadsheet:
                     wal_array.append(timely_rec)
                 if timely_rec[2] == "otdl":
                     otdl_array.append(timely_rec)
-                if timely_rec[2] == "aux":
+                if timely_rec[2] == "aux" or timely_rec[2] == "ptf":
                     aux_array.append(timely_rec)
-                if timely_rec[2] == "ptf":
-                    ptf_array.append(timely_rec)
-            daily_breakdown = [nl_array, wal_array, otdl_array, aux_array, ptf_array]
+            daily_breakdown = [nl_array, wal_array, otdl_array, aux_array]
             self.carrier_breakdown.append(daily_breakdown)
 
     def get_minrows(self):  # get spreadsheet row minimums from tolerance table
@@ -148,9 +154,7 @@ class ImpManSpreadsheet:
         self.reference = self.wb.create_sheet("reference")
 
     def set_dimensions(self):
-        print(len(self.dates))
         for i in range(len(self.dates)):
-            print(self.ws_list[i])
             self.ws_list[i].oddFooter.center.text = "&A"
             self.ws_list[i].column_dimensions["A"].width = 14
             self.ws_list[i].column_dimensions["B"].width = 5
@@ -163,22 +167,155 @@ class ImpManSpreadsheet:
             self.ws_list[i].column_dimensions["I"].width = 6
             self.ws_list[i].column_dimensions["J"].width = 6
             self.ws_list[i].column_dimensions["K"].width = 6
-            self.summary.column_dimensions["A"].width = 14
-            self.summary.column_dimensions["B"].width = 9
-            self.summary.column_dimensions["C"].width = 9
-            self.summary.column_dimensions["D"].width = 9
-            self.summary.column_dimensions["E"].width = 2
-            self.summary.column_dimensions["F"].width = 9
-            self.summary.column_dimensions["G"].width = 9
-            self.summary.column_dimensions["H"].width = 9
-            self.reference.column_dimensions["A"].width = 14
-            self.reference.column_dimensions["B"].width = 8
-            self.reference.column_dimensions["C"].width = 8
-            self.reference.column_dimensions["D"].width = 2
-            self.reference.column_dimensions["E"].width = 6
+        self.summary.column_dimensions["A"].width = 14
+        self.summary.column_dimensions["B"].width = 9
+        self.summary.column_dimensions["C"].width = 9
+        self.summary.column_dimensions["D"].width = 9
+        self.summary.column_dimensions["E"].width = 2
+        self.summary.column_dimensions["F"].width = 9
+        self.summary.column_dimensions["G"].width = 9
+        self.summary.column_dimensions["H"].width = 9
+        self.reference.column_dimensions["A"].width = 14
+        self.reference.column_dimensions["B"].width = 8
+        self.reference.column_dimensions["C"].width = 8
+        self.reference.column_dimensions["D"].width = 2
+        self.reference.column_dimensions["E"].width = 6
+        
+    def build_ws_loop(self):
+        self.i = 0
+        for day in self.dates:
+            self.day = day
+            self.build_ws_headers()
+            self.list_loop()  # loops four times. once for each list.
+            self.i += 1
 
-    def save_open(self):
-        # name the excel file
+    def build_ws_headers(self):  # worksheet headers
+        cell = self.ws_list[self.i].cell(row=1, column=1)
+        cell.value = "Improper Mandate Worksheet"
+        cell.style = self.ws_header
+        self.ws_list[self.i].merge_cells('A1:E1')
+        cell = self.ws_list[self.i].cell(row=3, column=1)
+        cell.value = "Date:  "  # create date/ pay period/ station header
+        cell.style = self.date_dov_title
+        cell = self.ws_list[self.i].cell(row=3, column=2)
+        cell.value = format(self.day, "%A  %m/%d/%y")
+        cell.style = self.date_dov
+        self.ws_list[self.i].merge_cells('B3:D3')
+        cell = self.ws_list[self.i].cell(row=3, column=5)
+        cell.value = "Pay Period:  "
+        cell.style = self.date_dov_title
+        self.ws_list[self.i].merge_cells('E3:F3')
+        cell = self.ws_list[self.i].cell(row=3, column=7)
+        cell.value = projvar.pay_period
+        cell.style = self.date_dov
+        self.ws_list[self.i].merge_cells('G3:H3')
+        cell = self.ws_list[self.i].cell(row=4, column=1)
+        cell.value = "Station:  "
+        cell.style = self.date_dov_title
+        cell = self.ws_list[self.i].cell(row=4, column=2)
+        cell.value = projvar.invran_station
+        cell.style = self.date_dov
+        self.ws_list[self.i].merge_cells('B4:D4')
+
+    def list_loop(self):  # loops four times. once for each list.
+        self.lsi = 0  # iterations of the list loop method
+        self.row = 6
+        for _ in self.ot_list:  # loops for nl, wal, otdl and aux
+            self.list_and_column_headers()  # builds headers for list and column
+            self.carrierloop()
+            self.lsi += 1
+
+    def list_and_column_headers(self):  # builds headers for list and column
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)
+        cell.value = self.ot_list[self.lsi]  # "No List Carriers",
+        cell.style = self.list_header
+        if self.pref[self.lsi] in ("nl", "wal"):
+            self.row += 1
+        else:
+            self.row += 2
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)  # column headers for any list
+        cell.value = "Name"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)
+        cell.value = "note"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=3)
+        cell.value = "5200"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)
+        cell.value = "RS"
+        cell.style = self.col_header
+        if self.pref[self.lsi] in ("nl", "wal"):
+            self.column_header_non()  # column headers specific for non otdl
+        else:
+            self.column_header_ot()  # column headers specific for otdl or aux
+
+    def column_header_non(self):  # column headers specific for non otdl
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)
+        cell.value = "MV off"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=6)
+        cell.value = "MV on"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=7)
+        cell.value = "Route"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=8)
+        cell.value = "MV total"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=9)
+        cell.value = "OT"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=10)
+        cell.value = "off rt"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=11)
+        cell.value = "OT off rt"
+        cell.style = self.col_header
+        self.row += 1
+
+    def column_header_ot(self):  # column headers specific for otdl or aux
+        cell = self.ws_list[self.i].cell(row=self.row - 1, column=5)
+        cell.value = "Availability to:"
+        cell.style = self.col_header
+        to_what = "to 11.5"
+        if self.pref[self.lsi] == "otdl":
+            to_what = "to 12"
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)
+        cell.value = "to 10"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=6)
+        cell.value = to_what
+        cell.style = self.col_header
+        self.row += 1
+
+    def carrierloop(self):
+        carrierlist = self.carrier_breakdown[self.i][self.lsi]
+        for carrier in carrierlist:
+            cell = self.ws_list[self.i].cell(row=self.row, column=1)
+            cell.value = carrier[1]  # name
+            cell.style = self.input_name
+            self.row += 1
+
+
+    def build_summary_header(self):  # summary headers
+        self.summary['A1'] = "Improper Mandate Worksheet"
+        self.summary['A1'].style = self.ws_header
+        self.summary.merge_cells('A1:E1')
+        self.summary['B3'] = "Summary Sheet"
+        self.summary['B3'].style = self.date_dov_title
+        self.summary['A5'] = "Pay Period:  "
+        self.summary['A5'].style = self.date_dov_title
+        self.summary['B5'] = projvar.pay_period
+        self.summary['B5'].style = self.date_dov
+        self.summary.merge_cells('B5:D5')
+        self.summary['A6'] = "Station:  "
+        self.summary['A6'].style = self.date_dov_title
+        self.summary['B6'] = projvar.invran_station
+        self.summary['B6'].style = self.date_dov
+        # reference page has no header
+
+    def save_open(self):  # name the excel file
         r = "_w"
         if not projvar.invran_weekly_span:  # if investigation range is daily
             r = "_d"
@@ -189,14 +326,6 @@ class ImpManSpreadsheet:
                                 "Your spreadsheet was successfully generated. \n"
                                 "File is named: {}".format(xl_filename),
                                 parent=self.frame)
-        except PermissionError:
-            messagebox.showerror("Spreadsheet generator",
-                                 "The spreadsheet was not generated. \n"
-                                 "Suggestion: "
-                                 "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).",
-                                 parent=self.frame)
-        try:
             if sys.platform == "win32":
                 os.startfile(dir_path('spreadsheets') + xl_filename)
             if sys.platform == "linux":
@@ -1559,7 +1688,6 @@ def spreadsheet(frame, list_carrier, r_rings):
     summary['B5'] = projvar.pay_period
     summary['B5'].style = date_dov
     summary.merge_cells('B5:D5')
-
     summary['A6'] = "Station:  "
     summary['A6'].style = date_dov_title
     summary['B6'] = projvar.invran_station
