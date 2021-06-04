@@ -19,11 +19,10 @@ class ImpManSpreadsheet:
         self.startdate = None  # start date of the investigation
         self.enddate = None  # ending date of the investigation
         self.dates = []  # all days of the investigation
-        self.carrierlist = []
-        self.carrier_breakdown = []
-        self.wb = None
-        # self.ws_list = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
-        self.ws_list = []
+        self.carrierlist = []  # all carriers in carrier list
+        self.carrier_breakdown = []  # all carriers in carrier list broken down into appropiate list
+        self.wb = None  # the workbook object
+        self.ws_list = []  # "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"
         self.summary = None
         self.reference = None
         self.ws_header = None  # style
@@ -34,17 +33,31 @@ class ImpManSpreadsheet:
         self.input_name = None  # style
         self.input_s = None  # style
         self.calcs = None  # style
-        self.min_ss_nl = 0
-        self.min_ss_wal = 0
-        self.min_ss_otdl = 0
-        self.min_ss_aux = 0
-        self.day = None  # build worksheet loop
+        self.min_ss_nl = 0  # minimum rows for "no list"
+        self.min_ss_wal = 0  # minimum rows for work assignment list
+        self.min_ss_otdl = 0  # minimum rows for overtime desired list
+        self.min_ss_aux = 0  # minimum rows for auxiliary
+        self.day = None  # build worksheet - loop once for each day
         self.i = 0  # build worksheet loop iteration
         self.lsi = 0  # list loop iteration
         self.pref = ("nl", "wal", "otdl", "aux")
         self.ot_list = ("No List Carriers", "Work Assignment Carriers", "Overtime Desired List Carriers",
                    "Auxiliary Assistance")  # list loop iteration
         self.row = 0  # list loop iteration/ the row placement
+        self.mod_carrierlist = []  # carrier list with empty recs added to reach minimum row quantity
+        self.carrier = []  # carrier name
+        self.rings = []  # carrier rings queried from database
+        self.totalhours = ""  # carrier rings - 5200 time
+        self.codes = ""  # carrier rings - code/note
+        self.rs = ""  # carrier rings - return to station
+        self.moves = ""  # carrier rings - moves on and off route with route
+        self.lvtype = ""  # carrier rings - leave type
+        self.lvtime = ""  # carrier rings - leave time
+        self.movesarray = []
+        self.move_i = 0  # increments rows for multiple move functionality
+        self.tol_ot_ownroute = 0.0
+        self.tol_ot_offroute = 0.0
+        self.tol_availability = 0.0
 
     def create(self, frame):
         self.frame = frame
@@ -56,6 +69,8 @@ class ImpManSpreadsheet:
         self.get_styles()
         self.build_workbook()
         self.set_dimensions()
+        self.get_refs()
+        self.build_refs()
         self.build_ws_loop()
         self.build_summary_header()
         self.save_open()
@@ -180,6 +195,54 @@ class ImpManSpreadsheet:
         self.reference.column_dimensions["C"].width = 8
         self.reference.column_dimensions["D"].width = 2
         self.reference.column_dimensions["E"].width = 6
+
+    def get_refs(self):
+        sql = "SELECT tolerance FROM tolerances"
+        tolerances = inquire(sql)
+        self.tol_ot_ownroute = float(tolerances[0][0])  # overtime on own route tolerance
+        self.tol_ot_offroute = float(tolerances[1][0])  # overtime off own route tolerance
+        self.tol_availability = float(tolerances[2][0])  # availability tolerance
+
+    def build_refs(self):
+        sql = "SELECT tolerance FROM tolerances"
+        tolerances = inquire(sql)
+        self.reference['B2'].style = self.list_header
+        self.reference['B2'] = "Tolerances"
+        self.reference['C3'] = self.tol_ot_ownroute  # overtime on own route tolerance
+        self.reference['C3'].style = self.input_s
+        self.reference['C3'].number_format = "#,###.00;[RED]-#,###.00"
+        self.reference['E3'] = "overtime on own route"
+        self.reference['C4'] = self.tol_ot_offroute  # overtime off own route tolerance
+        self.reference['C4'].style = self.input_s
+        self.reference['C4'].number_format = "#,###.00;[RED]-#,###.00"
+        self.reference['E4'] = "overtime off own route"
+        self.reference['C5'] = self.tol_availability  # availability tolerance
+        self.reference['C5'].style = self.input_s
+        self.reference['C5'].number_format = "#,###.00;[RED]-#,###.00"
+        self.reference['E5'] = "availability tolerance"
+        self.reference['B7'].style = self.list_header
+        self.reference['B7'] = "Code Guide"
+        self.reference['C8'] = "ns day"
+        self.reference['C8'].style = self.input_s
+        self.reference['E8'] = "Carrier worked on their non scheduled day"
+        self.reference['C10'] = "no call"
+        self.reference['C10'].style = self.input_s
+        self.reference['E10'] = "Carrier was not scheduled for overtime"
+        self.reference['C11'] = "light"
+        self.reference['C11'].style = self.input_s
+        self.reference['E11'] = "Carrier on light duty and unavailable for overtime"
+        self.reference['C12'] = "sch chg"
+        self.reference['C12'].style = self.input_s
+        self.reference['E12'] = "Schedule change: unavailable for overtime"
+        self.reference['C13'] = "annual"
+        self.reference['C13'].style = self.input_s
+        self.reference['E13'] = "Annual leave"
+        self.reference['C14'] = "sick"
+        self.reference['C14'].style = self.input_s
+        self.reference['E14'] = "Sick leave"
+        self.reference['C15'] = "excused"
+        self.reference['C15'].style = self.input_s
+        self.reference['E15'] = "Carrier excused from mandatory overtime"
         
     def build_ws_loop(self):
         self.i = 0
@@ -222,7 +285,9 @@ class ImpManSpreadsheet:
         self.row = 6
         for _ in self.ot_list:  # loops for nl, wal, otdl and aux
             self.list_and_column_headers()  # builds headers for list and column
+            self.carrierlist_mod()
             self.carrierloop()
+            self.build_footer()
             self.lsi += 1
 
     def list_and_column_headers(self):  # builds headers for list and column
@@ -289,14 +354,221 @@ class ImpManSpreadsheet:
         cell.style = self.col_header
         self.row += 1
 
-    def carrierloop(self):
-        carrierlist = self.carrier_breakdown[self.i][self.lsi]
-        for carrier in carrierlist:
-            cell = self.ws_list[self.i].cell(row=self.row, column=1)
-            cell.value = carrier[1]  # name
-            cell.style = self.input_name
-            self.row += 1
+    def carrierlist_mod(self):  # add empty carrier records to carrier list until quantity matches minrows preference
+        self.mod_carrierlist = self.carrier_breakdown[self.i][self.lsi]
+        minrows = 0  # initialize minrows
+        if self.pref[self.lsi] in ("nl",):  # if "no list"
+            minrows = self.min_ss_nl
+        elif self.pref[self.lsi] in ("wal",):  # if "work assignment list"
+            minrows = self.min_ss_wal
+        elif self.pref[self.lsi] in ("otdl",):  # if "overtime desired list"
+            minrows = self.min_ss_otdl
+        else:  # if "auxiliary"
+            minrows = self.min_ss_aux
+        while len(self.mod_carrierlist) < minrows:  # until carrier list quantity matches minrows
+            add_this = ('', '', '', '', '', '')
+            self.mod_carrierlist.append(add_this)  # append empty recs to carrier list
 
+    def carrierloop(self):
+        for carrier in self.mod_carrierlist:
+            self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
+            self.get_rings()  # get individual carrier rings for the day
+            self.display_recs()
+            if self.pref[self.lsi] in ("nl", "wal"):
+                self.get_movesarray()
+                self.display_moves()
+                self.display_formulas_non()
+            else:
+                self.display_formulas_ot()
+            self.increment_rows()
+
+    def increment_rows(self):  # increment the rows counter
+        self.row += 1
+        self.row += self.move_i  # add 1 plus any the added rows from multiple moves
+        self.move_i = 0  # reset the row incrementor for multiple move functionality
+
+    def get_rings(self):  # get individual carrier rings for the day
+        self.rings = Rings(self.carrier, self.dates[self.i]).get_for_day()  # assign as self.rings
+        self.totalhours = ""  # set default as an empty string
+        self.rs = ""
+        self.codes = ""
+        self.moves = ""
+        self.lvtype = ""
+        self.lvtime = ""
+        if self.rings[0]:  # if rings record is not blank
+            self.totalhours = self.rings[0][2]
+            self.rs = self.rings[0][3]
+            self.codes = self.rings[0][4]
+            self.moves = self.rings[0][5]
+            self.lvtype = self.rings[0][6]
+            self.lvtime = self.rings[0][7]
+
+    def display_recs(self):  # put the carrier and the first part of rings into the spreadsheet
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)  # name
+        cell.value = self.carrier
+        cell.style = self.input_name
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)  # code
+        cell.value = Convert(self.codes).empty_not_none()
+        cell.style = self.input_s
+        cell = self.ws_list[self.i].cell(row=self.row, column=3)  # 5200
+        cell.value = Convert(self.totalhours).str_to_floatoremptystr()
+        cell.style = self.input_s
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)  # return to station
+        cell.value = Convert(self.rs).str_to_floatoremptystr()
+        cell.style = self.input_s
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+
+    def get_movesarray(self):
+        multiple_sets = False  # is there more than one triad?
+        self.movesarray = []  # re initialized - a list of tuples of move sets
+        moves_array = []  # initialized - the moves string converted into an array
+        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
+        move_off = ""  # if empty set, use default values
+        move_back = ""
+        move_route = ""
+        formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[self.i], self.row, day_of_week[self.i], self.row)
+        if not self.moves:  # if string is empty
+            pass  # use default values
+        else:  # if the string is not empty
+            moves_array = Convert(self.moves).string_to_array()
+            if len(moves_array)/3 == 1:  # if there is only one set of moves
+                move_off = moves_array[0]
+                move_back = moves_array[1]
+                move_route = moves_array[2]
+            else:  # if there are multiple move sets
+                multiple_sets = True
+                move_off = "*"
+                move_back = "*"
+                move_route = "*"
+                formula = "=SUM(%s!H%s:H%s)" % \
+                          (day_of_week[self.i], self.row + 1, int(self.row + len(moves_array) / 3))
+        add_this = (move_off, move_back, move_route, formula)
+        self.movesarray.append(add_this)
+        if multiple_sets:  # if multiple sets are detected
+            i = 0
+            formula_row_i = 1  # increment the row in the formula
+            for move in moves_array:
+                if (i + 3) % 3 == 0:
+                    move_off = move
+                if (i + 2) % 3 == 0:
+                    move_back = move
+                if (i + 1) % 3 == 0:
+                    move_route = move
+                    formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[self.i], self.row + formula_row_i,
+                                                         day_of_week[self.i], self.row + formula_row_i)
+                    add_this = (move_off, move_back, move_route, formula)
+                    self.movesarray.append(add_this)
+                    formula_row_i += 1  # increment the row in the formula after each moves_set
+                i += 1  # increment i
+
+    def display_moves(self):
+        for move_set in self.movesarray:
+            for move_cell in range(4):
+                move = move_set[move_cell]
+                cell = self.ws_list[self.i].cell(row=self.row + self.move_i, column=5 + move_cell)
+                if move_cell in (0, 1):  # format move times as floats or empty strings
+                    cell.value = Convert(move).empty_not_zerofloat()  # insert an iteration of self.movesarray
+                else:  # do not alter route or formula elements of move sets
+                    cell.value = move  # insert an iteration of self.movesarray
+                cell.style = self.input_s  # assign worksheet style
+                if move_cell != 2:
+                    cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.move_i += 1
+        self.move_i -= 1  # correction
+
+    def display_formulas_non(self):
+        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
+        ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
+                  % (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                     day_of_week[self.i], str(self.row))
+        if self.pref[self.lsi] == "nl":  # use alternate formula for non list carriers
+            ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
+                         % (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                            day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row))
+        off_rt_formula = "=%s!H%s" % (day_of_week[self.i], str(self.row))  # copy data from column H/ MV total
+        ot_off_rt_formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s), " \
+                  "%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, " \
+                  "MIN(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
+                  % (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                     day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                     day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                     day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row))
+        formulas = (ot_formula, off_rt_formula, ot_off_rt_formula)
+        column_i = 0
+        for formula in formulas:
+            cell = self.ws_list[self.i].cell(row=self.row, column=9 + column_i)
+            cell.value = formula  # insert an iteration of formulas
+            cell.style = self.input_s  # assign worksheet style
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            column_i += 1
+
+    def display_formulas_ot(self):
+        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
+        max_hrs = 12  # maximum hours for otdl carriers
+        if self.pref[self.lsi] == "aux":  # alter formula by list preference
+            max_hrs = 11.5  # maximux hours for auxiliary carriers
+        # formula_ten = "=IF(%s!B%s = \"\", \"heynow\", %s!C%s" % \
+        #               (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row))
+        formula_ten = "=IF(OR(%s!B%s = \"light\", %s!B%s = \"excused\", %s!B%s = \"sch chg\", " \
+                     "%s!B%s = \"annual\", %s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, " \
+                     "IF(%s!B%s = \"no call\", 10, " \
+                     "IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % \
+                     (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                      day_of_week[self.i], str(self.row))
+        formula_max = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
+                      "%s!B%s = \"sick\", %s!C%s >= %s - reference!C5), 0, IF(%s!B%s = \"no call\", %s, " \
+                      "IF(%s!C%s = 0, 0, MAX(%s - %s!C%s, 0))))" % \
+                      (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
+                      max_hrs, day_of_week[self.i], str(self.row),
+                      max_hrs, day_of_week[self.i], str(self.row),
+                      max_hrs, day_of_week[self.i], str(self.row))
+        formulas = (formula_ten, formula_max)
+        column_i = 0
+        for formula in formulas:
+            cell = self.ws_list[self.i].cell(row=self.row, column=5 + column_i)
+            cell.value = formula  # insert an iteration formulas
+            cell.style = self.input_s  # assign worksheet style
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            column_i += 1
+
+    def build_footer(self):
+        if self.pref[self.lsi] == "nl":
+            self.nl_footer()
+            
+    def nl_footer(self):
+        cell = self.ws_list[self.i].cell(row=self.row, column=8)
+        cell.value = "Total NL Overtime"
+        cell.style = self.col_header
+        formula = ""
+        # formula = "=SUM(%s!I8:I%s)" % (day_of_week[i], cello)
+        cell = self.ws_list[self.i].cell(row=self.row, column=9)
+        cell.value = formula  # OT
+        # nl_ot_row.append(str(self.row))  # get the cello information to reference in summary tab
+        # nl_ot_day.append(i)
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.row += 2
+        cell = self.ws_list[self.i].cell(row=self.row, column=10)
+        cell.value = "Total NL Mandates"
+        cell.style = self.col_header
+        formula = ""
+        # formula = "=SUM(%s!K8:K%s)" % (day_of_week[i], cello)
+        cell = self.ws_list[self.i].cell(row=self.row, column=11)
+        cell.value = formula  # OT off route
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        nl_totals = self.row
+        self.row += 1
+        try:
+            self.ws_list[self.i].page_breaks.append(Break(id=self.row))
+        except AttributeError:
+            self.ws_list[self.i].row_breaks.append(Break(id=self.row))
 
     def build_summary_header(self):  # summary headers
         self.summary['A1'] = "Improper Mandate Worksheet"
@@ -2547,7 +2819,7 @@ class OvermaxSpreadsheet:
             self.violations['B' + str(i)] = carrier_list  # list
             self.violations['B' + str(i)].style = self.input_s
             self.violations.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly 5200
-            self.violations['C' + str(i)] = Convert(total).empty_or_float()  # total
+            self.violations['C' + str(i)] = Convert(total).empty_not_zerofloat()  # total
             self.violations['C' + str(i)].style = self.input_s
             self.violations['C' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # saturday

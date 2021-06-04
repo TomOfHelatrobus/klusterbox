@@ -521,16 +521,34 @@ class Convert:
             return ""
         return self.data
 
-    def empty_or_float(self):
+    def empty_not_zerofloat(self):
         if self.data == 0.0:
             return ""
         if self.data == 0:
             return ""
         return self.data
 
+    def str_to_floatoremptystr(self):
+        if self.data == "*":
+            return "*"
+        if self.data == "":
+            return ""
+        if self.data == "0.0":
+            return ""
+        if self.data == "0":
+            return ""
+        if isfloat(self.data):
+            return float(self.data)
+        return self.data
+
     def none_not_empty(self):  # returns none instead of empty string for option menus
         if self.data == "":
             return "none"
+        return self.data
+
+    def empty_not_none(self):  # returns empty string instead of "none" for spreadsheets
+        if self.data == "none":
+            return ""
         return self.data
 
     def hundredths(self):  # returns a number (as a string) into a number with 2 decimal places
@@ -937,4 +955,3 @@ class ProgressBarDe:  # determinate Progress Bar
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
-
