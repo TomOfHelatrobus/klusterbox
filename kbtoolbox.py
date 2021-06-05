@@ -466,6 +466,11 @@ class Convert:
             return "on"
         return "off"
 
+    def onoff_to_bool(self):
+        if self.data == "on":
+            return True
+        return False
+
     def backslashdate_to_datetime(self):  # convert a date with backslashes into a datetime
         date = self.data.split("/")
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
@@ -554,6 +559,11 @@ class Convert:
     def hundredths(self):  # returns a number (as a string) into a number with 2 decimal places
         number = float(self.data)  # convert the number to a float
         return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+
+    def zero_not_empty(self):
+        if self.data == "":
+            return 0
+        return self.data
 
 
 class Handler:
@@ -828,6 +838,38 @@ class MovesChecker:
         if float(self.moves) > float(second):
             return False
         return True
+
+
+class MinrowsChecker:
+    def __init__(self, data):
+        self.data = data
+
+    def is_empty(self):  # is the data an empty string?
+        if self.data == "":
+            return True
+        return False
+
+    def is_numeric(self):  # is the data a number?
+        try:
+            self.data = int(self.route)
+            return True
+        except ValueError:
+            return False
+
+    def no_decimals(self):  # does the data have no decimal places?
+        if isinstance(self.data, int):
+            return True
+        return False
+
+    def not_negative(self):  # is the data not a negative?
+        if self.data >= 0:
+            return True
+        return False
+
+    def within_limit(self, limit):  # is the data not exceed a given limit?
+        if self.data <= limit:
+            return True
+        return False
 
 
 class CarrierRecFilter:  # accepts carrier records from CarrierList().get()

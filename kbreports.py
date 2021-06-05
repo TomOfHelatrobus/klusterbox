@@ -377,4 +377,16 @@ class Messenger:
             text = "Sets the minimum number of rows for the " \
                    "12 and 60 Hour Violations spreadsheet. \n\n" \
                    "Enter a value between 0 and 100"
+        if switch == "pb_nl_wal":
+            text = "Creates a page break between No List and " \
+                   "Work Assignment List on the spreadsheet \n\n" \
+                   "Select ON or OFF"
+        if switch == "pb_wal_otdl":
+            text = "Creates a page break between Work Assignment List " \
+                   "and OT Desired List on the spreadsheet \n\n" \
+                   "Select ON or OFF"
+        if switch == "pb_otdl_aux":
+            text = "Creates a page break between the OT Desired List " \
+                   " and the Auxiliary List on the spreadsheet \n\n" \
+                   "Select ON or OFF"
         messagebox.showinfo("About Tolerances", text, parent=self.frame)

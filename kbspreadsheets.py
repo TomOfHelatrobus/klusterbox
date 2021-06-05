@@ -55,9 +55,12 @@ class ImpManSpreadsheet:
         self.lvtime = ""  # carrier rings - leave time
         self.movesarray = []
         self.move_i = 0  # increments rows for multiple move functionality
-        self.tol_ot_ownroute = 0.0
-        self.tol_ot_offroute = 0.0
-        self.tol_availability = 0.0
+        self.tol_ot_ownroute = 0.0  # tolerance for ot on own route
+        self.tol_ot_offroute = 0.0  # tolerance for ot off own route
+        self.tol_availability = 0.0  # tolerance for availability
+        self.pb_nl_wal = True  # page break between no list and work assignment
+        self.pb_wal_otdl = True  # page break between work assignment and otdl
+        self.pb_otdl_aux = True  # page break between otdl and auxiliary
 
     def create(self, frame):
         self.frame = frame
@@ -65,13 +68,12 @@ class ImpManSpreadsheet:
         self.get_dates()
         self.get_carrierlist()
         self.get_carrier_breakdown()
-        self.get_minrows()
+        self.get_tolerances()  # get tolerances, minimum rows and page break preferences from tolerances table
         self.get_styles()
         self.build_workbook()
         self.set_dimensions()
-        self.get_refs()
         self.build_refs()
-        self.build_ws_loop()
+        self.build_ws_loop()  # calls list loop and carrier loop
         self.build_summary_header()
         self.save_open()
 
@@ -120,16 +122,21 @@ class ImpManSpreadsheet:
             daily_breakdown = [nl_array, wal_array, otdl_array, aux_array]
             self.carrier_breakdown.append(daily_breakdown)
 
-    def get_minrows(self):  # get spreadsheet row minimums from tolerance table
+    def get_tolerances(self):  # get spreadsheet tolerances, row minimums and page break prefs from tolerance table
         sql = "SELECT tolerance FROM tolerances"
         result = inquire(sql)
-        self.min_ss_nl = int(result[3][0])
-        self.min_ss_wal = int(result[4][0])
-        self.min_ss_otdl = int(result[5][0])
-        self.min_ss_aux = int(result[6][0])
+        self.tol_ot_ownroute = float(result[0][0])  # overtime on own route tolerance
+        self.tol_ot_offroute = float(result[1][0])  # overtime off own route tolerance
+        self.tol_availability = float(result[2][0])  # availability tolerance
+        self.min_ss_nl = int(result[3][0])  # minimum rows for no list
+        self.min_ss_wal = int(result[4][0])  # mimimum rows for work assignment
+        self.min_ss_otdl = int(result[5][0])  # minimum rows for otdl
+        self.min_ss_aux = int(result[6][0])  # minimum rows for auxiliary
+        self.pb_nl_wal = bool(result[21][0])  # page break between no list and work assignment
+        self.pb_wal_otdl = bool(result[22][0])  # page break between work assignment and otdl
+        self.pb_otdl_aux = bool(result[23][0])  # page break between otdl and auxiliary
 
-    def get_styles(self):
-        # Named styles for workbook
+    def get_styles(self):  # Named styles for workbook
         bd = Side(style='thin', color="80808080")  # defines borders
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
         self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
@@ -196,16 +203,7 @@ class ImpManSpreadsheet:
         self.reference.column_dimensions["D"].width = 2
         self.reference.column_dimensions["E"].width = 6
 
-    def get_refs(self):
-        sql = "SELECT tolerance FROM tolerances"
-        tolerances = inquire(sql)
-        self.tol_ot_ownroute = float(tolerances[0][0])  # overtime on own route tolerance
-        self.tol_ot_offroute = float(tolerances[1][0])  # overtime off own route tolerance
-        self.tol_availability = float(tolerances[2][0])  # availability tolerance
-
     def build_refs(self):
-        sql = "SELECT tolerance FROM tolerances"
-        tolerances = inquire(sql)
         self.reference['B2'].style = self.list_header
         self.reference['B2'] = "Tolerances"
         self.reference['C3'] = self.tol_ot_ownroute  # overtime on own route tolerance
@@ -288,6 +286,7 @@ class ImpManSpreadsheet:
             self.carrierlist_mod()
             self.carrierloop()
             self.build_footer()
+            self.pagebreak()
             self.lsi += 1
 
     def list_and_column_headers(self):  # builds headers for list and column
@@ -419,7 +418,7 @@ class ImpManSpreadsheet:
         cell.style = self.input_s
         cell.number_format = "#,###.00;[RED]-#,###.00"
 
-    def get_movesarray(self):
+    def get_movesarray(self):  # builds sets of moves for each triad
         multiple_sets = False  # is there more than one triad?
         self.movesarray = []  # re initialized - a list of tuples of move sets
         moves_array = []  # initialized - the moves string converted into an array
@@ -508,8 +507,6 @@ class ImpManSpreadsheet:
         max_hrs = 12  # maximum hours for otdl carriers
         if self.pref[self.lsi] == "aux":  # alter formula by list preference
             max_hrs = 11.5  # maximux hours for auxiliary carriers
-        # formula_ten = "=IF(%s!B%s = \"\", \"heynow\", %s!C%s" % \
-        #               (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row))
         formula_ten = "=IF(OR(%s!B%s = \"light\", %s!B%s = \"excused\", %s!B%s = \"sch chg\", " \
                      "%s!B%s = \"annual\", %s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, " \
                      "IF(%s!B%s = \"no call\", 10, " \
@@ -565,10 +562,22 @@ class ImpManSpreadsheet:
         cell.number_format = "#,###.00;[RED]-#,###.00"
         nl_totals = self.row
         self.row += 1
+
+    def pagebreak(self):  # create a page break if consistant with user preferences
+        if self.pref[self.lsi] == "nl" and not self.pb_nl_wal:
+            return
+        if self.pref[self.lsi] == "wal" and not self.pb_wal_otdl:
+            return
+        if self.pref[self.lsi] == "otdl" and not self.pb_otdl_aux:
+            return
+        if self.pref[self.lsi] == "aux":
+            return
         try:
             self.ws_list[self.i].page_breaks.append(Break(id=self.row))
+            # print("page break")
         except AttributeError:
-            self.ws_list[self.i].row_breaks.append(Break(id=self.row))
+            self.ws_list[self.i].row_breaks.append(Break(id=self.row))  # effective for windows
+            # print("row break")
 
     def build_summary_header(self):  # summary headers
         self.summary['A1'] = "Improper Mandate Worksheet"
