@@ -3,13 +3,11 @@ import projvar  # holds variables, including root, for use in all modules
 from kbreports import Reports, Messenger
 from kbtoolbox import *
 from kbspreadsheets import OvermaxSpreadsheet, SpeedSheetGen, ImpManSpreadsheet
+from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 # Standard Libraries
 from tkinter import *
-from tkinter import messagebox
-from tkinter import filedialog
-from tkinter import ttk
-from datetime import datetime
-from datetime import timedelta
+from tkinter import messagebox, filedialog, ttk
+from datetime import datetime, timedelta
 import sqlite3
 from operator import itemgetter
 import os
@@ -38,11 +36,9 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
-
 # version variables
-version = "4.001"
+version = "4.002"
 release_date = "March 13, 2021"
-
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -684,7 +680,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         if self.empid == "":  # allow empty strings
             pass
         elif str(self.empid).isnumeric():  # allow integers and numeric strings
-            self.empid = str(self.empid).zfill(8) # change self.empid to string and zero fill to 8 places
+            self.empid = str(self.empid).zfill(8)  # change self.empid to string and zero fill to 8 places
             pass
         else:  # don't allow anything else
             error = "     ERROR: employee id is not numeric\n"  # report
@@ -1465,9 +1461,12 @@ class GuiConfig:
         self.frame = frame
         self.win = MakeWindow()
         self.wheel_selection = StringVar(self.win.body)
+        self.invran_mode = StringVar(self.win.body)
         self.ot_rings_limiter = StringVar(self.win.body)
         self.status_update = Label(self.win.buttons, text="", fg="red")
         self.rings_limiter = None
+        self.invran_result = None
+        self.row = 0
 
     def create(self):
         self.get_settings()
@@ -1477,6 +1476,9 @@ class GuiConfig:
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
         results = inquire(sql)
         projvar.mousewheel = int(results[0][0])
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
+        results = inquire(sql)
+        self.invran_result = results[0][0]
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
         results = inquire(sql)
         rings_limiter = results[0][0]
@@ -1485,29 +1487,42 @@ class GuiConfig:
     def build(self):
         self.win.create(self.frame)
         Label(self.win.body, text="GUI Configuration", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=0, sticky="w", columnspan=4)
-        Label(self.win.body, text=" ").grid(row=1, column=0)
-        Label(self.win.body, text="Mouse Wheel Scrolling").grid(row=2, sticky="w", columnspan=4)
-        Label(self.win.body, text=" ").grid(row=3, column=0)
-        Label(self.win.body, text="Direction", width=15, anchor="w").grid(row=4, column=0, sticky="w")
-
-        om_wheel = OptionMenu(self.win.body, self.wheel_selection, "natural", "reverse")  # option menu configuration below
+            .grid(row=self.row, sticky="w", columnspan=4)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        # mousewheel scrolling direction
+        Label(self.win.body, text="Mouse Wheel Scrolling:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_wheel = OptionMenu(self.win.body, self.wheel_selection, "natural", "reverse")  # option menu configuration
         om_wheel.config(width=7)
-        om_wheel.grid(row=4, column=1)
+        om_wheel.grid(row=self.row, column=1)
         if projvar.mousewheel == 1:
             self.wheel_selection.set("natural")
         else:
             self.wheel_selection.set("reverse")
-        Button(self.win.body, text="set", width=7, command=lambda:self.apply_mousewheel()).grid(row=4, column=2)
-        Label(self.win.body, text=" ").grid(row=7, column=0)
-        Label(self.win.body, text="Overtime Rings Limiter").grid(row=8, sticky="w", columnspan=4)
-        Label(self.win.body, text=" ").grid(row=9, column=0)
-        Label(self.win.body, text="Limiter", width=15, anchor="w").grid(row=10, column=0, sticky="w")
+        Button(self.win.body, text="set", width=7, command=lambda: self.apply_mousewheel()).grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        # investigation range mode
+        Label(self.win.body, text="Investigation Range Mode:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_invran_mode = OptionMenu(self.win.body, self.invran_mode, "original", "simple", "no labels")
+        om_invran_mode.config(width=7)
+        om_invran_mode.grid(row=self.row, column=1)
+        self.invran_mode.set(self.invran_result)
+        Button(self.win.body, text="set", width=7,
+               command=lambda: self.apply_invran_mode()).grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        # overtime rings limiter
+        Label(self.win.body, text="Overtime Rings Limiter:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_rings = OptionMenu(self.win.body, self.ot_rings_limiter, "on", "off")  # option menu configuration below
         om_rings.config(width=7)
-        om_rings.grid(row=10, column=1)
+        om_rings.grid(row=self.row, column=1)
         self.ot_rings_limiter.set(self.rings_limiter)
-        Button(self.win.body, text="set", width=7, command=lambda: self.apply_rings_limiter()).grid(row=10, column=2)
+        Button(self.win.body, text="set", width=7,
+               command=lambda: self.apply_rings_limiter()).grid(row=self.row, column=2)
         # Display buttons and status update message
         Button(self.win.buttons, text="Go Back", width=20, anchor="w",
                command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
@@ -1524,13 +1539,19 @@ class GuiConfig:
         msg = "Overtime Rings Limiter updated: {}".format(self.ot_rings_limiter.get())
         self.status_update.config(text="{}".format(msg))
 
+    def apply_invran_mode(self):
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (self.invran_mode.get(), "invran_mode")
+        commit(sql)
+        msg = "Investigation Range mode updated: {}".format(self.invran_mode.get())
+        self.status_update.config(text="{}".format(msg))
+
     def apply_mousewheel(self):
         if self.wheel_selection.get() == "natural":
             wheel_multiple = int(1)
-            projvar.mousewheel = int(1)  #sets the project variable
+            projvar.mousewheel = int(1)  # sets the project variable
         else:  # if the self.wheel_selection.get() == "reverse"
             wheel_multiple = int(-1)
-            projvar.mousewheel = int(-1)  #sets the project variable
+            projvar.mousewheel = int(-1)  # sets the project variable
         sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (wheel_multiple, "mousewheel")
         commit(sql)
         msg = "Mousescroll direction updated: {}".format(self.wheel_selection.get())
@@ -2040,9 +2061,9 @@ def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
                              parent=frame)
     frame.destroy()
     masterframe.destroy()
-    setup_database()
-    start_up()
-
+    reset("none")
+    DataBase().setup()
+    StartUp().start()
 
 def database_clean_carriers():  # delete carrier records where station no longer exist
     sql = "SELECT DISTINCT station FROM carriers"
@@ -2532,7 +2553,7 @@ def ns_config_reset(frame):  # reset ns day configurations from Non-Scheduled Da
 
 
 def ns_config(frame):  # generate Non-Scheduled Day Configurations page to configure ns day settings
-    if projvar.invran_day == None:
+    if projvar.invran_day is None:
         messagebox.showerror("Non-Scheduled Day Configurations",
                              "You must set the Investigation Range before changing the NS Day Configurations.",
                              parent=frame)
@@ -3599,7 +3620,7 @@ def pdf_converter(frame):
             kbpc_rpt.write(input)
         if len(daily_underscoreslash) > 0:  # bind all underscore slash items in one array
             underscore_slash_result = sum(daily_underscoreslash, [])
-        if mcgrath_indicator == True and len(underscore_slash_result) > 0:  # solve for mcgrath indicator
+        if mcgrath_indicator and len(underscore_slash_result) > 0:  # solve for mcgrath indicator
             mcgrath_carryover.append(underscore_slash_result[0])  # add underscore slash to carryover
             mcgrath_indicator = False  # reset the indicator
             if gen_error_report == "on":
@@ -3621,7 +3642,7 @@ def pdf_converter(frame):
             count += 2
         if mcgrath_carryover in daily_array:  # if there is a carryover, remove the daily array item from the list
             daily_array.remove(mcgrath_carryover)
-        if mcgrath_indicator == False and mcgrath_carryover != "":  # if there is a carryover to be added
+        if not mcgrath_indicator and mcgrath_carryover != "":  # if there is a carryover to be added
             daily_array.insert(0, mcgrath_carryover)  # put the carryover at the front of the daily array
             mcgrath_carryover = ""  # reset the carryover
             eid_count += 1  # increment the emp id counter
@@ -4204,10 +4225,10 @@ def informalc_gen_clist(start, end, station):
             if rec[0] < str(start):
                 before_start.append(rec)
         for rec in after_start:
-            if added == False and rec[2] == station:
+            if not added and rec[2] == station:
                 carrier_list.append(rec[1])
                 added = True
-        if added == False and len(before_start) > 0:
+        if not added and len(before_start) > 0:
             if before_start[0][2] == station:
                 carrier_list.append(rec[1])
     return carrier_list
@@ -4281,7 +4302,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
     ii = 0
     for i in range(len(var_id)):
         pb["value"] = ii  # increment progress bar
-        id = var_id[i].get()  # simplify variable names
+        id_no = var_id[i].get()  # simplify variable names
         name = var_name[i].get()
         hours = var_hours[i].get().strip()
         rate = var_rate[i].get().strip()
@@ -4360,7 +4381,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
-        if rate and isfloat(rate) == False:
+        if rate and not isfloat(rate):
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
                                  .format(name, str(i + 1)),
                                  parent=frame)
@@ -4409,7 +4430,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
                 pb.destroy()  # destroy the progress bar
                 return
         sql = "UPDATE informalc_awards SET hours='%s',rate='%s',amount='%s' WHERE rowid='%s'" % (
-            hours, rate, amount, id)
+            hours, rate, amount, id_no)
         commit(sql)
         buttons.update()  # update the progress bar
         ii += 1
@@ -4478,7 +4499,7 @@ def informalc_addaward2(frame, passed_result, grv_no):
 def informalc_call_grvlist_result(frame, passed_result):
     try:
         informalc_newroot.destroy()
-    except:
+    except TclError:
         pass
     informalc_grvlist_result(frame, passed_result)
 
@@ -5358,7 +5379,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                                  "hours.".format(name, str(i + 1)),
                                  parent=frame)
             return
-        if hr and isfloat(hr) == False:
+        if hr and not isfloat(hr):
             messagebox.showerror("Data Input Error", "Input error for {} in row {}. Hours must be a number."
                                  .format(name, str(i + 1)),
                                  parent=frame)
@@ -5379,7 +5400,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                                  "hours at a given rate OR an amount.".format(name, str(i + 1)),
                                  parent=frame)
             return
-        if rt and isfloat(rt) == False:
+        if rt and not isfloat(rt):
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Rate must be a number."
                                  .format(name, str(i + 1)),
@@ -5404,7 +5425,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                                  "penalty rate           2.00 or just 2".format(name, str(i + 1)),
                                  parent=frame)
             return
-        if amt and isfloat(amt) == False:
+        if amt and not isfloat(amt):
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Amounts can only be expressed as "
                                  "numbers. No special characters, such as $ are allowed."
@@ -5544,7 +5565,7 @@ def informalc_poe_add(frame, array, selection, year, msg):
 def informalc_poe_goback(frame):
     try:
         informalc_poe_lbox.destroy()
-    except:
+    except TclError:
         pass
     informalc_poe_search(frame)
 
@@ -6003,7 +6024,8 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
         wkly_total.merge_cells('A1:E1')
         wkly_total['A3'] = "Date:  "  # create date/ pay period/ station header
         wkly_total['A3'].style = date_dov_title
-        range_of_dates = format(projvar.invran_date_week[0], "%A  %m/%d/%y") + " - " + format(projvar.invran_date_week[6], "%A  %m/%d/%y")
+        range_of_dates = format(projvar.invran_date_week[0], "%A  %m/%d/%y") + " - " + \
+                         format(projvar.invran_date_week[6], "%A  %m/%d/%y")
         wkly_total['B3'] = range_of_dates
         wkly_total['B3'].style = date_dov
         wkly_total.merge_cells('B3:H3')
@@ -6294,8 +6316,8 @@ def name_index_screen():
             Button(wd[3], text=" " + item[0], anchor="w", width=20, relief=RIDGE).grid(row=x, column=1)
             Button(wd[3], text=" " + item[1], anchor="w", width=20, relief=RIDGE).grid(row=x, column=2)
             Button(wd[3], text=" " + item[2], anchor="w", width=8, relief=RIDGE).grid(row=x, column=3)
-            Button(wd[3], text="delete", anchor="w", width=5, relief=RIDGE, command=lambda x=item[2]:
-            apply_nameindexer_list(wd[0], x)).grid(row=x, column=4)
+            Button(wd[3], text="delete", anchor="w", width=5, relief=RIDGE, command=lambda xx=item[2]:
+                apply_nameindexer_list(wd[0], xx)).grid(row=x, column=4)
             x += 1
         Button(wd[3], text="Delete All", width="15", command=lambda: del_all_nameindexer(wd[0])) \
             .grid(row=x, column=0, columnspan=5, sticky="e")
@@ -6440,7 +6462,8 @@ def gen_carrier_list():
                     if record[0] <= str(projvar.invran_date_week[0]) and len(pre_invest) == 0:
                         pre_invest.append(record)
                 if not projvar.invran_weekly_span:  # if investigation range is daily...
-                    if record[0] <= str(projvar.invran_date) and len(pre_invest) == 0:  # if date match and no pre_investigation
+                    # if date match and no pre_investigation
+                    if record[0] <= str(projvar.invran_date) and len(pre_invest) == 0:
                         pre_invest.append(record)  # add rec to pre_invest array
             # find carriers who start in the middle of the investigation range CATEGORY ONE
             if len(more_rows) > 0 and len(pre_invest) == 0:
@@ -7161,8 +7184,8 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
             full_ns_dict["None"] = ns_option  # creates full_ns_dict None option
     results = gen_ns_dict(file_path, to_addname)  # returns id and name
     ns_dict = {}  # create dictionary for ns day data
-    for id in results:  # loop to fill dictionary with ns day info
-        ns_dict[id[0]] = id[1]
+    for ids in results:  # loop to fill dictionary with ns day info
+        ns_dict[ids[0]] = ids[1]
     f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
@@ -7174,7 +7197,6 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
     c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-
     s.configure(command=c.yview, orient="vertical")
     c.configure(yscrollcommand=s.set)
     if sys.platform == "win32":
@@ -7188,8 +7210,8 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     c.create_window((0, 0), window=ff, anchor=NW)
     Label(ff, text="Input New Carriers", font=macadj("bold", "Helvetica 18"), pady=10) \
         .grid(row=0, column=0, sticky="w", columnspan=6)  # Pairing Screen #3
-    Label(ff, text=
-    "Enter in information for carriers not already recorded in the Klusterbox database. You can use the TACS \n"
+    Label(ff, text="Enter in information "
+                   "for carriers not already recorded in the Klusterbox database. You can use the TACS \n"
     "information (shown in blue),as a guide if it is accurate. As OTDL/WAL information is not in TACS, it is \n"
     "not shown and this information will have to requested from management. Routes must be only 4 digits \n"
     "long. In cases were there are multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
@@ -7336,7 +7358,8 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     "Routes must 4  or 5 digits long. In cases where there are multiple routes, the routes must be \n"
     "separated by a \"/\" backslash.\n\n"
     "Investigation Range: {0} through {1}\n\n"
-          .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"), projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
+          .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                  projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
         .grid(row=1, sticky="w")
     y = 1  # count for the row
     Label(wd[3], text="    ", fg="Grey").grid(row=y, column=0, sticky="w")
@@ -8114,7 +8137,7 @@ def ee_skimmer(frame):
                     filename = "ee_reader" + "_" + pp + ".txt"
                     try:
                         report = open(dir_path('ee_reader') + filename, "w")
-                    except:
+                    except (PermissionError, FileNotFoundError):
                         messagebox.showwarning("Report Generator",
                                                "The Employee Everything Report Reader "
                                                "was not generated.",
@@ -8771,59 +8794,59 @@ def about_klusterbox(frame):  # gives information about the program
     ff.mainloop()
 
 
-def apply_startup(switch, station, frame):
-    if switch == "enter":
-        if station.get().strip() == "" or station.get().strip == "x":
+class StartUp:
+    def __init__(self):
+        self.win = None
+        self.new_station = None
+
+    def start(self):
+        self.win = MakeWindow()
+        self.win.create(None)
+        self.new_station = StringVar(self.win.body)
+        self.build()
+        self.win.fill(7,20)
+        self.buttons_frame()
+        self.win.finish()
+
+    def build(self):
+        Label(self.win.body, text="Welcome to Klusterbox", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, columnspan=2, sticky="w")
+        Label(self.win.body, text="version: {}".format(version)).grid(row=1, columnspan=2, sticky="w")
+        Label(self.win.body, text="", pady=20).grid(row=2, column=0)
+        # enter new stations
+        Label(self.win.body, text="To get started, please enter your station name:", pady=5) \
+            .grid(row=3, columnspan=2, sticky="w")
+        e = Entry(self.win.body, width=35, textvariable=self.new_station)
+        e.grid(row=4, column=0, sticky="w")
+        self.new_station.set("")
+        Button(self.win.body, width=5, anchor="w", text="ENTER",
+               command=lambda: self.apply_startup()).grid(row=4, column=1, sticky="w")
+        Label(self.win.body, text="", pady=20).grid(row=5, columnspan=2, sticky="w")
+        Label(self.win.body, text="Or you can exit to the main screen and enter your\n"
+                       "station by going to Management > list of stations.").grid(row=6, columnspan=2, sticky="w")
+        Button(self.win.body, width=5, text="EXIT",
+               command=lambda: MainFrame().start(frame=self.win.topframe)).grid(row=7, columnspan=2, sticky="e")
+
+    def buttons_frame(self):
+        Label(self.win.buttons, text="").pack()
+
+    def apply_startup(self):
+        if not self.new_station.get().strip():
             messagebox.showerror("Prohibited Action",
                                  "You can not enter a blank entry for a station.",
-                                 parent=frame)
+                                 parent=self.win.body)
             return
-        sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
+        sql = "INSERT INTO stations (station) VALUES('%s')" % (self.new_station.get().strip())
         commit(sql)
-        projvar.list_of_stations.append(station.get())
-    # access list of stations from database
-    sql = "SELECT * FROM stations ORDER BY station"
-    results = inquire(sql)
-    # define and populate list of stations variable
-    del projvar.list_of_stations[:]
-    for stat in results:
-        projvar.list_of_stations.append(stat[0])
-    MainFrame().start(frame=frame)  # load new frame
-
-
-def start_up():  # the start up screen when no information has been entered
-    # put records in the skippers table
-    skip_these = [["354", "stand by"], ["613", "stewards time"], ["743", "route maintenance"]]
-    for rec in skip_these:
-        sql = "INSERT OR IGNORE INTO skippers(code, description) VALUES ('%s','%s')" % (rec[0], rec[1])
-        commit(sql)
-    f = Frame(projvar.root)
-    f.pack(fill=BOTH, side=LEFT, pady=10, padx=20)
-    c = Canvas(f, width=1600)
-    c.pack(side=LEFT, fill=BOTH)
-    ff = Frame(c)
-    c.create_window((0, 0), window=ff, anchor=NW)
-    Label(ff, text="Welcome to Klusterbox", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, columnspan=2, sticky="w")
-    Label(ff, text="version: {}".format(version)).grid(row=1, columnspan=2, sticky="w")
-    Label(ff, text="", pady=20).grid(row=2, column=0)
-    # enter new stations
-    new_station = StringVar(ff)
-    Label(ff, text="To get started, please enter your station name:", pady=5) \
-        .grid(row=3, columnspan=2, sticky="w")
-    e = Entry(ff, width=35, textvariable=new_station)
-    e.grid(row=4, column=0, sticky="w")
-    new_station.set("")
-    Button(ff, width=5, anchor="w", text="ENTER", command=lambda: apply_startup("enter", new_station, f)). \
-        grid(row=4, column=1, sticky="w")
-    Label(ff, text="", pady=20).grid(row=5, columnspan=2, sticky="w")
-    Label(ff, text="Or you can exit to the main screen and enter your\n"
-                   "station by going to Management > list of stations.") \
-        .grid(row=6, columnspan=2, sticky="w")
-    Button(ff, width=5, text="EXIT", command=lambda: MainFrame().start(frame=f)). \
-        grid(row=7, columnspan=2, sticky="e")
-    projvar.root.update()
-    mainloop()
+        projvar.list_of_stations.append(self.new_station.get().strip())
+        # access list of stations from database
+        sql = "SELECT * FROM stations ORDER BY station"
+        results = inquire(sql)
+        # define and populate list of stations variable
+        del projvar.list_of_stations[:]
+        for stat in results:
+            projvar.list_of_stations.append(stat[0])
+        MainFrame().start(frame=self.win.topframe)  # load new frame
 
 
 def carrier_list_cleaning_for_auto_skimmer(frame):  # cleans the database of duplicate records
@@ -9102,56 +9125,11 @@ def auto_data_entry_settings(frame):
     rear_window(wd)
 
 
-def min_ss_presets(frame, order):
-    if order == "default":
-        num = "25"
-        over_num = "30"
-    if order == "zero":
-        num = "0"
-        over_num = "0"
-    types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
-    for t in types:
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num, t)
-        commit(sql)
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (over_num, "min_ss_overmax")
-    commit(sql)
-    spreadsheet_settings(frame)
-
-
-def apply_ss_min(frame, tolerance, type):
-    if not isint(tolerance):
-        text = "You must enter a number with no decimals. "
-        messagebox.showerror("Tolerance value entry error",
-                             text,
-                             parent=frame)
-        return
-    if tolerance.strip() == "":
-        text = "You must enter a numeric value for tolerances"
-        messagebox.showerror("Tolerance value entry error",
-                             text,
-                             parent=frame)
-        return
-    if float(tolerance) < 0:
-        text = "Values must be equal to or greater than zero."
-        messagebox.showerror("Tolerance value entry error",
-                             text,
-                             parent=frame)
-        return
-    if float(tolerance) > 100:
-        text = "You must enter a value less than one-hundred."
-        messagebox.showerror("Tolerance value entry error",
-                             text,
-                             parent=frame)
-        return
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (tolerance, type)
-    commit(sql)
-    spreadsheet_settings(frame)
-
-
 class SpreadsheetConfig:
     def __init__(self):
         self.frame = None
         self.win = None
+        self.minrows_limit = 100  # hardcoded limit of min rows
         self.min_nl = 0.0
         self.min_wal = 0.0
         self.min_otdl = 0.0
@@ -9169,6 +9147,7 @@ class SpreadsheetConfig:
         self.pb_wal_otdl_var = None  # page break between work assignment and otdl
         self.pb_otdl_aux_var = None  # page break between otdl and auxiliary
         self.status_update = None  # Label(self.win.buttons, text="", fg="red")
+        self.report_counter = 0
         self.check_i = 0  # the iteration of the apply/check method
         self.add_min_nl = 0.0  # prep values to be entered into database
         self.add_min_wal = 0.0
@@ -9184,6 +9163,8 @@ class SpreadsheetConfig:
         self.win = MakeWindow()
         self.win.create(self.frame)
         self.get_settings()
+        self.build_stringvars()
+        self.set_stringvars()
         self.build()
         self.buttons_frame()
         self.win.finish()
@@ -9199,6 +9180,10 @@ class SpreadsheetConfig:
         self.pb_nl_wal = results[21][0]  # page break between no list and work assignment
         self.pb_wal_otdl = results[22][0]  # page break between work assignment and otdl
         self.pb_otdl_aux = results[23][0]  # page break between otdl and auxiliary
+        # convert bool to "on" or "off"
+        self.pb_nl_wal = Convert(self.pb_nl_wal).strbool_to_onoff()
+        self.pb_wal_otdl = Convert(self.pb_wal_otdl).strbool_to_onoff()
+        self.pb_otdl_aux = Convert(self.pb_otdl_aux).strbool_to_onoff()
 
     def build_stringvars(self):
         self.min_nl_var = StringVar(self.win.body)  # create stringvars
@@ -9206,9 +9191,9 @@ class SpreadsheetConfig:
         self.min_otdl_var = StringVar(self.win.body)  # create stringvars
         self.min_aux_var = StringVar(self.win.body)  # create stringvars
         self.min_overmax_var = StringVar(self.win.body)  # create stringvars
-        self.pb_nl_wal_var =  StringVar(self.win.body)  # create stringvars
-        self.pb_wal_otdl_var =  StringVar(self.win.body)  # create stringvars
-        self.pb_otdl_aux_var =  StringVar(self.win.body)  # create stringvars
+        self.pb_nl_wal_var = StringVar(self.win.body)  # create stringvars
+        self.pb_wal_otdl_var = StringVar(self.win.body)  # create stringvars
+        self.pb_otdl_aux_var = StringVar(self.win.body)  # create stringvars
 
     def set_stringvars(self):  # set stringvar values
         self.min_nl_var.set(self.min_nl)
@@ -9227,37 +9212,39 @@ class SpreadsheetConfig:
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
+        Label(self.win.body, text="Minimum rows for No List Carriers", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_nl_var).grid(row=row, column=1, padx=4)
-        Button(self.win.body, width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_nl")) \
-            .grid(row=row, column=3, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_nl")).grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="Minimum rows for Work Assignment", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_wal_var).grid(row=row, column=1, padx=4)
-        Button(self.win.body, width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_wal")) \
-            .grid(row=row, column=3, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_wal")).grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="Minimum rows for OT Desired", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_otdl_var).grid(row=row, column=1, padx=4)
-        Button(self.win.body, width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_otdl")) \
-            .grid(row=row, column=3, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_otdl")).grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="Minimum rows for Auxiliary", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_aux_var).grid(row=row, column=1, padx=4)
-        Button(self.win.body, width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_aux")) \
-            .grid(row=row, column=3, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_aux")).grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
-        Label(self.win.body, text="Page Breaks Between List:").grid(row=row, column=0)
+        Label(self.win.body, text="Page Breaks Between List:", anchor="w").grid(row=row, column=0, sticky="w")
         row += 1
         # Page break between no list and work assignment
         Label(self.win.body, text="  No List and Work Assignment", width=30, anchor="w")\
             .grid(row=row, column=0, ipady=5, sticky="w")
-        om_pb_1 = Optionmenu(self.win.body, self.pb_nl_wal_var, "on", "off")
-        om_pb_1.config(width=5)
+        om_pb_1 = OptionMenu(self.win.body, self.pb_nl_wal_var, "on", "off")
+        om_pb_1.config(width=3)
         om_pb_1.grid(row=row, column=1, padx=4)
         Button(self.win.body, width=5, text="info", 
                command=lambda: Messenger(self.win.topframe).tolerance_info("pb_nl_wal"))\
@@ -9266,8 +9253,8 @@ class SpreadsheetConfig:
         # Page break between no list and work assignment
         Label(self.win.body, text="  Work Assignment and OT Desired", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
-        om_pb_2 = Optionmenu(self.win.body, self.pb_wal_otdl_var, "on", "off")
-        om_pb_2.config(width=5)
+        om_pb_2 = OptionMenu(self.win.body, self.pb_wal_otdl_var, "on", "off")
+        om_pb_2.config(width=3)
         om_pb_2.grid(row=row, column=1, padx=4)
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("pb_wal_otdl"))\
@@ -9276,8 +9263,8 @@ class SpreadsheetConfig:
         # Page break between no list and work assignment
         Label(self.win.body, text="  OT Desired and Auxiliary", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
-        om_pb_3 = Optionmenu(self.win.body, self.pb_otdl_aux_var, "on", "off")
-        om_pb_3.config(width=5)
+        om_pb_3 = OptionMenu(self.win.body, self.pb_otdl_aux_var, "on", "off")
+        om_pb_3.config(width=3)
         om_pb_3.grid(row=row, column=1, padx=4)
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("pb_otdl_aux"))\
@@ -9296,26 +9283,28 @@ class SpreadsheetConfig:
         Label(self.win.body, text="Minimum rows for Over Max", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_overmax_var).grid(row=row, column=1, padx=4)
-        Button(self.win.body, width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_overmax")) \
-            .grid(row=row, column=3, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_overmax"))\
+            .grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="_______________________________________________________________________", pady=5) \
+        Label(self.win.body, text="___________________________________________________________________", pady=5) \
             .grid(row=row, columnspan=4, sticky="w")
         row += 1
         Label(self.win.body, text="Restore Defaults").grid(row=row, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("default")) \
-            .grid(row=row, column=3)
+            .grid(row=row, column=2)
         row += 1
         Label(self.win.body, text="Set rows to zero").grid(row=row, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("zero")) \
-            .grid(row=row, column=3)
+            .grid(row=row, column=2)
+        self.win.fill(row + 1, 15)
 
     def buttons_frame(self):
-        Button(self.win.buttons, text="Submit", width=10, anchor="w",
+        Button(self.win.buttons, text="Submit", width=15, anchor="w",
                command=lambda: self.apply(True)).pack(side=LEFT)
-        Button(self.win.buttons, text="Apply", width=10, anchor="w",
+        Button(self.win.buttons, text="Apply", width=15, anchor="w",
                command=lambda: self.apply(False)).pack(side=LEFT)
-        Button(self.win.buttons, text="Go Back", width=20, anchor="w",
+        Button(self.win.buttons, text="Go Back", width=15, anchor="w",
                command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
         self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
@@ -9323,12 +9312,12 @@ class SpreadsheetConfig:
     def min_ss_presets(self, order):
         num = "25"
         over_num = "30"
-        msg = "Minimum Rows reset to default. "
+        msg = "Minimum rows reset to default. "
         if order == "zero":
             num = "0"
             over_num = "0"
-            msg = "Minimum Rows set to zero. "
-        self.status_update.config(text={}.format(msg))
+            msg = "Minimum rows set to zero. "
+        self.status_update.config(text="{}".format(msg))
         types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
         for t in types:  # set minimum row values for improper mandate spreadsheet
             sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num, t)
@@ -9341,6 +9330,8 @@ class SpreadsheetConfig:
             for pb in pagebreaks:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("True", pb)
                 commit(sql)
+        self.get_settings()
+        self.set_stringvars()
 
     def check(self, var):
         current_var = ("No List minimum rows", "Work Assignment minimum rows", "OT Desired minimum rows",
@@ -9349,23 +9340,26 @@ class SpreadsheetConfig:
             return True
         if not MinrowsChecker(var).is_numeric():
             text = "The value must be a number for {}".format(current_var[self.check_i])
-            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.frame)
+            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.win.body)
             return False
         if not MinrowsChecker(var).no_decimals():
             text = "Numbers with decimals are not allowed for {}".format(current_var[self.check_i])
-            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.frame)
+            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.win.body)
             return False
         if not MinrowsChecker(var).not_negative():
             text = "Numbers less than zero are not allowed for {}".format(current_var[self.check_i])
-            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.frame)
+            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.win.body)
             return False
-        if not MinrowsChecker(var).within_limit(100):
-            text = "Numbers greater than {} are not allowed for {}".format(limit, current_var[self.check_i])
-            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.frame)
+        if not MinrowsChecker(var).within_limit(self.minrows_limit):
+            text = "Numbers greater than {} are not allowed for {}"\
+                .format(self.minrows_limit, current_var[self.check_i])
+            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.win.body)
             return False
         return True
 
     def apply(self, go_home):
+        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux, self.min_overmax)
+        onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux)
         check_these = (self.min_nl_var.get(), self.min_wal_var.get(), self.min_otdl_var.get(), self.min_aux_var.get(),
                        self.min_overmax_var.get())
         add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux, self.add_min_overmax]
@@ -9379,91 +9373,32 @@ class SpreadsheetConfig:
                 return
             self.check_i += 1
         for i in range(len(check_these)):
-            add_these[i] = Convert(check_these[i]).zero_not_empty()  # replace empty strings with a zero
-            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_these[i], categories[i])
-            commit(sql)
+            add_this = Convert(check_these[i]).zero_not_empty()  # replace empty strings with a zero
+            add_these[i] = Handler(add_this).format_str_as_int()  # format the string as an int
+            if onrecs_min[i] != add_these[i]:
+                sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_these[i], categories[i])
+                commit(sql)
+                self.report_counter += 1
         for i in range(len(pbs)):
             add_pbs[i] = Convert(pbs[i]).onoff_to_bool()
-            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (pbs[i], pb_categories[i])
-            commit(sql)
+            if onrecs_breaks[i] != str(pbs[i]):
+                sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_pbs[i], pb_categories[i])
+                commit(sql)
+                self.report_counter += 1
         if go_home:
             MainFrame().start(frame=self.win.topframe)
         else:
+            self.write_report()
             self.get_settings()
             self.set_stringvars()
 
-
-def spreadsheet_settings(frame):
-    wd = front_window(frame)  # F,S,C,FF,buttons
-    Label(wd[3], text="Improper Mandate Spreadsheet Settings", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text="").grid(row=1, column=0)
-    sql = "SELECT tolerance FROM tolerances"
-    results = inquire(sql)  # get spreadsheet settings from database
-    min_nl = StringVar(wd[3])  # create stringvars
-    min_wal = StringVar(wd[3])
-    min_otdl = StringVar(wd[3])
-    min_aux = StringVar(wd[3])
-    min_overmax = StringVar(wd[3])
-    min_nl.set(results[3][0])  # set the values for the stringvars from dbase
-    min_wal.set(results[4][0])
-    min_otdl.set(results[5][0])
-    min_aux.set(results[6][0])
-    min_overmax.set(results[14][0])
-    # Lay out widgets for displaying/changing minimum spreadsheet rows
-    Label(wd[3], text="Minimum rows for No List", width=30, anchor="w") \
-        .grid(row=2, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_nl).grid(row=2, column=1, padx=4)
-    Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_nl.get(), "min_ss_nl")) \
-        .grid(row=2, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_nl")) \
-        .grid(row=2, column=3, padx=4)
-    Label(wd[3], text="Minimum rows for Work Assignment", width=30, anchor="w") \
-        .grid(row=3, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_wal).grid(row=3, column=1, padx=4)
-    Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_wal.get(), "min_ss_wal")) \
-        .grid(row=3, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_wal")) \
-        .grid(row=3, column=3, padx=4)
-    Label(wd[3], text="Minimum rows for OT Desired", width=30, anchor="w") \
-        .grid(row=4, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_otdl).grid(row=4, column=1, padx=4)
-    Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_otdl.get(), "min_ss_otdl")) \
-        .grid(row=4, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_otdl")) \
-        .grid(row=4, column=3, padx=4)
-    Label(wd[3], text="Minimum rows for Auxiliary", width=30, anchor="w") \
-        .grid(row=5, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_aux).grid(row=5, column=1, padx=4)
-    Button(wd[3], width=5, text="change", command=lambda: apply_ss_min(wd[0], min_aux.get(), "min_ss_aux")) \
-        .grid(row=5, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_aux")) \
-        .grid(row=5, column=3, padx=4)
-    # Display header for 12 and 60 Hour Violations Spread Sheet
-    Label(wd[3], text="").grid(row=6, column=0)
-    Label(wd[3], text="12 and 60 Hour Violations Spreadsheet Settings", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=7, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text="").grid(row=8, column=0)
-    # Display widgets for 12 and 60 Hour Violations Spread Sheet
-    Label(wd[3], text="Minimum rows for Over Max", width=30, anchor="w") \
-        .grid(row=9, column=0, ipady=5, sticky="w")
-    Entry(wd[3], width=5, textvariable=min_overmax).grid(row=9, column=1, padx=4)
-    Button(wd[3], width=5, text="change",
-           command=lambda: apply_ss_min(wd[0], min_overmax.get(), "min_ss_overmax")) \
-        .grid(row=9, column=2, padx=4)
-    Button(wd[3], width=5, text="info", command=lambda: Messenger(wd[0]).tolerance_info("min_overmax")) \
-        .grid(row=9, column=3, padx=4)
-    Label(wd[3], text="_______________________________________________________________________", pady=5) \
-        .grid(row=10, columnspan=4, sticky="w")
-    Label(wd[3], text="Restore Defaults").grid(row=11, column=0, ipady=5, sticky="w")
-    Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "default")) \
-        .grid(row=11, column=3)
-    Label(wd[3], text="Set rows to zero").grid(row=12, column=0, ipady=5, sticky="w")
-    Button(wd[3], width=5, text="set", command=lambda: min_ss_presets(wd[0], "zero")) \
-        .grid(row=12, column=3)
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: (MainFrame().start(frame=wd[0]))).pack(side=LEFT)
-    rear_window(wd)
+    def write_report(self):
+        text = "No Records Updated"
+        if self.report_counter:
+            text = "{} Record{} Updated"\
+                .format(self.report_counter, Handler(self.report_counter).plurals())
+        self.status_update.config(text=text)
+        self.report_counter = 0
 
 
 def apply_tolerance(frame, tolerance, type):
@@ -10072,10 +10007,10 @@ def output_tab(frame, list_carrier):
               "carrier_name" % projvar.invran_date
     r_rings = inquire(sql)
     sql = "SELECT * FROM tolerances"  # get tolerances
-    tolerances = inquire(sql)
-    ot_own_rt = tolerances[0][2]
-    ot_tol = tolerances[1][2]
-    av_tol = tolerances[2][2]
+    tol_results = inquire(sql)
+    ot_own_rt = tol_results[0][2]
+    ot_tol = tol_results[1][2]
+    av_tol = tol_results[2][2]
     daily_list = []  # array
     candidates = []
     dl_nl = []
@@ -10107,7 +10042,8 @@ def output_tab(frame, list_carrier):
                     jump = "yes"  # bypasses an analysis of the candidates array
             if jump == "no":  # review the list of candidates
                 winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == projvar.invran_station: daily_list.append(winner)  # add the record if it matches the station
+                if winner[5] == projvar.invran_station:
+                    daily_list.append(winner)  # add the record if it matches the station
                 del candidates[:]  # empty out the candidates array.
         for item in daily_list:  # sort carriers in daily list by the list they are in
             if item[2] == "nl":
@@ -11590,7 +11526,7 @@ def update_carrier(a):
 
 
 def edit_carrier(e_name):
-    sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+    sql = "SELECT effective_date, carrier_name, list_status, ns_day,route_s, station, rowid" \
           " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % e_name
     results = inquire(sql)
     sql = "SELECT * FROM ns_configuration"
@@ -11673,10 +11609,7 @@ def edit_carrier(e_name):
     Label(list_frame, text=" List Status", anchor="w", background=macadj("gray95", "grey"),
           fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
     ls = StringVar(list_frame)
-    try:
-        ls.set(value=results[0][2])
-    except:
-        MainFrame().start(frame=switch_f3)
+    ls.set(results[0][2])
     Radiobutton(list_frame, text="OTDL", variable=ls, value='otdl', justify=LEFT) \
         .grid(row=1, column=0, sticky=W)
     Radiobutton(list_frame, text="Work Assignment", variable=ls, value='wal', justify=LEFT) \
@@ -12140,87 +12073,83 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
     date = ""  # reference before assignment
     try:
         date = datetime(int(s_year), int(s_mo), int(s_day))
-        valid_date = True
     except ValueError:
-        valid_date = False
-    if valid_date:
-        projvar.invran_date = date
-        wkdy_name = date.strftime("%a")
-        while wkdy_name != "Sat":  # while date enter is not a saturday
-            date -= timedelta(days=1)  # walk back the date until it is a saturday
-            wkdy_name = date.strftime("%a")
-        sat_range = date  # sat range = sat or the sat most prior
-        projvar.pay_period = pp_by_date(sat_range)
-        projvar.invran_year = int(date.strftime("%Y"))  # format that sat to form the global
-        projvar.invran_month = int(date.strftime("%m"))
-        projvar.invran_day = int(date.strftime("%d"))
-        del projvar.invran_date_week[:]  # empty out the array for the global date variable
-        d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
-        # set the projvar.invran_date_week variable
-        projvar.invran_date_week.append(d)
-        for i in range(6):
-            d += timedelta(days=1)
-            projvar.invran_date_week.append(d)
-        # define color sequence tuple
-        pat = ("blue", "green", "brown", "red", "black", "yellow")
-        # calculate the n/s day of sat/first day of investigation range
-        end_date = sat_range + timedelta(days=-1)
-        cdate = datetime(2017, 1, 7)
-        x = 0
-        if sat_range > cdate:
-            while cdate < end_date:
-                if x > 0:
-                    x -= 1
-                    cdate += timedelta(days=7)
-                else:
-                    x = 5
-                    cdate += timedelta(days=7)
-        else:
-            # IN REVERSE
-            while cdate > sat_range:
-                if x < 5:
-                    x += 1
-                    cdate -= timedelta(days=7)
-                else:
-                    x = 0
-                    cdate -= timedelta(days=7)
-        # find ns day for each day in range
-        date = sat_range
-        projvar.ns_code = {}
-        for i in range(7):
-            if i == 0:
-                projvar.ns_code[pat[x]] = date.strftime("%a")
-                date += timedelta(days=1)
-            elif i == 1:
-                date += timedelta(days=1)
-                if x > 4:
-                    x = 0
-                else:
-                    x += 1
-            else:
-                projvar.ns_code[pat[x]] = date.strftime("%a")
-                date += timedelta(days=1)
-                if x > 4:
-                    x = 0
-                else:
-                    x += 1
-        projvar.ns_code["none"] = "  "
-        if not i_range:  # if investigation range is one day
-            projvar.invran_year = int(s_year)
-            projvar.invran_month = int(s_mo)
-            projvar.invran_day = int(s_day)
-            projvar.invran_day = int(s_day)
-        projvar.ns_code["sat"] = "Sat"
-        projvar.ns_code["mon"] = "Mon"
-        projvar.ns_code["tue"] = "Tue"
-        projvar.ns_code["wed"] = "Wed"
-        projvar.ns_code["thu"] = "Thu"
-        projvar.ns_code["fri"] = "Fri"
-    else:
         messagebox.showerror("Investigation date/range",
                              'The date entered is not valid.',
                              parent=frame)
         return
+    projvar.invran_date = date
+    wkdy_name = date.strftime("%a")
+    while wkdy_name != "Sat":  # while date enter is not a saturday
+        date -= timedelta(days=1)  # walk back the date until it is a saturday
+        wkdy_name = date.strftime("%a")
+    sat_range = date  # sat range = sat or the sat most prior
+    projvar.pay_period = pp_by_date(sat_range)
+    projvar.invran_year = int(date.strftime("%Y"))  # format that sat to form the global
+    projvar.invran_month = int(date.strftime("%m"))
+    projvar.invran_day = int(date.strftime("%d"))
+    del projvar.invran_date_week[:]  # empty out the array for the global date variable
+    d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
+    # set the projvar.invran_date_week variable
+    projvar.invran_date_week.append(d)
+    for i in range(6):
+        d += timedelta(days=1)
+        projvar.invran_date_week.append(d)
+    # define color sequence tuple
+    pat = ("blue", "green", "brown", "red", "black", "yellow")
+    # calculate the n/s day of sat/first day of investigation range
+    end_date = sat_range + timedelta(days=-1)
+    cdate = datetime(2017, 1, 7)
+    x = 0
+    if sat_range > cdate:
+        while cdate < end_date:
+            if x > 0:
+                x -= 1
+                cdate += timedelta(days=7)
+            else:
+                x = 5
+                cdate += timedelta(days=7)
+    else:
+        # IN REVERSE
+        while cdate > sat_range:
+            if x < 5:
+                x += 1
+                cdate -= timedelta(days=7)
+            else:
+                x = 0
+                cdate -= timedelta(days=7)
+    # find ns day for each day in range
+    date = sat_range
+    projvar.ns_code = {}
+    for i in range(7):
+        if i == 0:
+            projvar.ns_code[pat[x]] = date.strftime("%a")
+            date += timedelta(days=1)
+        elif i == 1:
+            date += timedelta(days=1)
+            if x > 4:
+                x = 0
+            else:
+                x += 1
+        else:
+            projvar.ns_code[pat[x]] = date.strftime("%a")
+            date += timedelta(days=1)
+            if x > 4:
+                x = 0
+            else:
+                x += 1
+    projvar.ns_code["none"] = "  "
+    if not i_range:  # if investigation range is one day
+        projvar.invran_year = int(s_year)
+        projvar.invran_month = int(s_mo)
+        projvar.invran_day = int(s_day)
+        projvar.invran_day = int(s_day)
+    projvar.ns_code["sat"] = "Sat"
+    projvar.ns_code["mon"] = "Mon"
+    projvar.ns_code["tue"] = "Tue"
+    projvar.ns_code["wed"] = "Wed"
+    projvar.ns_code["thu"] = "Thu"
+    projvar.ns_code["fri"] = "Fri"
     projvar.invran_station = station
     if frame != "None":
         MainFrame().start(frame=frame)
@@ -12228,31 +12157,41 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
 
 class MainFrame:
     def __init__(self):
-        self.win = MakeWindow()
-        self.invest_frame = Frame(self.win.body)
-        self.main_frame = Frame(self.win.body)
-        self.now = datetime.now()
-        self.start_year = StringVar(self.win.body)
-        self.start_month = StringVar(self.win.body)  # create stringvars
-        self.start_day = StringVar(self.win.body)
-        self.i_range = BooleanVar(self.win.body)
-        self.min_abc = StringVar(self.win.body)
-        self.investigation_message = Label(self.win.body, text="", fg="red")
-        self.status_update = Label(self.win.buttons, text="", fg="red")
-        self.start_date = projvar.invran_date
-        self.end_date = projvar.invran_date
-        if projvar.invran_weekly_span:
-            self.start_date = projvar.invran_date_week[0]
-            self.end_date = projvar.invran_date_week[6]
+        self.win = None
+        self.invest_frame = None
+        self.main_frame = None
+        self.start_year = None
+        self.start_month = None  # stringvars
+        self.start_day = None
+        self.i_range = None  # investigation range boolean
+        self.invran = None  # investigation range stringvar
+        self.start_date = None
+        self.end_date = None
+        self.station = None
         self.carrier_list = []
+        self.invran_date = None  # investigation range date
+        self.stations_minus_outofstation = []  # list of stations
+        self.invran_result = None
 
     def start(self, frame=None):  # master method for controlling methods in class
+        self.win = MakeWindow()
         self.win.create(frame)  # create the window
+        self.invest_frame = Frame(self.win.body)
+        self.main_frame = Frame(self.win.body)
+        self.invest_frame.pack()  # put the investigation frame in the window
+        self.main_frame.pack()  # puts the mainframe in the window
+        self.set_dates()
+        self.make_stringvars()
         self.get_carrierlist()  # call CarrierList to get Carrier Rec Set
         self.pulldown_menu()  # create a pulldown menu, and add it to the menu bar
-        self.invest_frame.pack()  # create frame for investigation range widgets
-        self.investigation_range()  # configure widgets for setting investigation range
-        self.main_frame.pack()  # create the main frame for carrier list
+        self.set_investigation_vars()  # set the stringvars for the investigation range
+        self.get_stations_list()  # get a list of stations for station optionmenu
+        self.get_invran_mode()  # get the investigation range mode. alternate widget layouts for investigation range
+        if self.invran_result in ("simple", "no labels"):
+            self.investigation_range_simple()  # configure widgets for setting investigation range
+        else:
+            self.investigation_range()  # configure widgets for setting investigation range
+        self.investigation_status()  # provide message on status of investigation range
         if projvar.invran_station is None:  # if the investigation range is not set
             self.invran_not_set()  # investigation range not set screen
         else:
@@ -12263,36 +12202,101 @@ class MainFrame:
         self.bottom_of_frame()  # place necessary code to mainloop the window
         self.win.finish()  # close the window
 
+    def set_dates(self):
+        self.start_date = projvar.invran_date
+        self.end_date = projvar.invran_date
+        if projvar.invran_weekly_span:
+            self.start_date = projvar.invran_date_week[0]
+            self.end_date = projvar.invran_date_week[6]
+
+    def make_stringvars(self):  # create stringvars
+        self.start_year = StringVar(self.win.body)
+        self.start_month = StringVar(self.win.body)
+        self.start_day = StringVar(self.win.body)
+        self.invran_date = StringVar(self.win.body)
+        self.i_range = BooleanVar(self.win.body)
+        self.invran = StringVar(self.win.body)
+        self.station = StringVar(self.invest_frame)
+
     def get_carrierlist(self):  # call CarrierList to get Carrier Rec Set
         # get carrier list
         self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
-    def investigation_range(self):  # configure widgets for setting investigation range
-        Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=1, columnspan=2)
-
-        if projvar.invran_month is None:
-            self.start_month.set(self.now.month)
-        else:
+    def set_investigation_vars(self):  # set the stringvars for the investigation range
+        now = datetime.now()
+        self.start_month.set(now.month)  # default setting is now
+        self.start_day.set(now.day)
+        self.start_year.set(now.year)
+        self.invran_date.set(now.strftime("%m/%d/%Y"))
+        self.station.set("undefined")  # default value
+        if projvar.invran_month:  # set month if a month is set
             self.start_month.set(projvar.invran_month)
+        if projvar.invran_day:  # set day if a day is set
+            self.start_day.set(projvar.invran_day)
+        if projvar.invran_year:  # set year if a year is set
+            self.start_year.set(projvar.invran_year)
+        if projvar.invran_weekly_span:
+            self.invran_date.set(projvar.invran_date_week[0].strftime("%m/%d/%Y"))
+        elif projvar.invran_weekly_span is False:
+            self.invran_date.set(projvar.invran_date.strftime("%m/%d/%Y"))
+        if projvar.invran_station:
+            self.station.set(projvar.invran_station)
+        if projvar.invran_weekly_span is None:  # investigation range weekly/true or daily/false or none
+            self.i_range.set(True)
+            self.invran.set("week")
+        elif not projvar.invran_weekly_span:  # if investigation range is daily
+            self.i_range.set(False)
+            self.invran.set("day")
+        else:  # if investigation range is weekly
+            self.i_range.set(True)
+            self.invran.set("week")
+
+    def get_stations_list(self):  # get a list of stations for station optionmenu
+        self.stations_minus_outofstation = projvar.list_of_stations[:]
+        self.stations_minus_outofstation.remove("out of station")
+        if len(self.stations_minus_outofstation) == 0:
+            self.stations_minus_outofstation.append("undefined")
+
+    def get_invran_mode(self):  # get the investigation range mode
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
+        results = inquire(sql)
+        self.invran_result = results[0][0]
+
+    def investigation_range_simple(self):
+        Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=0, column=0, columnspan=2, sticky=W)
+        if self.invran_result != "no labels":  # create a label row
+            Label(self.invest_frame, text="Date: ", fg="grey").grid(row=1, column=0, sticky=W)
+            Label(self.invest_frame, text="Range: ", fg="grey").grid(row=1, column=1, sticky=W)
+            Label(self.invest_frame, text="Station: ", fg="grey").grid(row=1, column=2, sticky=W)
+            Label(self.invest_frame, text="Set/Reset: ", fg="grey").grid(row=1, column=3, columnspan=2, sticky=W)
+        # create widget row
+        Entry(self.invest_frame, textvariable=self.invran_date, width=14, justify='center')\
+            .grid(row=2, column=0, padx=2)
+        om_range = OptionMenu(self.invest_frame, self.invran, "week", "day")
+        om_range.config(width=4)
+        om_range.grid(row=2, column=1, sticky=W, padx=2)
+        om_station = OptionMenu(self.invest_frame, self.station, *self.stations_minus_outofstation)
+        om_station.config(width=31)
+        om_station.grid(row=2, column=2, sticky=W, padx=2)
+        # set and reset buttons for investigation range
+        Button(self.invest_frame, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
+               fg=macadj("white", "green"), command=lambda: self.call_globals()).grid(row=2, column=3, padx=2)
+        Button(self.invest_frame, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
+               fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=4, padx=2)
+
+    def investigation_range(self):  # configure widgets for setting investigation range
+        Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=0, columnspan=2)
         om_month = OptionMenu(self.invest_frame, self.start_month, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
         om_month.config(width=2)
-        om_month.grid(row=1, column=3)
-        if projvar.invran_day is None:
-            self.start_day.set(self.now.day)
-        else:
-            self.start_day.set(projvar.invran_day)
+        om_month.grid(row=1, column=2)
         om_day = OptionMenu(self.invest_frame, self.start_day, "1", "2", "3", "4", "5", "6", "7", "8",
                             "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
                             "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31")
         om_day.config(width=2)
-        om_day.grid(row=1, column=4)
+        om_day.grid(row=1, column=3)
         date_year = Entry(self.invest_frame, width=6, textvariable=self.start_year)
-        if projvar.invran_year is None:
-            self.start_year.set(self.now.year)
-        else:
-            self.start_year.set(projvar.invran_year)
-        date_year.grid(row=1, column=5)
-        Label(self.invest_frame, text="RANGE", width=macadj(6, 8)).grid(row=1, column=6)
+        date_year.grid(row=1, column=4)
+        Label(self.invest_frame, text="RANGE", width=macadj(6, 8)).grid(row=1, column=5)
         if projvar.invran_weekly_span is None:
             self.i_range.set(True)
         elif not projvar.invran_weekly_span:  # if investigation range is daily
@@ -12300,48 +12304,78 @@ class MainFrame:
         else:  # if investigation range is weekly
             self.i_range.set(True)
         Radiobutton(self.invest_frame, text="weekly", variable=self.i_range, value=True,
-                    width=macadj(6, 7), anchor="w").grid(row=1, column=7)
+                    width=macadj(6, 7), anchor="w").grid(row=1, column=6)
         Radiobutton(self.invest_frame, text="daily", variable=self.i_range, value=False,
-                    width=macadj(6, 7), anchor="w").grid(row=1, column=8)
+                    width=macadj(6, 7), anchor="w").grid(row=1, column=7)
         # set station option menu
-        Label(self.invest_frame, text="STATION", anchor="w").grid(row=2, column=1, sticky=W)
-        station = StringVar(self.invest_frame)
-        if projvar.invran_station is None:
-            station.set("undefined")  # default value
-        else:
-            station.set(projvar.invran_station)
-        stations_minus_outofstation = projvar.list_of_stations[:]
-        stations_minus_outofstation.remove("out of station")
-        if len(stations_minus_outofstation) == 0:
-            stations_minus_outofstation.append("undefined")
-        om = OptionMenu(self.invest_frame, station, *stations_minus_outofstation)
+        Label(self.invest_frame, text="STATION", anchor="w").grid(row=2, column=0, sticky=W)
+        om = OptionMenu(self.invest_frame, self.station, *self.stations_minus_outofstation)
         om.config(width=macadj(40, 34))
-        om.grid(row=2, column=2, columnspan=5, sticky=W)
+        om.grid(row=2, column=1, columnspan=5, sticky=W)
         # set and reset buttons for investigation range
         Button(self.invest_frame, text="Set", width=macadj(8, 9), bg=macadj("green", "SystemButtonFace"),
                fg=macadj("white", "green"), command=lambda: set_globals(self.start_year.get(),
-               self.start_month.get(), self.start_day.get(), self.i_range.get(), station.get(),
-               self.win.topframe)).grid(row=2, column=7)
+               self.start_month.get(), self.start_day.get(), self.i_range.get(), self.station.get(),
+               self.win.topframe)).grid(row=2, column=6)
         Button(self.invest_frame, text="Reset", width=macadj(8, 9), bg=macadj("red", "SystemButtonFace"),
-               fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=8)
+               fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=7)
+
+    def call_globals(self):
+        msg_rear = "\n Dates must be formatted as \"mm/dd/yyyy\".\n" \
+                   "Month must be expressed as number between 1 and 12.\n" \
+                   "Day must be expressed as a number between 1 and 31.\n" \
+                   "Year must be have four digits and be above 0010. "
+        breakdown = BackSlashDateChecker(self.invran_date.get())
+        if not breakdown.count_backslashes():
+            msg = "The date must have 2 backslashes. " + msg_rear
+            messagebox.showerror("Set Investigation Range", msg, parent=self.invest_frame)
+            return
+        breakdown.breaker()  # fully form the backslashdatechecker object
+        if not breakdown.check_numeric():
+            msg = "All month, day and year must be numbers. " + msg_rear
+            messagebox.showerror("Set Investigation Range", msg, parent=self.invest_frame)
+            return
+        if not breakdown.check_minimums():
+            msg = "All month, day and year must be greater than zero. " + msg_rear
+            messagebox.showerror("Set Investigation Range", msg, parent=self.invest_frame)
+            return
+        if not breakdown.check_month():
+            msg = "The value provided for the month is not acceptable. " + msg_rear
+            messagebox.showerror("Set Investigation Range", msg, parent=self.invest_frame)
+            return
+        if not breakdown.check_day():
+            msg = "The value provided for the day is not acceptable. " + msg_rear
+            messagebox.showerror("Set Investigation Range", msg, parent=self.invest_frame)
+            return
+        if not breakdown.check_year():
+            msg = "The value provided for the year is not acceptable. " + msg_rear
+            messagebox.showerror("Set Investigation Range", msg, parent=self.invest_frame)
+            return
+        if not breakdown.valid_date():
+            msg = "The investigation date is not valid. " + msg_rear
+            messagebox.showerror("Set Investigation Range", msg, parent=self.invest_frame)
+            return
+        invest_range = True
+        if self.invran.get() == "day":
+            invest_range = False
+        set_globals(breakdown.year, breakdown.month, breakdown.day, invest_range, self.station.get(), self.win.topframe)
+
+    def investigation_status(self):  # provide message on status of investigation range
         # Investigation date SET/NOT SET notification
         if projvar.invran_weekly_span is None:
-            Label(self.invest_frame, text="Investigation date/range not set", foreground="red") \
-                .grid(row=3, column=1, columnspan=8, sticky="w")
+            Label(self.invest_frame, text="----> Investigation date/range not set", foreground="red") \
+                .grid(row=3, column=0, columnspan=8, sticky="w")
         elif projvar.invran_weekly_span == 0:  # if the investigation range is one day
             f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
-            Label(self.invest_frame, text="Investigation Date Set: {}".format(f_date),
-                  foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
-            Label(self.invest_frame, text="Pay Period: {}".format(projvar.pay_period),
-                  foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
+            Label(self.invest_frame, text="---> Day Set: {} --> Pay Period: {}".format(f_date, projvar.pay_period),
+                  foreground="red").grid(row=3, column=0, columnspan=8, sticky="w")
         else:
             # if the investigation range is weekly
             f_date = projvar.invran_date_week[0].strftime("%a - %b %d, %Y")
             end_f_date = projvar.invran_date_week[6].strftime("%a - %b %d, %Y")
-            Label(self.invest_frame, text="Investigation Range: {0} through {1}".format(f_date, end_f_date),
-                  foreground="red").grid(row=3, column=1, columnspan=8, sticky="w")
-            Label(self.invest_frame, text="Pay Period: {0}".format(projvar.pay_period),
-                  foreground="red").grid(row=4, column=1, columnspan=8, sticky="w")
+            Label(self.invest_frame, text="---> Range Set: {0} through {1} --> Pay Period: {2}"
+                  .format(f_date, end_f_date, projvar.pay_period),
+                  foreground="red").grid(row=3, column=0, columnspan=8, sticky="w")
 
     def invran_not_set(self):  #investigation range is not set
         Button(self.main_frame, text="Automatic Data Entry", width=30,
@@ -12350,7 +12384,9 @@ class MainFrame:
                command=lambda: informalc(self.win.topframe)).grid(row=1, column=1, pady=5)
         Button(self.main_frame, text="Quit", width=30, command=lambda: projvar.root.destroy())\
             .grid(row=2, column=1,pady=5)
-        Label(self.main_frame, text="", width=macadj(20, 16)).grid(row=0, column=0)  # spacer
+        # Label(self.main_frame, text="", width=macadj(2, 13)).grid(row=3, column=0)  # spacer
+        for i in range(25):
+            Label(self.main_frame, text="").grid(row=4 + i, column=1)
 
     def empty_carrierlist(self):  # the carrier list is empty
         Label(self.main_frame, text="").grid(row=0, column=0)
@@ -12381,9 +12417,7 @@ class MainFrame:
             for rec in line:
                 if rec_count == 0:  # display the first row of carrier recs
                     Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
-                    # Button(self.main_frame, text=rec[1], width=24, bg=color, anchor="w",
-                    #                       command=lambda x=rec: rings2(x, projvar.root)).grid(row=r, column=1)
-                    Button(self.main_frame, text=rec[1], width=24, bg=color, anchor="w",
+                    Button(self.main_frame, text=rec[1], width=25, bg=color, anchor="w",
                            command=lambda x=rec: EnterRings(x[1]).start(self.win.topframe)).grid(row=r, column=1)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
                            command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
@@ -12399,8 +12433,8 @@ class MainFrame:
                     Button(self.main_frame, text=rec[2], width=3, bg=color, anchor="w").grid(row=r, column=2)  # list
                     day_off = projvar.ns_code[rec[3]].lower()
                     Button(self.main_frame, text=day_off, width=4, bg=color, anchor="w").grid(row=r, column=3)  # nsday
-                    Button(self.main_frame, text=rec[4], width=24, bg=color, anchor="w")\
-                        .grid(row=r, column=4)  # station
+                    Button(self.main_frame, text=rec[4], width=25, bg=color, anchor="w")\
+                        .grid(row=r, column=4)  # route
                     rec_count += 1
                 else:
                     Button(self.main_frame, text="out of station", width=34, bg=color)\
@@ -12536,8 +12570,8 @@ class MainFrame:
         management_menu.add_separator()
         management_menu.add_command(label="List of Stations", command=lambda: station_list(self.win.topframe))
         management_menu.add_command(label="Tolerances", command=lambda: tolerances(self.win.topframe))
-        management_menu.add_command(label="Spreadsheet Settings", 
-                                    command=lambda: spreadsheet_settings(self.win.topframe))
+        management_menu.add_command(label="Spreadsheet Settings",
+                                    command=lambda: SpreadsheetConfig().start(self.win.topframe))
         management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(self.win.topframe))
         if projvar.invran_day is None:
             management_menu.entryconfig(5, state=DISABLED)
@@ -12574,173 +12608,11 @@ class MainFrame:
                    width=macadj(13, 13)).pack(side=LEFT)
             Button(self.win.buttons, text="Auto Data Entry", command=lambda: call_indexers(self.win.topframe),
                    width=macadj(12, 12)).pack(side=LEFT)
-            r_rings = "x"
             Button(self.win.buttons, text="Spreadsheet", width=macadj(13, 13),
                    command=lambda: ImpManSpreadsheet().create(self.win.topframe)).pack(side=LEFT)
             Button(self.win.buttons, text="Quit", width=macadj(13, 13), command=projvar.root.destroy).pack(side=LEFT)
-
-
-def setup_database():
-    pb_root = Tk()  # create a window for the progress bar
-    pb_root.title("Building Klusterbox Database")
-    titlebar_icon(pb_root)  # place icon in titlebar
-    pb_label = Label(pb_root, text="Running Setup: ")  # make label for progress bar
-    pb_label.grid(row=0, column=0, sticky="w")
-    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-    pb.grid(row=1, column=0, sticky="w")
-    pb_text = Label(pb_root, text="", anchor="w")
-    pb_text.grid(row=2, column=0, sticky="w")
-    steps = 10
-    pb["maximum"] = steps  # set length of progress bar
-    pb_counter = 0
-    pb.start()
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Global Variables ")
-    pb_root.update()
-    # set initial value of globals
-    projvar.invran_date_week = []
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Tables - Station")
-    pb_root.update()
-    # set up database if it does not exist
-    sql = 'CREATE table IF NOT EXISTS stations (station varchar primary key)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO stations (station) VALUES ("out of station")'
-    commit(sql)
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Tables - Tolerances")
-    pb_root.update()
-    sql = 'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (0, "ot_own_rt", .25)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (1, "ot_tol", .25)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (2, "av_tol", .25)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (3, "min_ss_nl", 25)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (4, "min_ss_wal", 25)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (5, "min_ss_otdl", 25)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) VALUES (6, "min_ss_aux", 25)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(7, "allow_zero_top", "False")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(8, "allow_zero_bottom", "True")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(9, "pdf_error_rpt", "off")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(10, "pdf_raw_rpt", "off")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(11, "pdf_text_reader", "off")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(12, "ns_auto_pref", "rotation")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(13, "mousewheel", -1)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(14, "min_ss_overmax", 30)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(15, "abc_breakdown", "False")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(16, "min_spd_empid", 50)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(17, "min_spd_alpha", 50)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(18, "min_spd_abc", 10)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(19, "speedcell_ns_rotate_mode", "True")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(20, "ot_rings_limiter", 0)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(21, "pb_nl_wal", "True")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(22, "pb_wal_otdl", "True")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO tolerances(row_id,category,tolerance)VALUES(23, "pb_otdl_aux", "True")'
-    commit(sql)
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Tables - Carriers")
-    pb_root.update()
-    sql = 'CREATE table IF NOT EXISTS carriers (effective_date date, carrier_name varchar, list_status varchar, ' \
-          ' ns_day varchar, route_s varchar, station varchar)'
-    commit(sql)
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Tables - Rings")
-    pb_root.update()
-    sql = 'CREATE table IF NOT EXISTS rings3 ' \
-          '(rings_date date, carrier_name varchar, total varchar, rs varchar, code varchar, moves varchar, ' \
-          'leave_type varchar, leave_time varchar)'
-    commit(sql)
-    # modify table for legacy version which did not have leave type and leave time columns of rings3 table.
-    sql = 'PRAGMA table_info(rings3)'  # get table info. returns an array of columns.
-    result = inquire(sql)
-    if len(result) <= 6:  # if there are not enough columns add the leave type and leave time columns
-        sql = 'ALTER table rings3 ADD COLUMN leave_type varchar'
-        commit(sql)
-        sql = 'ALTER table rings3 ADD COLUMN leave_time varchar'
-        commit(sql)
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Tables - Indexes")
-    pb_root.update()
-    sql = 'CREATE table IF NOT EXISTS name_index (tacs_name varchar, kb_name varchar, emp_id varchar)'
-    commit(sql)
-    sql = 'CREATE table IF NOT EXISTS station_index (tacs_station varchar, kb_station varchar, finance_num varchar)'
-    commit(sql)  # access list of stations from database
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Tables - Skippers")
-    pb_root.update()
-    sql = 'CREATE table IF NOT EXISTS skippers (code varchar primary key, description varchar)'
-    commit(sql)
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Tables - NS Configurations")
-    pb_root.update()
-    sql = 'CREATE table IF NOT EXISTS ns_configuration (ns_name varchar primary key, fill_color varchar, ' \
-          'custom_name varchar)'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO ns_configuration(ns_name,fill_color,custom_name)VALUES("yellow","gold","yellow")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO ns_configuration(ns_name,fill_color,custom_name)VALUES("blue","navy","blue")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO ns_configuration(ns_name,fill_color,custom_name)VALUES("green","forest green","green")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO ns_configuration(ns_name,fill_color,custom_name)VALUES("brown","saddle brown","brown")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO ns_configuration(ns_name,fill_color,custom_name)VALUES("red","red3","red")'
-    commit(sql)
-    sql = 'INSERT OR IGNORE INTO ns_configuration(ns_name,fill_color,custom_name)VALUES("black","gray10","black")'
-    commit(sql)
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: Mousewheel")
-    pb_root.update()
-    # initialize mousewheel - mouse wheel scroll direction
-    sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
-    results = inquire(sql)
-    projvar.mousewheel = int(results[0][0])
-    sql = "SELECT * FROM stations ORDER BY station"
-    results = inquire(sql)
-    pb_counter += 1  # increment progress bar
-    pb["value"] = pb_counter
-    pb_text.config(text="Setting up: List of Stations")
-    pb_root.update()
-    # define and populate list of stations variable
-    projvar.list_of_stations = []
-    for stat in results:
-        projvar.list_of_stations.append(stat[0])
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    pb_root.destroy()
+        else:
+            Label(self.win.buttons, text="").pack(side=LEFT)
 
 
 if __name__ == "__main__":
@@ -12757,45 +12629,12 @@ if __name__ == "__main__":
     global allow_zero_bottom
     global skippers
     global current_tab
-    # global workbook
     global pb_flag
-    # set up platform variable
-    projvar.platform = "py"  # initialize projvar.platform variable
-    split_home = os.getcwd().split("\\")
-    if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/":  # if it is a mac app
-        projvar.platform = "macapp"
-    elif len(split_home) > 2:
-        if split_home[1] == "Program Files (x86)" and split_home[2] == "klusterbox":
-            projvar.platform = "winapp"
-        elif split_home[1] == "Program Files" and split_home[2] == "klusterbox":
-            projvar.platform = "winapp"
-        else:
-            projvar.platform = "py"  # if it is running as a .py or .exe outside program files/applications
-    else:
-        projvar.platform = "py"  # if it is running as a .py or .exe outside program files/applications
-    # create directories if they don't exist
-    if projvar.platform == "macapp":
-        if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')):
-            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents'))
-        if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox')):
-            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox'))
-        if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox')):
-            os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', '.klusterbox'))
-    if projvar.platform == "winapp":
-        if not os.path.isdir(os.path.expanduser("~") + '\\Documents'):
-            os.makedirs(os.path.expanduser("~") + '\\Documents')
-        if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox'):
-            os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
-        if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\.klusterbox'):
-            os.makedirs(os.path.expanduser("~") + '\\Documents\\.klusterbox')
-    if projvar.platform == "py":
-        if not os.path.isdir('kb_sub'):
-            os.makedirs('kb_sub')
-    # set up the database
-    setup_database()
-    projvar.root = Tk()
-    # initialize position and size for root window
-    position_x = 100
+    setup_plaformvar()   # set up platform variable
+    setup_dirs_by_platformvar()  # create directories if they don't exist
+    DataBase().setup()  # set up the database
+    projvar.root = Tk()  # initialize root window
+    position_x = 100  # initialize position and size for root window
     position_y = 50
     size_x = 625
     size_y = 600
@@ -12808,7 +12647,8 @@ if __name__ == "__main__":
             pass
     projvar.root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
     if len(projvar.list_of_stations) < 2:  # if there are no stations in the stations list
-        start_up()
+        # start_up()
+        StartUp().start()
     else:
         remove_file(dir_path_check('report'))  # empty out folders
         remove_file(dir_path_check('infc_grv'))

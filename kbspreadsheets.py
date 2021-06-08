@@ -470,8 +470,10 @@ class ImpManSpreadsheet:
                     cell.value = Convert(move).empty_not_zerofloat()  # insert an iteration of self.movesarray
                 else:  # do not alter route or formula elements of move sets
                     cell.value = move  # insert an iteration of self.movesarray
-                cell.style = self.input_s  # assign worksheet style
-                if move_cell != 2:
+                cell.style = self.input_s  # assign worksheet style for MV off, MV on and Route
+                if move_cell == 3:
+                    cell.style = self.calcs  # use alternate style for Moves Total
+                if move_cell != 2:  # do not apply to routes column
                     cell.number_format = "#,###.00;[RED]-#,###.00"
             self.move_i += 1
         self.move_i -= 1  # correction
@@ -498,7 +500,7 @@ class ImpManSpreadsheet:
         for formula in formulas:
             cell = self.ws_list[self.i].cell(row=self.row, column=9 + column_i)
             cell.value = formula  # insert an iteration of formulas
-            cell.style = self.input_s  # assign worksheet style
+            cell.style = self.calcs  # assign worksheet style
             cell.number_format = "#,###.00;[RED]-#,###.00"
             column_i += 1
 
@@ -530,7 +532,7 @@ class ImpManSpreadsheet:
         for formula in formulas:
             cell = self.ws_list[self.i].cell(row=self.row, column=5 + column_i)
             cell.value = formula  # insert an iteration formulas
-            cell.style = self.input_s  # assign worksheet style
+            cell.style = self.calcs  # assign worksheet style
             cell.number_format = "#,###.00;[RED]-#,###.00"
             column_i += 1
 
@@ -539,6 +541,7 @@ class ImpManSpreadsheet:
             self.nl_footer()
             
     def nl_footer(self):
+        self.row += 1
         cell = self.ws_list[self.i].cell(row=self.row, column=8)
         cell.value = "Total NL Overtime"
         cell.style = self.col_header

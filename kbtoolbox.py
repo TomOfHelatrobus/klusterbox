@@ -466,6 +466,11 @@ class Convert:
             return "on"
         return "off"
 
+    def strbool_to_onoff(self):  # take a boolean in the form of a string and returns "on" or "off"
+        if self.data == "True":
+            return "on"
+        return "off"
+
     def onoff_to_bool(self):
         if self.data == "on":
             return True
@@ -593,6 +598,10 @@ class Handler:
             return ""
         else:
             return "s"
+
+    def format_str_as_int(self):
+        num = int(self.data)
+        return str(num)
 
 
 def isfloat(value):
@@ -851,25 +860,85 @@ class MinrowsChecker:
 
     def is_numeric(self):  # is the data a number?
         try:
-            self.data = int(self.route)
+            self.data = float(self.data)
             return True
         except ValueError:
             return False
 
     def no_decimals(self):  # does the data have no decimal places?
-        if isinstance(self.data, int):
-            return True
-        return False
+        if "." in self.data:
+            return False
+        return True
 
     def not_negative(self):  # is the data not a negative?
-        if self.data >= 0:
+        if "-" in self.data:
+            return False
+        return True
+
+    def within_limit(self, limit):  # is the data not exceed a given limit?
+        if int(self.data) <= limit:
             return True
         return False
 
-    def within_limit(self, limit):  # is the data not exceed a given limit?
-        if self.data <= limit:
+
+class BackSlashDateChecker:
+    """
+    Create a backslashdate object by calling the class.
+    Next use count_backslashes next to make sure the date can be broken down into 3 parts.
+    Next call breakdown method to fully create the backslashdate object.
+    Next call the following methods using the backslashdate instance to ensure the date is correctly fomatted.
+    """
+    def __init__(self, data):
+        self.data = data
+        self.breakdown = []  # break down the date into an array of 3 items
+        self.month = ""
+        self.day = ""
+        self.year = ""
+
+    def count_backslashes(self):
+        if self.data.count("/") != 2:
+            return False
+        return True
+
+    def breaker(self):  # this will fully create the instance of the object
+        self.breakdown = self.data.split("/")
+        self.month = self.breakdown[0]
+        self.day = self.breakdown[1]
+        self.year = self.breakdown[2]
+
+    def check_numeric(self):  # check each element in the date to ensure they are numeric
+        for date_element in self.breakdown:
+            if not isint(date_element):
+                return False
+        return True
+
+    def check_minimums(self):  # check each element in the date to ensure they are greater than zero
+        for date_element in self.breakdown:
+            if int(date_element) <= 0:
+                return False
+        return True
+
+    def check_month(self):
+        if int(self.month) > 12:
+            return False
+        return True
+
+    def check_day(self):
+        if int(self.day) > 31:
+            return False
+        return True
+
+    def check_year(self):
+        if len(self.year) != 4:
+            return False
+        return True
+
+    def valid_date(self):
+        try:
+            datetime(int(self.year), int(self.month), int(self.day))
             return True
-        return False
+        except ValueError:
+            return False
 
 
 class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
@@ -985,11 +1054,13 @@ class ProgressBarDe:  # determinate Progress Bar
 
     def move_count(self, count):  # changes the count of the progress bar
         self.pb['value'] = count
-        projvar.root.update()
+        self.pb_root.update()
+        # projvar.root.update()
 
     def change_text(self, text):  # changes the text of the progress bar
         self.pb_text.config(text="{}".format(text))
-        projvar.root.update()
+        self.pb_root.update()
+        # projvar.root.update()
 
     def stop(self):
         self.pb.stop()  # stop and destroy the progress bar
