@@ -23,8 +23,8 @@ class ImpManSpreadsheet:
         self.carrier_breakdown = []  # all carriers in carrier list broken down into appropiate list
         self.wb = None  # the workbook object
         self.ws_list = []  # "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"
-        self.summary = None
-        self.reference = None
+        self.summary = None  # worksheet for summary page
+        self.reference = None  # worksheet for reference page
         self.ws_header = None  # style
         self.list_header = None  # style
         self.date_dov = None  # style
@@ -61,10 +61,19 @@ class ImpManSpreadsheet:
         self.pb_nl_wal = True  # page break between no list and work assignment
         self.pb_wal_otdl = True  # page break between work assignment and otdl
         self.pb_otdl_aux = True  # page break between otdl and auxiliary
+        self.day_of_week = []  # seven day array for weekly investigations/ one day array for daily investigations
+        self.mandates_own_route = []  # stores cell location on each sheet for no list own route overtime
+        self.mandates_all = []  # stores cell location for total mandates for each sheet
+        self.availability_10 = []  # stores cell location for total availability to 10 hrs for each sheet
+        self.availability_max = []  # stores cell location for total maximum availabilityfor each sheet
+        self.first_row = 0  # stores the first row for each list, re initialized at end of list
+        self.last_row = 0  # stores the last row for each list, re initialized at end of list
+        self.subtotal_loc_holder = []  # stores the cell location of a subtotal for total mandates/ availability
 
-    def create(self, frame):
+    def create(self, frame):  # master method for calling all methods in class
         self.frame = frame
-        self.ask_ok()
+        if not self.ask_ok():  # abort if user selects cancel from askokcancel
+            return
         self.get_dates()
         self.get_carrierlist()
         self.get_carrier_breakdown()
@@ -75,6 +84,7 @@ class ImpManSpreadsheet:
         self.build_refs()
         self.build_ws_loop()  # calls list loop and carrier loop
         self.build_summary_header()
+        self.build_summary()
         self.save_open()
 
     def ask_ok(self):
@@ -164,9 +174,12 @@ class ImpManSpreadsheet:
             for ii in range(len(day_finder)):
                 if projvar.invran_date.strftime("%a") == day_finder[ii]:  # find the correct day
                     i = ii
-            self.ws_list[i] = self.wb.active  # create first worksheet
-            self.ws_list[i].title = day_of_week[i]  # title first worksheet
+            self.ws_list.append(self.wb.active)  # create first worksheet
+            self.ws_list[0].title = day_of_week[i]  # title first worksheet
+            self.day_of_week.append(day_of_week[i])  # create self.day_of_week array with one day
         if projvar.invran_weekly_span:  # if investigation range is weekly
+            for day in day_of_week:
+                self.day_of_week.append(day)  # create self.day_of_week array with seven days
             self.ws_list.append(self.wb.active)  # create first worksheet
             self.ws_list[0].title = "saturday"  # title first worksheet
             for i in range(1, 7):  # create worksheet for remaining six days
@@ -284,6 +297,7 @@ class ImpManSpreadsheet:
         for _ in self.ot_list:  # loops for nl, wal, otdl and aux
             self.list_and_column_headers()  # builds headers for list and column
             self.carrierlist_mod()
+            self.get_first_row()
             self.carrierloop()
             self.build_footer()
             self.pagebreak()
@@ -355,7 +369,7 @@ class ImpManSpreadsheet:
 
     def carrierlist_mod(self):  # add empty carrier records to carrier list until quantity matches minrows preference
         self.mod_carrierlist = self.carrier_breakdown[self.i][self.lsi]
-        minrows = 0  # initialize minrows
+        # minrows = 0  # initialize minrows
         if self.pref[self.lsi] in ("nl",):  # if "no list"
             minrows = self.min_ss_nl
         elif self.pref[self.lsi] in ("wal",):  # if "work assignment list"
@@ -368,8 +382,12 @@ class ImpManSpreadsheet:
             add_this = ('', '', '', '', '', '')
             self.mod_carrierlist.append(add_this)  # append empty recs to carrier list
 
+    def get_first_row(self):  # record the number of the first row for totals formulas in footers
+        self.first_row = self.row
+
     def carrierloop(self):
         for carrier in self.mod_carrierlist:
+            self.get_last_row()  # record the number of the last row for total formulas in footers
             self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
             self.get_rings()  # get individual carrier rings for the day
             self.display_recs()
@@ -380,6 +398,9 @@ class ImpManSpreadsheet:
             else:
                 self.display_formulas_ot()
             self.increment_rows()
+
+    def get_last_row(self):  # record the number of the last row for totals formulas in footers
+        self.last_row = self.row
 
     def increment_rows(self):  # increment the rows counter
         self.row += 1
@@ -422,11 +443,10 @@ class ImpManSpreadsheet:
         multiple_sets = False  # is there more than one triad?
         self.movesarray = []  # re initialized - a list of tuples of move sets
         moves_array = []  # initialized - the moves string converted into an array
-        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
         move_off = ""  # if empty set, use default values
         move_back = ""
         move_route = ""
-        formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[self.i], self.row, day_of_week[self.i], self.row)
+        formula = "=SUM(%s!F%s - %s!E%s)" % (self.day_of_week[self.i], self.row, self.day_of_week[self.i], self.row)
         if not self.moves:  # if string is empty
             pass  # use default values
         else:  # if the string is not empty
@@ -441,7 +461,7 @@ class ImpManSpreadsheet:
                 move_back = "*"
                 move_route = "*"
                 formula = "=SUM(%s!H%s:H%s)" % \
-                          (day_of_week[self.i], self.row + 1, int(self.row + len(moves_array) / 3))
+                          (self.day_of_week[self.i], self.row + 1, int(self.row + len(moves_array) / 3))
         add_this = (move_off, move_back, move_route, formula)
         self.movesarray.append(add_this)
         if multiple_sets:  # if multiple sets are detected
@@ -454,8 +474,8 @@ class ImpManSpreadsheet:
                     move_back = move
                 if (i + 1) % 3 == 0:
                     move_route = move
-                    formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[self.i], self.row + formula_row_i,
-                                                         day_of_week[self.i], self.row + formula_row_i)
+                    formula = "=SUM(%s!F%s - %s!E%s)" % (self.day_of_week[self.i], self.row + formula_row_i,
+                                                         self.day_of_week[self.i], self.row + formula_row_i)
                     add_this = (move_off, move_back, move_route, formula)
                     self.movesarray.append(add_this)
                     formula_row_i += 1  # increment the row in the formula after each moves_set
@@ -479,22 +499,21 @@ class ImpManSpreadsheet:
         self.move_i -= 1  # correction
 
     def display_formulas_non(self):
-        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
         ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
-                  % (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                     day_of_week[self.i], str(self.row))
+                  % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                     self.day_of_week[self.i], str(self.row))
         if self.pref[self.lsi] == "nl":  # use alternate formula for non list carriers
             ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
-                         % (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                            day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row))
-        off_rt_formula = "=%s!H%s" % (day_of_week[self.i], str(self.row))  # copy data from column H/ MV total
+                         % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                            self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
+        off_rt_formula = "=%s!H%s" % (self.day_of_week[self.i], str(self.row))  # copy data from column H/ MV total
         ot_off_rt_formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s), " \
                   "%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, " \
                   "MIN(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                  % (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                     day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                     day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                     day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row))
+                  % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
         formulas = (ot_formula, off_rt_formula, ot_off_rt_formula)
         column_i = 0
         for formula in formulas:
@@ -505,7 +524,6 @@ class ImpManSpreadsheet:
             column_i += 1
 
     def display_formulas_ot(self):
-        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
         max_hrs = 12  # maximum hours for otdl carriers
         if self.pref[self.lsi] == "aux":  # alter formula by list preference
             max_hrs = 11.5  # maximux hours for auxiliary carriers
@@ -513,20 +531,20 @@ class ImpManSpreadsheet:
                      "%s!B%s = \"annual\", %s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, " \
                      "IF(%s!B%s = \"no call\", 10, " \
                      "IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % \
-                     (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                      day_of_week[self.i], str(self.row))
+                     (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                      self.day_of_week[self.i], str(self.row))
         formula_max = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                       "%s!B%s = \"sick\", %s!C%s >= %s - reference!C5), 0, IF(%s!B%s = \"no call\", %s, " \
                       "IF(%s!C%s = 0, 0, MAX(%s - %s!C%s, 0))))" % \
-                      (day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                      day_of_week[self.i], str(self.row), day_of_week[self.i], str(self.row),
-                      max_hrs, day_of_week[self.i], str(self.row),
-                      max_hrs, day_of_week[self.i], str(self.row),
-                      max_hrs, day_of_week[self.i], str(self.row))
+                      (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                      max_hrs, self.day_of_week[self.i], str(self.row),
+                      max_hrs, self.day_of_week[self.i], str(self.row),
+                      max_hrs, self.day_of_week[self.i], str(self.row))
         formulas = (formula_ten, formula_max)
         column_i = 0
         for formula in formulas:
@@ -539,31 +557,118 @@ class ImpManSpreadsheet:
     def build_footer(self):
         if self.pref[self.lsi] == "nl":
             self.nl_footer()
+        elif self.pref[self.lsi] == "wal":
+            self.wal_footer()
+        elif self.pref[self.lsi] == "otdl":
+            self.otdl_footer()
+        else:
+            self.aux_footer()
             
     def nl_footer(self):
         self.row += 1
-        cell = self.ws_list[self.i].cell(row=self.row, column=8)
+        cell = self.ws_list[self.i].cell(row=self.row, column=8)  # totals for no list overtime
         cell.value = "Total NL Overtime"
         cell.style = self.col_header
-        formula = ""
-        # formula = "=SUM(%s!I8:I%s)" % (day_of_week[i], cello)
-        cell = self.ws_list[self.i].cell(row=self.row, column=9)
-        cell.value = formula  # OT
-        # nl_ot_row.append(str(self.row))  # get the cello information to reference in summary tab
-        # nl_ot_day.append(i)
+        cell = self.ws_list[self.i].cell(row=self.row, column=9)  # OT
+        formula = "=SUM(%s!I%s:I%s)" % (self.day_of_week[self.i], self.first_row, self.last_row)
+        cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
+        location_nl_totals = (self.day_of_week[self.i], "I", self.row)  # save location for totals after wal
+        self.mandates_own_route.append(location_nl_totals)  # collect totals for summary
         self.row += 2
-        cell = self.ws_list[self.i].cell(row=self.row, column=10)
+        cell = self.ws_list[self.i].cell(row=self.row, column=10)  # totals for no list mandates
         cell.value = "Total NL Mandates"
         cell.style = self.col_header
-        formula = ""
-        # formula = "=SUM(%s!K8:K%s)" % (day_of_week[i], cello)
+        cell = self.ws_list[self.i].cell(row=self.row, column=11)  # OT off route
+        formula = "=SUM(%s!K%s:K%s)" % (self.day_of_week[self.i], self.first_row, self.last_row)
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.subtotal_loc_holder.append(self.row)  # collect subtotal location for total after wal
+        self.row += 1
+
+    def wal_footer(self):
+        self.row += 1
+        cell = self.ws_list[self.i].cell(row=self.row, column=10)
+        cell.value = "Total WAL Mandates"
+        cell.style = self.col_header
+        formula = "=SUM(%s!K%s:K%s)" % (self.day_of_week[self.i], self.first_row, self.last_row)
         cell = self.ws_list[self.i].cell(row=self.row, column=11)
         cell.value = formula  # OT off route
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
-        nl_totals = self.row
+        self.subtotal_loc_holder.append(self.row)  # collect subtotal location for total after wal
+        self.row += 2
+        formula = "=SUM(%s!K%s + %s!K%s)" % (self.day_of_week[self.i], self.subtotal_loc_holder[0],
+                                             self.day_of_week[self.i], self.subtotal_loc_holder[1])
+        cell = self.ws_list[self.i].cell(row=self.row, column=10)
+        cell.value = "Total Mandates"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=11)
+        cell.value = formula  # total ot off route for nl and wal
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        add_this = (self.day_of_week[self.i], "K", self.row)
+        self.mandates_all.append(add_this)
+        self.subtotal_loc_holder = []  # empty out the subtotal location holder for future use with otdl/aux
+        self.row += 1
+
+    def otdl_footer(self):
+        self.row += 1
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)  # header
+        cell.value = "Total OTDL Availability"
+        cell.style = self.col_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)  # availability to 10
+        formula = "=SUM(%s!E%s:E%s)" % (self.day_of_week[self.i], self.first_row, self.last_row)
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=6)  # availability to 12
+        formula = "=SUM(%s!F%s:F%s)" % (self.day_of_week[self.i], self.first_row, self.last_row)
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.subtotal_loc_holder.append(self.row)  # collect subtotal location for total after aux
+        self.row += 1
+
+    def aux_footer(self):
+        self.row += 1
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)
+        cell.value = "Total AUX Availability"
+        cell.style = self.col_header
+        formula = "=SUM(%s!E%s:E%s)" % (self.day_of_week[self.i], self.first_row, self.last_row)
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)
+        cell.value = formula  # availability to 10
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        formula = "=SUM(%s!F%s:F%s)" % (self.day_of_week[self.i], self.first_row, self.last_row)
+        cell = self.ws_list[self.i].cell(row=self.row, column=6)
+        cell.value = formula  # availability to 11.5
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.subtotal_loc_holder.append(self.row)  # collect subtotal location for total after aux
+        self.row += 2
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)
+        cell.value = "Total Availability"
+        cell.style = self.col_header
+        formula = "=SUM(%s!E%s + %s!E%s)" % (self.day_of_week[self.i], self.subtotal_loc_holder[0],
+                                             self.day_of_week[self.i], self.subtotal_loc_holder[1])
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)
+        cell.value = formula  # availability to 10
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        formula = "=SUM(%s!F%s + %s!F%s)" % (self.day_of_week[self.i], self.subtotal_loc_holder[0],
+                                             self.day_of_week[self.i], self.subtotal_loc_holder[1])
+        cell = self.ws_list[self.i].cell(row=self.row, column=6)
+        cell.value = formula  # availability to 11.5
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        add_this = (self.day_of_week[self.i], "E", self.row)  # location of total availability to 10
+        self.availability_10.append(add_this)  # collect location of totals for summary, put in array
+        add_this = (self.day_of_week[self.i], "F", self.row)  # location of total availability to max
+        self.availability_max.append(add_this)  # collect location of totals for summary, put in array
+        self.subtotal_loc_holder = []  # empty out the subtotal location holder for future use with otdl/aux
         self.row += 1
 
     def pagebreak(self):  # create a page break if consistant with user preferences
@@ -577,10 +682,10 @@ class ImpManSpreadsheet:
             return
         try:
             self.ws_list[self.i].page_breaks.append(Break(id=self.row))
-            # print("page break")
+            self.row += 1
         except AttributeError:
             self.ws_list[self.i].row_breaks.append(Break(id=self.row))  # effective for windows
-            # print("row break")
+            self.row += 1
 
     def build_summary_header(self):  # summary headers
         self.summary['A1'] = "Improper Mandate Worksheet"
@@ -598,7 +703,82 @@ class ImpManSpreadsheet:
         self.summary['B6'] = projvar.invran_station
         self.summary['B6'].style = self.date_dov
         # reference page has no header
-
+        
+    def build_summary(self):
+        self.summary['A1'] = "Improper Mandate Worksheet"
+        self.summary['A1'].style = self.ws_header
+        self.summary.merge_cells('A1:E1')
+        self.summary['B3'] = "Summary Sheet"
+        self.summary['B3'].style = self.date_dov_title
+        self.summary['A5'] = "Pay Period:  "
+        self.summary['A5'].style = self.date_dov_title
+        self.summary['B5'] = projvar.pay_period
+        self.summary['B5'].style = self.date_dov
+        self.summary.merge_cells('B5:D5')
+        self.summary['A6'] = "Station:  "
+        self.summary['A6'].style = self.date_dov_title
+        self.summary['B6'] = projvar.invran_station
+        self.summary['B6'].style = self.date_dov
+        self.summary.merge_cells('B6:D6')
+        self.summary['B8'] = "Availability"
+        self.summary['B8'].style = self.date_dov_title
+        self.summary['B9'] = "to 10"
+        self.summary['B9'].style = self.date_dov_title
+        self.summary['C8'] = "No list"
+        self.summary['C8'].style = self.date_dov_title
+        self.summary['C9'] = "overtime"
+        self.summary['C9'].style = self.date_dov_title
+        self.summary['D9'] = "violations"
+        self.summary['D9'].style = self.date_dov_title
+        self.summary['F8'] = "Availability"
+        self.summary['F8'].style = self.date_dov_title
+        self.summary['F9'] = "to 12"
+        self.summary['F9'].style = self.date_dov_title
+        self.summary['G8'] = "Off route"
+        self.summary['G8'].style = self.date_dov_title
+        self.summary['G9'] = "mandates"
+        self.summary['G9'].style = self.date_dov_title
+        self.summary['H9'] = "violations"
+        self.summary['H9'].style = self.date_dov_title
+        row = 10
+        for i in range(len(self.dates)):
+            self.summary['A' + str(row)].value = format(self.dates[i], "%m/%d/%y %a")
+            self.summary['A' + str(row)].style = self.date_dov_title
+            self.summary['A' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+            location = self.availability_10[i]  # get the location of the total from the worksheet from the array
+            formula = "=%s!%s%s" % (location[0], location[1], location[2])
+            self.summary['B' + str(row)] = formula
+            self.summary['B' + str(row)].style = self.input_s
+            self.summary['B' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+            location = self.mandates_own_route[i]  # get the location of the total from the worksheet from the array
+            formula = "=%s!%s%s" % (location[0], location[1], location[2])
+            self.summary['C' + str(row)] = formula
+            self.summary['C' + str(row)].style = self.input_s
+            self.summary['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+            formula = "=IF(%s!B%s<%s!C%s,%s!B%s,%s!C%s)" \
+                                      % ('summary', str(row), 'summary', str(row), 'summary',
+                                         str(row), 'summary', str(row))
+            self.summary['D' + str(row)] = formula
+            self.summary['D' + str(row)].style = self.calcs
+            self.summary['D' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+            location = self.availability_max[i]  # get the location of the total from the worksheet from the array
+            formula = "=%s!%s%s" % (location[0], location[1], location[2])
+            self.summary['F' + str(row)] = formula
+            self.summary['F' + str(row)].style = self.input_s
+            self.summary['F' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+            location = self.mandates_all[i]  # get location of total mandates from worksheet from the array
+            formula = "=%s!%s%s" % (location[0], location[1], location[2])  # total mandates
+            self.summary['G' + str(row)] = formula
+            self.summary['G' + str(row)].style = self.input_s
+            self.summary['G' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+            formula = "=IF(%s!F%s<%s!G%s,%s!F%s,%s!G%s)" \
+                                      % ('summary', str(row), 'summary', str(row), 'summary',
+                                         str(row), 'summary', str(row))
+            self.summary['H' + str(row)] = formula
+            self.summary['H' + str(row)].style = self.calcs
+            self.summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+            row += 2
+        
     def save_open(self):  # name the excel file
         r = "_w"
         if not projvar.invran_weekly_span:  # if investigation range is daily
@@ -623,1493 +803,6 @@ class ImpManSpreadsheet:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
-
-
-def spreadsheet(frame, list_carrier, r_rings):
-    date = projvar.invran_date_week[0]
-    dates = []  # array containing days.
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        for i in range(7):
-            dates.append(date)
-            date += timedelta(days=1)
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        dates.append(projvar.invran_date)
-    if r_rings == "x":
-        if projvar.invran_weekly_span:  # if investigation range is weekly
-            sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-                  % (projvar.invran_date_week[0], projvar.invran_date_week[6])
-        else:
-            sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
-                  "carrier_name" \
-                  % projvar.invran_date
-        r_rings = inquire(sql)
-    # Named styles for workbook
-    bd = Side(style='thin', color="80808080")  # defines borders
-    ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-    list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
-    date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
-    date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
-                                alignment=Alignment(horizontal='right'))
-    col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                            alignment=Alignment(horizontal='right'))
-    input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                            border=Border(left=bd, top=bd, right=bd, bottom=bd))
-    input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                         border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                         alignment=Alignment(horizontal='right'))
-    calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
-                       border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                       fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                       alignment=Alignment(horizontal='right'))
-    daily_list = []  # array
-    candidates = []
-    dl_nl = []
-    dl_wal = []
-    dl_otdl = []
-    dl_aux = []
-    av_to_10_day = []  # arrays to hold totals for summary sheet.
-    av_to_10_row = []
-    av_to_12_day = []
-    av_to_12_row = []
-    man_ot_day = []
-    man_ot_row = []
-    nl_ot_day = []
-    nl_ot_row = []
-    day_finder = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
-    day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
-    ws_list = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
-    i = 0
-    wb = Workbook()  # define the workbook
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        for ii in range(len(day_finder)):
-            if projvar.invran_date.strftime("%a") == day_finder[ii]:  # find the correct day
-                i = ii
-        ws_list[i] = wb.active  # create first worksheet
-        ws_list[i].title = day_of_week[i]  # title first worksheet
-        summary = wb.create_sheet("summary")
-        reference = wb.create_sheet("reference")
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        ws_list[0] = wb.active  # create first worksheet
-        ws_list[0].title = "saturday"  # title first worksheet
-        for i in range(1, len(ws_list)):  # create worksheet for remaining six days
-            ws_list[i] = wb.create_sheet(ws_list[i])
-            # i = 0
-        ws_list[i].title = day_of_week[i]  # title first worksheet
-        summary = wb.create_sheet("summary")
-        reference = wb.create_sheet("reference")
-    # get spreadsheet row minimums from tolerance table
-    sql = "SELECT tolerance FROM tolerances"
-    result = inquire(sql)
-    min_ss_nl = int(result[3][0])
-    min_ss_wal = int(result[4][0])
-    min_ss_otdl = int(result[5][0])
-    min_ss_aux = int(result[6][0])
-    for day in dates:
-        del daily_list[:]
-        del dl_nl[:]
-        del dl_wal[:]
-        del dl_otdl[:]
-        del dl_aux[:]
-        # create a list of carriers for each day.
-        for ii in range(len(list_carrier)):
-            if list_carrier[ii][0][0] <= str(day):
-                candidates.append(list_carrier[ii][0])  # put name into candidates array
-            jump = "no"  # triggers an analysis of the candidates array
-            if ii != len(list_carrier) - 1:  # if the loop has not reached the end of the list
-                if list_carrier[ii][0][1] == list_carrier[ii + 1][0][1]:  # if the name current and next name are same
-                    jump = "yes"  # bypasses an analysis of the candidates array
-            if jump == "no":  # review the list of candidates
-                winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == projvar.invran_station:
-                    daily_list.append(
-                    winner)  # add the record if it matches the station
-                del candidates[:]  # empty out the candidates array.
-        for item in daily_list:  # sort carriers in daily list by the list they are in
-            if item[2] == "nl":
-                dl_nl.append(item)
-            if item[2] == "wal":
-                dl_wal.append(item)
-            if item[2] == "otdl":
-                dl_otdl.append(item)
-            if item[2] in ("aux", "ptf"):
-                dl_aux.append(item)
-        ws_list[i].oddFooter.center.text = "&A"
-        ws_list[i].column_dimensions["A"].width = 14
-        ws_list[i].column_dimensions["B"].width = 5
-        ws_list[i].column_dimensions["C"].width = 6
-        ws_list[i].column_dimensions["D"].width = 6
-        ws_list[i].column_dimensions["E"].width = 6
-        ws_list[i].column_dimensions["F"].width = 6
-        ws_list[i].column_dimensions["G"].width = 6
-        ws_list[i].column_dimensions["H"].width = 6
-        ws_list[i].column_dimensions["I"].width = 6
-        ws_list[i].column_dimensions["J"].width = 6
-        ws_list[i].column_dimensions["K"].width = 6
-        cell = ws_list[i].cell(row=1, column=1)
-        cell.value = "Improper Mandate Worksheet"
-        cell.style = ws_header
-        ws_list[i].merge_cells('A1:E1')
-        cell = ws_list[i].cell(row=3, column=1)
-        cell.value = "Date:  "  # create date/ pay period/ station header
-        cell.style = date_dov_title
-        cell = ws_list[i].cell(row=3, column=2)
-        cell.value = format(day, "%A  %m/%d/%y")
-        cell.style = date_dov
-        ws_list[i].merge_cells('B3:D3')
-        cell = ws_list[i].cell(row=3, column=5)
-        cell.value = "Pay Period:  "
-        cell.style = date_dov_title
-        ws_list[i].merge_cells('E3:F3')
-        cell = ws_list[i].cell(row=3, column=7)
-        cell.value = projvar.pay_period
-        cell.style = date_dov
-        ws_list[i].merge_cells('G3:H3')
-        cell = ws_list[i].cell(row=4, column=1)
-        cell.value = "Station:  "
-        cell.style = date_dov_title
-        cell = ws_list[i].cell(row=4, column=2)
-        cell.value = projvar.invran_station
-        cell.style = date_dov
-        ws_list[i].merge_cells('B4:D4')
-        # no list carriers *********************************************************************************************
-        cell = ws_list[i].cell(row=6, column=1)
-        cell.value = "No List Carriers"
-        cell.style = list_header
-        # column headers
-        cell = ws_list[i].cell(row=7, column=1)
-        cell.value = "Name"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=2)
-        cell.value = "note"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=3)
-        cell.value = "5200"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=4)
-        cell.value = "RS"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=5)
-        cell.value = "MV off"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=6)
-        cell.value = "MV on"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=7)
-        cell.value = "Route"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=8)
-        cell.value = "MV total"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=9)
-        cell.value = "OT"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=10)
-        cell.value = "off rt"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=7, column=11)
-        cell.value = "OT off rt"
-        cell.style = col_header
-        oi = 8  # rows: start at 8th row
-        move_totals = []  # list of totals of each set of moves
-        ot_total = 0  # running total for OT
-        ot_off_total = 0  # running total for OT off route
-        nl_oi_start = oi  # start counting the number of rows in nl
-        for line in dl_nl:
-            match = "miss"
-            del move_totals[:]  # empty array of moves totals.
-            # if there is a ring to match the carrier/ date then printe
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        s_moves = each[5].split(",")  # sort out the moves
-                        cc = 0
-                        for e in range(int(len(s_moves) / 3)):  # tally totals for each set of moves
-                            total = float(s_moves[cc + 1]) - float(s_moves[cc])  # calc off time off route
-                            cc = cc + 3
-                            move_totals.append(total)
-                        off_route = 0.0
-                        if str(each[2]) != "":  # in case the 5200 time is blank
-                            time5200 = each[2]
-                        else:
-                            time5200 = 0
-                        if each[4] == "ns day":  # if the carrier worked on their ns day
-                            off_route = float(time5200)  # cal >off route
-                            ot = float(time5200)  # cal > ot
-                        else:  # if carrier did not work ns day
-                            ot = max(float(time5200) - float(8), 0)  # calculate overtime
-                            for mt in move_totals:  # calc total off route work.
-                                off_route += float(mt)
-                        ot_total += ot
-                        ot_off_route = min(off_route, ot)  # calculate the ot off route
-                        ot_off_total += ot_off_route
-                        move_count = (int(len(s_moves) / 3))  # find the number of sets of moves
-                        # output to the gui
-                        cell = ws_list[i].cell(row=oi, column=1)
-                        cell.value = each[1]  # name
-                        cell.style = input_name
-                        if each[4] == "none":
-                            code = ""  # leave code field blank if 'none'
-                        else:
-                            code = each[4]
-                        cell = ws_list[i].cell(row=oi, column=2)
-                        cell.value = code  # code
-                        cell.style = input_s
-                        cell = ws_list[i].cell(row=oi, column=3)
-                        if time5200 == 0:
-                            cell.value = ""  # 5200
-                        else:
-                            cell.value = float(time5200)  # 5200
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        cell = ws_list[i].cell(row=oi, column=4)
-                        if isfloat(each[3]):
-                            cell.value = float(each[3])
-                        else:
-                            cell.value = each[3]
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        count = 0
-                        if move_count == 0:  # if there are no moves then format the empty cells
-                            cell = ws_list[i].cell(row=oi, column=5)
-                            cell.value = ""  # move off
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=6)
-                            cell.value = ""  # move on
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=7)
-                            cell.value = ""  # route
-                            cell.style = input_s
-                            count += 1
-                            formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=8)
-                            cell.value = formula  # move total
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                        elif move_count == 1:  # if there is only one set of moves
-                            cell = ws_list[i].cell(row=oi, column=5)
-                            cell.value = float(s_moves[0])  # move off
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=6)
-                            cell.value = float(s_moves[1])  # move on
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=7)
-                            cell.value = str(s_moves[2])  # route
-                            cell.style = input_s
-                            count += 1
-                            formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=8)
-                            cell.value = formula  # move total
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                        else:  # There are multiple moves
-                            cell = ws_list[i].cell(row=oi, column=5)
-                            cell.value = "*"  # move off
-                            cell.style = input_s
-                            cell = ws_list[i].cell(row=oi, column=6)
-                            cell.value = "*"  # move on
-                            cell.style = input_s
-                            cell = ws_list[i].cell(row=oi, column=7)
-                            cell.value = "*"  # route
-                            cell.style = input_s
-                            formula = "=SUM(%s!H%s:H%s)" % (day_of_week[i], str(oi + move_count), str(oi + 1))
-                            cell = ws_list[i].cell(row=oi, column=8)
-                            cell.value = formula  # move total
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, " \
-                                      "MAX(%s!C%s - 8, 0)))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=9)
-                            cell.value = formula  # overtime
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            formula = "=%s!H%s" % (day_of_week[i], str(oi))  # copy data from column H/ MV total
-                            cell = ws_list[i].cell(row=oi, column=10)
-                            cell.value = formula  # off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, " \
-                                      "IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
-                                      "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=11)
-                            cell.value = formula  # OT off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            oi += 1
-                            for ii in range(move_count):  # if there are multiple moves, create + populate cells
-                                cell = ws_list[i].cell(row=oi, column=5)
-                                cell.value = float(s_moves[count])  # move off
-                                cell.style = input_s
-                                cell.number_format = "#,###.00;[RED]-#,###.00"
-                                count += 1
-                                cell = ws_list[i].cell(row=oi, column=6)
-                                cell.value = float(s_moves[count])  # move on
-                                cell.style = input_s
-                                cell.number_format = "#,###.00;[RED]-#,###.00"
-                                count += 1
-                                cell = ws_list[i].cell(row=oi, column=7)
-                                cell.value = str(s_moves[count])  # route
-                                cell.style = input_s
-                                count += 1
-                                formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                                cell = ws_list[i].cell(row=oi, column=8)
-                                cell.value = formula  # move total
-                                cell.style = input_s
-                                cell.number_format = "#,###.00;[RED]-#,###.00"
-                                if ii < move_count - 1:
-                                    oi += 1  # create another row
-                            oi += 1
-                        if move_count < 2:
-                            # input formula for overtime
-                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8+ reference!C3, 0, " \
-                                      "MAX(%s!C%s - 8, 0)))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=9)
-                            cell.value = formula  # overtime
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            # formula for off route
-                            formula = "=SUM(%s!F%s - %s!E%s)" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=10)
-                            cell.value = formula  # off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + " \
-                                      "reference!C4, 0, MIN" \
-                                      "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=11)
-                            cell.value = formula  # OT off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            oi += 1
-            #  if there is no match, then just printe the name.
-            if match == "miss":
-                cell = ws_list[i].cell(row=oi, column=1)
-                cell.value = line[1]  # name
-                cell.style = input_name
-                cell = ws_list[i].cell(row=oi, column=2)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=3)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=4)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=5)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=6)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=7)
-                cell.style = input_s
-                formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=8)
-                cell.value = formula  # move total
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
-                          % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                             day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=9)
-                cell.value = formula  # overtime
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=SUM(%s!F%s - %s!E%s)" \
-                          % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=10)
-                cell.value = formula  # off route
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
-                          "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                          % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                             day_of_week[i], str(oi), day_of_week[i], str(oi),
-                             day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=11)
-                cell.value = formula  # OT off route
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                oi += 1
-        nl_oi_end = oi
-        nl_oi_diff = nl_oi_end - nl_oi_start  # find how many lines exist in nl
-        # if the minimum number of rows are not reached, insert blank rows
-        e_range = min_ss_nl - nl_oi_diff
-        if e_range <= 0:
-            e_range = 0
-        for e in range(e_range):
-            cell = ws_list[i].cell(row=oi, column=1)
-            cell.value = ""  # name
-            cell.style = input_name
-            cell = ws_list[i].cell(row=oi, column=2)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=3)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=4)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=5)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=6)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=7)
-            cell.style = input_s
-            formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=8)
-            cell.value = formula  # move total
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
-                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                         day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=9)
-            cell.value = formula  # overtime
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=SUM(%s!F%s - %s!E%s)" \
-                      % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=10)
-            cell.value = formula  # off route
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
-                      "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                         day_of_week[i], str(oi), day_of_week[i], str(oi),
-                         day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=11)
-            cell.value = formula  # OT off route
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            oi += 1
-        cello = str(oi - 1)
-        oi += 1
-        cell = ws_list[i].cell(row=oi, column=8)
-        cell.value = "Total NL Overtime"
-        cell.style = col_header
-        formula = "=SUM(%s!I8:I%s)" % (day_of_week[i], cello)
-        cell = ws_list[i].cell(row=oi, column=9)
-        cell.value = formula  # OT
-        nl_ot_row.append(str(oi))  # get the cello information to reference in summary tab
-        nl_ot_day.append(i)
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        oi += 2
-        cell = ws_list[i].cell(row=oi, column=10)
-        cell.value = "Total NL Mandates"
-        cell.style = col_header
-        formula = "=SUM(%s!K8:K%s)" % (day_of_week[i], cello)
-        cell = ws_list[i].cell(row=oi, column=11)
-        cell.value = formula  # OT off route
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        nl_totals = oi
-        oi += 1
-        try:
-            ws_list[i].page_breaks.append(Break(id=oi))
-        except:
-            ws_list[i].row_breaks.append(Break(id=oi))
-        oi += 1
-        # # work assignment carriers **********************************************************************
-        cell = ws_list[i].cell(row=oi, column=1)
-        cell.value = "Work Assignment Carriers"
-        cell.style = list_header
-        oi += 1
-        # column headers
-        cell = ws_list[i].cell(row=oi, column=1)
-        cell.value = "Name"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=2)
-        cell.value = "note"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=3)
-        cell.value = "5200"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=4)
-        cell.value = "RS"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = "MV off"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=6)
-        cell.value = "MV on"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=7)
-        cell.value = "Route"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=8)
-        cell.value = "MV total"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=9)
-        cell.value = "OT"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=10)
-        cell.value = "off rt"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=11)
-        cell.value = "OT off rt"
-        cell.style = col_header
-        oi += 1
-        wal_oi_start = oi
-        top_cell = str(oi)
-        move_totals = []  # list of totals of each set of moves
-        ot_total = 0  # running total for OT
-        ot_off_total = 0  # running total for OT off route
-        for line in dl_wal:
-            match = "miss"
-            del move_totals[:]  # empty array of moves totals.
-            # if there is a ring to match the carrier/ date then printe
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        s_moves = each[5].split(",")  # sort out the moves
-                        cc = 0
-                        for e in range(int(len(s_moves) / 3)):  # tally totals for each set of moves
-                            total = float(s_moves[cc + 1]) - float(s_moves[cc])
-                            cc = cc + 3
-                            move_totals.append(total)
-                        off_route = 0.0
-                        if str(each[2]) != "":  # in case the 5200 time is blank
-                            time5200 = each[2]
-                        else:
-                            time5200 = 0
-                        if each[4] == "ns day":  # if the carrier worked on their ns day
-                            off_route = float(time5200)  # cal >off route
-                            ot = float(time5200)  # cal > ot
-                        else:  # if carrier did not work ns day
-                            ot = max(float(time5200) - float(8), 0)  # calculate overtime
-                            for mt in move_totals:  # calc total off route work.
-                                off_route += float(mt)
-                        ot_total += ot
-                        ot_off_route = min(off_route, ot)  # calculate the ot off route
-                        ot_off_total += ot_off_route
-                        move_count = (int(len(s_moves) / 3))  # find the number of sets of moves
-                        # output to the gui
-                        cell = ws_list[i].cell(row=oi, column=1)
-                        cell.value = each[1]  # name
-                        cell.style = input_name
-
-                        if each[4] == "none":
-                            code = ""  # leave code field blank if 'none'
-                        else:
-                            code = each[4]
-                        cell = ws_list[i].cell(row=oi, column=2)
-                        cell.value = code  # code
-                        cell.style = input_s
-
-                        cell = ws_list[i].cell(row=oi, column=3)
-                        if time5200 == 0:
-                            cell.value = ""  # 5200
-                        else:
-                            cell.value = float(time5200)  # 5200
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-
-                        cell = ws_list[i].cell(row=oi, column=4)
-                        if isfloat(each[3]):
-                            cell.value = float(each[3])
-                        else:
-                            cell.value = each[3]
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        count = 0
-                        if move_count == 0:  # if there are no moves then format the empty cells
-                            cell = ws_list[i].cell(row=oi, column=5)
-                            cell.value = ""  # move off
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=6)
-                            cell.value = ""  # move on
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=7)
-                            cell.value = ""  # route
-                            cell.style = input_s
-                            count += 1
-                            formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=8)
-                            cell.value = formula  # move total
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                        elif move_count == 1:  # if there is only one set of moves
-                            cell = ws_list[i].cell(row=oi, column=5)
-                            cell.value = float(s_moves[0])  # move off
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=6)
-                            cell.value = float(s_moves[1])  # move on
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            count += 1
-                            cell = ws_list[i].cell(row=oi, column=7)
-                            cell.value = str(s_moves[2])  # route
-                            cell.style = input_s
-                            count += 1
-                            formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=8)
-                            cell.value = formula  # move total
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                        else:  # There are multiple moves
-                            cell = ws_list[i].cell(row=oi, column=5)
-                            cell.value = "*"  # move off
-                            cell.style = input_s
-                            cell = ws_list[i].cell(row=oi, column=6)
-                            cell.value = "*"  # move on
-                            cell.style = input_s
-                            cell = ws_list[i].cell(row=oi, column=7)
-                            cell.value = "*"  # route
-                            cell.style = input_s
-                            formula = "=SUM(%s!H%s:H%s)" % (day_of_week[i], str(oi + move_count), str(oi + 1))
-                            cell = ws_list[i].cell(row=oi, column=8)
-                            cell.value = formula  # move total
-                            cell.style = input_s
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            # input formula for overtime
-                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=9)
-                            cell.value = formula  # overtime
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            formula = "=%s!H%s" % (day_of_week[i], str(oi))  # copy data from column H/ MV total
-                            cell = ws_list[i].cell(row=oi, column=10)
-                            cell.value = formula  # off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + " \
-                                      "reference!C4, 0, MIN" \
-                                      "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=11)
-                            cell.value = formula  # OT off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            oi += 1
-                            for ii in range(move_count):  # if there are multiple moves, create + populate cells
-                                cell = ws_list[i].cell(row=oi, column=5)
-                                cell.value = float(s_moves[count])  # move off
-                                cell.style = input_s
-                                cell.number_format = "#,###.00;[RED]-#,###.00"
-                                count += 1
-                                cell = ws_list[i].cell(row=oi, column=6)
-                                cell.value = float(s_moves[count])  # move on
-                                cell.style = input_s
-                                cell.number_format = "#,###.00;[RED]-#,###.00"
-                                count += 1
-                                cell = ws_list[i].cell(row=oi, column=7)
-                                cell.value = str(s_moves[count])  # route
-                                cell.style = input_s
-                                count += 1
-                                formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                                cell = ws_list[i].cell(row=oi, column=8)
-                                cell.value = formula  # move total
-                                cell.style = input_s
-                                cell.number_format = "#,###.00;[RED]-#,###.00"
-                                if ii < move_count - 1:
-                                    oi += 1
-                            oi += 1
-                        if move_count < 2:
-                            # input formula for overtime
-                            formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=9)
-                            cell.value = formula  # overtime
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            # formula for off route
-                            formula = "=SUM(%s!F%s - %s!E%s)" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=10)
-                            cell.value = formula  # off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            # formula for OT off route
-                            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + " \
-                                      "reference!C4, 0, MIN" \
-                                      "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                         day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                            cell = ws_list[i].cell(row=oi, column=11)
-                            cell.value = formula  # OT off route
-                            cell.style = calcs
-                            cell.number_format = "#,###.00;[RED]-#,###.00"
-                            oi += 1
-            #  if there is no match, then just printe the name.
-            if match == "miss":
-                cell = ws_list[i].cell(row=oi, column=1)
-                cell.value = line[1]  # name
-                cell.style = input_name
-                cell = ws_list[i].cell(row=oi, column=2)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=3)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=4)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=5)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=6)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=7)
-                cell.style = input_s
-                cell.number_format = "####"
-                formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=8)
-                cell.value = formula  # move total
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
-                          % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=9)
-                cell.value = formula  # overtime
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=SUM(%s!F%s - %s!E%s)" \
-                          % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=10)
-                cell.value = formula  # off route
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
-                          "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                          % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                             day_of_week[i], str(oi), day_of_week[i], str(oi),
-                             day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=11)
-                cell.value = formula  # OT off route
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                oi += 1
-        wal_oi_end = oi
-        wal_oi_diff = wal_oi_end - wal_oi_start  # find how many lines exist in nl
-        # if the minimum number of rows are not reached, insert blank rows
-        e_range = min_ss_wal - wal_oi_diff
-        if e_range <= 0:
-            e_range = 0
-        for e in range(e_range):
-            cell = ws_list[i].cell(row=oi, column=1)
-            cell.style = input_name
-            cell = ws_list[i].cell(row=oi, column=2)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=3)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=4)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=5)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=6)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=7)
-            cell.style = input_s
-            cell.number_format = "####"
-            formula = "=SUM(%s!F%s - %s!E%s)" % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=8)
-            cell.value = formula  # move total
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
-                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                         day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=9)
-            cell.value = formula  # overtime
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=SUM(%s!F%s - %s!E%s)" \
-                      % (day_of_week[i], str(oi), day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=10)
-            cell.value = formula  # off route
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s),%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, MIN" \
-                      "(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                      % (day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi),
-                         day_of_week[i], str(oi), day_of_week[i], str(oi),
-                         day_of_week[i], str(oi), day_of_week[i], str(oi), day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=11)
-            cell.value = formula  # OT off route
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            oi += 1
-        cello = str(oi - 1)
-        oi += 1
-        cell = ws_list[i].cell(row=oi, column=10)
-        cell.value = "Total WAL Mandates"
-        cell.style = col_header
-        formula = "=SUM(%s!K%s:K%s)" % (day_of_week[i], top_cell, cello)
-        cell = ws_list[i].cell(row=oi, column=11)
-        cell.value = formula  # OT off route
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        formula = "=SUM(%s!K%s + %s!K%s)" % (day_of_week[i], str(oi), day_of_week[i], str(nl_totals))
-        oi += 2
-        cell = ws_list[i].cell(row=oi, column=10)
-        cell.value = "Total Mandates"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=11)
-        cell.value = formula  # total ot off route for nl and wal
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        man_ot_day.append(i)  # get the cello information to reference in the summary tab
-        man_ot_row.append(oi)
-        oi += 1
-        try:
-            ws_list[i].page_breaks.append(Break(id=oi))
-        except:
-            ws_list[i].row_breaks.append(Break(id=oi))
-        oi += 1
-        #  overtime desired list xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        cell = ws_list[i].cell(row=oi, column=1)
-        cell.value = "Overtime Desired List Carriers"
-        cell.style = list_header
-        oi += 1
-        # column headers
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = "Availability to:"
-        cell.style = col_header
-        oi += 1
-        cell = ws_list[i].cell(row=oi, column=1)
-        cell.value = "Name"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=2)
-        cell.value = "note"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=3)
-        cell.value = "5200"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=4)
-        cell.value = "RS"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = "to 10"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=6)
-        cell.value = "to 12"
-        cell.style = col_header
-        oi += 1
-        top_cell = str(oi)
-        otdl_oi_start = oi
-        aval_10_total = 0
-        aval_12_total = 0
-        for line in dl_otdl:
-            match = "miss"
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        # find 10 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg":
-                            aval_10 = 0.00
-                        elif each[4] == "no call":
-                            aval_10 = 10.00
-                        elif each[2].strip() == "":
-                            aval_10 = 0.00
-                        else:
-                            aval_10 = max(10 - float(each[2]), 0)
-                        aval_10_total += aval_10  # add to availability total
-                        # find 12 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg":
-                            aval_12 = 0.00
-                        elif each[4] == "no call":
-                            aval_12 = 12.00
-                        elif each[2].strip() == "":
-                            aval_12 = 0.00
-                        else:
-                            aval_12 = max(12 - float(each[2]), 0)
-                        aval_12_total += aval_12  # add to availability total
-                        # output to the gui
-                        cell = ws_list[i].cell(row=oi, column=1)
-                        cell.value = each[1]  # name
-                        cell.style = input_name
-                        if each[4] == "none":
-                            code = ""  # leave code field blank if 'none'
-                        else:
-                            code = each[4]
-                        cell = ws_list[i].cell(row=oi, column=2)
-                        cell.value = code  # code
-                        cell.style = input_s
-                        cell = ws_list[i].cell(row=oi, column=3)
-                        if each[2].strip() == "":
-                            cell.value = each[2]  # 5200
-                        else:
-                            cell.value = float(each[2])  # 5200
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        if each[3].strip() == "":
-                            rs = ""  # handle empty RS strings
-                        else:
-                            rs = float(each[3])
-                        cell = ws_list[i].cell(row=oi, column=4)
-                        cell.value = rs  # rs
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                                  "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                                  "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi))
-                        cell = ws_list[i].cell(row=oi, column=5)
-                        cell.value = formula  # availability to 10
-                        cell.style = calcs
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                                  "%s!B%s = \"sick\", %s!C%s >= 12 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                                  "12, IF(%s!C%s = 0, 0, MAX(12 - %s!C%s, 0))))" % (
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi))
-                        cell = ws_list[i].cell(row=oi, column=6)
-                        cell.value = formula  # availability to 12
-                        cell.style = calcs
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        oi += 1
-            # if there is no match, then just printe the name.
-            if match == "miss":
-                cell = ws_list[i].cell(row=oi, column=1)
-                cell.value = line[1]  # name
-                cell.style = input_name
-                cell = ws_list[i].cell(row=oi, column=2)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=3)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                cell = ws_list[i].cell(row=oi, column=4)
-                cell.style = input_s
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                          "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                          "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                          "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=5)
-                cell.value = formula  # availability to 10
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                          "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                          "%s!B%s = \"sick\", %s!C%s >= 12 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                          "12, IF(%s!C%s = 0, 0, MAX(12 - %s!C%s, 0))))" % (
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi), day_of_week[i], str(oi),
-                              day_of_week[i], str(oi))
-                cell = ws_list[i].cell(row=oi, column=6)
-                cell.value = formula  # availability to 12
-                cell.style = calcs
-                cell.number_format = "#,###.00;[RED]-#,###.00"
-                oi += 1
-        otdl_oi_end = oi
-        otdl_oi_diff = otdl_oi_end - otdl_oi_start  # find how many lines exist in otdl
-        # if the minimum number of rows are not reached, insert blank rows
-        e_range = min_ss_otdl - otdl_oi_diff
-        if e_range <= 0:
-            e_range = 0
-        for e in range(e_range):
-            cell = ws_list[i].cell(row=oi, column=1)
-            cell.value = ""  # name
-            cell.style = input_name
-            cell = ws_list[i].cell(row=oi, column=2)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=3)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=4)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                      "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                      "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=5)
-            cell.value = formula  # availability to 10
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                      "%s!B%s = \"sick\", %s!C%s >= 12 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                      "12, IF(%s!C%s = 0, 0, MAX(12 - %s!C%s, 0))))" % (
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=6)
-            cell.value = formula  # availability to 12
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            oi += 1
-        oi += 1
-        cello = str(oi - 2)
-        cell = ws_list[i].cell(row=oi, column=4)
-        cell.value = "Total OTDL Availability"
-        cell.style = col_header
-        formula = "=SUM(%s!E%s:E%s)" % (day_of_week[i], top_cell, cello)
-        otdl_total = oi
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = formula  # availability to 10
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        formula = "=SUM(%s!F%s:F%s)" % (day_of_week[i], top_cell, cello)
-        cell = ws_list[i].cell(row=oi, column=6)
-        cell.value = formula  # availability to 12
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        oi += 1
-        try:
-            ws_list[i].page_breaks.append(Break(id=oi))
-        except:
-            ws_list[i].row_breaks.append(Break(id=oi))
-        oi += 1
-        # Auxiliary assistance xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        cell = ws_list[i].cell(row=oi, column=1)
-        cell.value = "Auxiliary Assistance"
-        cell.style = list_header
-        oi += 1
-        # column headers
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = "Availability to:"
-        cell.style = col_header
-        oi += 1
-        cell = ws_list[i].cell(row=oi, column=1)
-        cell.value = "Name"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=2)
-        cell.value = "note"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=3)
-        cell.value = "5200"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=4)
-        cell.value = "RS"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = "to 10"
-        cell.style = col_header
-        cell = ws_list[i].cell(row=oi, column=6)
-        cell.value = "to 11.5"
-        cell.style = col_header
-        oi += 1
-        aux_oi_start = oi
-        top_cell = str(oi)
-        aval_10_total = 0  # initialize variables for availability totals.
-        aval_115_total = 0
-        for line in dl_aux:
-            match = "miss"
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        # find 10 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg":
-                            aval_10 = 0.00
-                        elif each[4] == "no call":
-                            aval_10 = 10.00
-                        elif each[2].strip() == "":
-                            aval_10 = 0.00
-                        else:
-                            aval_10 = max(10 - float(each[2]), 0)
-                        aval_10_total += aval_10  # add to availability total
-                        # find 11.5 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg" or each[4] == "excused":
-                            aval_115 = 0.00
-                        elif each[4] == "no call":
-                            aval_115 = 12.00
-                        elif each[2].strip() == "":
-                            aval_115 = 0.00
-                        else:
-                            aval_115 = max(12 - float(each[2]), 0)
-                        aval_115_total += aval_115  # add to availability total
-                        # output to the gui
-                        cell = ws_list[i].cell(row=oi, column=1)
-                        cell.value = each[1]  # name
-                        cell.style = input_name
-                        if each[4] == "none":
-                            code = ""  # leave code field blank if 'none'
-                        else:
-                            code = each[4]
-                        cell = ws_list[i].cell(row=oi, column=2)
-                        cell.value = code  # code
-                        cell.style = input_s
-                        cell = ws_list[i].cell(row=oi, column=3)
-                        if each[2].strip() == "":
-                            cell.value = each[2]  # 5200
-                        else:
-                            cell.value = float(each[2])  # 5200
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        if each[3].strip() == "":
-                            rs = ""  # handle empty RS strings
-                        else:
-                            rs = float(each[3])
-                        cell = ws_list[i].cell(row=oi, column=4)
-                        cell.value = rs  # rs
-                        cell.style = input_s
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                                  "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                                  "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi))
-                        cell = ws_list[i].cell(row=oi, column=5)
-                        cell.value = formula  # availability to 10
-                        cell.style = calcs
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                                  "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                                  "%s!B%s = \"sick\", %s!C%s >= 11.5 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                                  "11.5, IF(%s!C%s = 0, 0, MAX(11.5 - %s!C%s, 0))))" % (
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                      day_of_week[i], str(oi))
-                        cell = ws_list[i].cell(row=oi, column=6)
-                        cell.value = formula  # availability to 12
-                        cell.style = calcs
-                        cell.number_format = "#,###.00;[RED]-#,###.00"
-                        oi += 1
-            # if there is no match, then just printe the name.
-            if match == "miss":
-                if match == "miss":
-                    cell = ws_list[i].cell(row=oi, column=1)
-                    cell.value = line[1]  # name
-                    cell.style = input_name
-                    cell = ws_list[i].cell(row=oi, column=2)
-                    cell.style = input_s
-                    cell.number_format = "#,###.00;[RED]-#,###.00"
-                    cell = ws_list[i].cell(row=oi, column=3)
-                    cell.style = input_s
-                    cell.number_format = "#,###.00;[RED]-#,###.00"
-                    cell = ws_list[i].cell(row=oi, column=4)
-                    cell.style = input_s
-                    cell.number_format = "#,###.00;[RED]-#,###.00"
-                    formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                              "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                              "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                              "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi))
-                    cell = ws_list[i].cell(row=oi, column=5)
-                    cell.value = formula  # availability to 10
-                    cell.style = calcs
-                    cell.number_format = "#,###.00;[RED]-#,###.00"
-                    formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", " \
-                              "%s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                              "%s!B%s = \"sick\", %s!C%s >= 11.5 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                              "11.5, IF(%s!C%s = 0, 0, MAX(11.5 - %s!C%s, 0))))" % (
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi), day_of_week[i], str(oi),
-                                  day_of_week[i], str(oi))
-                    cell = ws_list[i].cell(row=oi, column=6)
-                    cell.value = formula  # availability to 12
-                    cell.style = calcs
-                    cell.number_format = "#,###.00;[RED]-#,###.00"
-                    oi += 1
-        aux_oi_end = oi
-        aux_oi_diff = aux_oi_end - aux_oi_start  # find how many lines exist in aux
-        # if the minimum number of rows are not reached, insert blank rows
-        e_range = min_ss_aux - aux_oi_diff
-        if e_range <= 0:
-            e_range = 0
-        for e in range(e_range):
-            cell = ws_list[i].cell(row=oi, column=1)
-            cell.value = ""  # name
-            cell.style = input_name
-            cell = ws_list[i].cell(row=oi, column=2)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=3)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = ws_list[i].cell(row=oi, column=4)
-            cell.style = input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                      "%s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                      "10, IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % (
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=5)
-            cell.value = formula  # availability to 10
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                      "%s!B%s = \"sick\", %s!C%s >= 12 - reference!C5), 0, IF(%s!B%s = \"no call\", " \
-                      "12, IF(%s!C%s = 0, 0, MAX(12 - %s!C%s, 0))))" % (
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi), day_of_week[i], str(oi),
-                          day_of_week[i], str(oi))
-            cell = ws_list[i].cell(row=oi, column=6)
-            cell.value = formula  # availability to 12
-            cell.style = calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
-            oi += 1
-        oi += 1
-        cello = str(oi - 2)
-        cell = ws_list[i].cell(row=oi, column=4)
-        cell.value = "Total AUX Availability"
-        cell.style = col_header
-        formula = "=SUM(%s!E%s:E%s)" % (day_of_week[i], top_cell, cello)
-        aux_total = oi
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = formula  # availability to 10
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        formula = "=SUM(%s!F%s:F%s)" % (day_of_week[i], top_cell, cello)
-        cell = ws_list[i].cell(row=oi, column=6)
-        cell.value = formula  # availability to 11.5
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        oi += 2
-        cell = ws_list[i].cell(row=oi, column=4)
-        cell.value = "Total Availability"
-        cell.style = col_header
-        formula = "=SUM(%s!E%s + %s!E%s)" % (day_of_week[i], otdl_total, day_of_week[i], aux_total)
-        cell = ws_list[i].cell(row=oi, column=5)
-        cell.value = formula  # availability to 10
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        av_to_10_day.append(i)
-        av_to_10_row.append(oi)
-        formula = "=SUM(%s!F%s + %s!F%s)" % (day_of_week[i], otdl_total, day_of_week[i], aux_total)
-        cell = ws_list[i].cell(row=oi, column=6)
-        cell.value = formula  # availability to 11.5
-        cell.style = calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        av_to_12_day.append(i)
-        av_to_12_row.append(oi)
-        oi += 1
-        i += 1
-    # summary page xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    summary.column_dimensions["A"].width = 14
-    summary.column_dimensions["B"].width = 9
-    summary.column_dimensions["C"].width = 9
-    summary.column_dimensions["D"].width = 9
-    summary.column_dimensions["E"].width = 2
-    summary.column_dimensions["F"].width = 9
-    summary.column_dimensions["G"].width = 9
-    summary.column_dimensions["H"].width = 9
-    summary['A1'] = "Improper Mandate Worksheet"
-    summary['A1'].style = ws_header
-    summary.merge_cells('A1:E1')
-    summary['B3'] = "Summary Sheet"
-    summary['B3'].style = date_dov_title
-    summary['A5'] = "Pay Period:  "
-    summary['A5'].style = date_dov_title
-    summary['B5'] = projvar.pay_period
-    summary['B5'].style = date_dov
-    summary.merge_cells('B5:D5')
-    summary['A6'] = "Station:  "
-    summary['A6'].style = date_dov_title
-    summary['B6'] = projvar.invran_station
-    summary['B6'].style = date_dov
-    summary.merge_cells('B6:D6')
-    summary['B8'] = "Availability"
-    summary['B8'].style = date_dov_title
-    summary['B9'] = "to 10"
-    summary['B9'].style = date_dov_title
-    summary['C8'] = "No list"
-    summary['C8'].style = date_dov_title
-    summary['C9'] = "overtime"
-    summary['C9'].style = date_dov_title
-    summary['D9'] = "violations"
-    summary['D9'].style = date_dov_title
-    summary['F8'] = "Availability"
-    summary['F8'].style = date_dov_title
-    summary['F9'] = "to 12"
-    summary['F9'].style = date_dov_title
-    summary['G8'] = "Off route"
-    summary['G8'].style = date_dov_title
-    summary['G9'] = "mandates"
-    summary['G9'].style = date_dov_title
-    summary['H9'] = "violations"
-    summary['H9'].style = date_dov_title
-    row = 10
-    range_num = 0
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        range_num = 7
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        range_num = 1
-    for i in range(range_num):
-        summary['A' + str(row)] = format(dates[i], "%m/%d/%y %a")
-        summary['A' + str(row)].style = date_dov_title
-        summary['A' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-        summary['B' + str(row)] = "=%s!E%s" % (day_of_week[av_to_10_day[i]], av_to_10_row[i])  # availability to 10
-        summary['B' + str(row)].style = input_s
-        summary['B' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-        summary['C' + str(row)] = "=%s!I%s" % (day_of_week[nl_ot_day[i]], nl_ot_row[i])  # no list OT
-        summary['C' + str(row)].style = input_s
-        summary['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-        summary['D' + str(row)] = "=IF(%s!B%s<%s!C%s,%s!B%s,%s!C%s)" \
-                                  % ('summary', str(row), 'summary', str(row), 'summary',
-                                     str(row), 'summary', str(row))
-        summary['D' + str(row)].style = calcs
-        summary['D' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-        summary['F' + str(row)] = "=%s!F%s" % (day_of_week[av_to_12_day[i]], av_to_12_row[i])  # availability to 12
-        summary['F' + str(row)].style = input_s
-        summary['F' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-        summary['G' + str(row)] = "=%s!K%s" % (day_of_week[man_ot_day[i]], man_ot_row[i])  # total mandates
-        summary['G' + str(row)].style = input_s
-        summary['G' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-        summary['H' + str(row)] = "=IF(%s!F%s<%s!G%s,%s!F%s,%s!G%s)" \
-                                  % ('summary', str(row), 'summary', str(row), 'summary',
-                                     str(row), 'summary', str(row))
-        summary['H' + str(row)].style = calcs
-        summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-        row = row + 2
-    # reference page xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    reference.column_dimensions["A"].width = 14
-    reference.column_dimensions["B"].width = 8
-    reference.column_dimensions["C"].width = 8
-    reference.column_dimensions["D"].width = 2
-    reference.column_dimensions["E"].width = 6
-    sql = "SELECT tolerance FROM tolerances"
-    tolerances = inquire(sql)
-    reference['B2'].style = list_header
-    reference['B2'] = "Tolerances"
-    reference['C3'] = float(tolerances[0][0])  # overtime on own route tolerance
-    reference['C3'].style = input_s
-    reference['C3'].number_format = "#,###.00;[RED]-#,###.00"
-    reference['E3'] = "overtime on own route"
-    reference['C4'] = float(tolerances[1][0])  # overtime off own route tolerance
-    reference['C4'].style = input_s
-    reference['C4'].number_format = "#,###.00;[RED]-#,###.00"
-    reference['E4'] = "overtime off own route"
-    reference['C5'] = float(tolerances[2][0])  # availability tolerance
-    reference['C5'].style = input_s
-    reference['C5'].number_format = "#,###.00;[RED]-#,###.00"
-    reference['E5'] = "availability tolerance"
-    reference['B7'].style = list_header
-    reference['B7'] = "Code Guide"
-    reference['C8'] = "ns day"
-    reference['C8'].style = input_s
-    reference['E8'] = "Carrier worked on their non scheduled day"
-    reference['C10'] = "no call"
-    reference['C10'].style = input_s
-    reference['E10'] = "Carrier was not scheduled for overtime"
-    reference['C11'] = "light"
-    reference['C11'].style = input_s
-    reference['E11'] = "Carrier on light duty and unavailable for overtime"
-    reference['C12'] = "sch chg"
-    reference['C12'].style = input_s
-    reference['E12'] = "Schedule change: unavailable for overtime"
-    reference['C13'] = "annual"
-    reference['C13'].style = input_s
-    reference['E13'] = "Annual leave"
-    reference['C14'] = "sick"
-    reference['C14'].style = input_s
-    reference['E14'] = "Sick leave"
-    reference['C15'] = "excused"
-    reference['C15'].style = input_s
-    reference['E15'] = "Carrier excused from mandatory overtime"
-    # name the excel file
-    r = "_w"
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        r = "_d"
-    xl_filename = "kb" + str(format(dates[0], "_%y_%m_%d")) + r + ".xlsx"
-    if messagebox.askokcancel("Spreadsheet generator",
-                              "Do you want to generate a spreadsheet?",
-                              parent=frame):
-        try:
-            wb.save(dir_path('spreadsheets') + xl_filename)
-            messagebox.showinfo("Spreadsheet generator",
-                                "Your spreadsheet was successfully generated. \n"
-                                "File is named: {}".format(xl_filename),
-                                parent=frame)
-        except PermissionError:
-            messagebox.showerror("Spreadsheet generator",
-                                 "The spreadsheet was not generated. \n"
-                                 "Suggestion: "
-                                 "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).",
-                                 parent=frame)
-        try:
-            if sys.platform == "win32":
-                os.startfile(dir_path('spreadsheets') + xl_filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/spreadsheets/' + xl_filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('spreadsheets') + xl_filename])
-        except PermissionError:
-            messagebox.showerror("Spreadsheet generator",
-                                 "The spreadsheet was not opened. \n"
-                                 "Suggestion: "
-                                 "Make sure that identically named spreadsheets are closed "
-                                 "(the file can't be overwritten while open).",
-                                 parent=frame)
 
 
 class OvermaxSpreadsheet:
