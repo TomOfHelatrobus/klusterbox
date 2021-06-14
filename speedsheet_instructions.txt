@@ -11,14 +11,16 @@ You can input the SpeedSheet into the database with:
    -- Input to Database
 You can access generated/saved SpeedSheets with:
    -- Speedsheet Archive
+You can empty/clear the speedsheet archive with:
+   -- Clear Archive
 
 Workflow:
 
    1. Set the investigation range you are investigating with Klusterbox main screen. 
    2. Go to 
-      > Speedsheet > Generate All Inclusive 
+      > Speedsheet > Generate All Inclusive (inludes carrier info and clock rings)
       or 
-      > Speedsheet > Generate Carrier
+      > Speedsheet > Generate Carrier (includes only carrier info)
    3. 	a. enter new carriers
 	b. edit existing carriers
 	c. enter new clock rings

@@ -69,7 +69,15 @@ w64 w32 mac
 ___ ___ ___  5. make sure the kb_install folder is inside the klusterbox 
 project folder. If not, then create it. If it does exist, empty any contents except kb_sub.
 
-___ ___ ___  6. copy and paste the most resent version of klusterbox.py into the kb_install folder.
+ 6. copy and paste the most resent versions of source files into the kb_install folder.
+		
+		w64 w32 mac
+		___ ___ ___  1. klusterbox.py
+		___ ___ ___  2. projvar.py
+		___ ___ ___  3. kbtoolbox.py
+		___ ___ ___  4. kbdatabase.py
+		___ ___ ___  5. kbreports.py
+		___ ___ ___  6. kbspreadsheets.py	
 
 ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.	
 	
@@ -99,7 +107,12 @@ ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.
 		___ ___  2. readme.txt
 		___ ___  3. history.txt
 		___ ___  4. klusterbox.py (source code)
-		___ ___  5. requirements.txt (list of necessary libraries for running klusterbox.py)
+		___ ___  5. projvar.py
+		___ ___  6. kbtoolbox.py
+		___ ___  7. kbdatabase.py
+		___ ___  8. kbreports.py
+		___ ___  9. kbspreadsheets.py
+		___ ___  10. requirements.txt (list of necessary libraries for running klusterbox.py)
 
 ___ ___ ___  8. make sure the klusterwin.spec or klustermac.spec files are included in the kb_install folder if you are going to run pyinstaller using those spec files.
 	

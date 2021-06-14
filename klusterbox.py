@@ -2,8 +2,9 @@
 import projvar  # holds variables, including root, for use in all modules
 from kbreports import Reports, Messenger
 from kbtoolbox import *
-from kbspreadsheets import OvermaxSpreadsheet, SpeedSheetGen, ImpManSpreadsheet
+from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
+from kbspeedsheets import SpeedSheetGen, OpenText
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox, filedialog, ttk
@@ -8634,164 +8635,171 @@ def remove_file_var(frame, folder):  # removes a file and all contents
                                parent=frame)
 
 
-def open_docs(frame, doc):  # opens docs in the about_klusterbox() function
-    try:
-        if sys.platform == "win32":
-            if projvar.platform == "py":
-                try:
-                    os.startfile(doc)  # in IDE the files are in the project folder
-                except FileNotFoundError:
-                    os.startfile('kb_sub\\' + doc)  # in KB legacy the files are in the kb_sub folder
-            if projvar.platform == "winapp":
-                os.startfile(os.getcwd() + "\\" + doc)
-        if sys.platform == "linux":
-            subprocess.call(doc)
-        if sys.platform == "darwin":
-            if projvar.platform == "macapp":
-                subprocess.call(["open", 'Applications/klusterbox.app/Contents/Resources/' + doc])
-            if projvar.platform == "py":
-                subprocess.call(["open", doc])
-    except FileNotFoundError:
-        messagebox.showerror("Project Documents",
-                             "The document was not opened or found.",
-                             parent=frame)
-
-
-def callback(url):  # open hyperlinks at about_klusterbox()
-    webbrowser.open_new(url)
-
-
-def about_klusterbox(frame):  # gives information about the program
-    frame.destroy()
-    f = Frame(projvar.root)
-    f.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(f)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
-    # link up the canvas and scrollbar
-    s = Scrollbar(f)
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    ff = Frame(c)
-    c.create_window((0, 0), window=ff, anchor=NW)
-    r = 0  # set row counter
-    # page contents
-    try:
+class AboutKlusterbox:
+    def __init__(self):
+        self.win = None
+        self.frame = None
+        self.photo = None
+        
+    def start(self, frame):
+        self.frame = frame
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+        self.build()
+        self.button_frame()
+        self.win.finish()
+        
+    def build(self):
+        r = 0  # set row counter
         if projvar.platform == "macapp":
-            path = 'Applications/klusterbox.app/Contents/Resources/kb_about.jpg'
+            path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', 'kb_about.jpg')
         if projvar.platform == "winapp":
-            path = os.getcwd() + "\\" + "kb_about.jpg"
+            path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
         else:
-            path = 'kb_sub/kb_images/kb_about.jpg'
-        photo = ImageTk.PhotoImage(Image.open(path))
-        Label(ff, image=photo).grid(row=r, column=0, columnspan=10, sticky="w")
-    except TclError:
-        pass
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Label(ff, text="Klusterbox", font=macadj("bold", "Helvetica 18"), fg="red", anchor=W) \
-        .grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Label(ff, text="version: {}".format(version), anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="release date: {}".format(release_date), anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="Original release: October 2018", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="comments and criticisms are welcome", anchor=W, fg="red") \
-        .grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="    Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="    tomandsusan4ever@msn.com", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="    (please put \"klusterbox\" in the subject line", anchor=W) \
-        .grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="    720.280.0415", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Label(ff, text="For the lastest updates on Klusterbox check out the official Klusterbox") \
-        .grid(row=r, columnspan=6, sticky="w")
-    r += 1
-    Label(ff, text="website at:").grid(row=r, columnspan=6, sticky="w")
-    r += 1
-    kb_link = Label(ff, text="    www.klusterbox.com", fg="blue", cursor="hand2")
-    kb_link.grid(row=r, columnspan=6, sticky="w")
-    kb_link.bind("<Button-1>", lambda e: callback("http://klusterbox.com"))
-    r += 1
-    Label(ff, text="Also look on Facebook for Klusterbox - Software for NALC Stewards at:") \
-        .grid(row=r, columnspan=6, sticky="w")
-    r += 1
-    fb_link = Label(ff, text="    www.facebook.com/klusterbox", fg="blue", cursor="hand2")
-    fb_link.grid(row=r, columnspan=6, sticky="w")
-    fb_link.bind("<Button-1>", lambda e: callback("http://www.facebook.com/klusterbox"))
-    r += 1
-    Label(ff, text="Like, Follow and Share!").grid(row=r, columnspan=6, sticky="w")
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Label(ff, text="Project Documentation", font=macadj("bold", "Helvetica 16"), anchor=W) \
-        .grid(row=r, column=0, sticky="w", columnspan=3)
-    Label(ff, text="                                             ").grid(row=r, column=3)
-    Label(ff, text="                                             ").grid(row=r, column=4)
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Button(ff, text="read", width=macadj(7, 7), command=lambda: open_docs(f, "readme.txt")) \
-        .grid(row=r, column=0, sticky="w")
-    Label(ff, text="Read Me", anchor=E).grid(row=r, column=1, sticky="w")
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Button(ff, text="read", width=macadj(7, 7), command=lambda: open_docs(f, "history.txt")) \
-        .grid(row=r, column=0, sticky="w")
-    Label(ff, text="History", anchor=E).grid(row=r, column=1, sticky="w")
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Button(ff, text="read", width=macadj(7, 7), command=lambda: open_docs(f, "LICENSE.txt")) \
-        .grid(row=r, column=0, sticky="w")
-    Label(ff, text="License", anchor=E).grid(row=r, column=1, sticky="w")
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Button(ff, text="read", width=macadj(7, 7), command=lambda: open_docs(f, "klusterbox.py")) \
-        .grid(row=r, column=0, sticky="w")
-    Label(ff, text="Source Code", anchor=E).grid(row=r, column=1, sticky="w")
-    r += 1
-    Label(ff, text="").grid(row=r)
-    r += 1
-    Button(ff, text="read", width=macadj(7, 7), command=lambda: open_docs(f, "requirements.txt")) \
-        .grid(row=r, column=0, sticky="w")
-    Label(ff, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
-    ff.mainloop()
+            path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
+        try:
+            self.photo = ImageTk.PhotoImage(Image.open(path))
+            Label(self.win.body, image=self.photo).grid(row=r, column=0, columnspan=10, sticky="w")
+        except (TclError, FileNotFoundError):
+            pass
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="Klusterbox", font=macadj("bold", "Helvetica 18"), fg="red", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="version: {}".format(version), anchor=W)\
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="release date: {}".format(release_date), anchor=W)\
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="Original release: October 2018", anchor=W)\
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="comments and criticisms are welcome", anchor=W, fg="red") \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="    Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="    tomandsusan4ever@msn.com", anchor=W)\
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="    (please put \"klusterbox\" in the subject line", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="    720.280.0415", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="For the lastest updates on Klusterbox check out the official Klusterbox") \
+            .grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        Label(self.win.body, text="website at:").grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        kb_link = Label(self.win.body, text="    www.klusterbox.com", fg="blue", cursor="hand2")
+        kb_link.grid(row=r, columnspan=6, sticky="w")
+        kb_link.bind("<Button-1>", lambda e: self.callback("http://klusterbox.com"))
+        r += 1
+        Label(self.win.body, text="Also look on Facebook for Klusterbox - Software for NALC Stewards at:") \
+            .grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        fb_link = Label(self.win.body, text="    www.facebook.com/klusterbox", fg="blue", cursor="hand2")
+        fb_link.grid(row=r, columnspan=6, sticky="w")
+        fb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/klusterbox"))
+        r += 1
+        Label(self.win.body, text="Like, Follow and Share!").grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="Project Documentation", font=macadj("bold", "Helvetica 16"), anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=3)
+        Label(self.win.body, text="                                             ").grid(row=r, column=3)
+        Label(self.win.body, text="                                             ").grid(row=r, column=4)
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("readme.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="Read Me", anchor=E).grid(row=r, column=1, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("history.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="History", anchor=E).grid(row=r, column=1, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("LICENSE.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="License", anchor=E).grid(row=r, column=1, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        sourcecode = ("klusterbox.py",
+                      "projvar.py",
+                      "kbtoolbox.py",
+                      "kbdatabase.py",
+                      "kbreports.py",
+                      "kbspreadsheets.py",
+                      "kbspeedsheets.py",
+                      )
+        for i in range(len(sourcecode)):
+            Button(self.win.body, text="read", width=macadj(7, 7),
+                   command=lambda source=sourcecode[i]: self.open_docs(source)).grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="Source Code - {}".format(sourcecode[i]), anchor=E)\
+                .grid(row=r, column=1, sticky="w")
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("requirements.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
+
+    def button_frame(self):
+        Button(self.win.buttons, text="Go Back", width=20, anchor="w",
+                   command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+
+    def open_docs(self, doc):  # opens docs in the about_klusterbox() function
+        try:
+            if sys.platform == "win32":
+                if projvar.platform == "py":
+                    try:
+                        path = doc
+                        os.startfile(path)  # in IDE the files are in the project folder
+                    except FileNotFoundError:
+                        path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', doc)
+                        os.startfile(path)  # in KB legacy the files are in the kb_sub folder
+                if projvar.platform == "winapp":
+                    path = os.path.join(os.path.sep, os.getcwd(), doc)
+                    os.startfile(path)
+            if sys.platform == "linux":
+                subprocess.call(doc)
+            if sys.platform == "darwin":
+                if projvar.platform == "macapp":
+                    path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', doc)
+                    subprocess.call(["open", path])
+                if projvar.platform == "py":
+                    subprocess.call(["open", doc])
+        except FileNotFoundError:
+            messagebox.showerror("Project Documents",
+                                 "The document was not opened or found.",
+                                 parent=self.win.body)
+
+    @staticmethod
+    def callback(self, url):  # open hyperlinks at about_klusterbox()
+        webbrowser.open_new(url)
 
 
 class StartUp:
@@ -12469,7 +12477,7 @@ class MainFrame:
         basic_menu.add_command(label="Informal C", command=lambda: informalc(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="Location", command=lambda: Messenger(self.win.topframe).location_klusterbox())
-        basic_menu.add_command(label="About Klusterbox", command=lambda: about_klusterbox(self.win.topframe))
+        basic_menu.add_command(label="About Klusterbox", command=lambda: AboutKlusterbox().start(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="View Out of Station",
                                command=lambda: set_globals(self.start_year.get(), self.start_month.get(),
@@ -12528,8 +12536,13 @@ class MainFrame:
             speed_menu.entryconfig(0, state=DISABLED)
             speed_menu.entryconfig(1, state=DISABLED)
         speed_menu.add_separator()
-        speed_menu.add_command(label="Cheatsheet", command=lambda: speed_cheatsheet())
+        speed_menu.add_command(label="Cheatsheet",
+                               command=lambda: OpenText().open_docs(self.win.body, 'cheatsheet.txt'))
+        speed_menu.add_command(label="Instructions",
+                               command=lambda: OpenText().open_docs(self.win.body, 'speedsheet_instructions.txt'))
         speed_menu.add_command(label="Speedsheet Archive", command=lambda: file_dialogue(dir_path('speedsheets')))
+        speed_menu.add_command(label="Clear Archive",
+                                command= lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         # library menu
         reportsarchive_menu = Menu(menubar, tearoff=0)
@@ -12555,6 +12568,8 @@ class MainFrame:
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('over_max_spreadsheet')))
         cleararchive.add_command(label="Over Max Finder",
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('over_max')))
+        cleararchive.add_command(label="Speedsheets",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
         cleararchive.add_command(label="Everything Report",
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('ee_reader')))
         cleararchive.add_command(label="Weekly Availability",
