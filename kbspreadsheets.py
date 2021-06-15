@@ -141,9 +141,9 @@ class ImpManSpreadsheet:
         self.min_ss_wal = int(result[4][0])  # mimimum rows for work assignment
         self.min_ss_otdl = int(result[5][0])  # minimum rows for otdl
         self.min_ss_aux = int(result[6][0])  # minimum rows for auxiliary
-        self.pb_nl_wal = bool(result[21][0])  # page break between no list and work assignment
-        self.pb_wal_otdl = bool(result[22][0])  # page break between work assignment and otdl
-        self.pb_otdl_aux = bool(result[23][0])  # page break between otdl and auxiliary
+        self.pb_nl_wal = Convert(result[21][0]).str_to_bool()  # page break between no list and work assignment
+        self.pb_wal_otdl = Convert(result[22][0]).str_to_bool()  # page break between work assignment and otdl
+        self.pb_otdl_aux = Convert(result[23][0]).str_to_bool()  # page break between otdl and auxiliary
 
     def get_styles(self):  # Named styles for workbook
         bd = Side(style='thin', color="80808080")  # defines borders

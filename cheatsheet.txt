@@ -9,6 +9,7 @@ Days: "sat", "mon", "tue", "wed", "thu", "fri" --> default is "none"
 Carrier Name: full last name, first initial separated by comma
 
 List: "otdl", "wal", "nl", "aux", "ptf" --> default is "nl"
+
 NS Day: "sat", "mon", "tue", "wed", "thu", "fri" --> default is "none"
 	if rotating:
 		"rsat", "rmon", "rtue", "rwed", "rthu", "rfri"
