@@ -18,6 +18,10 @@ NS Day: "sat", "mon", "tue", "wed", "thu", "fri" --> default is "none"
 
 Route/s: 4 or 5 digits. 1st and 2nd place are zone
 			3rd, 4th and 5th are route
+	e.g. 1024 or 10124 or 0924
+	floater strings are separated by "/". 
+	there must be 5 routes in a floater string
+	e.g. 1024/10124/1025/1072/0924
 
 Emp id: 8 digit employee id number 
 

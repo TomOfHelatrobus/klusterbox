@@ -17,6 +17,7 @@ class DataBase:
         self.stations()
         self.tolerances()
         self.rings()
+        self.skippers()
         self.ns_config()
         self.mousewheel()
         self.list_of_stations()
@@ -71,9 +72,9 @@ class DataBase:
 
     def tolerances(self):
         tolerance_array = (
-            (0, "ot_own_rt", .25),
-            (1, "ot_tol", .25),
-            (2, "av_tol", .25),
+            (0, "ot_own_rt", 0),
+            (1, "ot_tol", 0),
+            (2, "av_tol", 0),
             (3, "min_ss_nl", 25),
             (4, "min_ss_wal", 25),
             (5, "min_ss_otdl", 25),
@@ -125,7 +126,7 @@ class DataBase:
             self.pbar_counter += 1
             self.pbar.move_count(self.pbar_counter)
             self.pbar.change_text("Setting up: Tables - Skippers > {}".format(rec[0]))
-            sql = "INSERT OR IGNORE INTO skippers(code, description) VALUES ('%s','%s')" % (rec[0], rec[1])
+            sql = 'INSERT OR IGNORE INTO skippers(code, description) VALUES ("%s", "%s")' % (rec[0], rec[1])
             commit(sql)
 
     def ns_config(self):

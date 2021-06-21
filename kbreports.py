@@ -360,23 +360,23 @@ class Messenger:
         if switch == "min_nl":
             text = "Sets the minimum number of rows for the No List " \
                    "section of the spreadsheet. \n\n" \
-                   "Enter a value between 0 and 100"
+                   "Enter a value between 1 and 100"
         if switch == "min_wal":
             text = "Sets the minimum number of rows for the Work Assignment " \
                    "section of the spreadsheet. \n\n" \
-                   "Enter a value between 0 and 100"
+                   "Enter a value between 1 and 100"
         if switch == "min_otdl":
             text = "Sets the minimum number of rows for the OT Desired " \
                    "section of the spreadsheet. \n\n" \
-                   "Enter a value between 0 and 100"
+                   "Enter a value between 1 and 100"
         if switch == "min_aux":
             text = "Sets the minimum number of rows for the Auxiliary " \
                    "section of the spreadsheet. \n\n" \
-                   "Enter a value between 0 and 100"
+                   "Enter a value between 1 and 100"
         if switch == "min_overmax":
             text = "Sets the minimum number of rows for the " \
                    "12 and 60 Hour Violations spreadsheet. \n\n" \
-                   "Enter a value between 0 and 100"
+                   "Enter a value between 1 and 100"
         if switch == "pb_nl_wal":
             text = "Creates a page break between No List and " \
                    "Work Assignment List on the spreadsheet \n\n" \
@@ -390,5 +390,3 @@ class Messenger:
                    " and the Auxiliary List on the spreadsheet \n\n" \
                    "Select ON or OFF"
         messagebox.showinfo("About Tolerances", text, parent=self.frame)
-
-

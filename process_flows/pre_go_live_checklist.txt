@@ -67,7 +67,7 @@ ___ ___ ___ ___  make sure the reports function works
 
             	 Spreadsheet
 
-___ ___ ___ ___  make sure the run the spreadsheet to make sure it generates
+___ ___ ___ ___  run the spreadsheet to make sure it generates
 ___ ___ ___ ___  check to see if that there are no errors with the formulas
 ___ ___ ___ ___  check that the station, date and pay period are correct
 
@@ -93,6 +93,50 @@ ___ ___ ___ ___  generate Clock Rings Summary
 ___ ___ ___ ___  generate a guide for a random year
 
 
+
+
+************************************  Speed Sheets  ************************************
+
+IDE____ APP____
+win mac win mac
+		 Go to Management > Speedsheet Settings > Alphabetical Breakdown.
+		 Ensure that Alphabetical Breakdown is set to False. 
+___ ___ ___ ___  Generate Carrier Only Speedsheet 
+		 Create a new carrier:
+			
+		 fff, f, wal, thr, rte 1118, empid 01111111
+
+___ ___ ___ ___  Run Pre-check. Make sure the report generates.
+___ ___ ___ ___  Run Input to Database. Make sure the report generates. 
+___ ___ ___ ___  Generate an All Inclusive Speedsheet  
+___ ___ ___ ___  Ensure that changes are reflected on the main screen
+		 Create another carrier with clock rings:
+
+		 ggg, g, otdl, fri(fixed), rte 1119, empid 01111112
+		 5200: 14.55, RS 20.20, mv off 11.50, mv on 12.50, rte 1111
+					       mv off 14.50, mv on 15.00, rte 1112
+___ ___ ___ ___  Run Pre-check. Make sure the report generates.
+___ ___ ___ ___  Run Input to Database. Make sure the report generates.
+___ ___ ___ ___  Ensure that changes are reflected on the main screen
+		 Go to Management > Speedsheet Settings > Alphabetical Breakdown.
+		 Ensure that Alphabetical Breakdown is set to True. 
+___ ___ ___ ___  Create another carrier with clock rings:
+
+		 hhh,h, otdl, fri, rte 1120 (do not input an employee id)
+		 5200: 13.55, RS 19.20, mv off 11.50, mv on 12.50, rte 1111
+___ ___ ___ ___  Run Pre-check. Make sure the report generates.
+___ ___ ___ ___  Run Input to Database. Make sure the report generates.
+___ ___ ___ ___  Ensure that changes are reflected on the main screen
+___ ___ ___ ___  Close then re-generate the speedsheet. 
+___ ___ ___ ___  Add an employee id number to hhh, h - 01111113
+___ ___ ___ ___  Run Input to Database. Make sure the report generates.
+___ ___ ___ ___  Ensure that changes are reflected on the main screen. 
+		 Go to Management > Speedsheet Settings > NS Day Preferred Mode.
+		 Change NS Day Preferred Mode to fixed.
+___ ___ ___ ___  Close then re-generate the speedsheet.
+___ ___ ___ ___  Ensure that carrier hhh, h is located in the "by employee id" tab.
+___ ___ ___ ___  Ensure the that carrier ns days are properly noted. 
+		
 
 ************************************  PDF Converter  ***********************************
 

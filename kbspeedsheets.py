@@ -60,8 +60,13 @@ class SpeedSheetGen:
         self.stopsaveopen()  # stop, save and open
 
     def get_id_recset(self):  # get filtered/ condensed record set and employee id
-        carriers = CarrierList(projvar.invran_date_week[0], projvar.invran_date_week[6],
-                               projvar.invran_station).get()  # first get a carrier list
+        if projvar.invran_weekly_span:  # if the investigation range is weekly
+            start = projvar.invran_date_week[0]  # use sat - fri to curate the carrier list
+            end = projvar.invran_date_week[6]
+        else:  # if the investigation range is one day
+            start = projvar.invran_date  # use the one day to curate the carrier list
+            end = projvar.invran_date
+        carriers = CarrierList(start, end, projvar.invran_station).get()  # first get a carrier list
         for c in carriers:
             # filter out any recs where list status is unchanged
             filtered_recs = CarrierRecFilter(c, projvar.invran_date_week[0]).filter_nonlist_recs()
@@ -195,7 +200,7 @@ class SpeedSheetGen:
             self.ws_titles = ["by employee id", "alphabetically"]
         else:
             self.ws_list = ["emp_id", "a", "b", "cd", "efg", "h", "ijk", "m", "nop", "qr", "s", "tuv", "w", "xyz"]
-            self.ws_titles = ["employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
+            self.ws_titles = ["by employee id", "a", "b", "c,d", "e,f,g", "h", "i,j,k",
                               "m", "n,o,p", "q,r,", "s", "t,u,v", "w", "x,y,z"]
         self.ws_list[0] = self.wb.active  # create first worksheet
         self.ws_list[0].title = self.ws_titles[0]  # title first worksheet
@@ -211,9 +216,12 @@ class SpeedSheetGen:
         elif self.full_report and self.range == "day":
             title = "Speedsheet - All Inclusive Daily"
             self.filename = "speed_" + str(format(projvar.invran_date, "%y_%m_%d")) + "_all_d" + ".xlsx"
-        else:
+        elif not self.full_report and self.range == "week":
             title = "Speedsheet - Carriers"
-            self.filename = "speed_" + str(format(projvar.invran_date_week[0], "%y_%m_%d")) + "_carrier" + ".xlsx"
+            self.filename = "speed_" + str(format(projvar.invran_date_week[0], "%y_%m_%d")) + "_carrier_w" + ".xlsx"
+        else:  # if not self.full_report and self.range == "day":
+            title = "Speedsheet - Carriers"
+            self.filename = "speed_" + str(format(projvar.invran_date, "%y_%m_%d")) + "_carrier_d" + ".xlsx"
         return title
 
     def name_styles(self):  # Named styles for workbook

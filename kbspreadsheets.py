@@ -672,19 +672,22 @@ class ImpManSpreadsheet:
 
     def pagebreak(self):  # create a page break if consistant with user preferences
         if self.pref[self.lsi] == "nl" and not self.pb_nl_wal:
+            self.row += 1
             return
         if self.pref[self.lsi] == "wal" and not self.pb_wal_otdl:
+            self.row += 1
             return
         if self.pref[self.lsi] == "otdl" and not self.pb_otdl_aux:
+            self.row += 1
             return
         if self.pref[self.lsi] == "aux":
+            self.row += 1
             return
         try:
             self.ws_list[self.i].page_breaks.append(Break(id=self.row))
-            self.row += 1
         except AttributeError:
             self.ws_list[self.i].row_breaks.append(Break(id=self.row))  # effective for windows
-            self.row += 1
+        self.row += 1
 
     def build_summary_header(self):  # summary headers
         self.summary['A1'] = "Improper Mandate Worksheet"
@@ -895,7 +898,8 @@ class OvermaxSpreadsheet:
                                  border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                  alignment=Alignment(horizontal='right', text_rotation=90))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                border=Border(left=bd, right=bd, top=bd, bottom=bd))
+                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                alignment=Alignment(horizontal='left'))
         self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
                              border=Border(left=bd, right=bd, top=bd, bottom=bd),
                              alignment=Alignment(horizontal='right'))
@@ -1190,14 +1194,17 @@ class OvermaxSpreadsheet:
         self.instructions.merge_cells('A' + str(i) + ':A' + str(i + 1))  # merge box for name
         self.instructions['A10'] = "kubrick, s"
         self.instructions['A10'].style = self.input_name
+        self.instructions['A11'].style = self.input_name
         # instructions list
         self.instructions.merge_cells('B' + str(i) + ':B' + str(i + 1))  # merge box for list type input
         self.instructions['B10'] = "wal"
         self.instructions['B10'].style = self.input_s
+        self.instructions['B11'].style = self.input_s
         # instructions weekly
         self.instructions.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly input
         self.instructions['C10'] = 75.00
         self.instructions['C10'].style = self.input_s
+        self.instructions['C11'].style = self.input_s
         self.instructions['C10'].number_format = "#,###.00;[RED]-#,###.00"
         # instructions saturday
         self.instructions.merge_cells('D' + str(i + 1) + ':E' + str(i + 1))  # merge box for sat 5200
@@ -1519,12 +1526,15 @@ class OvermaxSpreadsheet:
             self.violations.merge_cells('A' + str(i) + ':A' + str(i + 1))
             self.violations['A' + str(i)] = carrier_name  # name
             self.violations['A' + str(i)].style = self.input_name
+            self.violations['A' + str(i+1)].style = self.input_name
             self.violations.merge_cells('B' + str(i) + ':B' + str(i + 1))  # merge box for list
             self.violations['B' + str(i)] = carrier_list  # list
             self.violations['B' + str(i)].style = self.input_s
+            self.violations['B' + str(i+1)].style = self.input_s
             self.violations.merge_cells('C' + str(i) + ':C' + str(i + 1))  # merge box for weekly 5200
             self.violations['C' + str(i)] = Convert(total).empty_not_zerofloat()  # total
             self.violations['C' + str(i)].style = self.input_s
+            self.violations['C' + str(i+1)].style = self.input_s
             self.violations['C' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # saturday
             self.violations.merge_cells('D' + str(i + 1) + ':E' + str(i + 1))  # merge box for sat 5200

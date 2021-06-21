@@ -39,7 +39,7 @@ from pdfminer.pdfpage import PDFPage
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
 version = "4.002"
-release_date = "March 13, 2021"
+release_date = "June 20, 2021"
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -80,7 +80,7 @@ class ProgressBarIn:  # Indeterminate Progress Bar
         while pb_flag:  # use global as a flag. stop loop when flag is False
             projvar.root.update()
             self.pb['value'] += 1
-            time.sleep(.1)
+            time.sleep(.01)
 
     def stop(self):
         self.pb.stop()  # stop and destroy the progress bar
@@ -316,14 +316,14 @@ class SpeedLoadThread(Thread):  # use multithreading to load workbook while prog
 
 class SpeedWorkBookGet:
     @staticmethod
-    def get_filepath(self):
+    def get_filepath():
         if projvar.platform == "macapp" or projvar.platform == "winapp":
             return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
         else:
             return 'kb_sub/speedsheets'
 
     def get_file(self):
-        path = self.get_filepath(self)
+        path = self.get_filepath()
         file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.xlsx")])
         if file_path[-5:].lower() == ".xlsx":
             return file_path
@@ -428,7 +428,6 @@ class SpeedSheetCheck:
         if all_in == "Speedsheet - All Inclusive Weekly":
             return True  # default settings from __init__ do not need changing
         elif all_in == "Speedsheet - All Inclusive Daily":
-            self.i_range = False  # change the range since it is daily
             self.step = 0
             self.modulus = 2
             return True
@@ -445,12 +444,12 @@ class SpeedSheetCheck:
         self.sheets = self.wb.sheetnames  # get the names of the worksheets as a list
         self.sheet_count = len(self.sheets)  # get the number of worksheets
 
-    def set_dates(self):
+    def set_dates(self):  # set the dates and the investigation range based on speedsheet input
         datecell = self.wb[self.sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
         if len(datecell) < 12:  # if the investigation range is daily
             self.start_date = Convert(datecell).backslashdate_to_datetime()  # convert formatted date to datetime
             self.end_date = self.start_date  # since daily, dates are the same
-
+            self.i_range = False  # change the range since it is daily
         else:  # if the investigation range is weekly
             d = datecell.split(" through ")  # split the date into two
             self.start_date = Convert(d[0]).backslashdate_to_datetime()  # convert formatted date to datetime
@@ -752,7 +751,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 self.error_array.append(error)
                 self.parent.allowaddrecs = False
                 return
-        dlsn_array = self.dlsn_baseready(self, dlsn_array)  # format the list status/es for database
+        dlsn_array = self.dlsn_baseready(dlsn_array)  # format the list status/es for database
         # check days
         self.day = str(self.day)
         self.day = self.day.strip()
@@ -793,13 +792,13 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 self.error_array.append(error)
                 self.parent.allowaddrecs = False
                 return
-        dlsn_day_array = self.day_baseready(self, dlsn_day_array)  # format the day/s for the database
+        dlsn_day_array = self.day_baseready(dlsn_day_array)  # format the day/s for the database
         if self.check_day_sequence(dlsn_day_array) is False:  # check days for correct sequence
             return
         self.add_list_status(dlsn_array, dlsn_day_array)
 
     @staticmethod
-    def dlsn_baseready(self, array):  # format dynamic list status notation into database ready
+    def dlsn_baseready(array):  # format dynamic list status notation into database ready
         new = []
         for ls in array:  # for each list status
             if ls in ("nl", "n"):
@@ -830,7 +829,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 past.append(s)
 
     @staticmethod
-    def day_baseready(self, array):  # format dynamic list status notation into database ready
+    def day_baseready(array):  # format dynamic list status notation into database ready
         new = []
         for d in array:
             if d in ("sat", "s"):
@@ -909,6 +908,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.parent.allowaddrecs = False  # do not allow speedcell to be input into dbase
             return
         else:
+            self.route = Handler(self.route).routes_adj()
             self.add_route()
 
     def add_recs(self):
@@ -1057,19 +1057,20 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
     def get_onrecs(self):
         carrec = CarrierRecSet(self.parent.name, self.parent.start_date, self.parent.end_date,
                                self.parent.station).get()
-        self.onrec_list = carrec[0][2]  # get carrier information "on record" from the database
-        self.onrec_nsday = carrec[0][3]
-        self.onrec_route = carrec[0][4]
-        ringrec = Rings(self.parent.name, self.get_day_as_datetime()).get_for_day()
-        if ringrec[0]:  # if there is a result for clock rings on that day
-            self.onrec_date = ringrec[0][0]  # get rings information "on record" from the database
-            self.onrec_name = ringrec[0][1]
-            self.onrec_5200 = ringrec[0][2]
-            self.onrec_rs = ringrec[0][3]
-            self.onrec_codes = ringrec[0][4]
-            self.onrec_moves = ringrec[0][5]
-            self.onrec_leave_type = ringrec[0][6]
-            self.onrec_leave_time = ringrec[0][7]
+        if carrec:
+            self.onrec_list = carrec[0][2]  # get carrier information "on record" from the database
+            self.onrec_nsday = carrec[0][3]
+            self.onrec_route = carrec[0][4]
+            ringrec = Rings(self.parent.name, self.get_day_as_datetime()).get_for_day()
+            if ringrec[0]:  # if there is a result for clock rings on that day
+                self.onrec_date = ringrec[0][0]  # get rings information "on record" from the database
+                self.onrec_name = ringrec[0][1]
+                self.onrec_5200 = ringrec[0][2]
+                self.onrec_rs = ringrec[0][3]
+                self.onrec_codes = ringrec[0][4]
+                self.onrec_moves = ringrec[0][5]
+                self.onrec_leave_type = ringrec[0][6]
+                self.onrec_leave_time = ringrec[0][7]
 
     def check_day(self):
         days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
@@ -4908,8 +4909,8 @@ def informalc_grvlist_setsum(result):
                     total_hour += awardxhour
                     total_amt += awardxamt
                     report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
-                                 .format(str(i), sett[0], sign, s_gats[gi], sett[6], lvl
-                                         , "{0:.2f}".format(float(awardxhour)), "{0:.2f}".format(float(awardxamt))))
+                                 .format(str(i), sett[0], sign, s_gats[gi], sett[6], lvl,
+                                         "{0:.2f}".format(float(awardxhour)), "{0:.2f}".format(float(awardxamt))))
                 if gi != 0:
                     report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
             if i % 3 == 0:
@@ -6020,7 +6021,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
         wkly_total = wb.active  # create first worksheet
         wkly_total.title = "over_60"  # title first worksheet
         cell = wkly_total.cell(row=1, column=1)
-        cell = "Weekly Availability Summary"
+        cell.value = "Weekly Availability Summary"
         cell.style = ws_header
         wkly_total.merge_cells('A1:E1')
         wkly_total['A3'] = "Date:  "  # create date/ pay period/ station header
@@ -6265,7 +6266,7 @@ def station_index_mgmt(frame):
             to_add = Button(frame[f], text="rename", width=6)
             rename_button.append(to_add)
             rename_button[f]['command'] = lambda frame=frame[f], tacs=record[0], kb=record[1], newname=si_newname[f], \
-                                                 button=rename_button[f]: station_index_rename \
+                                                 button=rename_button[f]: station_index_rename\
                 (wd[0], frame, tacs, kb, newname, button, all_stations)
             rename_button[f].grid(row=0, column=2)
             delete_button = Button(frame[f], text="delete", width=6,
@@ -6326,27 +6327,6 @@ def name_index_screen():
     wd[0].update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
-
-
-def route_adj(route):  # convert five digit route numbers to four when the route number > 99
-    if len(route) == 5:  # when the route number is five digits
-        if route[2] == "0":  # and the third digit is a zero
-            return route[0] + route[1] + route[3] + route[4]  # rewrite the string, deleting the third digit
-        else:
-            return route  # if the route number is > 99, return it without change
-    if len(route) == 4:
-        return route  # if the route number is 4 digits, return it without change
-
-
-def routes_adj(routes):  # only allow five digit route numbers in chains where route number > 99
-    if routes.strip() == "":
-        return ""  # return empty strings with an empty string
-    routes = routes.split("/")  # convert andy chains into an array
-    new_array = []
-    for r in routes:
-        new_array.append(route_adj(r))
-    separator = "/"  # convert the array into a string
-    return separator.join(new_array)  # and return
 
 
 def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
@@ -6706,7 +6686,7 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
                 lvl = line[23].zfill(2)
                 if line[19] == "134" and lvl == "01":
                     tac_route = route[1] + route[2] + route[3] + route[4] + route[5]
-                    assignment = "reg " + routes_adj(tac_route)
+                    assignment = "reg " + Handler(tac_route).routes_adj()
                 elif line[19] == "134" and lvl == "02":
                     assignment = "reg " + "floater"
                 elif line[19] == "434":
@@ -7217,8 +7197,8 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     "not shown and this information will have to requested from management. Routes must be only 4 digits \n"
     "long. In cases were there are multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
     "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
-          , justify=LEFT).grid(row=1, column=0, sticky="w", columnspan=6)
+                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y")),
+          justify=LEFT).grid(row=1, column=0, sticky="w", columnspan=6)
     y = 2  # count for the row
     Label(ff, text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
     Label(ff, text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
@@ -7346,7 +7326,7 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
         result = inquire(sql)
         carrier_list.append(list(result[0]))
     carrier_list.sort(key=itemgetter(1))  # resort carrier list after additions
-    code_ns = NsDayDict.gen_rev_ns_dict(NsDayDict)  # generate reverse ns code dictionary
+    code_ns = NsDayDict(projvar.invran_date_week[0]).gen_rev_ns_dict()  # generate reverse ns code dictionary
     wd = front_window("none")  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     header = Frame(wd[3])
     header.grid(row=0, columnspan=6, sticky="w")
@@ -7526,7 +7506,7 @@ def apply_2_auto_indexer_5(frame, date, carrier, ls, ns, route, station):
                                  "letters",
                                  parent=frame)
             return "error"
-    route_input = routes_adj(route.get())
+    route_input = Handler(route.get()).routes_adj()
     if route_input == "0000":
         route_input = ""
     sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
@@ -7593,8 +7573,8 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
     header.grid(row=0, columnspan=5, sticky="w")
     Label(header, text="Carriers No Longer At Station", font=macadj("bold", "Helvetica 18"), pady=10) \
         .grid(row=0, sticky="w")
-    Label(header, text=
-    "Klusterbox has detected that the following carriers may no longer be at the station. "
+    Label(header,
+          text="Klusterbox has detected that the following carriers may no longer be at the station. "
     "If they are no longer at the\n station, then please use the option menu below to move "
     "them to the correct station (if listed). If the correct \nis not listed or the carrier "
     "is no longer working for the post office, then "
@@ -7833,19 +7813,22 @@ def auto_weekly_analysis(array):
                 if len(routes) > 0:  # if the route is in kb
                     pair = "closed"  # trigger opens when a move set needs to be closed
                     for m in line[5]:  # loop through all the rings
+                        mv_time = Convert(m[1]).zero_or_hundredths()  # assign move time variable and format
                         if m[3] not in routes and pair == "closed":
                             if m[3] == "0000" and m[2] in skippers:  # sometimes off route is not off route
                                 continue
                             else:
                                 route_holder = m[3]  # hold route to put at end of triad
-                                mv_triad.append(m[1])  # add start time to second place of triad
+                                mv_triad.append(mv_time)  # add start time to second place of triad
                                 pair = "open"
                         if m[3] in routes and pair == "open":
-                            mv_triad.append(m[1])  # add end time to third place of triad
+                            mv_triad.append(mv_time)  # add end time to third place of triad
                             mv_triad.append(route_holder)
                             pair = "closed"
                     if pair == "open":  # if open at end, then close it with the last ring
-                        mv_triad.append(line[5][len(line[5]) - 1][1])
+                        # assign move time variable and format for the last move if pair == 'open'
+                        mv_time = Convert(line[5][len(line[5]) - 1][1]).zero_or_hundredths()
+                        mv_triad.append(mv_time)
                         mv_triad.append(route_holder)
                 if not allow_zero_bottom:
                     if len(mv_triad) > 0:  # find and remove duplicate ET rings at end
@@ -7863,12 +7846,24 @@ def auto_weekly_analysis(array):
                 mv_str = ','.join(mv_triad)  # format array as string to fit in dbase
                 # if hours worked > 0 or there is a code or a leave type
                 if float(line[2]) > 0 or c_code != "none" or line[6] != "":
-                    if float(line[2]) == 0:
-                        hr_52 = ""  # don't put zeros in 5200 for rings record
+                    hr_52 = line[2]  # assign 5200 hours variable
+                    if RingTimeChecker(hr_52).check_for_zeros():  # adjust hr_52to version 4 record standards
+                        hr_52 = ""
                     else:
-                        hr_52 = float(line[2])  # if it is greater than zero, put it in as a float
-                    lv_time = float(line[7])  # convert the leave time to a float var
-                    current_array = [str(day_dict[line[0]]), kb_name, hr_52, line[3], c_code, mv_str, line[6], lv_time]
+                        hr_52 = Convert(hr_52).hundredths()
+                    rs = line[3]  # assign return to station variable
+                    if RingTimeChecker(rs).check_for_zeros():  # adjust rs to version 4 record standards
+                        rs = ""
+                    else:
+                        rs = Convert(rs).hundredths()
+                    lv_time = float(line[7])  # assign leave time variable
+                    lv_type = line[6]  # assign leave type variable
+                    lv_type = Convert(line[6]).none_not_empty()  # adjust lv type to version 4 record standards
+                    if RingTimeChecker(lv_time).check_for_zeros():  # adjust lv time to version 4 record standards
+                        lv_time = ""
+                    else:
+                        lv_time = Convert(lv_time).hundredths()
+                    current_array = [str(day_dict[line[0]]), kb_name, hr_52, rs, c_code, mv_str, lv_type, lv_time]
                     # check rings table to see if record already exist.
                     sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (
                         kb_name, day_dict[line[0]])
@@ -7928,7 +7923,6 @@ def auto_daily_analysis(rings):
                     hr_62 = spt_20[1]  # get the guaranteed time hours
                 if spt_20_mod == "86":
                     hr_86 = spt_20[1]  # get other leave hours
-
                 # calculate the leave type and time:
                 if float(hr_55) > 0 or float(hr_56) > 0 or float(hr_58) > 0 or float(hr_62) > 0 or float(hr_86) > 0:
                     if float(hr_55) > 0:
@@ -7971,7 +7965,7 @@ def auto_daily_analysis(rings):
                 route_z = line[24].zfill(6)  # because some reports omit leading zeros
                 # reformat route to 5 digit format
                 route = route_z[1] + route_z[2] + route_z[3] + route_z[4] + route_z[5]
-                route = routes_adj(route)  # convert to 4 digits if route < 100
+                route = Handler(route).routes_adj()  # convert to 4 digits if route < 100
                 mv_data = [line[19], line[21], line[23][:3], route]  # MV, time off, time on, route
                 moves.append(mv_data)
         # form the proto array
@@ -8068,7 +8062,7 @@ def ee_analysis(array, report):
                 if line[23].zfill(2) == "01":
                     route = line[25].zfill(6)
                     route = route[1] + route[2] + route[4] + route[5]
-                    route = routes_adj(route)
+                    route = Handler(route).routes_adj()
                 if line[23].zfill(2) == "02":
                     route = "floater"
             report.write("================================================\n")
@@ -8235,7 +8229,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
     day_xlr = {"Saturday": "sat", "Sunday": "sun", "Monday": "mon", "Tuesday": "tue", "Wednesday": "wed",
                "Thursday": "thr", "Friday": "fri"}
     leave_xlr = {"49": "owcp   ", "55": "annual ", "56": "sick   ", "58": "holiday", "59": "lwop   ", "60": "lwop   "}
-    max_hr = []
+    maxhour = []
     max_aux_day = []
     max_ft_day = []
     extra_hours = []
@@ -8282,7 +8276,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
                             wkly_total += float(t[2])
                         if wkly_total > 60:
                             add_maxhr = (day_hours[0][0].lower(), day_hours[0][1].lower(), wkly_total)
-                            max_hr.append(add_maxhr)
+                            maxhour.append(add_maxhr)
                             for item in extra_hours:  # get any extra hours codes for non-5200 hours list
                                 all_extra.append(item)
                             # find the all adjustments
@@ -8364,13 +8358,13 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
             wkly_total += float(t[2])
         if wkly_total > 60:
             add_maxhr = (day_hours[0][0].lower(), day_hours[0][1].lower(), wkly_total)
-            max_hr.append(add_maxhr)
+            maxhour.append(add_maxhr)
             for item in extra_hours:  # get any extra hours codes for non-5200 hours list
                 all_extra.append(item)
         del day_hours[:]
         del extra_hours[:]
 
-    if len(max_hr) == 0 and len(max_ft_day) == 0 and len(max_aux_day) == 0:
+    if len(maxhour) == 0 and len(max_ft_day) == 0 and len(max_aux_day) == 0:
         messagebox.showwarning("Report Generator",
                                "No violations were found. "
                                "The report was not generated.",
@@ -8378,7 +8372,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
         return
     weekly_max = []  # array hold each carrier's hours for the week
     daily_max = []  # array hold each carrier's sum of maximum daily hours for the week
-    if len(max_hr) > 0 or len(max_ft_day) > 0 or len(max_aux_day) > 0:
+    if len(maxhour) > 0 or len(max_ft_day) > 0 or len(max_aux_day) > 0:
         pp_str = pp[:-3] + "_" + pp[4] + pp[5] + "_" + pp[6]
         filename = "max" + "_" + pp_str + ".txt"
         report = open(dir_path('over_max') + filename, "w")
@@ -8391,12 +8385,12 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
         report.write("\n60 hour violations \n\n")
         report.write("name                              total   over\n")
         report.write("-----------------------------------------------\n")
-        if len(max_hr) == 0:
+        if len(maxhour) == 0:
             report.write("no violations" + "\n")
         else:
             diff_total = 0
-            max_hr.sort(key=itemgetter(0))
-            for item in max_hr:
+            maxhour.sort(key=itemgetter(0))
+            for item in maxhour:
                 tabs = 30 - (len(item[0]))
                 period = "."
                 period = period + (tabs * ".")
@@ -8530,8 +8524,7 @@ def max_hr(frame):  # generates a report for 12/60 hour violations
                 adj_total.append(adj_add)  # catch sum of adjustments for the week
         for w_max in weekly_max:  # find the total violation
             for d_max in daily_max:
-                if w_max[0] + w_max[1] == d_max[0] + d_max[
-                    1]:  # look for names with both weekly and daily violations
+                if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # look for names with both weekly and daily violations
                     wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
                     to_add = [w_max[0], w_max[1], wk_dy_sum]
                     weekly_and_daily.append(to_add)
@@ -8798,7 +8791,7 @@ class AboutKlusterbox:
                                  parent=self.win.body)
 
     @staticmethod
-    def callback(self, url):  # open hyperlinks at about_klusterbox()
+    def callback(url):  # open hyperlinks at about_klusterbox()
         webbrowser.open_new(url)
 
 
@@ -9302,8 +9295,8 @@ class SpreadsheetConfig:
         Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("default")) \
             .grid(row=row, column=2)
         row += 1
-        Label(self.win.body, text="Set rows to zero").grid(row=row, column=0, ipady=5, sticky="w")
-        Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("zero")) \
+        Label(self.win.body, text="Set rows to one").grid(row=row, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("one")) \
             .grid(row=row, column=2)
         self.win.fill(row + 1, 15)
 
@@ -9321,10 +9314,10 @@ class SpreadsheetConfig:
         num = "25"
         over_num = "30"
         msg = "Minimum rows reset to default. "
-        if order == "zero":
-            num = "0"
-            over_num = "0"
-            msg = "Minimum rows set to zero. "
+        if order == "one":
+            num = "1"
+            over_num = "1"
+            msg = "Minimum rows set to one. "
         self.status_update.config(text="{}".format(msg))
         types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
         for t in types:  # set minimum row values for improper mandate spreadsheet
@@ -9356,6 +9349,10 @@ class SpreadsheetConfig:
             return False
         if not MinrowsChecker(var).not_negative():
             text = "Numbers less than zero are not allowed for {}".format(current_var[self.check_i])
+            messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.win.body)
+            return False
+        if not MinrowsChecker(var).not_zero():
+            text = "Numbers less than one are not allowed for {}".format(current_var[self.check_i])
             messagebox.showerror("Minimum Row Value Entry Error", text, parent=self.win.body)
             return False
         if not MinrowsChecker(var).within_limit(self.minrows_limit):
@@ -9509,7 +9506,7 @@ def tolerances(frame):
         .grid(row=4, column=3)
     Label(ff, text="____________________________________________________________", pady=5) \
         .grid(row=5, columnspan=4, sticky="w")
-    Label(ff, text="Restore Defaults").grid(row=6, column=0, ipady=5, sticky="w")
+    Label(ff, text="Recommended settings").grid(row=6, column=0, ipady=5, sticky="w")
     Button(ff, width=5, text="set", command=lambda: tolerance_presets(f, "default")) \
         .grid(row=6, column=2)
     Label(ff, text="Set tolerances to zero").grid(row=7, column=0, ipady=5, sticky="w")
@@ -10964,7 +10961,6 @@ class EnterRings:
                 text = "Values with more than 2 decimal places are not accepted in 5200 for {}.".format(self.day[i])
                 messagebox.showerror("5200 Error", text, parent=self.win.topframe)
                 return False
-            # total = format(float(total), '.2f')  # format it as a float with 2 decimal places
             total = Convert(total).hundredths()  # format it as a number with 2 decimal places
             self.addrings[i].append(total)  # if all checks pass, add to addrings
         return True
@@ -10991,7 +10987,6 @@ class EnterRings:
                 text = "Values with more than 2 decimal places are not accepted in RS for {}.".format(self.day[i])
                 messagebox.showerror("RS Error", text, parent=self.win.topframe)
                 return False
-            # rs = format(float(rs), '.2f')  # format it as a float with 2 decimal places
             rs = Convert(rs).hundredths()  # format it as a number with 2 decimal places
             self.addrings[i].append(rs)  # if all checks pass, add to addrings
         return True
@@ -11194,7 +11189,7 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
                                  "letters",
                                  parent=frame)
             return
-    route_input = routes_adj(route.get())  # call routes adj to shorten routes that don't need 5 digits
+    route_input = Handler(route.get()).routes_adj()  # call routes adj to shorten routes that don't need 5 digits
     if route_input == "0000":
         route_input = ""
     sql = "UPDATE carriers SET effective_date='%s',list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
@@ -11270,7 +11265,7 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
                                  parent=frame)
             return "error"
     # find all matches for date and name
-    route_input = routes_adj(route.get())  # call routes adj to shorten routes that don't need 5 digits
+    route_input = Handler(route.get()).routes_adj()  # call routes adj to shorten routes that don't need 5 digits
     if route_input == "0000":  # do not enter route for unassigned regulars
         route_input = ""
     sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
@@ -11840,7 +11835,7 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
                                  "letters",
                                  parent=frame)
             return
-    route_input = routes_adj(nc_route.get())  # call routes adj to shorten routes that don't need 5 digits
+    route_input = Handler(nc_route.get()).routes_adj()  # call routes adj to shorten routes that don't need 5 digits
     if route_input == "0000":
         route_input = ""
     # check to see if new carrier name is already in carrier table
@@ -12391,7 +12386,7 @@ class MainFrame:
         Button(self.main_frame, text="Informal C", width=30,
                command=lambda: informalc(self.win.topframe)).grid(row=1, column=1, pady=5)
         Button(self.main_frame, text="Quit", width=30, command=lambda: projvar.root.destroy())\
-            .grid(row=2, column=1,pady=5)
+            .grid(row=2, column=1, pady=5)
         # Label(self.main_frame, text="", width=macadj(2, 13)).grid(row=3, column=0)  # spacer
         for i in range(25):
             Label(self.main_frame, text="").grid(row=4 + i, column=1)
@@ -12433,7 +12428,7 @@ class MainFrame:
                     ii += 1
                 else:  # display non first rows of carrier recs
                     dt = datetime.strptime(rec[0], "%Y-%m-%d %H:%M:%S")
-                    Button(self.main_frame, text=dt.strftime("%a"), width=24, bg=color, anchor="e")\
+                    Button(self.main_frame, text=dt.strftime("%a"), width=25, bg=color, anchor="e")\
                         .grid(row=r, column=1)
                     Button(self.main_frame, text="", width=4, bg=color) \
                         .grid(row=r, column=5)
@@ -12445,7 +12440,7 @@ class MainFrame:
                         .grid(row=r, column=4)  # route
                     rec_count += 1
                 else:
-                    Button(self.main_frame, text="out of station", width=34, bg=color)\
+                    Button(self.main_frame, text="out of station", width=35, bg=color)\
                         .grid(row=r, column=2, columnspan=3)
                 r += 1
                 rec_count += 1
@@ -12461,7 +12456,8 @@ class MainFrame:
         basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(self.win.topframe))
         basic_menu.add_command(label="Multiple Input", 
                                command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss))
-        basic_menu.add_command(label="Report Summary", command=lambda: output_tab(self.win.topframe, self.carrier_list))
+        # basic_menu.add_command(label="Report Summary",
+        # command=lambda: output_tab(self.win.topframe, self.carrier_list))
         basic_menu.add_command(label="Mandates Spreadsheet",
                                command=lambda r_rings="x": ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",

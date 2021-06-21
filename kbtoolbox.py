@@ -189,29 +189,32 @@ class CarrierRecSet:
                 return rec_set
             else:
                 return
-        else:
+        else:  # if the investigation range is weekly
+            # get all records in the investigation range - the entire service week
             sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' AND '%s' " \
                   "ORDER BY effective_date DESC" \
                   % (self.carrier, self.start, self.end)
             rec = inquire(sql)
+            # get the relevant previous record (RPR)
             sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
                   "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
                   "ORDER BY effective_date DESC" \
                   % (self.carrier, self.start - timedelta(days=1))
             before_range = inquire(sql)
             #  append before_range if there is no record for saturday or invest range is daily
-            add_it = True
-            if len(rec) > 0:
-                for r in rec:
-                    if r[0] == str(self.start):
-                        add_it = False
-            if add_it:
-                rec.append(before_range[0])
+            add_it = True  # indicates that the RPR needs to be added to carrier records
+            if rec:
+                for r in rec:  # loop through all records in carrier records
+                    if r[0] == str(self.start):  # if a record is for the saturday in range
+                        add_it = False  # do not add the RPR.
+            if add_it:  # add the RPR if there is not sat range record
+                if before_range[0] != (None, None, None, None, None, None):
+                    rec.append(before_range[0])
             #  filter out record sets with no station matches
             station_anchor = False
-            for r in rec:
-                if r[5] == self.station:
-                    station_anchor = True
+            for r in rec:  # loop through all carrier records
+                if r[5] == self.station:  # check if at least one record matchs to the station
+                    station_anchor = True  # indicates that the carrecs are good for the current station.
             rec_set = []  # initialize array to put record sets into carrier list
             #  filter out any consecutive duplicate records
             if station_anchor:
@@ -565,6 +568,18 @@ class Convert:
         number = float(self.data)  # convert the number to a float
         return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
 
+    def zero_or_hundredths(self):
+        try:
+            if float(self.data) == 0:
+                number = 0.00  # convert the number to a float
+                return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+            else:
+                number = float(self.data)  # convert the number to a float
+                return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+        except ValueError:
+            number = 0.00  # convert the number to a float
+            return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+
     def zero_not_empty(self):
         if self.data == "":
             return 0
@@ -579,6 +594,8 @@ class Handler:
         if self.data is None:
             return str("")
         else:
+            self.data = str(self.data)
+            self.data = self.data.strip()
             return self.data
 
     def ns_nonetype(self):
@@ -602,6 +619,26 @@ class Handler:
     def format_str_as_int(self):
         num = int(self.data)
         return str(num)
+
+    @staticmethod
+    def route_adj(route):  # convert five digit route numbers to four when the route number > 99
+        if len(route) == 5:  # when the route number is five digits
+            if route[2] == "0":  # and the third digit is a zero
+                return route[0] + route[1] + route[3] + route[4]  # rewrite the string, deleting the third digit
+            else:
+                return route  # if the route number is > 99, return it without change
+        if len(route) == 4:
+            return route  # if the route number is 4 digits, return it without change
+
+    def routes_adj(self):  # only allow five digit route numbers in chains where route number > 99
+        if self.data.strip() == "":
+            return ""  # return empty strings with an empty string
+        routes = self.data.split("/")  # convert andy chains into an array
+        new_array = []
+        for r in routes:
+            new_array.append(self.route_adj(r))
+        separator = "/"  # convert the array into a string
+        return separator.join(new_array)  # and return
 
 
 def isfloat(value):
@@ -872,6 +909,11 @@ class MinrowsChecker:
 
     def not_negative(self):  # is the data not a negative?
         if "-" in self.data:
+            return False
+        return True
+
+    def not_zero(self):
+        if float(self.data) == 0:
             return False
         return True
 
