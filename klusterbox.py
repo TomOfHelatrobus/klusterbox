@@ -107,23 +107,27 @@ class SpeedConfigGui:
             .grid(row=0, sticky="w", columnspan=4)
         Label(self.win.body, text=" ").grid(row=1, column=0)
         self.set_stringvars()
-        Label(self.win.body, text="NS Day Preferred Mode: ", width=40, anchor="w") \
+        Label(self.win.body, text="NS Day Preferred Mode: ", width=macadj(40,30), anchor="w") \
             .grid(row=3, column=0, ipady=5, sticky="w")
         ns_pref = OptionMenu(self.win.body, self.ns_mode, "rotating", "fixed")
-        ns_pref.config(width=9, anchor="w")
+        ns_pref.config(width=macadj(9,9))
+        if sys.platform == "win32":
+            ns_pref.config(anchor="w")
         ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
         Button(self.win.body, width=5, text="change",
                command=lambda: self.apply_ns_mode()).grid(row=3, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for SpeedSheets", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for SpeedSheets", width=macadj(30,30), anchor="w") \
             .grid(row=4, column=0, ipady=5, sticky="w")
-        Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=40, anchor="w") \
+        Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=macadj(40,30), anchor="w") \
             .grid(row=5, column=0, ipady=5, sticky="w")
         opt_breakdown = OptionMenu(self.win.body, self.abc_breakdown, "True", "False")
-        opt_breakdown.config(width=9, anchor="w")
+        opt_breakdown.config(width=macadj(9, 9))
+        if sys.platform == "win32":
+            opt_breakdown.config(anchor="w")
         opt_breakdown.grid(row=5, column=1, columnspan=2, sticky="w", padx=4)
         Button(self.win.body, width=5, text="change",
                command=lambda: self.apply_abc_breakdown()).grid(row=5, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Employee ID tab", width=40, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Employee ID tab", width=macadj(40,30), anchor="w") \
             .grid(row=6, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_empid).grid(row=6, column=1, padx=4)
         Button(self.win.body, width=5, text="change",
@@ -131,7 +135,7 @@ class SpeedConfigGui:
         Button(self.win.body, width=5, text="info",
                command=lambda: self.info("min_spd_empid")) \
             .grid(row=6, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Alphabetically tab", width=40, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Alphabetically tab", width=macadj(40,30), anchor="w") \
             .grid(row=7, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_alpha).grid(row=7, column=1, padx=4)
         Button(self.win.body, width=5, text="change",
@@ -139,7 +143,7 @@ class SpeedConfigGui:
         Button(self.win.body, width=5, text="info",
                command=lambda: self.info("min_spd_alpha")) \
             .grid(row=7, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Alphabetical breakdown tabs", width=40, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Alphabetical breakdown tabs", width=macadj(40,35), anchor="w") \
             .grid(row=8, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_abc).grid(row=8, column=1, padx=4)
         Button(self.win.body, width=5, text="change",
@@ -148,7 +152,7 @@ class SpeedConfigGui:
         Button(self.win.body, width=5, text="info", command=lambda: self.info("min_spd_abc")) \
             .grid(row=8, column=3, padx=4)
         Label(self.win.body,
-              text="________________________________________________________________________________________",
+              text="__________________________________________________________________",
               pady=5).grid(row=9, columnspan=5, sticky="w")
         Label(self.win.body, text="Restore Defaults").grid(row=10, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set",
@@ -160,8 +164,14 @@ class SpeedConfigGui:
         Button(self.win.body, width=5, text="set",
                command=lambda: self.preset_low()).grid(row=12, column=3)
         self.win.fill(11, 20)  # fill the bottom of the window for scrolling
-        Button(self.win.buttons, text="Go Back", width=20, anchor="w",
-               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+        self.buttons_frame()
+
+    def buttons_frame(self):
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
         self.status_update.pack(side=LEFT)
         self.win.finish()
 
@@ -1473,6 +1483,9 @@ class GuiConfig:
     def create(self):
         self.get_settings()
         self.build()
+        self.button_frame()
+        self.win.fill(self.row, 25)
+        self.win.finish()
 
     def get_settings(self):
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
@@ -1525,11 +1538,14 @@ class GuiConfig:
         self.ot_rings_limiter.set(self.rings_limiter)
         Button(self.win.body, text="set", width=7,
                command=lambda: self.apply_rings_limiter()).grid(row=self.row, column=2)
-        # Display buttons and status update message
-        Button(self.win.buttons, text="Go Back", width=20, anchor="w",
-               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+
+    def button_frame(self):  # Display buttons and status update message
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
         self.status_update.pack(side=LEFT)
-        self.win.finish()
 
     def apply_rings_limiter(self):
         if self.ot_rings_limiter.get() == "on":
@@ -1753,11 +1769,16 @@ def database_delete_carriers(frame, station):
         Label(results_frame, text="                 ", anchor="w").grid(row=i, column=4, sticky="w")
         i += 1
     # apply and close buttons
-    Button(wd[4], text="Apply", width=15, bg="light yellow", anchor="w",
-           command=lambda: database_delete_carriers_apply(wd[0], station_selection, vars)) \
-        .pack(side=LEFT)
-    Button(wd[4], text="Go Back", width=15, bg="light yellow", anchor="w",
-           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+    button_apply = Button(wd[4])
+    button_back = Button(wd[4])
+    button_apply.config(text="Apply", width=15,
+                        command=lambda: database_delete_carriers_apply(wd[0], station_selection, vars))
+    button_back.config(text="Go Back", width=15, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":
+        button_apply.config(anchor="w")
+        button_back.config(anchor="w")
+    button_apply.pack(side=LEFT)
+    button_back.pack(side=LEFT)
     rear_window(wd)
 
 
@@ -2418,8 +2439,11 @@ def database_maintenance(frame):
     rrr += 1
     Label(cleaner_frame2, text="").grid(row=rrr)
     r += 1
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+    button = Button(wd[4])
+    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":  # center the widget text for mac
+        button.config(anchor="w")
+    button.pack(side=LEFT)
     rear_window(wd)
 
 
@@ -2760,8 +2784,11 @@ def pdf_splitter(frame):  # PDF Splitter
                lastpage.get(),
                new_path.get().strip())) \
         .grid(row=15, column=4, sticky="e")
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+    button_back = Button(wd[4])
+    button_back.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":
+        button_back.config(anchor="w")
+    button_back.pack(side=LEFT)
     rear_window(wd)
 
 
@@ -2821,8 +2848,11 @@ def pdf_converter_settings(frame):
     Button(wd[3], text="set", width=10, command=lambda:
     pdf_converter_settings_apply(wd[0], error_selection, raw_selection, txt_selection)) \
         .grid(row=12, column=2)
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+    button = Button(wd[4])
+    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":
+        button.config(anchor="w")
+    button.pack(side=LEFT)
     rear_window(wd)
 
 
@@ -5807,8 +5837,11 @@ def informalc(frame):
     Button(wd[3], text="Payout Entry", width=30, command=lambda: informalc_poe_search(wd[0])).grid(row=5, pady=5)
     Button(wd[3], text="Payout Report", width=30, command=lambda: informalc_por(wd[0])).grid(row=6, pady=5)
     Label(wd[3], text="", width=70).grid(row=7)
-    Button(wd[4], text="Go Back", width=20, anchor="w", command=lambda: MainFrame().start(frame=wd[0])) \
-        .grid(row=0, column=0)
+    button_back = Button(wd[4])
+    button_back.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":
+        button_back.config(anchor="w")
+    button_back.grid(row=0, column=0)
     rear_window(wd)
 
 
@@ -6277,8 +6310,11 @@ def station_index_mgmt(frame):
         Label(wd[3], text="", height=1).grid(row=g)
         Button(wd[3], text="Delete All", width="15", command=lambda: (wd[0].destroy(), stationindexer_del_all())) \
             .grid(row=g + 1, column=0, columnspan=3, sticky="e")
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+    button = Button(wd[4])
+    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":
+        button.config(anchor="w")
+    button.pack(side=LEFT)
     rear_window(wd)
 
 
@@ -6810,9 +6846,9 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         f.pack(fill=BOTH, side=LEFT)
         c1 = Canvas(f)
         c1.pack(fill=BOTH, side=BOTTOM),
-        Button(c1, text="Continue", width=8, command=lambda: auto_indexer_3
+        Button(c1, text="Continue", width=macadj(8,15), command=lambda: auto_indexer_3
         (f, file_path, tacs_list, name_sorter, tried_names, new_carrier, check_these)).grid(row=0, column=0)
-        Button(c1, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
+        Button(c1, text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
         s = Scrollbar(f)  # link up the canvas and scrollbar
         c = Canvas(f, width=1600)
         s.pack(side=RIGHT, fill=BOTH)
@@ -6832,14 +6868,20 @@ def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing 
         c_list = [x for x in c_list if x not in name_index]
         Label(ff, text="Search for Name Matches #1", font=macadj("bold", "Helvetica 18"), pady=10) \
             .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
-        Label(ff, text="Look for possible matches for each unrecognized name. "
-                       "If the name has already been entered manually, you \n"
+        wintext = \
+        "Look for possible matches for each unrecognized name. If the name has already been entered manually, you \n"
         "should be able to find it on this screen or the next. It is possible that the name has no match, if that is \n"
         "the case then select \"ADD NAME\" in the next screen. You can change the default between \"NOT FOUND\" and \n"
         "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
-        "Investigation Range: {0} through {1}\n\n"
-              .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
+        mactext = \
+            "Look for possible matches for each unrecognized name. If the name has already been \n"\
+            "entered manually, you should be able to find it on this screen or the next. It is \n"\
+            "possible that the name has no match, if that is the case then select \"ADD NAME\" in \n"\
+            "the next screen. You can change the default between \"NOT FOUND\" and \"DISCARD\" \n"\
+            "using the buttons below. Information from TACS is shown in blue\n\n"
+        text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+        Label(ff, text=macadj(wintext, mactext) + text, justify=LEFT) \
             .grid(row=1, column=0, columnspan=10, sticky="w")
         Button(ff, text="DISCARD", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 1)) \
             .grid(row=2, column=3, sticky="w", columnspan=2)
@@ -6939,9 +6981,9 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="Continue", width=8, command=lambda: apply_auto_indexer_3
+    Button(c1, text="Continue", width=macadj(8,15), command=lambda: apply_auto_indexer_3
     (f, c1, file_path, tacs_list, name_sorter, new_carrier, c_list, check_these)).grid(row=0, column=0)
-    Button(c1, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
+    Button(c1, text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
     s = Scrollbar(f)  # link up the canvas and scrollbar
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
@@ -6965,14 +7007,20 @@ def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_ca
     else:
         Label(ff, text="Search for Name Matches #2", font=macadj("bold", "Helvetica 18"), pady=10) \
             .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
-        Label(ff, text=
-        "Look for possible matches for each unrecognized name. If the name has already been entered manually, \n"
-        " you should be able to find it on this screen. It is possible that the name has no match, if that is \n"
-        "the case then select \"ADD NAME\" in this screen. You can change the default between \"ADD NAME\" and \n"
-        "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
-        "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                                                          projvar.invran_date_week[6].strftime("%a - %b %d, %Y")),
-              justify=LEFT).grid(row=1, column=0, columnspan=10, sticky="w")
+        wintext = \
+            "Look for possible matches for each unrecognized name. If the name has already been entered manually, \n"\
+            " you should be able to find it on this screen. It is possible that the name has no match, if that is \n"\
+            "the case then select \"ADD NAME\" in this screen. You can change the default between \"ADD NAME\" and \n"\
+            "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
+        mactext = \
+            "Look for possible matches for each unrecognized name. If the name has already been \n" \
+            "entered manually, you should be able to find it on this screen. It is possible that \n" \
+            "the name has no match, if that is the case then select \"ADD NAME\" in this screen. \n" \
+            "You can change the default between \"ADD NAME\" and \"DISCARD\" using the buttons \n" \
+            "below. Information from TACS is shown in blue\n\n"
+        text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                                                          projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+        Label(ff, text=macadj(wintext, mactext) + text, justify=LEFT).grid(row=1, column=0, columnspan=10, sticky="w")
         Button(ff, text="DISCARD", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 1)) \
             .grid(row=2, column=3, sticky="w", columnspan=2)
         Label(ff, text="switch default to DISCARD").grid(row=2, column=1, sticky="w", columnspan=2)
@@ -7132,6 +7180,7 @@ def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_
 
 
 def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carriers to carrier table / pairing screen #3
+    is_mac = macadj(False, True)
     days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     frame.destroy()
     opt_nsday = []  # make an array of "day / color" options for option menu
@@ -7171,9 +7220,9 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="Continue", width=8, command=lambda: apply_auto_indexer_4
+    Button(c1, text="Continue", width=macadj(8,15), command=lambda: apply_auto_indexer_4
     (f, c1, file_path, to_addname, carrier_name, l_s, l_ns, route, check_these)).pack(side=LEFT)
-    Button(c1, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
+    Button(c1, text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
     s = Scrollbar(f)  # link up the canvas and scrollbar
     c = Canvas(f, width=1600)
     s.pack(side=RIGHT, fill=BOTH)
@@ -7191,21 +7240,28 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
     c.create_window((0, 0), window=ff, anchor=NW)
     Label(ff, text="Input New Carriers", font=macadj("bold", "Helvetica 18"), pady=10) \
         .grid(row=0, column=0, sticky="w", columnspan=6)  # Pairing Screen #3
-    Label(ff, text="Enter in information "
-                   "for carriers not already recorded in the Klusterbox database. You can use the TACS \n"
-    "information (shown in blue),as a guide if it is accurate. As OTDL/WAL information is not in TACS, it is \n"
-    "not shown and this information will have to requested from management. Routes must be only 4 digits \n"
-    "long. In cases were there are multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
-    "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y")),
-          justify=LEFT).grid(row=1, column=0, sticky="w", columnspan=6)
+    wintext = \
+        "Enter in information for carriers not already recorded in the Klusterbox database. You can use the TACS \n" \
+        "information (shown in blue),as a guide if it is accurate. As OTDL/WAL information is not in TACS, it is \n" \
+        "not shown and this information will have to requested from management. Routes must be only 4 digits \n" \
+        "long. In cases were there are multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
+    mactext = \
+        "Enter in information for carriers not already recorded in the Klusterbox database. You can \n" \
+        "use the TACS information (shown in blue),as a guide if it is accurate. As OTDL/WAL \n" \
+        "information is not in TACS, it is not shown and this information will have to requested \n" \
+        "from management. Routes must be only 4 digits long. In cases were there are multiple \n" \
+        "routes, the routes must be separated by a \"/\" backslash.\n\n"
+    text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+    Label(ff, text=macadj(wintext,mactext)+text, justify=LEFT).grid(row=1, column=0, sticky="w", columnspan=6)
     y = 2  # count for the row
     Label(ff, text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
     Label(ff, text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
     Label(ff, text="NS Day", fg="Grey").grid(row=y, column=2, sticky="w")
     Label(ff, text="Route_s", fg="Grey").grid(row=y, column=3, sticky="w")
-    Label(ff, text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
-    Label(ff, text="              ", fg="Grey").grid(row=y, column=5, sticky="w")
+    if not is_mac:
+        Label(ff, text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
+        Label(ff, text="              ", fg="Grey").grid(row=y, column=5, sticky="w")
     y += 1
     i = 0  # count the instances of the array
     carrier_name = []  # create array for carrier names
@@ -7219,7 +7275,8 @@ def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carrie
         Label(ff, text=macadj("not in record", "unknown"), fg=color).grid(row=y, column=1, sticky="w")
         Label(ff, text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
         Label(ff, text=name[3], fg=color).grid(row=y, column=3, sticky="w")
-        Label(ff, text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
+        if not is_mac:
+            Label(ff, text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
         y += 1
         list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
         if name[3] == "auxiliary":
@@ -7295,6 +7352,7 @@ def apply_auto_indexer_4(frame, buttons, file_path, to_addname, carrier_name, l_
 
 
 def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
+    is_mac = macadj(False, True)
     if len(check_these) == 0: auto_indexer_6(frame, file_path)
     check_these.sort(key=itemgetter(1))  # sort the incoming tacs information
     frame.destroy()
@@ -7335,20 +7393,21 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
     Label(header, text=
     "Correct any discrepancies and inconsistencies that exist between the incoming TACS data (in blue) \n"
     "and the information currently recorded in the Klusterbox database (below in the entry fields and \n"
-    "option menus)to reflect the carrier's status acurately. This will update the Klusterbox database. \n"
+    "option menus)to reflect the carrier's status accurately. This will update the Klusterbox database. \n"
     "Routes must 4  or 5 digits long. In cases where there are multiple routes, the routes must be \n"
     "separated by a \"/\" backslash.\n\n"
     "Investigation Range: {0} through {1}\n\n"
           .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                  projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
-        .grid(row=1, sticky="w")
+                  projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT)\
+                  .grid(row=1, sticky="w")
     y = 1  # count for the row
-    Label(wd[3], text="    ", fg="Grey").grid(row=y, column=0, sticky="w")
+    if not is_mac:
+        Label(wd[3], text="    ", fg="Grey").grid(row=y, column=0, sticky="w")
     Label(wd[3], text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
     Label(wd[3], text="NS Day", fg="Grey").grid(row=y, column=2, sticky="w")
     Label(wd[3], text="Route_s", fg="Grey").grid(row=y, column=3, sticky="w")
     Label(wd[3], text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
-    Label(wd[3], text="             ", fg="Grey").grid(row=y, column=5, sticky="w")
+    Label(wd[3], text=macadj("             ", ""), fg="Grey").grid(row=y, column=5, sticky="w")
     y += 1
     i = 0  # count the instances of the array
     carrier_name = []  # create array for carrier names
@@ -7411,7 +7470,8 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     Label(name_f, text=name[1] + ", " + name[2], fg=color).grid(row=0, column=1, sticky="w")
                     Label(name_f, text=" / " + k_name[1]).grid(row=0, column=2, sticky="w")
                     y += 1
-                    Label(wd[3], text="    ", fg=color).grid(row=y, column=0, sticky="w")
+                    if not is_mac:
+                        Label(wd[3], text="    ", fg=color).grid(row=y, column=0, sticky="w")
                     Label(wd[3], text=macadj("not in record", "unknown"), fg=color).grid(row=y, column=1, sticky="w")
                     Label(wd[3], text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
                     Label(wd[3], text=name[3], fg=color).grid(row=y, column=3, sticky="w")
@@ -7439,13 +7499,13 @@ def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
                     list_station.config(width=macadj(25, 18))
                     list_station.grid(row=y, column=4, sticky="w")
                     y += 1
-                    Label(wd[3], text="").grid(row=y, column=0)
+                    Label(wd[3], text="").grid(row=y, column=1)
                     y += 1
                     i += 1
-    Button(wd[4], text="Continue", width=8,
+    Button(wd[4], text="Continue", width=macadj(8,15),
            command=lambda: apply_auto_indexer_5(wd[0], wd[4], file_path, carrier_name, l_s, l_ns, e_route,
                                                 l_station, check_these)).pack(side=LEFT)
-    Button(wd[4], text="Cancel", width=8, command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+    Button(wd[4], text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
     if skip_this_screen == "yes":
         auto_indexer_6(wd[0], file_path)
     else:
@@ -7573,15 +7633,18 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
     header.grid(row=0, columnspan=5, sticky="w")
     Label(header, text="Carriers No Longer At Station", font=macadj("bold", "Helvetica 18"), pady=10) \
         .grid(row=0, sticky="w")
-    Label(header,
-          text="Klusterbox has detected that the following carriers may no longer be at the station. "
-    "If they are no longer at the\n station, then please use the option menu below to move "
-    "them to the correct station (if listed). If the correct \nis not listed or the carrier "
-    "is no longer working for the post office, then "
-    "select \"out of station\".\n\n"
-    "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y")),
-          justify=LEFT).grid(row=1, sticky="w")
+    wintext = "Klusterbox has detected that the following carriers may no longer be at the station. "\
+        "If they are no longer at the\n station, then please use the option menu below to move "\
+        "them to the correct station (if listed). If the correct \nis not listed or the carrier "\
+        "is no longer working for the post office, then select \"out of station\".\n\n"
+    mactext = \
+        "Klusterbox has detected that the following carriers may no longer be at the station. If they \n" \
+        "are no longer at the station, then please use the option menu below to move them to the \n" \
+        "correct station (if listed). If the correct is not listed or the carrier is no longer working \n" \
+        "for the post office, then select \"out of station\".\n\n"
+    text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+    Label(header, text=macadj(wintext, mactext) + text, justify=LEFT).grid(row=1, sticky="w")
     y = 1  # count for the row
     Label(wd[3], text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
     Label(wd[3], text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
@@ -7633,10 +7696,10 @@ def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the
     if len(carrier_name) == 0:
         auto_skimmer(wd[0], file_path)
     else:
-        Button(wd[4], text="Continue", width=8,
+        Button(wd[4], text="Continue", width=macadj(8,15),
                command=lambda: apply_auto_indexer_6(wd[0], wd[4], file_path, carrier_name,
                                                     list_status, ns_day, route, station, new_station)).pack(side=LEFT)
-        Button(wd[4], text="Cancel", width=8, command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+        Button(wd[4], text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
         rear_window(wd)
 
 
@@ -8761,8 +8824,11 @@ class AboutKlusterbox:
         Label(self.win.body, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
 
     def button_frame(self):
-        Button(self.win.buttons, text="Go Back", width=20, anchor="w",
-                   command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
 
     def open_docs(self, doc):  # opens docs in the about_klusterbox() function
         try:
@@ -9288,8 +9354,13 @@ class SpreadsheetConfig:
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_overmax"))\
             .grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="___________________________________________________________________", pady=5) \
-            .grid(row=row, columnspan=4, sticky="w")
+        dashes = ""
+        dashcount = 67
+        if sys.platform == "darwin":
+            dashcount = 52
+        for i in range(dashcount):
+            dashes = dashes + "_"
+        Label(self.win.body, text=dashes, pady=5).grid(row=row, columnspan=4, sticky="w")
         row += 1
         Label(self.win.body, text="Restore Defaults").grid(row=row, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("default")) \
@@ -9301,12 +9372,23 @@ class SpreadsheetConfig:
         self.win.fill(row + 1, 15)
 
     def buttons_frame(self):
-        Button(self.win.buttons, text="Submit", width=15, anchor="w",
-               command=lambda: self.apply(True)).pack(side=LEFT)
-        Button(self.win.buttons, text="Apply", width=15, anchor="w",
-               command=lambda: self.apply(False)).pack(side=LEFT)
-        Button(self.win.buttons, text="Go Back", width=15, anchor="w",
-               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+        button_submit = Button(self.win.buttons)
+        button_apply = Button(self.win.buttons)
+        button_back = Button(self.win.buttons)
+        button_submit.config(text="Submit", command=lambda: self.apply(True))
+        button_apply.config(text="Apply", command=lambda: self.apply(False))
+        button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button_submit.config(width=15, anchor="w")
+            button_apply.config(width=15, anchor="w")
+            button_back.config(width=15, anchor="w")
+        else:
+            button_submit.config(width=9)
+            button_apply.config(width=9)
+            button_back.config(width=9)
+        button_submit.pack(side=LEFT)
+        button_apply.pack(side=LEFT)
+        button_back.pack(side=LEFT)
         self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
 
@@ -9457,8 +9539,11 @@ def tolerances(frame):
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
     # apply and close buttons
-    Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
+    button = Button(c1)
+    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=f))
+    if sys.platform == "win32":
+        button.config(anchor="w")
+    button.pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -9504,8 +9589,13 @@ def tolerances(frame):
         .grid(row=4, column=2)
     Button(ff, width=5, text="info", command=lambda: Messenger(f).tolerance_info("availability")) \
         .grid(row=4, column=3)
-    Label(ff, text="____________________________________________________________", pady=5) \
-        .grid(row=5, columnspan=4, sticky="w")
+    dashes = ""
+    dashcount = 59
+    if sys.platform == "darwin":
+        dashcount = 47
+    for _ in range(dashcount):
+        dashes = dashes + "_"
+    Label(ff, text=dashes, pady=5).grid(row=5, columnspan=4, sticky="w")
     Label(ff, text="Recommended settings").grid(row=6, column=0, ipady=5, sticky="w")
     Button(ff, width=5, text="set", command=lambda: tolerance_presets(f, "default")) \
         .grid(row=6, column=2)
@@ -9611,8 +9701,11 @@ def station_list(frame):
     f.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(f)
     c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
+    button = Button(c1)
+    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=f))
+    if sys.platform == "win32":
+        button.config(anchor="w")
+    button.pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(f)
     c = Canvas(f, width=1600)
@@ -9752,15 +9845,24 @@ def mass_input(frame, day, sort):
     switch_f7.pack()
     c1 = Canvas(switch_f7)
     c1.pack(fill=BOTH, side=BOTTOM)
-    # apply and close buttons
-    Button(c1, text="Submit", width=10, anchor="w",
-           command=lambda: [switch_f7.destroy(), apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route,
-                                                          pass_date), MainFrame().start()]).pack(side=LEFT)
-    Button(c1, text="Apply", width=10, anchor="w",
+    button_submit = Button(c1)  # apply and close buttons
+    button_apply = Button(c1)
+    button_back = Button(c1)
+    button_submit.config(text="Submit", width=10, command=lambda:
+        [switch_f7.destroy(), apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route,
+                                       pass_date), MainFrame().start()])
+    button_apply.config(text="Apply", width=10,
            command=lambda: [apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route, pass_date),
-                            mass_input(switch_f7, day, sort)]).pack(side=LEFT)
-    Button(c1, text="Go Back", width=10, anchor="w",
-           command=lambda: MainFrame().start(frame=switch_f7)).pack(side=LEFT)
+                            mass_input(switch_f7, day, sort)])
+    button_back.config(text="Go Back", width=10,
+           command=lambda: MainFrame().start(frame=switch_f7))
+    if sys.platform == "win32":
+        button_submit.config(anchor="w")
+        button_apply.config(anchor="w")
+        button_back.config(anchor="w")
+    button_submit.pack(side=LEFT)
+    button_apply.pack(side=LEFT)
+    button_back.pack(side=LEFT)
     # link up the canvas and scrollbar
     s = Scrollbar(switch_f7)
     c = Canvas(switch_f7, height=800, width=1600)
@@ -11521,11 +11623,25 @@ def update_carrier(a):
     projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
     # apply and close buttons
-    Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
-           command=lambda: apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, switch_f4)) \
-        .pack(side=LEFT)
-    Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: MainFrame().start(frame=switch_f4)).pack(side=LEFT)
+    button_apply = Button(c1)  # buttons at bottom of screen
+    button_back = Button(c1)
+    button_apply.config(text="Apply", command=lambda:
+        apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, switch_f4))
+    button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=switch_f4))
+    if sys.platform == "win32":
+        button_apply.config(anchor="w", width=15)
+        button_back.config(anchor="w", width=15)
+    else:
+        button_apply.config(width=16)
+        button_back.config(width=16)
+    button_apply.pack(side=LEFT)
+    button_back.pack(side=LEFT)
+    #
+    # Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
+    #        command=lambda: apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, switch_f4)) \
+    #     .pack(side=LEFT)
+    # Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
+    #        command=lambda: MainFrame().start(frame=switch_f4)).pack(side=LEFT)
 
 
 def edit_carrier(e_name):
@@ -11763,12 +11879,19 @@ def edit_carrier(e_name):
     history_frame.grid(row=9, sticky=W, pady=5)
     projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
-    # apply and close buttons
-    Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
-           command=lambda: [apply(year, month, day, name, ls, ns, route, station, switch_f3),
-                            MainFrame().start(frame=switch_f3)]).pack(side=LEFT)
-    Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: MainFrame().start(frame=switch_f3)).pack(side=LEFT)
+    button_apply = Button(c1)  # buttons at bottom of screen
+    button_back = Button(c1)
+    button_apply.config(text="Apply", command=lambda: [apply(year, month, day, name, ls, ns, route, station, switch_f3),
+                            MainFrame().start(frame=switch_f3)])
+    button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=switch_f3))
+    if sys.platform == "win32":
+        button_apply.config(anchor="w", width=15)
+        button_back.config(anchor="w", width=15)
+    else:
+        button_apply.config(width=16)
+        button_back.config(width=16)
+    button_apply.pack(side=LEFT)
+    button_back.pack(side=LEFT)
 
 
 def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, frame):
@@ -11890,12 +12013,19 @@ def input_carriers(frame):  # window for inputting new carriers
     switch_f6.pack(fill=BOTH, side=LEFT)
     c1 = Canvas(switch_f6)
     c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
-           command=lambda: (
-               nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, switch_f6))) \
-        .pack(side=LEFT)
-    Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-           command=lambda: MainFrame().start(frame=switch_f6)).pack(side=LEFT)
+    button_apply = Button(c1)  # buttons at bottom of screen
+    button_back = Button(c1)
+    button_apply.config(text="Apply", command=lambda:
+        (nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, switch_f6)))
+    button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=switch_f6))
+    if sys.platform == "win32":
+        button_apply.config(anchor="w", width=15)
+        button_back.config(anchor="w", width=15)
+    else:
+        button_apply.config(width=16)
+        button_back.config(width=16)
+    button_apply.pack(side=LEFT)
+    button_back.pack(side=LEFT)
     # set up variable for scrollbar and canvas
     s = Scrollbar(switch_f6)
     c = Canvas(switch_f6, width=1600)
@@ -12273,13 +12403,13 @@ class MainFrame:
             Label(self.invest_frame, text="Station: ", fg="grey").grid(row=1, column=2, sticky=W)
             Label(self.invest_frame, text="Set/Reset: ", fg="grey").grid(row=1, column=3, columnspan=2, sticky=W)
         # create widget row
-        Entry(self.invest_frame, textvariable=self.invran_date, width=14, justify='center')\
+        Entry(self.invest_frame, textvariable=self.invran_date, width=macadj(14,9), justify='center')\
             .grid(row=2, column=0, padx=2)
         om_range = OptionMenu(self.invest_frame, self.invran, "week", "day")
         om_range.config(width=4)
         om_range.grid(row=2, column=1, sticky=W, padx=2)
         om_station = OptionMenu(self.invest_frame, self.station, *self.stations_minus_outofstation)
-        om_station.config(width=31)
+        om_station.config(width=macadj(31,29))
         om_station.grid(row=2, column=2, sticky=W, padx=2)
         # set and reset buttons for investigation range
         Button(self.invest_frame, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
@@ -12420,7 +12550,7 @@ class MainFrame:
             for rec in line:
                 if rec_count == 0:  # display the first row of carrier recs
                     Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
-                    Button(self.main_frame, text=rec[1], width=25, bg=color, anchor="w",
+                    Button(self.main_frame, text=rec[1], width=macadj(25,23), bg=color, anchor="w",
                            command=lambda x=rec: EnterRings(x[1]).start(self.win.topframe)).grid(row=r, column=1)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
                            command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
@@ -12428,12 +12558,12 @@ class MainFrame:
                     ii += 1
                 else:  # display non first rows of carrier recs
                     dt = datetime.strptime(rec[0], "%Y-%m-%d %H:%M:%S")
-                    Button(self.main_frame, text=dt.strftime("%a"), width=25, bg=color, anchor="e")\
+                    Button(self.main_frame, text=dt.strftime("%a"), width=macadj(25,23), bg=color, anchor="e")\
                         .grid(row=r, column=1)
                     Button(self.main_frame, text="", width=4, bg=color) \
                         .grid(row=r, column=5)
                 if len(rec) > 2:  # because "out of station" recs only have two items
-                    Button(self.main_frame, text=rec[2], width=3, bg=color, anchor="w").grid(row=r, column=2)  # list
+                    Button(self.main_frame, text=rec[2], width=macadj(3,4), bg=color, anchor="w").grid(row=r, column=2)  # list
                     day_off = projvar.ns_code[rec[3]].lower()
                     Button(self.main_frame, text=day_off, width=4, bg=color, anchor="w").grid(row=r, column=3)  # nsday
                     Button(self.main_frame, text=rec[4], width=25, bg=color, anchor="w")\
