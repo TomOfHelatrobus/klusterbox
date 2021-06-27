@@ -39,7 +39,7 @@ from pdfminer.pdfpage import PDFPage
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
 version = "4.002"
-release_date = "June 20, 2021"
+release_date = "June 28, 2021"
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -151,9 +151,11 @@ class SpeedConfigGui:
             .grid(row=8, column=2, padx=4)
         Button(self.win.body, width=5, text="info", command=lambda: self.info("min_spd_abc")) \
             .grid(row=8, column=3, padx=4)
+        dash_line = "________________________________________________________________________________________"
+        if sys.platform == "darwin":
+            dash_line = "__________________________________________________________________"
         Label(self.win.body,
-              text="__________________________________________________________________",
-              pady=5).grid(row=9, columnspan=5, sticky="w")
+              text=dash_line, pady=5).grid(row=9, columnspan=5, sticky="w")
         Label(self.win.body, text="Restore Defaults").grid(row=10, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set",
                command=lambda: self.preset_default()).grid(row=10, column=3)
