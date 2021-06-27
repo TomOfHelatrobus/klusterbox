@@ -1484,7 +1484,7 @@ class GuiConfig:
         self.get_settings()
         self.build()
         self.button_frame()
-        self.win.fill(self.row, 25)
+        self.win.fill(self.row + 1, 25)
         self.win.finish()
 
     def get_settings(self):
@@ -2673,9 +2673,11 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     Label(wd[3], text=" ").grid(row=15)
     Label(wd[3], text="Restore Defaults").grid(row=16)
     Button(wd[3], text="reset", width=10, command=lambda: ns_config_reset(wd[0])).grid(row=17, column=3)
-
-    Button(wd[4], text="Go Back", width=20, anchor="w",
-           command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
+    button_back = Button(wd[4])
+    button_back.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":
+        button_back.config(anchor="w")
+    button_back.pack(side=LEFT)
     rear_window(wd)
 
 

@@ -107,9 +107,10 @@ ___ ___ ___ ___  Generate Carrier Only Speedsheet
 		 fff, f, wal, thr, rte 1118, empid 01111111
 
 ___ ___ ___ ___  Run Pre-check. Make sure the report generates.
-___ ___ ___ ___  Run Input to Database. Make sure the report generates. 
-___ ___ ___ ___  Generate an All Inclusive Speedsheet  
+___ ___ ___ ___  Run Input to Database. Make sure the report generates.
 ___ ___ ___ ___  Ensure that changes are reflected on the main screen
+___ ___ ___ ___  Generate an All Inclusive Speedsheet  
+
 		 Create another carrier with clock rings:
 
 		 ggg, g, otdl, fri(fixed), rte 1119, empid 01111112
