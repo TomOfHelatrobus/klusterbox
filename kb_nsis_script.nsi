@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "klusterbox"
-!define PRODUCT_VERSION "4.001"
+!define PRODUCT_VERSION "4.002"
 !define PRODUCT_PUBLISHER "Thomas Weeks"
 !define PRODUCT_WEB_SITE "klusterbox.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\klusterbox.exe"
@@ -21,8 +21,6 @@
 !insertmacro MUI_PAGE_WELCOME
 ; License page
 !insertmacro MUI_PAGE_LICENSE "C:\Users\toman\klusterbox\LICENSE.txt"
-; Directory page
-!insertmacro MUI_PAGE_DIRECTORY
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
@@ -38,7 +36,7 @@
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "Setup_klusterbox.exe"
+OutFile "Setup.exe"
 InstallDir "$PROGRAMFILES\klusterbox"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
@@ -96,6 +94,11 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR\Include"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Include\pyconfig.h"
   SetOutPath "$INSTDIR"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbdatabase.py"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbreports.py"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbspeedsheets.py"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbspreadsheets.py"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbtoolbox.py"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kb_about.jpg"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kb_icon2.gif"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kb_icon2.ico"
@@ -114,6 +117,7 @@ Section "MainSection" SEC01
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\PIL\_imagingtk.cp37-win_amd64.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\PIL\_webp.cp37-win_amd64.pyd"
   SetOutPath "$INSTDIR"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\projvar.py"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\pyexpat.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\python37.dll"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\readme.txt"
@@ -1108,10 +1112,6 @@ Section "MainSection" SEC01
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\_tkinter.pyd"
 SectionEnd
 
-Section -AdditionalIcons
-  CreateShortCut "$SMPROGRAMS\klusterbox\Uninstall.lnk" "$INSTDIR\uninst.exe"
-SectionEnd
-
 Section -Post
   WriteUninstaller "$INSTDIR\uninst.exe"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\klusterbox.exe"
@@ -2073,6 +2073,7 @@ Section Uninstall
   Delete "$INSTDIR\readme.txt"
   Delete "$INSTDIR\python37.dll"
   Delete "$INSTDIR\pyexpat.pyd"
+  Delete "$INSTDIR\projvar.py"
   Delete "$INSTDIR\PIL\_webp.cp37-win_amd64.pyd"
   Delete "$INSTDIR\PIL\_imagingtk.cp37-win_amd64.pyd"
   Delete "$INSTDIR\PIL\_imaging.cp37-win_amd64.pyd"
@@ -2086,6 +2087,11 @@ Section Uninstall
   Delete "$INSTDIR\kb_icon2.ico"
   Delete "$INSTDIR\kb_icon2.gif"
   Delete "$INSTDIR\kb_about.jpg"
+  Delete "$INSTDIR\kbtoolbox.py"
+  Delete "$INSTDIR\kbspreadsheets.py"
+  Delete "$INSTDIR\kbspeedsheets.py"
+  Delete "$INSTDIR\kbreports.py"
+  Delete "$INSTDIR\kbdatabase.py"
   Delete "$INSTDIR\Include\pyconfig.h"
   Delete "$INSTDIR\history.txt"
   Delete "$INSTDIR\Crypto\Util\_strxor.cp37-win_amd64.pyd"
@@ -2126,6 +2132,9 @@ Section Uninstall
   Delete "$INSTDIR\Crypto\Cipher\_chacha20.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_ARC4.cp37-win_amd64.pyd"
   Delete "$INSTDIR\base_library.zip"
+
+  Delete "$DESKTOP\klusterbox.lnk"
+  Delete "$SMPROGRAMS\klusterbox\klusterbox.lnk"
 
   RMDir "$SMPROGRAMS\klusterbox"
   RMDir "$INSTDIR\tk\ttk"
@@ -2171,14 +2180,8 @@ Section Uninstall
   RMDir "$INSTDIR\Crypto\Math"
   RMDir "$INSTDIR\Crypto\Hash"
   RMDir "$INSTDIR\Crypto\Cipher"
-  RMDir "$INSTDIR\Crypto"
-  RMDir "$INSTDIR\tcl8"
   RMDir "$INSTDIR"
-  
-  Delete "$SMPROGRAMS\klusterbox\Uninstall.lnk"
-  Delete "$DESKTOP\klusterbox.lnk"
-  Delete "$SMPROGRAMS\klusterbox\klusterbox.lnk"
-  
+
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   DeleteRegKey HKLM "${PRODUCT_DIR_REGKEY}"
   SetAutoClose true
