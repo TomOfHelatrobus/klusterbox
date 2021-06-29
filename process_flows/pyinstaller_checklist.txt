@@ -165,13 +165,19 @@ else if you do not have a klusterleg.spec file:
 	___  b. after pyinstaller runs, you can rename the klusterbox.spec file to klusterleg.spec and move it into the project file for later use. 
 	
 ___ ___  3. in explorer, in the kb_install folder, ensure the following files are in the kb_sub folder. 
-	___ ___  a. klusterbox.py (source code)
-	___ ___  b. projvar.py
-	___ ___  c. kbtoolbox.py
-	___ ___  d. kbdatabase.py
-	___ ___  e. kbreports.py
-	___ ___  f. kbspreadsheets.py
-	___ ___  g. kbspeedsheets.py
+	___ ___  1. license.txt
+	___ ___  2. readme.txt
+	___ ___  3. history.txt
+	___ ___  4. klusterbox.py (source code)
+	___ ___  5. speedsheet_instructions.txt
+	___ ___  6. cheatsheet.txt
+	___ ___  7. projvar.py
+	___ ___  8. kbtoolbox.py
+	___ ___  9. kbdatabase.py
+	___ ___  10. kbreports.py
+	___ ___  11. kbspreadsheets.py
+	___ ___  12. kbspeedsheets.py
+	___ ___  13. requirements.txt (list of necessary libraries for running klusterbox.py)
 
 ___ ___  4. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
