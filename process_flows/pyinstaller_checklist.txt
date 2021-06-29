@@ -112,7 +112,8 @@ ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.
 		___ ___  7. kbdatabase.py
 		___ ___  8. kbreports.py
 		___ ___  9. kbspreadsheets.py
-		___ ___  10. requirements.txt (list of necessary libraries for running klusterbox.py)
+		___ ___  10. requirements.txt (list of necessary libraries for running 
+			     klusterbox.py)
 
 ___ ___ ___  8. make sure the klusterwin.spec or klustermac.spec files are included in the kb_install folder if you are going to run pyinstaller using those spec files.
 	
