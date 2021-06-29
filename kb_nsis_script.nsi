@@ -46,6 +46,7 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite try
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\base_library.zip"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\cheatsheet.txt"
   SetOutPath "$INSTDIR\Crypto\Cipher"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Cipher\_ARC4.cp37-win_amd64.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Cipher\_chacha20.cp37-win_amd64.pyd"
@@ -123,6 +124,7 @@ Section "MainSection" SEC01
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\readme.txt"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\requirements.txt"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\select.pyd"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\speedsheet_instructions.txt"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\sqlite3.dll"
   SetOutPath "$INSTDIR\tcl"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\tcl\auto.tcl"
@@ -1112,6 +1114,10 @@ Section "MainSection" SEC01
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\_tkinter.pyd"
 SectionEnd
 
+Section -AdditionalIcons
+  CreateShortCut "$SMPROGRAMS\klusterbox\Uninstall.lnk" "$INSTDIR\uninst.exe"
+SectionEnd
+
 Section -Post
   WriteUninstaller "$INSTDIR\uninst.exe"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\klusterbox.exe"
@@ -2068,6 +2074,7 @@ Section Uninstall
   Delete "$INSTDIR\tcl\clock.tcl"
   Delete "$INSTDIR\tcl\auto.tcl"
   Delete "$INSTDIR\sqlite3.dll"
+  Delete "$INSTDIR\speedsheet_instructions.txt"
   Delete "$INSTDIR\select.pyd"
   Delete "$INSTDIR\requirements.txt"
   Delete "$INSTDIR\readme.txt"
@@ -2131,8 +2138,10 @@ Section Uninstall
   Delete "$INSTDIR\Crypto\Cipher\_raw_aes.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_chacha20.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_ARC4.cp37-win_amd64.pyd"
+  Delete "$INSTDIR\cheatsheet.txt"
   Delete "$INSTDIR\base_library.zip"
 
+  Delete "$SMPROGRAMS\klusterbox\Uninstall.lnk"
   Delete "$DESKTOP\klusterbox.lnk"
   Delete "$SMPROGRAMS\klusterbox\klusterbox.lnk"
 
