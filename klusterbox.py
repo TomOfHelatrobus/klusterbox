@@ -309,10 +309,6 @@ class SpeedConfigGui:
         messagebox.showinfo("SpeedSheet Minimum Rows", text, parent=self.win.topframe)
 
 
-def speed_cheatsheet():
-    pass
-
-
 class SpeedLoadThread(Thread):  # use multithreading to load workbook while progress bar runs
     def __init__(self, path):
         Thread.__init__(self)
@@ -8670,7 +8666,7 @@ def remove_file_var(frame, folder):  # removes a file and all contents
         folder_name = folder.split("\\")
     else:
         folder_name = folder.split("/")
-    folder_name = folder_name[1]
+    folder_name = folder_name[-2]
     if os.path.isdir(folder):
         if messagebox.askokcancel("Delete Folder Contents",
                                   "This will delete all the files in the {} archive. "
@@ -8683,7 +8679,6 @@ def remove_file_var(frame, folder):  # removes a file and all contents
                                         "Success! All the files in the {} archive have been deleted."
                                         .format(folder_name),
                                         parent=frame)
-
             except PermissionError:
                 messagebox.showerror("Delete Folder Contents",
                                      "Failure! {} can not be deleted because it is being used by another program."
