@@ -103,7 +103,7 @@ ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.
 		___ ___ ___  6. kb_icon2.xpm (optional)
 		___ ___ ___  7. .DS_Store (ignore this in mac. delete in windows)
 
-	c. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
+	c. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder (do not do for Mac).
 		___ ___  1. license.txt
 		___ ___  2. readme.txt
 		___ ___  3. history.txt
@@ -266,7 +266,7 @@ Running pyinstaller and making app bundle.
 if you are creating a distribution for mac OS. 
 
 mac
-___  1. make sure you are in the kb_install folder
+___  1. make sure you are in the kb_install folder in terminal
 
 ___  2. enter the following in the command line: 
 
