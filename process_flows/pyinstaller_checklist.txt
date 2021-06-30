@@ -66,10 +66,10 @@ ___ ___  3. use type: git pull -p or git pull --prune to pull the most recent ma
 Set up folders with updated/necessary files
 
 w64 w32 mac 
-___ ___ ___  5. make sure the kb_install folder is inside the klusterbox 
-project folder. If not, then create it. If it does exist, empty any contents except kb_sub.
+___ ___ ___  1. make sure the kb_install folder is inside the klusterbox 
+project folder. If not, then create it.
 
- 6. copy and paste the most resent versions of source files into the kb_install folder.
+2. copy and paste the most resent versions of source files into the kb_install folder.
 		
 		w64 w32 mac
 		___ ___ ___  1. klusterbox.py
@@ -79,8 +79,55 @@ project folder. If not, then create it. If it does exist, empty any contents exc
 		___ ___ ___  5. kbreports.py
 		___ ___ ___  6. kbspreadsheets.py
 		___ ___ ___  7. kbspeedsheets.py
+		
+___ ___ ___  3. in terminal/ powershell, navigate to the klusterbox folder.
 
-___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.	
+___ ___ ___  4. verify that the virtual environment is installed by entering "pipenv shell" or "python -m pipenv shell". if the virtual environment is not installed, create it.
+ 
+	w64 w32 mac
+	___ ___ ___  a. delete Pipfile if it exist in the directory
+	___ ___ ___  b. delete Pipfile.lock if it exist in the directory
+	___ ___ ___  c. enter: "pip3 install pipenv" or "pip install --user pipenv"
+	___ ___ ___  d. start virtual environment with "pipenv shell"
+
+___ ___ ___  5. check the installed modules by entering: pip list
+
+___ ___ ___  6. if the listed modules do not match those in the requirements list then install them. 
+	___ ___ ___  a. ensure the requirements file from the klusterbox project folder is present.
+	___ ___ ___  a. enter: pipenv install -r requirements.txt
+
+7. make sure that pyinstaller is installed inside the virtual environment (pyinstaller should be included in requirements.txt). 
+	___ ___ ___  a type: pyinstaller --version
+	___ ___ ___  b. if pyinstaller is not installed use:
+		type: pip install pyinstaller 
+		or type pip3 install pyinstaller. 
+
+8. navigate to the kb_install folder
+
+----------------------------------------------------------------------
+
+Runing Pyinstaller and creating distro for Klusterbox Legacy version for Windows
+
+if you are creating a klusterbox.exe to be used WITHOUT an installer:
+
+w64 w32
+___ ___  1. make sure you are in the kb_install folder.
+
+___ ___  2. in explorer, in the kb_install folder, ensure the following files are in the kb_sub folder. 
+	___ ___  1. license.txt
+	___ ___  2. readme.txt
+	___ ___  3. history.txt
+	___ ___  4. klusterbox.py (source code)
+	___ ___  5. speedsheet_instructions.txt
+	___ ___  6. cheatsheet.txt
+	___ ___  7. projvar.py
+	___ ___  8. kbtoolbox.py
+	___ ___  9. kbdatabase.py
+	___ ___  10. kbreports.py
+	___ ___  11. kbspreadsheets.py
+	___ ___  12. kbspeedsheets.py
+	___ ___  13. requirements.txt (list of necessary libraries for running klusterbox.py)
+	___ ___  14. Also the kb_images folder with contents	
 	
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
 
@@ -103,57 +150,7 @@ ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.
 		___ ___ ___  6. kb_icon2.xpm (optional)
 		___ ___ ___  7. .DS_Store (ignore this in mac. delete in windows)
 
-	c. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder (do not do for Mac).
-		___ ___  1. license.txt
-		___ ___  2. readme.txt
-		___ ___  3. history.txt
-		___ ___  4. klusterbox.py (source code)
-		___ ___  5. speedsheet_instructions.txt
-		___ ___  6. cheatsheet.txt
-		___ ___  7. projvar.py
-		___ ___  8. kbtoolbox.py
-		___ ___  9. kbdatabase.py
-		___ ___  10. kbreports.py
-		___ ___  11. kbspreadsheets.py
-		___ ___  12. kbspeedsheets.py
-		___ ___  13. requirements.txt (list of necessary libraries for running klusterbox.py)
-
-___ ___ ___  8. make sure the klusterwin.spec or klustermac.spec files are included in the kb_install folder if you are going to run pyinstaller using those spec files.
-		
-___ ___ ___  9. in terminal/ powershell, navigate to the klusterbox folder.
-
-___ ___ ___  10. verify that the virtual environment is installed by entering "pipenv shell" or "python -m pipenv shell". if the virtual environment is not installed, create it.
- 
-	w64 w32 mac
-	___ ___ ___  a. delete Pipfile if it exist in the directory
-	___ ___ ___  b. delete Pipfile.lock if it exist in the directory
-	___ ___ ___  c. enter: "pip3 install pipenv" or "pip install --user pipenv"
-	___ ___ ___  d. start virtual environment with "pipenv shell"
-
-___ ___ ___  12. check the installed modules by entering: pip list
-
-___ ___ ___  13. if the listed modules do not match those in the requirements list then install them. 
-	___ ___ ___  a. ensure the requirements file from the klusterbox project folder is present.
-	___ ___ ___  a. enter: pipenv install -r requirements.txt
-
-14. make sure that pyinstaller is installed inside the virtual environment (pyinstaller should be included in requirements.txt). 
-	___ ___ ___  a type: pyinstaller --version
-	___ ___ ___  b. if pyinstaller is not installed use:
-		type: pip install pyinstaller 
-		or type pip3 install pyinstaller. 
-
-15. navigate to the kb_install folder
-
-----------------------------------------------------------------------
-
-Runing Pyinstaller and creating distro for Klusterbox Legacy version for Windows
-
-if you are creating a klusterbox.exe to be used WITHOUT an installer:
-
-w64 w32
-___ ___  1. make sure you are in the kb_install folder.
-
-___ ___  2. enter the following in the command line:
+___ ___  3. enter the following in the command line:
 
 if you have a klusterleg.spec file:
 	___  a. copy/paste klusterleg.spec into the kb_install folder
@@ -163,21 +160,6 @@ else if you do not have a klusterleg.spec file:
 	___  a. enter 
 	"pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py"
 	___  b. after pyinstaller runs, you can rename the klusterbox.spec file to klusterleg.spec and move it into the project file for later use. 
-	
-___ ___  3. in explorer, in the kb_install folder, ensure the following files are in the kb_sub folder. 
-	___ ___  1. license.txt
-	___ ___  2. readme.txt
-	___ ___  3. history.txt
-	___ ___  4. klusterbox.py (source code)
-	___ ___  5. speedsheet_instructions.txt
-	___ ___  6. cheatsheet.txt
-	___ ___  7. projvar.py
-	___ ___  8. kbtoolbox.py
-	___ ___  9. kbdatabase.py
-	___ ___  10. kbreports.py
-	___ ___  11. kbspreadsheets.py
-	___ ___  12. kbspeedsheets.py
-	___ ___  13. requirements.txt (list of necessary libraries for running klusterbox.py)
 
 ___ ___  4. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
@@ -195,7 +177,7 @@ ___ ___  4. enter into the dist folder and copy the klusterbox.exe file and past
 
 ___ ___  7. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
-___ ___  8. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
+___ ___  8. select tnew zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v..._..bit' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003_64bit'.  
 
 ___ ___  9. The compressed folder is ready for distribution. 
 
@@ -217,17 +199,37 @@ make sure the following files are in the kb_install folder:
 	___ ___  e. kbreports.py
 	___ ___  f. kbspreadsheets.py
 	___ ___  g. kbspeedsheets.py
-	___ ___  h. klusterwin.spec
+		
+	leave the kb_sub folder alone if it is in there.
 
-___ ___  2. enter the following in the command line: 
+___ ___  2. make sure the above files and the following are in the datas list of the spec file. 
+	___ ___  a license.txt
+	___ ___  b. readme.txt
+	___ ___  c. history.txt
+	___ ___  d. speedsheet_instructions.txt
+	___ ___  e. cheatsheet.txt
+	___ ___  f. requirements.txt (list of necessary libraries for running klusterbox.py)
+	
+___ ___  3. make sure the image files are listed in the datas list of the spec file
+	(this references the kb_sub folder in the project folder):
+	___ ___  a. kb_sub/kb_images/kb_about.jpg	
+	___ ___  b. kb_sub/kb_images/kb_icon2.gif
+	___ ___  c. kb_sub/kb_images/kb_icon2.ico
+	___ ___  d. kb_sub/kb_images/kb_icon2.jpg
+
+___ ___  4. make sure the kluserwin.spec file (64 or 32 bit) is in the up to date, 
+	saved and in the kb_install folder.
+
+___ ___  5. enter the following in the command line: 
 
 	pyinstaller klusterwin.spec
+	or pyinstaller klusterwin32.spec ( for 32 bit OS)
 
-___ ___  3. wait for pyinstaller to run. When it has finished, you should get a prompt.
+___ ___  6. wait for pyinstaller to run. When it has finished, you should get a prompt.
 
-___ ___  4. Make sure NSIS and NISedit is installed on your computer. 
+___ ___  7. Make sure NSIS and NISedit is installed on your computer. 
 
-___ ___  5. Open NIS edit. 
+___ ___  8. Open NIS edit. 
 
 if you need to create a NSIS script:
 
@@ -241,23 +243,23 @@ if there is a script already exist:
 
 	___ ___  3. Save changes and close NS Edit.
 
-___ ___  6. Open the NSIS program.
+___ ___  9. Open the NSIS program.
 
-___ ___  7. Under "Compiler" select "Compile NSI scripts".
+___ ___  10. Under "Compiler" select "Compile NSI scripts".
 
-___ ___  8. The "Make NSISW" window should appear. Select the "Load Script" icon below the menu bar.  
+___ ___  11. The "Make NSISW" window should appear. Select the "Load Script" icon below the menu bar.  
 
-___ ___  9. navigate to the klusterbox project folder and select the "kb_nsis_script.nsi" file. This should load the script and create the set up file. 
+___ ___  12. navigate to the klusterbox project folder and select the "kb_nsis_script.nsi" file. This should load the script and create the set up file. 
 
 optional: press "Test Installer" to make sure the installer functions properly.
 
-___ ___  10. Close the "Make NSISW" and exit the NSIS program. 
+___ ___  13. Close the "Make NSISW" and exit the NSIS program. 
 
-___ ___  11. In explorer, navigate to the klusterbox program file to find the Setup.exe file.
+___ ___  14. In explorer, navigate to the klusterbox program file to find the Setup.exe file.
 
-___ ___  12. select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
+___ ___  15. select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
 
-___ ___  13. This is ready for distribution. 
+___ ___  16. This is ready for distribution. 
 
 ----------------------------------------------------------------------
 

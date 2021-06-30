@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "klusterbox"
-!define PRODUCT_VERSION "4.001"
+!define PRODUCT_VERSION "4.002"
 !define PRODUCT_PUBLISHER "Thomas Weeks"
 !define PRODUCT_WEB_SITE "klusterbox.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\klusterbox.exe"
@@ -84,6 +84,7 @@ Section "MainSection" SEC01
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\api-ms-win-crt-time-l1-1-0.dll"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\api-ms-win-crt-utility-l1-1-0.dll"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\base_library.zip"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\cheatsheet.txt"
   SetOutPath "$INSTDIR\Crypto\Cipher"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\Crypto\Cipher\_ARC4.cp37-win32.pyd"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\Crypto\Cipher\_chacha20.cp37-win32.pyd"
@@ -129,6 +130,11 @@ Section "MainSection" SEC01
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\Crypto\Util\_strxor.cp37-win32.pyd"
   SetOutPath "$INSTDIR"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\history.txt"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kbdatabase.py"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kbreports.py"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kbspeedsheets.py"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kbspreadsheets.py"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kbtoolbox.py"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kb_about.jpg"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kb_icon2.gif"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\kb_icon2.ico"
@@ -147,11 +153,13 @@ Section "MainSection" SEC01
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\PIL\_imagingtk.cp37-win32.pyd"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\PIL\_webp.cp37-win32.pyd"
   SetOutPath "$INSTDIR"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\projvar.py"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\pyexpat.pyd"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\python37.dll"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\readme.txt"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\requirements.txt"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\select.pyd"
+  File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\speedsheet_instructions.txt"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\sqlite3.dll"
   SetOutPath "$INSTDIR\tcl"
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\tcl\auto.tcl"
@@ -1143,10 +1151,6 @@ Section "MainSection" SEC01
   File "C:\Users\thomas\klusterbox\kb_install\dist\klusterbox\_tkinter.pyd"
 SectionEnd
 
-Section -AdditionalIcons
-  CreateShortCut "$SMPROGRAMS\klusterbox\Uninstall.lnk" "$INSTDIR\uninst.exe"
-SectionEnd
-
 Section -Post
   WriteUninstaller "$INSTDIR\uninst.exe"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\klusterbox.exe"
@@ -2105,11 +2109,13 @@ Section Uninstall
   Delete "$INSTDIR\tcl\clock.tcl"
   Delete "$INSTDIR\tcl\auto.tcl"
   Delete "$INSTDIR\sqlite3.dll"
+  Delete "$INSTDIR\speedsheet_instructions.txt"
   Delete "$INSTDIR\select.pyd"
   Delete "$INSTDIR\requirements.txt"
   Delete "$INSTDIR\readme.txt"
   Delete "$INSTDIR\python37.dll"
   Delete "$INSTDIR\pyexpat.pyd"
+  Delete "$INSTDIR\projvar.py"
   Delete "$INSTDIR\PIL\_webp.cp37-win32.pyd"
   Delete "$INSTDIR\PIL\_imagingtk.cp37-win32.pyd"
   Delete "$INSTDIR\PIL\_imaging.cp37-win32.pyd"
@@ -2123,6 +2129,11 @@ Section Uninstall
   Delete "$INSTDIR\kb_icon2.ico"
   Delete "$INSTDIR\kb_icon2.gif"
   Delete "$INSTDIR\kb_about.jpg"
+  Delete "$INSTDIR\kbtoolbox.py"
+  Delete "$INSTDIR\kbspreadsheets.py"
+  Delete "$INSTDIR\kbspeedsheets.py"
+  Delete "$INSTDIR\kbreports.py"
+  Delete "$INSTDIR\kbdatabase.py"
   Delete "$INSTDIR\history.txt"
   Delete "$INSTDIR\Crypto\Util\_strxor.cp37-win32.pyd"
   Delete "$INSTDIR\Crypto\Util\_cpuid_c.cp37-win32.pyd"
@@ -2161,6 +2172,7 @@ Section Uninstall
   Delete "$INSTDIR\Crypto\Cipher\_raw_aes.cp37-win32.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_chacha20.cp37-win32.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_ARC4.cp37-win32.pyd"
+  Delete "$INSTDIR\cheatsheet.txt"
   Delete "$INSTDIR\base_library.zip"
   Delete "$INSTDIR\api-ms-win-crt-utility-l1-1-0.dll"
   Delete "$INSTDIR\api-ms-win-crt-time-l1-1-0.dll"
@@ -2201,7 +2213,6 @@ Section Uninstall
   Delete "$INSTDIR\api-ms-win-core-datetime-l1-1-0.dll"
   Delete "$INSTDIR\api-ms-win-core-console-l1-1-0.dll"
 
-  Delete "$SMPROGRAMS\klusterbox\Uninstall.lnk"
   Delete "$DESKTOP\klusterbox.lnk"
   Delete "$SMPROGRAMS\klusterbox\klusterbox.lnk"
 
