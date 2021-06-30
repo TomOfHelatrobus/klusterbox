@@ -155,7 +155,6 @@ ___ ___  4. enter into the dist folder and copy the klusterbox.exe file and past
 6. delete the following folders/files from the kb_install folder:
 	___ ___  a. build
 	___ ___  b. dist
-	___ ___  c. klusterbox.spec 
 
 ___ ___  7. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
