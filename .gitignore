@@ -8,6 +8,10 @@
 *.dmg
 *.zip
 
+# ignore __pycache__
+
+__pycache__
+
 # ignore kb generated dirs and files from kb_sub dir
 
 /kb_sub/ee_reader
@@ -15,6 +19,7 @@
 /kb_sub/over_max_spreadsheet
 /kb_sub/pp_guide
 /kb_sub/spreadsheets
+/kb_sub/speedsheets
 /kb_sub/weekly_availability
 /kb_sub/infc_grv
 /kb_sub/report
@@ -30,6 +35,8 @@
 
 kb_install
 playground
+env
+.vs
 
 # ignore pip files
 
@@ -42,7 +49,9 @@ Pipfile.lock
 
 # ignore .idea files
 
+.idea
 /.idea/workspace.xml
 /.idea/tasks.xml
 /.idea/dictionary
+/.idea/misc.xml
 

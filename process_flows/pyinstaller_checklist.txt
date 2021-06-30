@@ -1,7 +1,7 @@
 
 Checklist for running pyinstaller for klusterbox
 
-Update version and docs. Final git push.
+Update version and docs. Git push.
 
 w64
 ___  1. in the source code - klusterbox.py, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
@@ -69,7 +69,16 @@ w64 w32 mac
 ___ ___ ___  5. make sure the kb_install folder is inside the klusterbox 
 project folder. If not, then create it. If it does exist, empty any contents except kb_sub.
 
-___ ___ ___  6. copy and paste the most resent version of klusterbox.py into the kb_install folder.
+ 6. copy and paste the most resent versions of source files into the kb_install folder.
+		
+		w64 w32 mac
+		___ ___ ___  1. klusterbox.py
+		___ ___ ___  2. projvar.py
+		___ ___ ___  3. kbtoolbox.py
+		___ ___ ___  4. kbdatabase.py
+		___ ___ ___  5. kbreports.py
+		___ ___ ___  6. kbspreadsheets.py
+		___ ___ ___  7. kbspeedsheets.py
 
 ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.	
 	
@@ -94,15 +103,22 @@ ___ ___ ___  7. copy and paste the kb_sub folder into the kb_install folder.
 		___ ___ ___  6. kb_icon2.xpm (optional)
 		___ ___ ___  7. .DS_Store (ignore this in mac. delete in windows)
 
-	c. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder 
+	c. copy and paste the following files from the klusterbox project folder and paste them into the kb_install/kb_sub folder (do not do for Mac).
 		___ ___  1. license.txt
 		___ ___  2. readme.txt
 		___ ___  3. history.txt
 		___ ___  4. klusterbox.py (source code)
-		___ ___  5. requirements.txt (list of necessary libraries for running klusterbox.py)
+		___ ___  5. speedsheet_instructions.txt
+		___ ___  6. cheatsheet.txt
+		___ ___  7. projvar.py
+		___ ___  8. kbtoolbox.py
+		___ ___  9. kbdatabase.py
+		___ ___  10. kbreports.py
+		___ ___  11. kbspreadsheets.py
+		___ ___  12. kbspeedsheets.py
+		___ ___  13. requirements.txt (list of necessary libraries for running klusterbox.py)
 
 ___ ___ ___  8. make sure the klusterwin.spec or klustermac.spec files are included in the kb_install folder if you are going to run pyinstaller using those spec files.
-	
 		
 ___ ___ ___  9. in terminal/ powershell, navigate to the klusterbox folder.
 
@@ -148,13 +164,34 @@ else if you do not have a klusterleg.spec file:
 	"pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py"
 	___  b. after pyinstaller runs, you can rename the klusterbox.spec file to klusterleg.spec and move it into the project file for later use. 
 	
-___ ___  3. in explorer, in the kb_install folder, drag and drop the klusterbox.py file into the kb_sub folder. 
+___ ___  3. in explorer, in the kb_install folder, ensure the following files are in the kb_sub folder. 
+	___ ___  1. license.txt
+	___ ___  2. readme.txt
+	___ ___  3. history.txt
+	___ ___  4. klusterbox.py (source code)
+	___ ___  5. speedsheet_instructions.txt
+	___ ___  6. cheatsheet.txt
+	___ ___  7. projvar.py
+	___ ___  8. kbtoolbox.py
+	___ ___  9. kbdatabase.py
+	___ ___  10. kbreports.py
+	___ ___  11. kbspreadsheets.py
+	___ ___  12. kbspeedsheets.py
+	___ ___  13. requirements.txt (list of necessary libraries for running klusterbox.py)
 
 ___ ___  4. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
 6. delete the following folders/files from the kb_install folder:
 	___ ___  a. build
 	___ ___  b. dist
+	___ ___  c. klusterbox.spec or klusterwin.spec or klusterleg.spec 
+	___ ___  d. klusterbox.py (source code)
+	___ ___  e. projvar.py
+	___ ___  f. kbtoolbox.py
+	___ ___  g. kbdatabase.py
+	___ ___  h. kbreports.py
+	___ ___  i. kbspreadsheets.py
+	___ ___  j. kbspeedsheets.py
 
 ___ ___  7. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
@@ -170,6 +207,17 @@ if you are creating an app bundle to be installed by a NSIS installer for window
 
 w64 w32
 ___ ___  1. make sure you are in the kb_install folder in powershell.
+
+make sure the following files are in the kb_install folder:
+
+	___ ___  a. klusterbox.py
+	___ ___  b. projvar.py
+	___ ___  c. kbtoolbox.py
+	___ ___  d. kbdatabase.py
+	___ ___  e. kbreports.py
+	___ ___  f. kbspreadsheets.py
+	___ ___  g. kbspeedsheets.py
+	___ ___  h. klusterwin.spec
 
 ___ ___  2. enter the following in the command line: 
 
@@ -218,7 +266,7 @@ Running pyinstaller and making app bundle.
 if you are creating a distribution for mac OS. 
 
 mac
-___  1. make sure you are in the kb_install folder
+___  1. make sure you are in the kb_install folder in terminal
 
 ___  2. enter the following in the command line: 
 

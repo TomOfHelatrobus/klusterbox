@@ -1,0 +1,45 @@
+
+
+Klusterbox SpeedSheet CheatSheet
+
+________________________Carrier Information___________________________
+
+Days: "sat", "mon", "tue", "wed", "thu", "fri" --> default is "none"
+
+Carrier Name: full last name, first initial separated by comma
+
+List: "otdl", "wal", "nl", "aux", "ptf" --> default is "nl"
+
+NS Day: "sat", "mon", "tue", "wed", "thu", "fri" --> default is "none"
+	if rotating:
+		"rsat", "rmon", "rtue", "rwed", "rthu", "rfri"
+	if fixed: 
+		"fsat", "fmon", "ftue", "fwed", "fthu", "ffri"
+
+Route/s: 4 or 5 digits. 1st and 2nd place are zone
+			3rd, 4th and 5th are route
+	e.g. 1024 or 10124 or 0924
+	floater strings are separated by "/". 
+	there must be 5 routes in a floater string
+	e.g. 1024/10124/1025/1072/0924
+
+Emp id: 8 digit employee id number 
+
+_________________________Rings Information____________________________
+
+5200: Hours worked: number between 0 and 24
+
+MOVES: time move off route + time move on route + route number
+       move sets separated by "/"
+       e.g. 14.52+15.88+0152/15.89+16.32+0155
+
+RS: Return to station time: number between 0 and 24 
+
+CODE: if List Status is "wal" or "nl":
+           "none", "ns day"
+      if List Status is "otdl", "aux", or "ptf":
+           "none", "no call", "light", "sch chg", "annual", "sick", "excused"
+
+LV type: Leave type: "none", "annual", "sick", "holiday", "other"
+
+LV time: Hours of paid leave: number between 0 and 8

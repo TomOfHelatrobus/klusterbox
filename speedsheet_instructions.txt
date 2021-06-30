@@ -1,0 +1,113 @@
+
+Klusterbox SpeedSheet Instructions
+
+There are 2 types of SpeedSheets: 
+
+   1. All Inclusive - allows both carrier and rings information to entered.
+   2. Carrier - allows only carrier information to be entered. 
+You can check the SpeedSheet before entering with:
+   -- Pre-check
+You can input the SpeedSheet into the database with:
+   -- Input to Database
+You can access generated/saved SpeedSheets with:
+   -- Speedsheet Archive
+You can empty/clear the speedsheet archive with:
+   -- Clear Archive
+
+Workflow:
+
+   1. Set the investigation range you are investigating with Klusterbox main screen. 
+   2. Go to 
+      > Speedsheet > Generate All Inclusive (inludes carrier info and clock rings)
+      or 
+      > Speedsheet > Generate Carrier (includes only carrier info)
+   3. 	a. enter new carriers
+	b. edit existing carriers
+	c. enter new clock rings
+	d. edit existing clock rings
+	e. delete unwanted clock rings
+	f. carriers can not be deleted using SpeedSheets
+   4. Save the file with the spreadsheet program.
+   5. Check for errors with:
+      > Speedsheet > Pre-check
+   6. 	a. correct any errors and fatal errors
+	b. ATTENTION notices do not have to be addressed.
+   7. If corrections are necessary, return to and edit the saved SpeedSheet.
+   8. Re-save the SpeedSheet if change are made. 
+   9. Enter the information with: 
+      > Speedsheet > Input to Database
+   10. Close the SpeedSheet if no other edits are necessary. 
+   11. The Klusterbox mainscreen should refresh to reflect the new information. 
+
+SpeedSheet Organization:
+
+The SpeedSheet Workbook is divided into tabs. 
+   1. "by employee id" - sorting employees by employee id.
+   2. "alphabetically" - sorting employees by name.
+   3. "abc breakdown" - (optional) additional alphabetical tabs.
+
+Each tab or sheet is divided into SpeedCells 
+
+SpeedCells are divided into two parts:
+   1. Carrier information - one row
+   2. Clock Rings - one row per day (one or seven)
+
+Carrier Information has six elements:
+   1. Days: Only used if there is more than one List Status. Shows the start 
+	of new List Statuses.
+	possible values: "sat", "mon", "tue", "wed", "thu", "fri" 
+	--> default is "none"
+   2. Carrier Name: Mandatory field. This is a full last name and a first 
+	initial or name, separated by a comma.
+   3. List: The list which the carrier is on. Possible values: "otdl", "wal", 
+	"nl", "aux", "ptf" --> default is "nl". Carriers can have multiple 
+	List Statuses in the period of one week. Except for the first List 
+	Status, Show the starting day of new List Statuses in the Days column.
+   4. NS Day: The Non Scheduled Day of the carrier. See "ns day preference" in
+	the header. All ns days are consistent with the ns day preference. If
+	you need to enter an ns day which is not consistent with the ns day 
+	preference, then you need to preface the day with "r" for rotating or 
+	"f" for fixed. 
+	Possible Values: "sat", "mon", "tue", "wed", "thu", "fri" 
+	--> default is "none"
+	if rotating:
+		"rsat", "rmon", "rtue", "rwed", "rthu", "rfri"
+	if fixed: 
+		"fsat", "fmon", "ftue", "fwed", "fthu", "ffri"
+   5. Route/s: This is the carrier's route expressed as a four or five digit 
+	number. The first and second digits express the zone (last two numbers
+	of the zip code). The third and fourth, or third, fourth and fifth 
+	numbers express the route. Three digits route numbers can only be used
+	when the route number is over "99".
+   6. Emp id: This is the employee's 8 digit id number. This is necessary to 
+	sort carriers in the "by employee id" tab on the speedsheet. Otherwise, 
+	carriers will be listed in the "alphabetically" tab.
+
+   *. Carriers can not be deleted using speedsheets. 
+
+Rings Information has 7 elements:
+   1. Day: This is pre-entered by Klusterbox. Do not change this value. 
+   2. 5200: This is a number from .01 to 24.00 which expresses hours worked 
+	for the the day. The value can also be blank.
+   3. MOVES: This is a set of three values. First value is time off route, 
+	second value is time when off route assignment ends, the third value
+	is the number of the route expressed as four or five digits. Values are 
+	separated by "+" and sets are separated by "/". 
+	e.g. 14.52+15.88+0152/15.89+16.32+0155
+   4. RS: This is a number from .01 to 24.00 which expresses the time the carrier 
+	returns to the station. The value can also be blank.
+   5. CODE: This is a code/note designating a special condition. Options for 
+	codes vary depending on list. 
+	if List Status is "wal" or "nl":
+		"none", "ns day"
+	if List Status is "otdl", "aux", or "ptf":
+		"none", "no call", "light", "sch chg", "annual", "sick", "excused"
+   6. LV type: This expresses the type of any paid leave for the day. Can be 
+	left blank if not used. Possible values:  "none", "annual", "sick", 
+	"holiday", "other". This is used in conjunction with LV time. 
+   7. LV time:This is a number from .01 to 8.00 which expresses hours of paid 
+	leave. The value can also be blank. This is used in conjunction with
+	leave type. 
+
+   *. A rings record can be deleted by deleting values for 5200, LV time and CODES. 
+
