@@ -649,7 +649,7 @@ def isfloat(value):
         return False
 
 
-def isint(value):
+def isint(value):  # checks if the argument is an integer
     try:
         int(value)
         return True

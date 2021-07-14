@@ -5,6 +5,7 @@ from kbtoolbox import *
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText
+from kbequitability import QuarterRecs
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox, filedialog, ttk
@@ -88,6 +89,306 @@ class ProgressBarIn:  # Indeterminate Progress Bar
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
+
+
+class OtEquitability:
+    def __init__(self):
+        self.frame = None
+        self.win = None
+        self.row = 0
+        self.quartinvran_year = None  # StringVar for investigation range
+        self.quartinvran_quarter = None
+        self.quartinvran_station = None
+        self.new_quartinvran_year = None  # place values in these when setting a new investigation range
+        self.new_quartinvran_quarter = None
+        self.new_quartinvran_station = None
+        self.stations_minus_outofstation = None
+        self.carrierlist = []
+        self.recset = []
+        self.startdate = datetime(1, 1, 1)
+        self.enddate = datetime(1, 1, 1)
+        self.station = ""
+        self.quarter = ""
+        self.pref_var = []
+        self.onrec_prefs = []
+        self.status_update = None
+
+    def create(self, frame):  # called from the main screen to build ot preferences screen
+        self.frame = frame
+        self.win = MakeWindow()
+        self.startup_stringvars()
+        self.create_lower()
+
+    def re_create(self, frame):  # called from the ot preferences screen when invran is changed.
+        self.row = 0  # re initialize vars
+        self.carrierlist = []
+        self.recset = []
+        self.startdate = datetime(1, 1, 1)
+        self.enddate = datetime(1, 1, 1)
+        self.station = ""
+        self.quarter = ""
+        self.pref_var = []
+        self.onrec_prefs = []
+        self.status_update = None
+        self.frame = frame  # define the frame
+        self.win = MakeWindow()
+        self.re_startup_stringvars()
+        self.create_lower()
+
+    def create_lower(self):
+        self.get_quarter()
+        self.get_stations_list()
+        self.win.create(self.frame)
+        self.build_invran()
+        self.get_dates()
+        self.get_carrierlist()
+        self.get_recsets()
+        self.get_onrecs_set_stringvars()
+        self.build_main()
+        self.buttons_frame()
+
+    def startup_stringvars(self):
+        if projvar.invran_weekly_span is None:
+            date = datetime.now()
+            station = "undefined"
+        elif projvar.invran_weekly_span:
+            date = projvar.invran_date_week[6]
+            station = projvar.invran_station
+        else:
+            date = projvar.invran_date
+            station = projvar.invran_station
+        year = date.strftime("%Y")
+        month = date.strftime("%m")
+        quarter = self.find_quarter(month)
+        self.quartinvran_year = StringVar(self.win.body)
+        self.quartinvran_quarter = StringVar(self.win.body)
+        self.quartinvran_station = StringVar(self.win.body)
+        self.quartinvran_year.set(year)
+        self.quartinvran_quarter.set(quarter)
+        self.quartinvran_station.set(station)
+
+    def re_startup_stringvars(self):
+        self.quartinvran_year = StringVar(self.win.body)
+        self.quartinvran_quarter = StringVar(self.win.body)
+        self.quartinvran_station = StringVar(self.win.body)
+        self.quartinvran_year.set(self.new_quartinvran_year)
+        self.quartinvran_quarter.set(self.new_quartinvran_quarter)
+        self.quartinvran_station.set(self.new_quartinvran_station)
+
+    def get_quarter(self):  # creates quarter in format "2021-3"
+        self.quarter = self.quartinvran_year.get() + "-" + self.quartinvran_quarter.get()
+
+    def get_stations_list(self):  # get a list of stations for station optionmenu
+        self.stations_minus_outofstation = projvar.list_of_stations[:]
+        self.stations_minus_outofstation.remove("out of station")
+        if len(self.stations_minus_outofstation) == 0:
+            self.stations_minus_outofstation.append("undefined")
+
+    @staticmethod
+    def find_quarter(month):
+        if int(month) in (1, 2, 3):
+            return 1
+        if int(month) in (4, 5, 6):
+            return 2
+        if int(month) in (7, 8, 9):
+            return 3
+        if int(month) in (10, 11, 12):
+            return 4
+
+    def get_dates(self):
+        year = int(self.quartinvran_year.get())
+        startdate = (datetime(year, 1, 1), datetime(year, 4, 1), datetime(year, 7, 1), datetime(year, 10, 1))
+        enddate = (datetime(year, 3, 31), datetime(year, 6, 30), datetime(year, 9, 30), datetime(year, 12, 31))
+        self.startdate = startdate[int(self.quartinvran_quarter.get())-1]
+        self.enddate = enddate[int(self.quartinvran_quarter.get())-1]
+        if self.quartinvran_station.get() == "undefined":
+            self.station = ""
+        else:
+            self.station = self.quartinvran_station.get()
+
+    def get_carrierlist(self):
+        self.carrierlist = CarrierList(self.startdate, self.enddate, self.station).get_distinct()
+
+    def get_recsets(self):
+        for carrier in self.carrierlist:
+            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs("otdl")
+            if rec:
+                self.recset.append(rec)
+
+    def build_invran(self):
+        Label(self.win.body, text="OTDL Preferences", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=self.row, sticky="w", columnspan=8)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        Label(self.win.body, text="QUARTERLY INVESTIGATION RANGE").grid(row=self.row, column=0, columnspan=8, sticky=W)
+        self.row += 1
+        Label(self.win.body, text="Year: ", fg="Gray", anchor="w").grid(row=self.row, column=0, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.quartinvran_year).grid(row=self.row, column=1, sticky="w")
+        Label(self.win.body, text="Quarter: ", fg="Gray").grid(row=self.row, column=2, sticky="w")
+        Entry(self.win.body, width=2, textvariable=self.quartinvran_quarter).grid(row=self.row, column=3, sticky="w")
+        Label(self.win.body, text="Station: ", fg="Gray").grid(row=self.row, column=4, sticky="w")
+        om_station = OptionMenu(self.win.body, self.quartinvran_station, *self.stations_minus_outofstation)
+        om_station.config(width=macadj(31, 29))
+        om_station.grid(row=self.row, column=5, sticky=W, padx=2)
+        # set and reset buttons for investigation range
+        Button(self.win.body, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
+               fg=macadj("white", "green"), command=lambda: self.set_invran()).grid(row=self.row, column=6, padx=2)
+        Button(self.win.body, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
+               fg=macadj("white", "red")).grid(row=self.row, column=7, padx=2)
+        self.row += 1
+        self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
+
+    def set_invran(self):
+        if not self.check_quarterinvran():
+            return
+        self.re_create(self.win.topframe)
+
+    def error_msg(self, text):
+        messagebox.showerror("OTDL Preferences", text, parent=self.win.topframe)
+
+    def check_quarterinvran(self):
+        if not isint(self.quartinvran_year.get()):
+            self.error_msg("The year must be a numeric.")
+            return False
+        if not len(self.quartinvran_year.get()) == 4:
+            self.error_msg("Year must have four digits.")
+            return False
+        if not isint(self.quartinvran_quarter.get()):
+            self.error_msg("The quarter must be an integer.")
+            return False
+        if int(self.quartinvran_quarter.get()) not in (1, 2, 3, 4):
+            self.error_msg("Acceptable values for Quarter are limited to 1, 2, 3 or 4.")
+            return False
+        if self.quartinvran_station.get() == "undefined":
+            self.error_msg("You must select a station to set the investigation range.")
+            return False
+        self.new_quartinvran_year = self.quartinvran_year.get()
+        self.new_quartinvran_quarter = self.quartinvran_quarter.get()
+        self.new_quartinvran_station = self.quartinvran_station.get()
+        return True
+
+    def get_pref(self, carrier):  # pull otdl preferences from dbase - insert if there is no preference.
+        sql = "SELECT preference FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s'" \
+              % (carrier, self.quarter)
+        pref = inquire(sql)
+        if not pref:
+            sql = "INSERT INTO otdl_preference (quarter, carrier_name, preference) VALUES('%s', '%s', '%s')" \
+                  % (self.quarter, carrier, "12")
+            commit(sql)
+            return ('12',)
+        else:
+            return pref[0]
+
+    @staticmethod
+    def get_status(recs):
+        for rec in recs:
+            if rec[2] != "otdl":
+                return "off"
+        return "on"
+
+    @staticmethod
+    def check_consistancy(recs):  # check that carriers on list have not gotten off then on again.
+        off_list = False
+        on_list = False
+        for rec in reversed(recs):
+            if rec[2] != "otdl":
+                off_list = True
+            if off_list:
+                if rec[2] == "otdl":
+                    on_list = True
+        if off_list and on_list:
+            return True
+        return False
+
+    def get_onrecs_set_stringvars(self):
+        i = 0
+        for carrier in self.recset:
+            self.pref_var.append(StringVar(self.win.body))
+            pref = self.get_pref(carrier[0][1])
+            self.pref_var[i].set(pref[0])
+            self.onrec_prefs.append(pref[0])
+            i += 1
+
+    def carrier_report(self, recs, consistant):
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "report_carrier_history" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier List Status History\n\n")
+        report.write('   Showing all list status changes for {} during quarter {}\n\n'.format(recs[0][1], self.quarter))
+        report.write('{:<16}{:<8}\n'.format("Date Effective", "List"))
+        report.write('--------------------\n')
+        i = 1
+        for line in recs:
+            report.write('{:<16}{:<8}\n'
+                         .format(dt_converter(line[0]).strftime("%m/%d/%Y"), line[2]))
+            if i % 3 == 0:
+                report.write('--------------------\n')
+            i += 1
+        if consistant == "error":
+            report.write('\n')
+            report.write('>>>Consistancy Error: \n'
+                         'OTDL Carriers can not get back on the Over Time Desired List once they \n'
+                         'have gotten off during the quarter. This carrier will be considered \"off\" \n'
+                         'of the OTDL. If this is an error, edit the carrier\'s status history. \n')
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+    def build_main(self):
+        i = 0
+        for carrier in self.recset:
+            Label(self.win.body, text=i, anchor="w").grid(row=self.row, column=0, sticky="w")
+            Label(self.win.body, text=carrier[0][1], anchor="w").grid(row=self.row, column=1, columnspan=4, sticky="w")
+            om_pref = OptionMenu(self.win.body, self.pref_var[i], "12", "10")
+            om_pref.config(width=4)
+            om_pref.grid(row=self.row, column=5, sticky="w")
+            Label(self.win.body, text=self.get_status(carrier), anchor="w").grid(row=self.row, column=6, sticky="w")
+            consistant = "ok"
+            fg = "black"
+            if self.check_consistancy(carrier):
+                consistant="error"
+                fg = "red"
+            Label(self.win.body, text=consistant, fg=fg, anchor="w").grid(row=self.row, column=7, sticky="w")
+            Button(self.win.body, text="report",
+                   command=lambda car=carrier, con=consistant:self.carrier_report(car, con))\
+                .grid(row=self.row, column=8, sticky="w")
+            self.row += 1
+            i += 1
+
+    def apply(self):
+        updates = 0
+        for i in range(len(self.onrec_prefs)):
+            if self.onrec_prefs[i] != self.pref_var[i].get():
+                carrier = self.recset[i][0][1]
+                sql = "UPDATE otdl_preference SET preference = '%s' WHERE carrier_name = '%s' AND quarter = '%s'" \
+                      % (self.pref_var[i].get(), carrier, self.quarter)
+                commit(sql)
+                updates += 1
+        self.status_report(updates)
+
+    def status_report(self, updates):
+        msg = "{} Record{} Updated.".format(updates, Handler(updates).plurals())
+        self.status_update.config(text="{}".format(msg))
+
+    def buttons_frame(self):
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        button = Button(self.win.buttons)
+        button.config(text="Apply", width=20, command=lambda:self.apply())
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.status_update.pack(side=LEFT)
+        self.win.finish()
 
 
 class SpeedConfigGui:
@@ -11635,12 +11936,6 @@ def update_carrier(a):
         button_back.config(width=16)
     button_apply.pack(side=LEFT)
     button_back.pack(side=LEFT)
-    #
-    # Button(c1, text="Apply", width=macadj(15, 16), anchor="w",
-    #        command=lambda: apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, switch_f4)) \
-    #     .pack(side=LEFT)
-    # Button(c1, text="Go Back", width=macadj(15, 16), anchor="w",
-    #        command=lambda: MainFrame().start(frame=switch_f4)).pack(side=LEFT)
 
 
 def edit_carrier(e_name):
@@ -12598,6 +12893,9 @@ class MainFrame:
             basic_menu.entryconfig(5, state=DISABLED)
         if projvar.invran_day is None or not projvar.invran_weekly_span:   # if investigation range is daily or None
             basic_menu.entryconfig(6, state=DISABLED)
+        basic_menu.add_command(label="OT Equitability Spreadsheet")
+        basic_menu.add_separator()
+        basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="Informal C", command=lambda: informalc(self.win.topframe))
         basic_menu.add_separator()

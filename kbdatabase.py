@@ -38,13 +38,14 @@ class DataBase:
             'CREATE table IF NOT EXISTS carriers (effective_date date, carrier_name varchar, list_status varchar, '
             'ns_day varchar, route_s varchar, station varchar)',
             'CREATE table IF NOT EXISTS rings3 (rings_date date, carrier_name varchar, total varchar, rs varchar, '
-            'code varchar, moves varchar, leave_type varchar, leave_time varchar)',
+            'code varchar, moves varchar, leave_type varchar, leave_time varchar, refusals varchar)',
             'CREATE table IF NOT EXISTS name_index (tacs_name varchar, kb_name varchar, emp_id varchar)',
             'CREATE table IF NOT EXISTS station_index (tacs_station varchar, kb_station varchar, finance_num varchar)',
             'CREATE table IF NOT EXISTS skippers (code varchar primary key, description varchar)',
             'CREATE table IF NOT EXISTS ns_configuration (ns_name varchar primary key, fill_color varchar, '
             'custom_name varchar)',
-            'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)'
+            'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)',
+            'CREATE table IF NOT EXISTS otdl_preference (quarter varchar, carrier_name varchar, preference varchar)'
         )
 
         tables_text = (
@@ -55,7 +56,8 @@ class DataBase:
             "Setting up: Tables - Station Indexes",
             "Setting up: Tables - Skippers",
             "Setting up: Tables - NS Configurations",
-            "Setting up: Tables - Tolerances..."
+            "Setting up: Tables - Tolerances...",
+            "Setting up: Tables - OTDL Preference"
         )
         for i in range(len(tables_sql)):
             self.pbar_counter += 1
@@ -113,10 +115,15 @@ class DataBase:
         # modify table for legacy version which did not have leave type and leave time columns of rings3 table.
         sql = 'PRAGMA table_info(rings3)'  # get table info. returns an array of columns.
         result = inquire(sql)
-        if len(result) <= 6:  # if there are not enough columns add the leave type and leave time columns
+        if len(result) == 6:  # if there are not enough columns add the leave type, time and refusals columns
             sql = 'ALTER table rings3 ADD COLUMN leave_type varchar'
             commit(sql)
             sql = 'ALTER table rings3 ADD COLUMN leave_time varchar'
+            commit(sql)
+            sql = 'ALTER table rings3 ADD COLUMN refusals varchar'
+            commit(sql)
+        if len(result) == 8:  # if there are not enough columns, add the refusals column
+            sql = 'ALTER table rings3 ADD COLUMN refusals varchar'
             commit(sql)
 
     def skippers(self):
