@@ -110,8 +110,12 @@ class OtEquitability:
         self.station = ""
         self.quarter = ""
         self.pref_var = []
+        self.onrec_prefs_carriers = []
         self.onrec_prefs = []
         self.status_update = None
+        self.delete_report = []  # list of ineligible carriers to be deleted from otdl prefence table
+        self.eligible_carriers = []  # carriers on the otdl during the quarter from carriers table
+        self.ineligible_carriers = []  # carriers with no otdl rec during quarter, but a rec in otdl prefs
 
     def create(self, frame):  # called from the main screen to build ot preferences screen
         self.frame = frame
@@ -121,15 +125,19 @@ class OtEquitability:
 
     def re_create(self, frame):  # called from the ot preferences screen when invran is changed.
         self.row = 0  # re initialize vars
-        self.carrierlist = []
-        self.recset = []
+        self.carrierlist = []  # distinct list of carriers by station and quarter
+        self.recset = []  # recset of otdl carriers
+        self.eligible_carriers = []  # all carriers on otdl during quarter
+        self.ineligible_carriers = []  # carriers with no otdl rec during quarter, but a rec in otdl prefs
         self.startdate = datetime(1, 1, 1)
         self.enddate = datetime(1, 1, 1)
         self.station = ""
         self.quarter = ""
         self.pref_var = []
+        self.onrec_prefs_carriers = []
         self.onrec_prefs = []
         self.status_update = None
+        self.delete_report = []  # list of ineligible carriers to be deleted from otdl prefence table
         self.frame = frame  # define the frame
         self.win = MakeWindow()
         self.re_startup_stringvars()
@@ -143,8 +151,14 @@ class OtEquitability:
         self.get_dates()
         self.get_carrierlist()
         self.get_recsets()
+        self.get_eligible_carriers()
         self.get_onrecs_set_stringvars()
+        self.get_onrec_pref_carriers()
+        self.get_ineligible()
+        self.delete_ineligible()
+        self.build_header()
         self.build_main()
+        self.deletion_report()
         self.buttons_frame()
 
     def startup_stringvars(self):
@@ -217,11 +231,12 @@ class OtEquitability:
 
     def build_invran(self):
         Label(self.win.body, text="OTDL Preferences", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, sticky="w", columnspan=8)
+            .grid(row=self.row, column=0, sticky="w", columnspan=20)
         self.row += 1
-        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        Label(self.win.body, text="").grid(row=self.row, column=0)
         self.row += 1
-        Label(self.win.body, text="QUARTERLY INVESTIGATION RANGE").grid(row=self.row, column=0, columnspan=8, sticky=W)
+        Label(self.win.body, text="QUARTERLY INVESTIGATION RANGE").grid(row=self.row, column=0, columnspan=20,
+                                                                        sticky="w")
         self.row += 1
         Label(self.win.body, text="Year: ", fg="Gray", anchor="w").grid(row=self.row, column=0, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.quartinvran_year).grid(row=self.row, column=1, sticky="w")
@@ -230,12 +245,12 @@ class OtEquitability:
         Label(self.win.body, text="Station: ", fg="Gray").grid(row=self.row, column=4, sticky="w")
         om_station = OptionMenu(self.win.body, self.quartinvran_station, *self.stations_minus_outofstation)
         om_station.config(width=macadj(31, 29))
-        om_station.grid(row=self.row, column=5, sticky=W, padx=2)
+        om_station.grid(row=self.row, column=5, columnspan=3, sticky=W, padx=2)
         # set and reset buttons for investigation range
         Button(self.win.body, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
-               fg=macadj("white", "green"), command=lambda: self.set_invran()).grid(row=self.row, column=6, padx=2)
+               fg=macadj("white", "green"), command=lambda: self.set_invran()).grid(row=self.row, column=8, padx=2)
         Button(self.win.body, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
-               fg=macadj("white", "red")).grid(row=self.row, column=7, padx=2)
+               fg=macadj("white", "red")).grid(row=self.row, column=9, padx=2)
         self.row += 1
         self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
 
@@ -268,18 +283,6 @@ class OtEquitability:
         self.new_quartinvran_station = self.quartinvran_station.get()
         return True
 
-    def get_pref(self, carrier):  # pull otdl preferences from dbase - insert if there is no preference.
-        sql = "SELECT preference FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s'" \
-              % (carrier, self.quarter)
-        pref = inquire(sql)
-        if not pref:
-            sql = "INSERT INTO otdl_preference (quarter, carrier_name, preference) VALUES('%s', '%s', '%s')" \
-                  % (self.quarter, carrier, "12")
-            commit(sql)
-            return ('12',)
-        else:
-            return pref[0]
-
     @staticmethod
     def get_status(recs):
         for rec in recs:
@@ -301,14 +304,57 @@ class OtEquitability:
             return True
         return False
 
+    def get_eligible_carriers(self):  # builds array of carriers on otdl at any point during quarter from carrier table
+        for carrier in self.recset:
+            self.eligible_carriers.append(carrier[0][1])
+        print()
+
+    def get_pref(self, carrier):  # pull otdl preferences from dbase - insert if there is no preference.
+        sql = "SELECT preference FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s'" \
+              % (carrier, self.quarter)
+        pref = inquire(sql)
+        if not pref:
+            sql = "INSERT INTO otdl_preference (quarter, carrier_name, preference) VALUES('%s', '%s', '%s')" \
+                  % (self.quarter, carrier, "12")
+            commit(sql)
+            return ('12',)
+        else:
+            return pref[0]
+
     def get_onrecs_set_stringvars(self):
         i = 0
-        for carrier in self.recset:
-            self.pref_var.append(StringVar(self.win.body))
-            pref = self.get_pref(carrier[0][1])
-            self.pref_var[i].set(pref[0])
-            self.onrec_prefs.append(pref[0])
+        for carrier in self.eligible_carriers:
+            self.pref_var.append(StringVar(self.win.body))  # build array of string vars for otdl preferences
+            pref = self.get_pref(carrier)  # call method to inquire otdl preference table
+            self.pref_var[i].set(pref[0])  # set the preference stringvar
+            self.onrec_prefs.append(pref)  # build the array of otdl preferences from otdl preferences table.
             i += 1
+
+    def get_onrec_pref_carriers(self):
+        sql = "SELECT carrier_name FROM otdl_preference WHERE quarter = '%s'" % self.quarter
+        pref = inquire(sql)
+        for carrier in pref:
+            self.onrec_prefs_carriers.append(carrier[0])
+
+    def get_ineligible(self):
+        for pref_carrier in self.onrec_prefs_carriers:
+            if pref_carrier not in self.eligible_carriers:
+                self.ineligible_carriers.append(pref_carrier)
+
+    def delete_ineligible(self):
+        for carrier in self.ineligible_carriers:
+            sql = "DELETE FROM otdl_preference WHERE quarter = '%s' AND carrier_name = '%s'" % (self.quarter, carrier)
+            commit(sql)
+            self.delete_report.append(carrier)
+
+    def deletion_report(self):
+        if len(self.delete_report) > 0:
+            deleted_list = ""
+            for name in self.delete_report:
+                deleted_list += "      " + name + "\n"
+            msg = "The OTDL Preference records has been deleted for quarter {} for the following " \
+                  "carriers:\n\n{}\nThis is a routine maintenance action.".format(self.quarter, deleted_list)
+            messagebox.showinfo("OTDL Preferences", msg, parent=self.win.body)
 
     def carrier_report(self, recs, consistant):
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -339,6 +385,15 @@ class OtEquitability:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
 
+    def build_header(self):
+        Label(self.win.body, text ="Name", fg="Gray").grid(row=self.row, column=1, sticky="w")
+        Label(self.win.body, text="Preference", fg="Gray").grid(row=self.row, column=5, sticky="w")
+        Label(self.win.body, text="Status", fg="Gray").grid(row=self.row, column=6, sticky="w")
+        Label(self.win.body, text="Check", fg="Gray").grid(row=self.row, column=7, sticky="w")
+        Label(self.win.body, text="Report", fg="Gray").grid(row=self.row, column=8, sticky="w")
+        Label(self.win.body, text="Refusal", fg="Gray").grid(row=self.row, column=9, sticky="w")
+        self.row += 1
+
     def build_main(self):
         i = 0
         for carrier in self.recset:
@@ -363,7 +418,7 @@ class OtEquitability:
     def apply(self):
         updates = 0
         for i in range(len(self.onrec_prefs)):
-            if self.onrec_prefs[i] != self.pref_var[i].get():
+            if self.onrec_prefs[i][0] != self.pref_var[i].get():
                 carrier = self.recset[i][0][1]
                 sql = "UPDATE otdl_preference SET preference = '%s' WHERE carrier_name = '%s' AND quarter = '%s'" \
                       % (self.pref_var[i].get(), carrier, self.quarter)

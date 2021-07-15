@@ -128,7 +128,7 @@ class MakeWindow:
     def fill(self, last, count):  # fill bottom of screen to for scrolling.
         for i in range(count):
             Label(self.body, text="").grid(row=last + i)
-        Label(self.body, text="kluster end", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
+        Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
 def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
