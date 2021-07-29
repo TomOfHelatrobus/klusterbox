@@ -45,7 +45,9 @@ class DataBase:
             'CREATE table IF NOT EXISTS ns_configuration (ns_name varchar primary key, fill_color varchar, '
             'custom_name varchar)',
             'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)',
-            'CREATE table IF NOT EXISTS otdl_preference (quarter varchar, carrier_name varchar, preference varchar)'
+            'CREATE table IF NOT EXISTS otdl_preference (quarter varchar, carrier_name varchar, preference varchar)',
+            'CREATE table IF NOT EXISTS refusals (refusal_date varchar, carrier_name varchar, refusal_type varchar, '
+            'refusal_time varchar)'
         )
 
         tables_text = (
@@ -57,7 +59,8 @@ class DataBase:
             "Setting up: Tables - Skippers",
             "Setting up: Tables - NS Configurations",
             "Setting up: Tables - Tolerances...",
-            "Setting up: Tables - OTDL Preference"
+            "Setting up: Tables - OTDL Preference",
+            "Setting up: Tables - Refusals"
         )
         for i in range(len(tables_sql)):
             self.pbar_counter += 1
@@ -119,11 +122,6 @@ class DataBase:
             sql = 'ALTER table rings3 ADD COLUMN leave_type varchar'
             commit(sql)
             sql = 'ALTER table rings3 ADD COLUMN leave_time varchar'
-            commit(sql)
-            sql = 'ALTER table rings3 ADD COLUMN refusals varchar'
-            commit(sql)
-        if len(result) == 8:  # if there are not enough columns, add the refusals column
-            sql = 'ALTER table rings3 ADD COLUMN refusals varchar'
             commit(sql)
 
     def skippers(self):

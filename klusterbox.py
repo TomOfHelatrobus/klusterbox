@@ -91,6 +91,121 @@ class ProgressBarIn:  # Indeterminate Progress Bar
         self.pb_root.destroy()
 
 
+class RefusalWin:
+    def __init__(self):
+        self.frame = None
+        self.win = None
+        self.row = 0
+        self.carrier_name = ""
+        self.startdate = datetime(1, 1, 1)
+        self.enddate = datetime(1, 1, 1)
+        self.time_vars = []  # a list of stringvars of refusal times
+        self.type_vars = []  # a list of stringvars of refusal types.
+        self.ref_dates = []  # a list of datetime objects corrosponding to refusal times and types
+        self.displaydates = []  # a list of strings providing the date of the refusals
+        self.refset = []  # a list of refusals for the quarter
+        self.status_update = None
+
+    def create(self, frame, carrier, startdate, enddate):
+        self.frame = frame
+        self.carrier_name = carrier
+        self.startdate = startdate
+        self.enddate = enddate
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+        self.get_refset()
+        self.setup_stringvars()
+        self.build_header()
+        self.build()
+        self.build_bottom()
+        self.buttons_frame()
+
+    def get_refset(self):
+        sql = "SELECT * FROM refusals WHERE refusal_date between '%s' and '%s' and carrier_name = '%s' " \
+              "ORDER BY refusal_date" % (self.startdate, self.enddate, self.carrier_name)
+        self.refset = inquire(sql)
+
+    def setup_stringvars(self):
+        i = 0
+        date = self.startdate  # this will be the first date
+        while date != self.enddate + timedelta(days=1):  # for each date in the quarter
+            self.time_vars.append(StringVar(self.win.body))  # create a stringvar for time
+            self.type_vars.append(StringVar(self.win.body))  # create a stringvar for type
+            self.ref_dates.append(date)  # create a list of datetime objs corrosponding to the time/type vars
+            displaydate = date.strftime("%m") + "/" + date.strftime("%d")  # make a string of date eg 07/29
+            self.displaydates.append(displaydate)  # create a list of dates as string corrosponding to time/type vars
+            for line in self.refset:  # search refset for refusals on that date
+                if dt_converter(line[0]) == date:  # if there is a match
+                    self.time_vars[i].set(line[2])  # set the stringvar for time
+                    self.type_vars[i].set(line[3])  # set the stringvar for type
+            date += timedelta(days=1)
+            i += 1  # increment the counter
+
+    def start_column(self):  # returns the column position of the startdate
+        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        i = 0
+        for day in days:  # loop through tuple of days
+            if self.startdate.strftime("%A") == day:  # if the startdate matches the day
+                return i  # return the index of the tuple
+            i += 3  # increment the counter
+
+    def build_header(self):
+        Label(self.win.body, text="Refusals", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=self.row, column=0, sticky="w", columnspan=20)
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row)
+        self.row += 1
+        column = 0
+        days = ("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri")
+        for day in days:
+            Label(self.win.body, width=7, text=day, anchor="w")\
+                .grid(row=self.row, column=column+1, columnspan=3, sticky="w")
+            column += 3
+        self.row += 1
+
+    def build(self):
+        column = self.start_column()
+        for i in range(len(self.time_vars)):
+            Label(self.win.body, width=2, text="").grid(row=self.row, column=column)  # blank column
+            column += 1
+            Label(self.win.body, width=7, text=self.displaydate[i], fg="Gray", anchor="w")\
+                .grid(row=self.row, column=column, columnspan=2, sticky="w")  # display date
+            Entry(self.win.body, width=2, textvariable=self.type_vars[i])\
+                .grid(row=self.row+1, column=column, sticky="w")  # entry field for type
+            column += 1
+            Entry(self.win.body, width=5, textvariable=self.time_vars[i])\
+                .grid(row=self.row+1, column=column, sticky="w")  # entry field for time
+            column += 1
+            if column >= 21:  # if the row is full
+                column = 0  # reset column position to begining
+                self.row += 2  # and start a new row
+
+    def build_bottom(self):
+        for _ in range(3):
+            self.row += 1
+            Label(self.win.body, text="").grid(row=self.row)
+
+    def status_report(self, updates):
+        # msg = "{} Record{} Updated.".format(updates, Handler(updates).plurals())
+        msg = "hello there"
+        self.status_update.config(text="{}".format(msg))
+
+    def buttons_frame(self):
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: OtEquitability().re_create(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        button = Button(self.win.buttons)
+        button.config(text="Apply", width=20, command=lambda:self.apply())
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.status_update.pack(side=LEFT)
+        self.win.finish()
+
+
 class OtEquitability:
     def __init__(self):
         self.frame = None
@@ -410,8 +525,12 @@ class OtEquitability:
                 fg = "red"
             Label(self.win.body, text=consistant, fg=fg, anchor="w").grid(row=self.row, column=7, sticky="w")
             Button(self.win.body, text="report",
-                   command=lambda car=carrier, con=consistant:self.carrier_report(car, con))\
+                   command=lambda car=carrier, con=consistant: self.carrier_report(car, con))\
                 .grid(row=self.row, column=8, sticky="w")
+            Button(self.win.body, text="refusals",
+                   command=lambda car=carrier[0][1]: RefusalWin().create(self.win.topframe, car,
+                                                                         self.startdate, self.enddate))\
+                .grid(row=self.row, column=9, sticky="w")
             self.row += 1
             i += 1
 
