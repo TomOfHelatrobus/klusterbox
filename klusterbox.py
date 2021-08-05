@@ -100,10 +100,13 @@ class RefusalWin:
         self.startdate = datetime(1, 1, 1)
         self.enddate = datetime(1, 1, 1)
         self.time_vars = []  # a list of stringvars of refusal times
-        self.type_vars = []  # a list of stringvars of refusal types.
+        self.type_vars = []  # a list of stringvars of refusal types/indicators.
         self.ref_dates = []  # a list of datetime objects corrosponding to refusal times and types
-        self.displaydates = []  # a list of strings providing the date of the refusals
+        self.displaydate = []  # a list of strings providing the date of the refusals
         self.refset = []  # a list of refusals for the quarter
+        self.onrec_time = []  # a list of the refusal time in the database
+        self.onrec_type = []  # a list of the refusal type/indicator in the database
+        self.onrec_displaydate = []
         self.status_update = None
 
     def create(self, frame, carrier, startdate, enddate):
@@ -114,18 +117,19 @@ class RefusalWin:
         self.win = MakeWindow()
         self.win.create(self.frame)
         self.get_refset()
-        self.setup_stringvars()
+        self.setup_vars_and_stringvars()
         self.build_header()
         self.build()
         self.build_bottom()
         self.buttons_frame()
+        self.win.finish()
 
     def get_refset(self):
         sql = "SELECT * FROM refusals WHERE refusal_date between '%s' and '%s' and carrier_name = '%s' " \
               "ORDER BY refusal_date" % (self.startdate, self.enddate, self.carrier_name)
         self.refset = inquire(sql)
 
-    def setup_stringvars(self):
+    def setup_vars_and_stringvars(self):
         i = 0
         date = self.startdate  # this will be the first date
         while date != self.enddate + timedelta(days=1):  # for each date in the quarter
@@ -133,11 +137,17 @@ class RefusalWin:
             self.type_vars.append(StringVar(self.win.body))  # create a stringvar for type
             self.ref_dates.append(date)  # create a list of datetime objs corrosponding to the time/type vars
             displaydate = date.strftime("%m") + "/" + date.strftime("%d")  # make a string of date eg 07/29
-            self.displaydates.append(displaydate)  # create a list of dates as string corrosponding to time/type vars
-            for line in self.refset:  # search refset for refusals on that date
+            self.displaydate.append(displaydate)  # create a list of dates as string corrosponding to time/type vars
+            self.onrec_time.append("")  # create the onrec time array
+            self.onrec_type.append("")  # create the onrec type array
+            for line in self.refset:  # loop through refset for refusals on that date
                 if dt_converter(line[0]) == date:  # if there is a match
-                    self.time_vars[i].set(line[2])  # set the stringvar for time
-                    self.type_vars[i].set(line[3])  # set the stringvar for type
+                    self.type_vars[i].set(line[2])  # set the stringvar for type
+                    self.time_vars[i].set(line[3])  # set the stringvar for time
+                    self.onrec_type[i] = line[2]  # change the onrec type to type from refset
+                    self.onrec_time[i] = line[3]  # change the onrec time to time from refset
+                    # create list of dates with records in the database as a string date eg 07/29
+                    self.onrec_displaydate.append(dt_converter(line[0]).strftime("%m") + "/" + date.strftime("%d"))
             date += timedelta(days=1)
             i += 1  # increment the counter
 
@@ -192,7 +202,8 @@ class RefusalWin:
 
     def buttons_frame(self):
         button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20, command=lambda: OtEquitability().re_create(frame=self.win.topframe))
+        button.config(text="Go Back", width=20,
+                      command=lambda: OtEquitability().create_from_refusals(frame=self.win.topframe))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
@@ -203,7 +214,105 @@ class RefusalWin:
         button.pack(side=LEFT)
         self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
-        self.win.finish()
+
+    def apply(self):
+        # loop through all stringvars and check for errors
+        for i in range(len(self.type_vars)):
+            if not self.checktypes(i):  # check the refusal indicator
+                return  # return if there is an error
+            if not self.checktimes(i):  # check the refusal time
+                return  # return if there is an error
+        # if all checks pass - input/update/dalete the refusals database table
+        for i in range(len(self.type_vars)):
+            time_var = self.time_vars[i].get().strip()
+            if not self.match_type(i) or not self.match_time(i):
+                if self.displaydate[i] not in self.onrec_displaydate:  # if there is no record with that date
+                    self.insert(i)
+                if self.displaydate[i] in self.onrec_displaydate:  # if there is a record with that date
+                    if not time_var:  # if the time is blank
+                        self.delete(i)  # delete the record
+                    else:  # if there is a time
+                        self.update(i)  # update the record
+        # create a new object and recreate the window
+        RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate)
+
+    def checktypes(self, i):
+        type_var = self.type_vars[i].get().strip()
+        time_var = self.time_vars[i].get().strip()
+        if RefusalTypeChecker(type_var).is_empty():
+            return True
+        if not RefusalTypeChecker(type_var).is_one():
+            messagebox.showerror("Refusal Tracking",
+                                 "The Refusal indicator for {} must be only one character".format(self.displaydate[i]),
+                                 parent=self.win.body)
+            return False
+        if not RefusalTypeChecker(type_var).is_letter():
+            messagebox.showerror("Refusal Tracking",
+                                 "The Refusal indicator for {} must be a letter".format(self.displaydate[i]),
+                                 parent=self.win.body)
+            return False
+        if type_var and not time_var:
+            messagebox.showerror("Refusal Tracking",
+                                 "The refusal indicator for {} is not accompanied with a refusal time."
+                                 .format(self.displaydate[i]),
+                                 parent=self.win.body)
+        return True
+
+    def checktimes(self, i):
+        time_var = self.time_vars[i].get().strip()
+        if RingTimeChecker(time_var).check_for_zeros():  # if blank or zero, skip all other checks
+            return True
+        if not RingTimeChecker(time_var).check_numeric():
+            text = "The Refusal time for {} must be a numeric value.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
+            return False
+        if not RingTimeChecker(time_var).over_24():
+            text = "The Refusal time for {} must be less than 24.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
+            return False
+        if not RingTimeChecker(time_var).less_than_zero():
+            text = "The Refusal time for {} must be greater than or equal to 0.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
+            return False
+        if not RingTimeChecker(time_var).count_decimals_place():
+            text = "The Refusal time for {} must not have more than 2 decimal places.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
+            return False
+        return True
+
+    def match_type(self, i):  # check if the newly inputed type matchs the type in the database
+        type_var = self.type_vars[i].get().strip()  # the newly inputed type
+        onrec = self.onrec_type[i]  # the type on record in the database
+        if type_var == onrec:
+            return True
+        return False
+
+    def match_time(self, i):  # check if the newly inputed time matchs the time in the database
+        time_var = self.time_vars[i].get().strip()  # the newly inputed time
+        onrec = self.onrec_time[i]  # the time on record in the database
+        if time_var == onrec:
+            return True
+        return False
+
+    def insert(self, i):  # insert a new record into the dbase
+        type_var = self.type_vars[i].get().strip()
+        time_var = Convert(self.time_vars[i].get().strip()).hundredths()
+        sql = "INSERT INTO Refusals (refusal_date, carrier_name, refusal_type, refusal_time) " \
+              "VALUES('%s', '%s', '%s', '%s')" % (self.ref_dates[i], self.carrier_name, type_var, time_var)
+        commit(sql)
+
+    def update(self, i):  # update an existing record in the dbase
+        type_var = self.type_vars[i].get().strip()
+        time_var = Convert(self.time_vars[i].get().strip()).hundredths()
+        # "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_num.get().lower(), old_num)
+        sql = "UPDATE Refusals SET refusal_type = '%s', refusal_time = '%s' WHERE refusal_date = '%s' " \
+              "and carrier_name = '%s'" % (type_var, time_var, self.ref_dates[i], self.carrier_name)
+        commit(sql)
+
+    def delete(self, i):  # delete the record from the dbase
+        sql = "DELETE FROM Refusals WHERE refusal_date = '%s' and carrier_name = '%s'" \
+              % (self.ref_dates[i], self.carrier_name)
+        commit(sql)
 
 
 class OtEquitability:
@@ -237,6 +346,14 @@ class OtEquitability:
         self.win = MakeWindow()
         self.startup_stringvars()
         self.create_lower()
+        self.win.finish()
+
+    def create_from_refusals(self, frame, year, quarter, station):
+        self.frame = frame
+        self.win = MakeWindow()
+        self.startup_stringvars_from_refusals(year, quarter, station)
+        self.create_lower()
+        self.win.finish()
 
     def re_create(self, frame):  # called from the ot preferences screen when invran is changed.
         self.row = 0  # re initialize vars
@@ -257,6 +374,7 @@ class OtEquitability:
         self.win = MakeWindow()
         self.re_startup_stringvars()
         self.create_lower()
+        self.win.finish()
 
     def create_lower(self):
         self.get_quarter()
@@ -277,18 +395,26 @@ class OtEquitability:
         self.buttons_frame()
 
     def startup_stringvars(self):
-        if projvar.invran_weekly_span is None:
+        if projvar.invran_weekly_span is None:  # if no investigation range is set
             date = datetime.now()
             station = "undefined"
-        elif projvar.invran_weekly_span:
+        elif projvar.invran_weekly_span:  # if the investigation range is weekly
             date = projvar.invran_date_week[6]
             station = projvar.invran_station
         else:
-            date = projvar.invran_date
+            date = projvar.invran_date  # if the investigation range is daily
             station = projvar.invran_station
         year = date.strftime("%Y")
         month = date.strftime("%m")
         quarter = self.find_quarter(month)
+        self.quartinvran_year = StringVar(self.win.body)
+        self.quartinvran_quarter = StringVar(self.win.body)
+        self.quartinvran_station = StringVar(self.win.body)
+        self.quartinvran_year.set(year)
+        self.quartinvran_quarter.set(quarter)
+        self.quartinvran_station.set(station)
+
+    def setup_stringvars_from_refusals(self, year, quarter, station):
         self.quartinvran_year = StringVar(self.win.body)
         self.quartinvran_quarter = StringVar(self.win.body)
         self.quartinvran_station = StringVar(self.win.body)
@@ -562,7 +688,6 @@ class OtEquitability:
         button.pack(side=LEFT)
         self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
-        self.win.finish()
 
 
 class SpeedConfigGui:
@@ -13253,7 +13378,7 @@ if __name__ == "__main__":
     projvar.root.title("KLUSTERBOX version {}".format(version))
     titlebar_icon(projvar.root)  # place icon in titlebar
     if sys.platform == "darwin" and projvar.platform == "py":  # put icon in doc for mac
-        try:  #
+        try:
             projvar.root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
         except TclError:
             pass

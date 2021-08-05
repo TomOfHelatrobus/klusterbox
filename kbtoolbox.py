@@ -923,6 +923,26 @@ class MinrowsChecker:
         return False
 
 
+class RefusalTypeChecker:
+    def __init__(self, data):
+        self.data = data
+
+    def is_empty(self):
+        if not self.data:
+            return True
+        return False
+
+    def is_one(self):
+        if len(self.data) > 1:
+            return False
+        return True
+
+    def is_letter(self):
+        if not self.data.isalpha():
+            return False
+        return True
+
+
 class BackSlashDateChecker:
     """
     Create a backslashdate object by calling the class.
