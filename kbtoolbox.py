@@ -123,7 +123,10 @@ class MakeWindow:
     def finish(self):  # This closes the window created by front_window()
         projvar.root.update()
         self.c.config(scrollregion=self.c.bbox("all"))
-        mainloop()
+        try:
+            mainloop()
+        except KeyboardInterrupt:
+            projvar.root.destroy()
 
     def fill(self, last, count):  # fill bottom of screen to for scrolling.
         for i in range(count):
@@ -163,7 +166,10 @@ def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
 def rear_window(wd):  # This closes the window created by front_window()
     projvar.root.update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
-    mainloop()
+    try:
+        mainloop()
+    except KeyboardInterrupt:
+        projvar.root.destroy()
 
 
 class CarrierRecSet:
@@ -681,6 +687,21 @@ def dir_filedialog():
     else:
         path = os.path.expanduser("~")
     return path
+
+
+class Quarter:
+    def __init__(self, data):
+        self.data = data
+
+    def find(self):
+        if int(self.data) in (1, 2, 3):
+            return 1
+        if int(self.data) in (4, 5, 6):
+            return 2
+        if int(self.data) in (7, 8, 9):
+            return 3
+        if int(self.data) in (10, 11, 12):
+            return 4
 
 
 class Rings:

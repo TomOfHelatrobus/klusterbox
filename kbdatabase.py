@@ -45,7 +45,8 @@ class DataBase:
             'CREATE table IF NOT EXISTS ns_configuration (ns_name varchar primary key, fill_color varchar, '
             'custom_name varchar)',
             'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)',
-            'CREATE table IF NOT EXISTS otdl_preference (quarter varchar, carrier_name varchar, preference varchar)',
+            'CREATE table IF NOT EXISTS otdl_preference (quarter varchar, carrier_name varchar, preference varchar, '
+            'station varchar)',
             'CREATE table IF NOT EXISTS refusals (refusal_date varchar, carrier_name varchar, refusal_type varchar, '
             'refusal_time varchar)'
         )
@@ -101,7 +102,9 @@ class DataBase:
             (21, "pb_nl_wal", "True"),
             (22, "pb_wal_otdl", "True"),
             (23, "pb_otdl_aux", "True"),
-            (24, "invran_mode", "simple")
+            (24, "invran_mode", "simple"),
+            (25, "min_ot_equit", 20),
+            (26, "ot_calc_pref", "off_route")
         )
         for tol in tolerance_array:
             self.pbar_counter += 1

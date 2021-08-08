@@ -389,4 +389,15 @@ class Messenger:
             text = "Creates a page break between the OT Desired List " \
                    " and the Auxiliary List on the spreadsheet \n\n" \
                    "Select ON or OFF"
-        messagebox.showinfo("About Tolerances", text, parent=self.frame)
+        if switch == "min_ot_equit":
+            text = "Sets the minimum number of rows for the " \
+                   "OTDL Equitability spreadsheet. \n\n" \
+                   "Enter a value between 1 and 100"
+        if switch == "ot_calc_pref":
+            text = "all: All overtime over 8 hours as well as ns days \n" \
+                   "are calculated as overtime. \n\n" \
+                   "off route: Only overtime hours worked off of the \n" \
+                   "carrier's assignment are calculated as overtime.\n" \
+                   "(Overtime for OTDL carriers with no assignment will \n" \
+                   "automatically use the \"all\" overtime calculation.)\n"
+        messagebox.showinfo("About Tolerances and Settings", text, parent=self.frame)

@@ -99,6 +99,7 @@ class RefusalWin:
         self.carrier_name = ""
         self.startdate = datetime(1, 1, 1)
         self.enddate = datetime(1, 1, 1)
+        self.station = ""
         self.time_vars = []  # a list of stringvars of refusal times
         self.type_vars = []  # a list of stringvars of refusal types/indicators.
         self.ref_dates = []  # a list of datetime objects corrosponding to refusal times and types
@@ -109,11 +110,12 @@ class RefusalWin:
         self.onrec_displaydate = []
         self.status_update = None
 
-    def create(self, frame, carrier, startdate, enddate):
+    def create(self, frame, carrier, startdate, enddate, station):
         self.frame = frame
         self.carrier_name = carrier
         self.startdate = startdate
         self.enddate = enddate
+        self.station = station
         self.win = MakeWindow()
         self.win.create(self.frame)
         self.get_refset()
@@ -203,7 +205,8 @@ class RefusalWin:
     def buttons_frame(self):
         button = Button(self.win.buttons)
         button.config(text="Go Back", width=20,
-                      command=lambda: OtEquitability().create_from_refusals(frame=self.win.topframe))
+                      command=lambda: OtEquitability().create_from_refusals(self.win.topframe,
+                                                                            self.enddate, self.station))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
@@ -234,7 +237,7 @@ class RefusalWin:
                     else:  # if there is a time
                         self.update(i)  # update the record
         # create a new object and recreate the window
-        RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate)
+        RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate, self.station)
 
     def checktypes(self, i):
         type_var = self.type_vars[i].get().strip()
@@ -348,10 +351,11 @@ class OtEquitability:
         self.create_lower()
         self.win.finish()
 
-    def create_from_refusals(self, frame, year, quarter, station):
+    def create_from_refusals(self, frame, enddate, station):
         self.frame = frame
+        self.station = station
         self.win = MakeWindow()
-        self.startup_stringvars_from_refusals(year, quarter, station)
+        self.setup_stringvars_from_refusals(enddate, station)
         self.create_lower()
         self.win.finish()
 
@@ -381,7 +385,7 @@ class OtEquitability:
         self.get_stations_list()
         self.win.create(self.frame)
         self.build_invran()
-        self.get_dates()
+        self.get_dates()  # get startdate, enddate and station
         self.get_carrierlist()
         self.get_recsets()
         self.get_eligible_carriers()
@@ -406,7 +410,7 @@ class OtEquitability:
             station = projvar.invran_station
         year = date.strftime("%Y")
         month = date.strftime("%m")
-        quarter = self.find_quarter(month)
+        quarter = Quarter(month).find()  # get the quarter from the month
         self.quartinvran_year = StringVar(self.win.body)
         self.quartinvran_quarter = StringVar(self.win.body)
         self.quartinvran_station = StringVar(self.win.body)
@@ -414,7 +418,10 @@ class OtEquitability:
         self.quartinvran_quarter.set(quarter)
         self.quartinvran_station.set(station)
 
-    def setup_stringvars_from_refusals(self, year, quarter, station):
+    def setup_stringvars_from_refusals(self, enddate, station):
+        year = enddate.strftime("%Y")
+        month = enddate.strftime("%m")
+        quarter = Quarter(month).find()  # get the quarter from the month
         self.quartinvran_year = StringVar(self.win.body)
         self.quartinvran_quarter = StringVar(self.win.body)
         self.quartinvran_station = StringVar(self.win.body)
@@ -439,18 +446,7 @@ class OtEquitability:
         if len(self.stations_minus_outofstation) == 0:
             self.stations_minus_outofstation.append("undefined")
 
-    @staticmethod
-    def find_quarter(month):
-        if int(month) in (1, 2, 3):
-            return 1
-        if int(month) in (4, 5, 6):
-            return 2
-        if int(month) in (7, 8, 9):
-            return 3
-        if int(month) in (10, 11, 12):
-            return 4
-
-    def get_dates(self):
+    def get_dates(self):  # find startdate, enddate and station
         year = int(self.quartinvran_year.get())
         startdate = (datetime(year, 1, 1), datetime(year, 4, 1), datetime(year, 7, 1), datetime(year, 10, 1))
         enddate = (datetime(year, 3, 31), datetime(year, 6, 30), datetime(year, 9, 30), datetime(year, 12, 31))
@@ -524,12 +520,10 @@ class OtEquitability:
         self.new_quartinvran_station = self.quartinvran_station.get()
         return True
 
-    @staticmethod
-    def get_status(recs):
-        for rec in recs:
-            if rec[2] != "otdl":
-                return "off"
-        return "on"
+    def get_status(self, recs):  # returns true if the carrier's last record is otdl and the station is correct.
+        if recs[0][2] == "otdl" and recs[0][5] == self.station:
+            return "on"
+        return "off"
 
     @staticmethod
     def check_consistancy(recs):  # check that carriers on list have not gotten off then on again.
@@ -548,15 +542,15 @@ class OtEquitability:
     def get_eligible_carriers(self):  # builds array of carriers on otdl at any point during quarter from carrier table
         for carrier in self.recset:
             self.eligible_carriers.append(carrier[0][1])
-        print()
 
     def get_pref(self, carrier):  # pull otdl preferences from dbase - insert if there is no preference.
-        sql = "SELECT preference FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s'" \
-              % (carrier, self.quarter)
+        sql = "SELECT preference FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
+              % (carrier, self.quarter, self.station)
         pref = inquire(sql)
         if not pref:
-            sql = "INSERT INTO otdl_preference (quarter, carrier_name, preference) VALUES('%s', '%s', '%s')" \
-                  % (self.quarter, carrier, "12")
+            sql = "INSERT INTO otdl_preference (quarter, carrier_name, preference, station) " \
+                  "VALUES('%s', '%s', '%s', '%s')" \
+                  % (self.quarter, carrier, "12", self.station)
             commit(sql)
             return ('12',)
         else:
@@ -572,7 +566,8 @@ class OtEquitability:
             i += 1
 
     def get_onrec_pref_carriers(self):
-        sql = "SELECT carrier_name FROM otdl_preference WHERE quarter = '%s'" % self.quarter
+        sql = "SELECT carrier_name FROM otdl_preference WHERE quarter = '%s'and station = '%s'" \
+              % (self.quarter, self.station)
         pref = inquire(sql)
         for carrier in pref:
             self.onrec_prefs_carriers.append(carrier[0])
@@ -584,7 +579,8 @@ class OtEquitability:
 
     def delete_ineligible(self):
         for carrier in self.ineligible_carriers:
-            sql = "DELETE FROM otdl_preference WHERE quarter = '%s' AND carrier_name = '%s'" % (self.quarter, carrier)
+            sql = "DELETE FROM otdl_preference WHERE quarter = '%s' AND carrier_name = '%s' AND station = '%s'" \
+                  % (self.quarter, carrier, self.station)
             commit(sql)
             self.delete_report.append(carrier)
 
@@ -603,21 +599,22 @@ class OtEquitability:
         report = open(dir_path('report') + filename, "w")
         report.write("\nCarrier List Status History\n\n")
         report.write('   Showing all list status changes for {} during quarter {}\n\n'.format(recs[0][1], self.quarter))
-        report.write('{:<16}{:<8}\n'.format("Date Effective", "List"))
-        report.write('--------------------\n')
+        report.write('{:<16}{:<8}{:<25}\n'.format("Date Effective", "List", "Station"))
+        report.write('---------------------------------------------\n')
         i = 1
         for line in recs:
-            report.write('{:<16}{:<8}\n'
-                         .format(dt_converter(line[0]).strftime("%m/%d/%Y"), line[2]))
+            report.write('{:<16}{:<8}{:<25}\n'
+                         .format(dt_converter(line[0]).strftime("%m/%d/%Y"), line[2], line[5]))
             if i % 3 == 0:
-                report.write('--------------------\n')
+                report.write('---------------------------------------------\n')
             i += 1
         if consistant == "error":
             report.write('\n')
             report.write('>>>Consistancy Error: \n'
                          'OTDL Carriers can not get back on the Over Time Desired List once they \n'
-                         'have gotten off during the quarter. This carrier will be considered \"off\" \n'
-                         'of the OTDL. If this is an error, edit the carrier\'s status history. \n')
+                         'have gotten off during the quarter. This will raise an  \"error\" \n'
+                         'message in the Check column. If this is a mistake, edit the carrier\'s \n'
+                         'status history. \n')
         report.close()
         if sys.platform == "win32":  # open the text document
             os.startfile(dir_path('report') + filename)
@@ -655,7 +652,7 @@ class OtEquitability:
                 .grid(row=self.row, column=8, sticky="w")
             Button(self.win.body, text="refusals",
                    command=lambda car=carrier[0][1]: RefusalWin().create(self.win.topframe, car,
-                                                                         self.startdate, self.enddate))\
+                                                                         self.startdate, self.enddate, self.station))\
                 .grid(row=self.row, column=9, sticky="w")
             self.row += 1
             i += 1
@@ -665,8 +662,8 @@ class OtEquitability:
         for i in range(len(self.onrec_prefs)):
             if self.onrec_prefs[i][0] != self.pref_var[i].get():
                 carrier = self.recset[i][0][1]
-                sql = "UPDATE otdl_preference SET preference = '%s' WHERE carrier_name = '%s' AND quarter = '%s'" \
-                      % (self.pref_var[i].get(), carrier, self.quarter)
+                sql = "UPDATE otdl_preference SET preference = '%s' WHERE carrier_name = '%s' AND quarter = '%s' " \
+                      "AND station = '%s'" % (self.pref_var[i].get(), carrier, self.quarter, self.station)
                 commit(sql)
                 updates += 1
         self.status_report(updates)
@@ -9804,6 +9801,8 @@ class SpreadsheetConfig:
         self.pb_nl_wal = True  # page break between no list and work assignment
         self.pb_wal_otdl = True  # page break between work assignment and otdl
         self.pb_otdl_aux = True  # page break between otdl and auxiliary
+        self.min_ot_equit = None  # minimum rows for ot equitability spreadsheet
+        self.ot_calc_pref = None  # overtime calcuations preference for otdl equitability
         self.min_nl_var = None
         self.min_wal_var = None
         self.min_otdl_var = None
@@ -9812,6 +9811,8 @@ class SpreadsheetConfig:
         self.pb_nl_wal_var = None  # page break between no list and work assignment
         self.pb_wal_otdl_var = None  # page break between work assignment and otdl
         self.pb_otdl_aux_var = None  # page break between otdl and auxiliary
+        self.min_ot_equit_var = None  # minimum rows for ot equitability spreadsheet
+        self.ot_calc_pref_var = None  # overtime calcuations preference for otdl equitability
         self.status_update = None  # Label(self.win.buttons, text="", fg="red")
         self.report_counter = 0
         self.check_i = 0  # the iteration of the apply/check method
@@ -9823,6 +9824,8 @@ class SpreadsheetConfig:
         self.add_pb_nl_wal = True  # page break between no list and work assignment
         self.add_pb_wal_otdl = True  # page break between work assignment and otdl
         self.add_pb_otdl_aux = True  # page break between otdl and auxiliary
+        self.add_min_ot_equit = None
+        self.add_ot_calc_pref = None
 
     def start(self, frame):
         self.frame = frame
@@ -9850,16 +9853,21 @@ class SpreadsheetConfig:
         self.pb_nl_wal = Convert(self.pb_nl_wal).strbool_to_onoff()
         self.pb_wal_otdl = Convert(self.pb_wal_otdl).strbool_to_onoff()
         self.pb_otdl_aux = Convert(self.pb_otdl_aux).strbool_to_onoff()
+        # otdl equitability vars
+        self.min_ot_equit = results[25][0]  # minimum rows
+        self.ot_calc_pref = results[26][0]  # ot calculation preference
 
-    def build_stringvars(self):
-        self.min_nl_var = StringVar(self.win.body)  # create stringvars
-        self.min_wal_var = StringVar(self.win.body)  # create stringvars
-        self.min_otdl_var = StringVar(self.win.body)  # create stringvars
-        self.min_aux_var = StringVar(self.win.body)  # create stringvars
-        self.min_overmax_var = StringVar(self.win.body)  # create stringvars
-        self.pb_nl_wal_var = StringVar(self.win.body)  # create stringvars
-        self.pb_wal_otdl_var = StringVar(self.win.body)  # create stringvars
-        self.pb_otdl_aux_var = StringVar(self.win.body)  # create stringvars
+    def build_stringvars(self):    # create stringvars
+        self.min_nl_var = StringVar(self.win.body)
+        self.min_wal_var = StringVar(self.win.body)
+        self.min_otdl_var = StringVar(self.win.body)
+        self.min_aux_var = StringVar(self.win.body)
+        self.min_overmax_var = StringVar(self.win.body)
+        self.pb_nl_wal_var = StringVar(self.win.body)
+        self.pb_wal_otdl_var = StringVar(self.win.body)
+        self.pb_otdl_aux_var = StringVar(self.win.body)
+        self.min_ot_equit_var = StringVar(self.win.body)
+        self.ot_calc_pref_var = StringVar(self.win.body)
 
     def set_stringvars(self):  # set stringvar values
         self.min_nl_var.set(self.min_nl)
@@ -9870,6 +9878,8 @@ class SpreadsheetConfig:
         self.pb_nl_wal_var.set(self.pb_nl_wal)
         self.pb_wal_otdl_var.set(self.pb_wal_otdl)
         self.pb_otdl_aux_var.set(self.pb_otdl_aux)
+        self.min_ot_equit_var.set(self.min_ot_equit)
+        self.ot_calc_pref_var.set(self.ot_calc_pref)
 
     def build(self):
         row = 0
@@ -9880,25 +9890,25 @@ class SpreadsheetConfig:
         row += 1
         Label(self.win.body, text="Minimum rows for No List Carriers", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_nl_var).grid(row=row, column=1, padx=4)
+        Entry(self.win.body, width=5, textvariable=self.min_nl_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_nl")).grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="Minimum rows for Work Assignment", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_wal_var).grid(row=row, column=1, padx=4)
+        Entry(self.win.body, width=5, textvariable=self.min_wal_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_wal")).grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="Minimum rows for OT Desired", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_otdl_var).grid(row=row, column=1, padx=4)
+        Entry(self.win.body, width=5, textvariable=self.min_otdl_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_otdl")).grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="Minimum rows for Auxiliary", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_aux_var).grid(row=row, column=1, padx=4)
+        Entry(self.win.body, width=5, textvariable=self.min_aux_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_aux")).grid(row=row, column=2, padx=4)
         row += 1
@@ -9911,7 +9921,7 @@ class SpreadsheetConfig:
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_1 = OptionMenu(self.win.body, self.pb_nl_wal_var, "on", "off")
         om_pb_1.config(width=3)
-        om_pb_1.grid(row=row, column=1, padx=4)
+        om_pb_1.grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info", 
                command=lambda: Messenger(self.win.topframe).tolerance_info("pb_nl_wal"))\
             .grid(row=row, column=2, padx=4)
@@ -9921,7 +9931,7 @@ class SpreadsheetConfig:
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_2 = OptionMenu(self.win.body, self.pb_wal_otdl_var, "on", "off")
         om_pb_2.config(width=3)
-        om_pb_2.grid(row=row, column=1, padx=4)
+        om_pb_2.grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("pb_wal_otdl"))\
             .grid(row=row, column=2, padx=4)
@@ -9931,7 +9941,7 @@ class SpreadsheetConfig:
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_3 = OptionMenu(self.win.body, self.pb_otdl_aux_var, "on", "off")
         om_pb_3.config(width=3)
-        om_pb_3.grid(row=row, column=1, padx=4)
+        om_pb_3.grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("pb_otdl_aux"))\
             .grid(row=row, column=2, padx=4)
@@ -9948,10 +9958,38 @@ class SpreadsheetConfig:
         # Display widgets for 12 and 60 Hour Violations Spread Sheet
         Label(self.win.body, text="Minimum rows for Over Max", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_overmax_var).grid(row=row, column=1, padx=4)
+        Entry(self.win.body, width=5, textvariable=self.min_overmax_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_overmax"))\
             .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+        # Display header for OTDL Equitability Spread Sheet
+        Label(self.win.body, text="OTDL Equitability Spreadsheet Settings",
+              font=macadj("bold", "Helvetica 18")) \
+            .grid(row=row, column=0, sticky="w", columnspan=4)
+        row += 1
+        Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+        # Display widgets for OTDL Equitability Spread Sheet
+        Label(self.win.body, text="Minimum rows for OTDL Equitability", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_ot_equit_var).grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_ot_equit")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Overtime Calculation Preference", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_ot_equit = OptionMenu(self.win.body, self.ot_calc_pref_var, "all", "off_route")
+        om_ot_equit.config(width=7)
+        om_ot_equit.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("ot_calc_pref")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         dashes = ""
         dashcount = 67
