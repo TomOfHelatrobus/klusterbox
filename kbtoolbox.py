@@ -586,6 +586,13 @@ class Convert:
             number = 0.00  # convert the number to a float
             return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
 
+    def empty_or_hunredths(self):
+        if self.data.strip() in ("0", "0.0", "0.00", ".0", ".00", ".", ""):
+            return ""
+        else:
+            number = float(self.data)  # convert the number to a float
+            return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+
     def zero_not_empty(self):
         if self.data == "":
             return 0
@@ -693,7 +700,7 @@ class Quarter:
     def __init__(self, data):
         self.data = data
 
-    def find(self):
+    def find(self):  # pass month in (as number) as argument - quarter is returned
         if int(self.data) in (1, 2, 3):
             return 1
         if int(self.data) in (4, 5, 6):
@@ -872,6 +879,11 @@ class RingTimeChecker:
 
     def over_8(self):  # is the time greater than 8 hours
         if float(self.ring) > 8:
+            return False
+        return True
+
+    def over_5000(self):  # if the time is greater than 5000 hours - upper limit on make ups for OT Equitability
+        if float(self.ring) > 5000:
             return False
         return True
 

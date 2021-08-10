@@ -46,7 +46,7 @@ class DataBase:
             'custom_name varchar)',
             'CREATE table IF NOT EXISTS tolerances (row_id integer primary key, category varchar, tolerance varchar)',
             'CREATE table IF NOT EXISTS otdl_preference (quarter varchar, carrier_name varchar, preference varchar, '
-            'station varchar)',
+            'station varchar, makeups varchar)',
             'CREATE table IF NOT EXISTS refusals (refusal_date varchar, carrier_name varchar, refusal_type varchar, '
             'refusal_time varchar)'
         )

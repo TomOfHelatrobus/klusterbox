@@ -75,7 +75,7 @@ class ImpManSpreadsheet:
             return
         self.get_dates()
         self.get_carrierlist()
-        self.get_carrier_breakdown()
+        self.get_carrier_breakdown()  # breakdown carrier list into no list, wal, otdl, aux
         self.get_tolerances()  # get tolerances, minimum rows and page break preferences from tolerances table
         self.get_styles()
         self.build_workbook()
@@ -109,7 +109,7 @@ class ImpManSpreadsheet:
     def get_carrierlist(self):  # get record sets for all carriers
         self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
 
-    def get_carrier_breakdown(self):
+    def get_carrier_breakdown(self):  # breakdown carrier list into no list, wal, otdl, aux
         timely_rec = []
         for day in self.dates:
             nl_array = []

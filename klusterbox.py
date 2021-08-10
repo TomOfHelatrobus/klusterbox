@@ -5,7 +5,7 @@ from kbtoolbox import *
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText
-from kbequitability import QuarterRecs
+from kbequitability import QuarterRecs, OTEquitSpreadsheet
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox, filedialog, ttk
@@ -336,9 +336,11 @@ class OtEquitability:
         self.enddate = datetime(1, 1, 1)
         self.station = ""
         self.quarter = ""
-        self.pref_var = []
+        self.pref_var = []  # build an array of stringvars for ot preference
+        self.makeup_var = []  # build an array of stringvars for ot makeups
         self.onrec_prefs_carriers = []
         self.onrec_prefs = []
+        self.onrec_makeups = []
         self.status_update = None
         self.delete_report = []  # list of ineligible carriers to be deleted from otdl prefence table
         self.eligible_carriers = []  # carriers on the otdl during the quarter from carriers table
@@ -370,9 +372,11 @@ class OtEquitability:
         self.station = ""
         self.quarter = ""
         self.pref_var = []
+        self.makeup_var = []
         self.onrec_prefs_carriers = []
         self.onrec_prefs = []
-        self.status_update = None
+        self.onrec_makeups =[]
+        # self.status_update = None
         self.delete_report = []  # list of ineligible carriers to be deleted from otdl prefence table
         self.frame = frame  # define the frame
         self.win = MakeWindow()
@@ -482,12 +486,12 @@ class OtEquitability:
         Label(self.win.body, text="Station: ", fg="Gray").grid(row=self.row, column=4, sticky="w")
         om_station = OptionMenu(self.win.body, self.quartinvran_station, *self.stations_minus_outofstation)
         om_station.config(width=macadj(31, 29))
-        om_station.grid(row=self.row, column=5, columnspan=3, sticky=W, padx=2)
+        om_station.grid(row=self.row, column=5, columnspan=4, sticky=W, padx=2)
         # set and reset buttons for investigation range
         Button(self.win.body, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
-               fg=macadj("white", "green"), command=lambda: self.set_invran()).grid(row=self.row, column=8, padx=2)
+               fg=macadj("white", "green"), command=lambda: self.set_invran()).grid(row=self.row, column=9, padx=2)
         Button(self.win.body, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
-               fg=macadj("white", "red")).grid(row=self.row, column=9, padx=2)
+               fg=macadj("white", "red")).grid(row=self.row, column=10, padx=2)
         self.row += 1
         self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
 
@@ -530,11 +534,11 @@ class OtEquitability:
         off_list = False
         on_list = False
         for rec in reversed(recs):
-            if rec[2] != "otdl":
-                off_list = True
             if off_list:
                 if rec[2] == "otdl":
                     on_list = True
+            if rec[2] != "otdl":
+                off_list = True
         if off_list and on_list:
             return True
         return False
@@ -548,21 +552,34 @@ class OtEquitability:
               % (carrier, self.quarter, self.station)
         pref = inquire(sql)
         if not pref:
-            sql = "INSERT INTO otdl_preference (quarter, carrier_name, preference, station) " \
-                  "VALUES('%s', '%s', '%s', '%s')" \
-                  % (self.quarter, carrier, "12", self.station)
+            sql = "INSERT INTO otdl_preference (quarter, carrier_name, preference, station, makeups) " \
+                  "VALUES('%s', '%s', '%s', '%s', '%s')" \
+                  % (self.quarter, carrier, "12", self.station, "")
             commit(sql)
             return ('12',)
         else:
             return pref[0]
 
+    def get_makeups(self, carrier):  # pull makeups from the dbase
+        sql = "SELECT makeups FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
+              % (carrier, self.quarter, self.station)
+        makeups = inquire(sql)
+        if not makeups:
+            return 0
+        return makeups[0]
+
     def get_onrecs_set_stringvars(self):
         i = 0
         for carrier in self.eligible_carriers:
             self.pref_var.append(StringVar(self.win.body))  # build array of string vars for otdl preferences
+            self.makeup_var.append(StringVar(self.win.body))  # build array of string vars for make ups
             pref = self.get_pref(carrier)  # call method to inquire otdl preference table
+            makeup = self.get_makeups(carrier)[0]  # call method to inquire otdl preference table
+            makeup = Convert(makeup).empty_not_zero()  # use empty string instead of zero
             self.pref_var[i].set(pref[0])  # set the preference stringvar
-            self.onrec_prefs.append(pref)  # build the array of otdl preferences from otdl preferences table.
+            self.makeup_var[i].set(makeup)
+            self.onrec_prefs.append(pref[0])  # build the array of otdl preferences from otdl preferences table.
+            self.onrec_makeups.append(makeup)
             i += 1
 
     def get_onrec_pref_carriers(self):
@@ -626,47 +643,102 @@ class OtEquitability:
     def build_header(self):
         Label(self.win.body, text ="Name", fg="Gray").grid(row=self.row, column=1, sticky="w")
         Label(self.win.body, text="Preference", fg="Gray").grid(row=self.row, column=5, sticky="w")
-        Label(self.win.body, text="Status", fg="Gray").grid(row=self.row, column=6, sticky="w")
-        Label(self.win.body, text="Check", fg="Gray").grid(row=self.row, column=7, sticky="w")
-        Label(self.win.body, text="Report", fg="Gray").grid(row=self.row, column=8, sticky="w")
-        Label(self.win.body, text="Refusal", fg="Gray").grid(row=self.row, column=9, sticky="w")
+        Label(self.win.body, text="Make up", fg="Gray").grid(row=self.row, column=6, sticky="w")
+        Label(self.win.body, text="Status", fg="Gray").grid(row=self.row, column=7, sticky="w")
+        Label(self.win.body, text="Check", fg="Gray").grid(row=self.row, column=8, sticky="w")
+        Label(self.win.body, text="Report", fg="Gray").grid(row=self.row, column=9, sticky="w")
+        Label(self.win.body, text="Refusal", fg="Gray").grid(row=self.row, column=10, sticky="w")
         self.row += 1
 
     def build_main(self):
         i = 0
         for carrier in self.recset:
-            Label(self.win.body, text=i, anchor="w").grid(row=self.row, column=0, sticky="w")
+            Label(self.win.body, text=i+1, anchor="w").grid(row=self.row, column=0, sticky="w")
             Label(self.win.body, text=carrier[0][1], anchor="w").grid(row=self.row, column=1, columnspan=4, sticky="w")
             om_pref = OptionMenu(self.win.body, self.pref_var[i], "12", "10")
             om_pref.config(width=4)
             om_pref.grid(row=self.row, column=5, sticky="w")
-            Label(self.win.body, text=self.get_status(carrier), anchor="w").grid(row=self.row, column=6, sticky="w")
+            Entry(self.win.body, textvariable=self.makeup_var[i], width=8, justify='right')\
+                .grid(row=self.row, column=6, sticky="w")
+            Label(self.win.body, text=self.get_status(carrier), anchor="w").grid(row=self.row, column=7, sticky="w")
             consistant = "ok"
             fg = "black"
             if self.check_consistancy(carrier):
                 consistant="error"
                 fg = "red"
-            Label(self.win.body, text=consistant, fg=fg, anchor="w").grid(row=self.row, column=7, sticky="w")
+            Label(self.win.body, text=consistant, fg=fg, anchor="w").grid(row=self.row, column=8, sticky="w")
             Button(self.win.body, text="report",
                    command=lambda car=carrier, con=consistant: self.carrier_report(car, con))\
-                .grid(row=self.row, column=8, sticky="w")
+                .grid(row=self.row, column=9, sticky="w")
             Button(self.win.body, text="refusals",
                    command=lambda car=carrier[0][1]: RefusalWin().create(self.win.topframe, car,
                                                                          self.startdate, self.enddate, self.station))\
-                .grid(row=self.row, column=9, sticky="w")
+                .grid(row=self.row, column=10, sticky="w")
             self.row += 1
             i += 1
 
+    def check_all(self):
+        for i in range(len(self.onrec_makeups)):
+            if not self.check_each(i):
+                return False
+        return True
+
+    def check_each(self, i):
+        carrier = self.recset[i][0][1]
+        makeup = self.makeup_var[i].get()  # call method to inquire otdl preference table
+        if RingTimeChecker(makeup).check_for_zeros():
+            return True
+        if not RingTimeChecker(makeup).check_numeric():
+            text = "The Make up value for {} must be a number.".format(carrier)
+            self.error_msg(text)
+            return False
+        if not RingTimeChecker(makeup).over_5000():
+            text = "The Make up value for {} must not exceed 5000.".format(carrier)
+            self.error_msg(text)
+            return False
+        if not RingTimeChecker(makeup).less_than_zero():
+            text = "The Make up value for {} must not be less than zero.".format(carrier)
+            self.error_msg(text)
+            return False
+        if not RingTimeChecker(makeup).count_decimals_place():
+            text = "The Make up value for {} can not have more than two decimal places.".format(carrier)
+            self.error_msg(text)
+            return False
+        return True
+
     def apply(self):
+        if not self.check_all():
+            return
         updates = 0
         for i in range(len(self.onrec_prefs)):
-            if self.onrec_prefs[i][0] != self.pref_var[i].get():
+            update = False
+            if self.onrec_prefs[i] != self.pref_var[i].get():
                 carrier = self.recset[i][0][1]
                 sql = "UPDATE otdl_preference SET preference = '%s' WHERE carrier_name = '%s' AND quarter = '%s' " \
                       "AND station = '%s'" % (self.pref_var[i].get(), carrier, self.quarter, self.station)
                 commit(sql)
+                update = True
+            if self.onrec_makeups[i] != self.makeup_var[i].get():
+                carrier = self.recset[i][0][1]
+                makeup = Convert(self.makeup_var[i].get()).empty_not_zero()
+                makeup = Convert(makeup).empty_or_hunredths()
+                sql = "UPDATE otdl_preference SET makeups = '%s' WHERE carrier_name = '%s' AND quarter = '%s' " \
+                      "AND station = '%s'" % (makeup, carrier, self.quarter, self.station)
+                commit(sql)
+                update = True
+            if update:
                 updates += 1
         self.status_report(updates)
+        self.reset_onrecs_and_vars()
+
+    def reset_onrecs_and_vars(self):
+        for i in range (len(self.pref_var)):
+            pref = self.pref_var[i].get()
+            makeup = Convert(self.makeup_var[i].get()).empty_not_zero()
+            makeup = Convert(makeup).empty_or_hunredths()
+            self.onrec_prefs[i] = pref
+            self.onrec_makeups[i] = makeup
+            self.makeup_var[i].set(makeup)
 
     def status_report(self, updates):
         msg = "{} Record{} Updated.".format(updates, Handler(updates).plurals())
@@ -9992,9 +10064,9 @@ class SpreadsheetConfig:
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         dashes = ""
-        dashcount = 67
+        dashcount = 71
         if sys.platform == "darwin":
-            dashcount = 52
+            dashcount = 55
         for i in range(dashcount):
             dashes = dashes + "_"
         Label(self.win.body, text=dashes, pady=5).grid(row=row, columnspan=4, sticky="w")
@@ -10032,10 +10104,12 @@ class SpreadsheetConfig:
     def min_ss_presets(self, order):
         num = "25"
         over_num = "30"
+        ot_num = "19"  # default for otdl equitability minimum rows
         msg = "Minimum rows reset to default. "
         if order == "one":
             num = "1"
             over_num = "1"
+            ot_num = "1"
             msg = "Minimum rows set to one. "
         self.status_update.config(text="{}".format(msg))
         types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
@@ -10045,17 +10119,22 @@ class SpreadsheetConfig:
         # set minimum row value for overmax spreadsheet
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (over_num, "min_ss_overmax")
         commit(sql)
+        # set minimum row value for otdl equitability
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (ot_num, "min_ot_equit")
+        commit(sql)
         pagebreaks = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux")
         if order == "default":
             for pb in pagebreaks:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("True", pb)
                 commit(sql)
+            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("off_route", "ot_calc_pref")
+            commit(sql)
         self.get_settings()
         self.set_stringvars()
 
     def check(self, var):
         current_var = ("No List minimum rows", "Work Assignment minimum rows", "OT Desired minimum rows",
-                       "Auxiliary minimum rows", "Over Max minimum rows")
+                       "Auxiliary minimum rows", "Over Max minimum rows", "OTDL Equitability minimum rows")
         if MinrowsChecker(var).is_empty():
             return True
         if not MinrowsChecker(var).is_numeric():
@@ -10082,19 +10161,24 @@ class SpreadsheetConfig:
         return True
 
     def apply(self, go_home):
-        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux, self.min_overmax)
+        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux, self.min_overmax, self.min_ot_equit)
         onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux)
+        onrecs_misc = (self.ot_calc_pref, )
         check_these = (self.min_nl_var.get(), self.min_wal_var.get(), self.min_otdl_var.get(), self.min_aux_var.get(),
-                       self.min_overmax_var.get())
-        add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux, self.add_min_overmax]
-        categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux", "min_ss_overmax")
+                       self.min_overmax_var.get(), self.min_ot_equit_var.get())
+        add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux, self.add_min_overmax,
+                     self.add_min_ot_equit]
+        categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux", "min_ss_overmax", "min_ot_equit")
         pbs = (self.pb_nl_wal_var.get(), self.pb_wal_otdl_var.get(), self.pb_otdl_aux_var.get())
         add_pbs = [self.add_pb_nl_wal, self.add_pb_wal_otdl, self.add_pb_otdl_aux]
         pb_categories = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux")
+        misc = (self.ot_calc_pref_var.get(), )  # misc stringvars
+        add_misc = [self.add_ot_calc_pref, ]  # misc values to update to database
+        misc_categories = ("ot_calc_pref", )  # list of records in the tolerance table.
         self.check_i = 0
-        for var in check_these:
-            if not self.check(var):
-                return
+        for var in check_these:  # check each of the minimum rows stringvars
+            if not self.check(var):  # if any fail
+                return  # stop the method
             self.check_i += 1
         for i in range(len(check_these)):
             add_this = Convert(check_these[i]).zero_not_empty()  # replace empty strings with a zero
@@ -10103,10 +10187,16 @@ class SpreadsheetConfig:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_these[i], categories[i])
                 commit(sql)
                 self.report_counter += 1
-        for i in range(len(pbs)):
+        for i in range(len(pbs)):  # loop through pagebreak stringvars
             add_pbs[i] = Convert(pbs[i]).onoff_to_bool()
             if onrecs_breaks[i] != str(pbs[i]):
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_pbs[i], pb_categories[i])
+                commit(sql)
+                self.report_counter += 1
+        for i in range(len(misc)):  # loop through misc/otdl calculation preferences stringvar
+            add_misc[i] = str(misc[i])
+            if onrecs_misc[i] != str(misc[i]):
+                sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_misc[i], misc_categories[i])
                 commit(sql)
                 self.report_counter += 1
         if go_home:
@@ -13223,14 +13313,12 @@ class MainFrame:
                                command=lambda r_rings="x": ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",
                                command=lambda r_rings="x": OvermaxSpreadsheet().create(self.win.topframe))
-        if projvar.invran_day is None:
-            basic_menu.entryconfig(2, state=DISABLED)
-            basic_menu.entryconfig(3, state=DISABLED)
-            basic_menu.entryconfig(4, state=DISABLED)
-            basic_menu.entryconfig(5, state=DISABLED)
-        if projvar.invran_day is None or not projvar.invran_weekly_span:   # if investigation range is daily or None
-            basic_menu.entryconfig(6, state=DISABLED)
-        basic_menu.add_command(label="OT Equitability Spreadsheet")
+        ot_date = projvar.invran_date  # build argument for ot equitability spreadsheet
+        if projvar.invran_weekly_span:  # if the investigation range is weekly
+            ot_date = projvar. invran_date_week[6]   # pass the last day of the investigation range as datetime
+        basic_menu.add_command(label="OT Equitability Spreadsheet",
+                               command=lambda: OTEquitSpreadsheet().
+                               create(self.win.topframe, ot_date, self.station.get()))
         basic_menu.add_separator()
         basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
         basic_menu.add_separator()
@@ -13245,6 +13333,13 @@ class MainFrame:
                                                            "out of station", self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="Quit", command=lambda: projvar.root.destroy())
+        # gray out options if no investigation range is set
+        if projvar.invran_day is None:
+            basic_menu.entryconfig(2, state=DISABLED)
+            basic_menu.entryconfig(3, state=DISABLED)
+            basic_menu.entryconfig(4, state=DISABLED)
+            basic_menu.entryconfig(5, state=DISABLED)
+            basic_menu.entryconfig(6, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
