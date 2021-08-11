@@ -185,14 +185,33 @@ class OTEquitSpreadsheet:
             self.ringrefset.append([])
             self.get_daily_ringrefs(i)
 
+    def get_overtime(self, total, moves, code):  # find the overtime pending ot calculation preference and ns day code
+        if self.otcalcpref == "off_route":
+            return Overtime().proper_overtime(total, moves, code)
+        else:
+            return Overtime().straight_overtime(total, code)
+
     def get_daily_ringrefs(self, index):
         daily_ringref = []
+        carrier = self.carrier_overview[index][0]  # get the carrier name using carrier overview md array and index
         for date in self.date_array:
-            total = ""
-            code = ""
-            moves = ""
+            overtime = ""
+            sql = "SELECT total, code, moves FROM rings3 WHERE rings_date = '%s' AND carrier_name = '%s'" \
+                  % (date, carrier)
+            results = inquire(sql)
+            if results:
+                total = results[0][0]
+                code = results[0][1]
+                moves = Moves().timeoffroute(results[0][2])
+                overtime = self.get_overtime(total, moves, code)  # find the overtime
             ref_type = ""
             ref_time = ""
-            add_this = [total, code, moves, ref_type, ref_time]
+            sql = "SELECT refusal_type, refusal_time FROM refusals WHERE refusal_date = '%s' AND carrier_name = '%s'" \
+                  % (date, carrier)
+            ref_results = inquire(sql)
+            if ref_results:
+                ref_type = ref_results[0][0]
+                ref_time = ref_results[0][1]
+            add_this = [overtime, ref_type, ref_time]
             daily_ringref.append(add_this)
         self.ringrefset[index] = daily_ringref

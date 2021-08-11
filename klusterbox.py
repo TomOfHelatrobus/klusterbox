@@ -1957,7 +1957,8 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                        "                for the day. Only \"none\" and \"ns day\" are useful for {} carriers. \n" \
                        "                Got instead: {}\n".format(self.onrec_list, self.codes)  # report
                 self.attn_array.append(attn)
-        if self.onrec_list in ("otdl", "aux", "ptf"):
+        # deleted otdl from list below. as of version 4.003 otdl carrier are allowed the ns day code.
+        if self.onrec_list in ("aux", "ptf"):
             if self.codes in ("ns day",):
                 attn = "     ATTENTION: The code/note you entered is not consistant with the list status \n" \
                        "                for the day. Only \"none\", \"no call\", \"light\", \"sch chg\", \n" \
@@ -8523,8 +8524,8 @@ def auto_weekly_analysis(array):
                         break  # stop. we only need the most recent record
                 if not result:
                     return
-                # find the code, if any
-                if newest_carrier[2] in ("nl", "wal"):
+                # find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code
+                if newest_carrier[2] in ("nl", "wal", "otdl"):
                     if day_dict[line[0]].strftime("%a") == projvar.ns_code[newest_carrier[3]] and float(line[2]) > 0:
                         c_code = "ns day"
                     else:
@@ -11532,7 +11533,8 @@ class EnterRings:
         frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
         color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
         nolist_codes = ("none", "ns day")
-        ot_aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
+        ot_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
+        aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
         lv_options = ("none", "annual", "sick", "holiday", "other")
         option_menu = ["om0", "om1", "om2", "om3", "om4", "om5", "om6"]
         lv_option_menu = ["lom0", "lom1", "lom2", "lom3", "lom4", "lom5", "lom6"]
@@ -11615,8 +11617,10 @@ class EnterRings:
                 self.codes.append(StringVar(frame[i]))  # code entry widget
                 if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
                     option_menu[i] = OptionMenu(frame[i], self.codes[i], *nolist_codes)
+                elif self.daily_carrecs[i][2] == "otdl":
+                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *ot_codes)
                 else:
-                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *ot_aux_codes)
+                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *aux_codes)
                 self.codes[i].set(now_code)
                 option_menu[i].configure(width=macadj(7, 6))
                 option_menu[i].grid(row=grid_i, column=column)  # code widget

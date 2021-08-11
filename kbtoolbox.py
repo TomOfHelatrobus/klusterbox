@@ -741,6 +741,96 @@ class Rings:
         return self.ring_recs
 
 
+class Moves:
+    def __init__(self):
+        self.moves = None
+        self.timeoff = 0
+
+    def checkempty(self):
+        if not self.moves:  # fail if self moves is empty
+            return False
+        return True
+
+    def checklenght(self):
+        if len(self.moves) % 3 == 0:  # fail if number of elements are not a multiple of 3
+            return True
+        return False
+
+    def checksforzero(self):
+        if self.timeoff <= 0:  # return empty string if result is 0
+            return ""
+        self.timeoff = round(self.timeoff, 2)  # round the time off route to 2 decimal places
+        return str(self.timeoff)
+
+    def timeoffroute(self, moves):  # gives the time off route given a moves set
+        self.moves = moves
+        if not self.checkempty():  # check if len(moves) is multiple of 3 and not 0.
+            return ""
+        self.moves = Convert(self.moves).string_to_array()
+        if not self.checklenght():
+            return ""
+        self.timeoff = 0
+        for i in range(0, len(self.moves), 3):
+            self.timeoff += (float(self.moves[i+1]) - float(self.moves[i]))
+        return self.checksforzero()
+
+
+class Overtime:
+    def __init__(self):
+        self.total = None  # total hours worked or daily 5200 time
+        self.timeoff = None  # this is the ot off route calcuated from the moves in Moves() class
+        self.code = None  # looking for ns day
+        self.overtime = None
+
+    def check_empty_total(self):
+        if not self.total:
+            return False
+        return True
+
+    def check_total(self):
+        if self.code != "ns day":
+            if float(self.total) <= 8.00:
+                return False
+        else:
+            if float(self.total) <= 0:
+                return False
+        return True
+
+    def checks(self):
+        if not self.check_empty_total():
+            return False
+        if not self.check_total():
+            return False
+        return True
+
+    def check_empty_timeoff(self):
+        if not self.timeoff:
+            return False
+        return True
+
+    def straight_overtime(self, total, code):
+        self.total = total
+        self.code = code
+        if not self.checks():
+            return ""
+        if self.code != "ns day":  # if it is not the ns day,
+            return str(float(self.total) - 8)  # calculate overtime by subtracting the 8 hour day.
+        return self.total  # if it is the ns day, the overtime is all hours worked that day.
+
+    def proper_overtime(self, total, timeoff, code):
+        self.total = total
+        self.timeoff = timeoff
+        self.code = code
+        if not self.checks():  # if the total is empty or less than 8.01 - return empty string
+            return ""
+        if self.code == "ns day":  # if it is the ns day, the overtime is all hours worked that day.
+            return self.total
+        overtime = float(self.total) - 8
+        if not self.check_empty_timeoff():
+            return str(round(overtime, 2))
+        return str(min(overtime, float(self.timeoff)))
+
+
 class SpeedSettings:
     def __init__(self):
         sql = "SELECT tolerance FROM tolerances"
