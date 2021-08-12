@@ -13395,6 +13395,7 @@ class MainFrame:
             speed_menu.entryconfig(0, state=DISABLED)
             speed_menu.entryconfig(1, state=DISABLED)
         speed_menu.add_separator()
+        speed_menu.add_command(label="Speedsheets Archive", command= lambda: file_dialogue(dir_path('speedsheets')))
         speed_menu.add_command(label="Cheatsheet",
                                command=lambda: OpenText().open_docs(self.win.body, 'cheatsheet.txt'))
         speed_menu.add_command(label="Instructions",
@@ -13403,7 +13404,7 @@ class MainFrame:
         speed_menu.add_command(label="Clear Archive",
                                 command= lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
-        # library menu
+        # archive menu
         reportsarchive_menu = Menu(menubar, tearoff=0)
         reportsarchive_menu.add_command(label="Mandates Spreadsheet",
                                         command=lambda: file_dialogue(dir_path('spreadsheets')))
@@ -13413,6 +13414,8 @@ class MainFrame:
                                         command=lambda: file_dialogue(dir_path('speedsheets')))
         reportsarchive_menu.add_command(label="Over Max Finder",
                                         command=lambda: file_dialogue(dir_path('over_max')))
+        reportsarchive_menu.add_command(label="OT Equitability",
+                                        command=lambda: file_dialogue(dir_path('ot_equitability')))
         reportsarchive_menu.add_command(label="Everything Report",
                                         command=lambda: file_dialogue(dir_path('ee_reader')))
         reportsarchive_menu.add_command(label="Weekly Availability",
@@ -13425,10 +13428,12 @@ class MainFrame:
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('spreadsheets')))
         cleararchive.add_command(label="Over Max Spreadsheet",
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('over_max_spreadsheet')))
-        cleararchive.add_command(label="Over Max Finder",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('over_max')))
         cleararchive.add_command(label="Speedsheets",
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
+        cleararchive.add_command(label="Over Max Finder",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('over_max')))
+        cleararchive.add_command(label="OT Equitability",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('ot_equitability')))
         cleararchive.add_command(label="Everything Report",
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('ee_reader')))
         cleararchive.add_command(label="Weekly Availability",
@@ -13521,9 +13526,8 @@ if __name__ == "__main__":
             pass
     projvar.root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
     if len(projvar.list_of_stations) < 2:  # if there are no stations in the stations list
-        # start_up()
-        StartUp().start()
+        StartUp().start()  # a start up screen for first time use
     else:
         remove_file(dir_path_check('report'))  # empty out folders
         remove_file(dir_path_check('infc_grv'))
-        MainFrame().start()
+        MainFrame().start()  # get the show on the road
