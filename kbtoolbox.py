@@ -633,6 +633,12 @@ class Handler:
         num = int(self.data)
         return str(num)
 
+    def str_to_int_or_str(self):
+        if self.data.isnumeric():
+            return int(self.data)
+        else:
+            return self.data
+
     @staticmethod
     def route_adj(route):  # convert five digit route numbers to four when the route number > 99
         if len(route) == 5:  # when the route number is five digits
@@ -803,7 +809,7 @@ class Overtime:
             return False
         return True
 
-    def check_empty_timeoff(self):
+    def check_empty_timeoff(self):  # if there was no time worked off route, return False
         if not self.timeoff:
             return False
         return True
@@ -814,21 +820,23 @@ class Overtime:
         if not self.checks():
             return ""
         if self.code != "ns day":  # if it is not the ns day,
-            return str(float(self.total) - 8)  # calculate overtime by subtracting the 8 hour day.
+            total = float(self.total) - 8  # calculate overtime by subtracting the 8 hour day.
+            return format(total, '.2f')  # return a formated string
         return self.total  # if it is the ns day, the overtime is all hours worked that day.
 
     def proper_overtime(self, total, timeoff, code):
         self.total = total
         self.timeoff = timeoff
         self.code = code
-        if not self.checks():  # if the total is empty or less than 8.01 - return empty string
+        if not self.checks():  # if the total is empty or less than 8.00 - return empty string
             return ""
         if self.code == "ns day":  # if it is the ns day, the overtime is all hours worked that day.
             return self.total
         overtime = float(self.total) - 8
         if not self.check_empty_timeoff():
-            return str(round(overtime, 2))
-        return str(min(overtime, float(self.timeoff)))
+            return format(overtime, '.2f')
+        offroute = min(overtime, float(self.timeoff))
+        return format(offroute, '.2f')
 
 
 class SpeedSettings:
