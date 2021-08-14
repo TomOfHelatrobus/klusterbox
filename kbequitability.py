@@ -89,9 +89,18 @@ class OTEquitSpreadsheet:
         self.otcalcpref = "off_route"  # preference for overtime calculation - "off_route" or "all"
         self.carrier_overview = []  # a list of carrier's name, status and makeups
         self.date_array = []  # a list of all days in the quarter as a datetimes
+        self.front_padding = 0  # number of empty triad to fill worksheet prior to startdate
+        self.end_padding = 0  # number of empty trids to fill worksheet prior to enddate
         self.ringrefset = []  # multidimensional array - daily rings/refusals for each otdl carrier
         self.dates_breakdown = []  # a list of dates for display on spreadsheets
-        self.week = ("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15")
+        self.week = ("w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12",
+                     "w13", "w14", "w15")
+        self.week_label = ("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
+                     "13", "14", "15")
+        self.triad_week_index = 0
+        self.triad_column = 0
+        self.triad_row = 0
+        self.footer_row = 0
         self.wb = None  # workbook
         self.overview = None  # first worksheet which summarizes all the following worksheets
         self.ws = None  # worksheet
@@ -101,6 +110,7 @@ class OTEquitSpreadsheet:
         self.date_dov_title = None
         self.col_header = None
         self.col_center_header = None
+        self.col_header_instructions = None
         self.input_name = None
         self.input_s = None
         self.input_center = None
@@ -124,8 +134,11 @@ class OTEquitSpreadsheet:
         self.get_carier_overview()  # build a list of carrier's name, status and makeups
         self.carrier_overview_add()  # adds empty sets so the lenght of carrier overview = minimum rows.
         self.get_date_array()  # get a list of all days in the quarter as datetime objects
+        self.get_front_padding()  # get number of empty triads needed to pad prior to startdate
+        self.get_end_padding()  # get number of empty triads needed to pad after enddate
         self.get_ringrefset()  # build multidimensional array - daily rings/refusals for each carrier
         self.get_date_breakdown()  # build an array of dates for display on the spreadsheets
+        self.get_footer_row()  # get the row where the footer will be
         self.build_workbook()  # build the spreadsheet and define the worksheets.
         self.set_dimensions_overview()  # column widths for overview sheet
         self.set_dimensions_weekly()  # column widths for weekly worksheets
@@ -133,10 +146,13 @@ class OTEquitSpreadsheet:
         self.build_header_overview()  # build the header for overview worksheet
         self.build_columnheader_overview()  # build column headers for overview worksheet
         self.build_main_overview()  # build main body for overview worksheet
+        self.build_overview_footer()  # create the footer at the bottom of the worksheet for averages and totals
         self.build_header_weeklysheets()  # build the header for the weekly worksheet
         self.build_columnheader_worksheets()  # build column headers for weekly worksheet
-        self.build_main_worksheets() # build the main parts of the worksheet save the triad groups
-        self.build_triads()
+        self.build_main_worksheets()  # build the main parts of the worksheet save the triad groups
+        self.triads_delegator()  # orders which triads to build from build triads
+        self.build_worksheet_footer()
+        self.build_instructions()
         self.save_open()  # save and open the spreadsheet
 
     def ask_ok(self):
@@ -161,6 +177,15 @@ class OTEquitSpreadsheet:
                    datetime(self.year, 12, 31))
         self.startdate = self.startdate_index[int(self.quarter) - 1]
         self.enddate = self.enddate_index[int(self.quarter) - 1]
+
+    def starting_day(self):  # returns the column position of the startdate as an odd number (5 to 17)
+        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        i = 6  #
+        for day in days:  # loop through tuple of days"
+
+            if self.startdate.strftime("%A") == day:  # if the startdate matches the day
+                return i  # returns the column of the first date
+            i -= 1  # count down from Saturday
 
     def get_carrierlist(self):
         self.carrierlist = CarrierList(self.startdate, self.enddate, self.station).get_distinct()
@@ -226,9 +251,15 @@ class OTEquitSpreadsheet:
             self.date_array.append(running_date)
             running_date += timedelta(days=1)
 
-    def get_ringrefset(self):
+    def get_front_padding(self):  # get the number of empty triads to put before startdate to fill worksheet
+        self.front_padding = 6 - self.starting_day()
+
+    def get_end_padding(self):  # get number of empty triads needed after enddate to fill worksheet
+        self.end_padding = 105 - (self.front_padding + len(self.date_array))
+
+    def get_ringrefset(self):    # build multidimensional array - daily rings/refusals for each otdl carrier
         for i in range(len(self.carrier_overview)):
-            self.ringrefset.append([])
+            self.ringrefset.append([])  # each carrier has an array
             self.get_daily_ringrefs(i)
 
     def get_overtime(self, total, moves, code):  # find the overtime pending ot calculation preference and ns day code
@@ -240,7 +271,10 @@ class OTEquitSpreadsheet:
     def get_daily_ringrefs(self, index):
         daily_ringref = []
         carrier = self.carrier_overview[index][0]  # get the carrier name using carrier overview md array and index
-        for date in self.date_array:
+        for _ in range(self.front_padding):  # insert front padding so empty cells fill worksheet
+            add_this = ["", "", ""]
+            daily_ringref.append(add_this)
+        for date in self.date_array:  # get the ringrefs from the database or empty if none
             overtime = ""
             sql = "SELECT total, code, moves FROM rings3 WHERE rings_date = '%s' AND carrier_name = '%s'" \
                   % (date, carrier)
@@ -260,15 +294,10 @@ class OTEquitSpreadsheet:
                 ref_time = ref_results[0][1]
             add_this = [overtime, ref_type, ref_time]
             daily_ringref.append(add_this)
+        for _ in range(self.end_padding):  # insert front padding so empty cells fill worksheet
+            add_this = ["", "", ""]
+            daily_ringref.append(add_this)
         self.ringrefset[index] = daily_ringref
-
-    def starting_day(self):  # returns the column position of the startdate as an odd number (5 to 17)
-        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-        i = 6  #
-        for day in days:  # loop through tuple of days
-            if self.startdate.strftime("%A") == day:  # if the startdate matches the day
-                return i  # returns the column of the first date
-            i -= 1  # increment the counter by two to skip over the refusals field
 
     def get_date_breakdown(self):
         date = self.startdate
@@ -285,6 +314,9 @@ class OTEquitSpreadsheet:
             display_date = date.strftime("%m/%d/%Y") + " through " + enddate.strftime("%m/%d/%Y")
             self.dates_breakdown.append(display_date)
             date += timedelta(weeks=1)
+
+    def get_footer_row(self):  # get the number of the row where the footer will go.
+        self.footer_row = (len(self.carrier_overview) * 2) + 7
 
     def build_workbook(self):
         self.ws = []
@@ -337,6 +369,8 @@ class OTEquitSpreadsheet:
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8))
         self.col_center_header = NamedStyle(name="col_center_header", font=Font(bold=True, name='Arial', size=8),
                                        alignment=Alignment(horizontal='center'))
+        self.col_header_instructions = \
+            NamedStyle(name="col_header_instructions", font=Font(bold=True, name='Arial', size=10))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
                                 border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                 alignment=Alignment(horizontal='left'))
@@ -358,7 +392,7 @@ class OTEquitSpreadsheet:
                                 border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                 fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
                                 alignment=Alignment(horizontal='center'))
-        self.instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=8),
+        self.instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=10),
                                    alignment=Alignment(horizontal='left', vertical='top'))
 
     def build_header_overview(self):  # build the header for overview worksheet
@@ -430,8 +464,9 @@ class OTEquitSpreadsheet:
             cell.style = self.input_center
             self.overview.merge_cells('C' + str(row) + ':' + 'C' + str(row + 1))
             cell = self.overview.cell(row=row, column=4)  # make up
-            cell.value = self.carrier_overview[i][2]
+            cell.value = Handler(self.carrier_overview[i][2]).str_to_float_or_str()
             cell.style = self.input_center
+            cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('D' + str(row) + ':' + 'D' + str(row + 1))
             cell = self.overview.cell(row=row, column=5)  # refusals label
             cell.value = "ref"
@@ -440,24 +475,97 @@ class OTEquitSpreadsheet:
             cell.value = "ot"
             cell.style = self.ref_ot
             cell = self.overview.cell(row=row, column=6)  # refusals
-            formula = ""
+            formula = "=IF(OR(C%s=12, C%s=10)," \
+                      "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
+                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
+                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
+                      "0" \
+                      % (str(row), str(row),
+                         self.week[0], str(row), self.week[1], str(row), self.week[2], str(row),
+                         self.week[3], str(row), self.week[4], str(row), self.week[5], str(row),
+                         self.week[6], str(row), self.week[7], str(row), self.week[8], str(row),
+                         self.week[9], str(row), self.week[10], str(row), self.week[11], str(row),
+                         self.week[12], str(row), self.week[13], str(row), self.week[14], str(row))
             cell.value = formula
             cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
             cell = self.overview.cell(row=row + 1, column=6)  # overtime
-            formula = ""
+            formula = "=IF(OR(C%s=12, C%s=10)," \
+                      "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
+                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
+                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
+                      "0" \
+                      % (str(row), str(row),
+                         self.week[0], str(row+1), self.week[1], str(row+1), self.week[2], str(row+1),
+                         self.week[3], str(row+1), self.week[4], str(row+1), self.week[5], str(row+1),
+                         self.week[6], str(row+1), self.week[7], str(row+1), self.week[8], str(row+1),
+                         self.week[9], str(row+1), self.week[10], str(row+1), self.week[11], str(row+1),
+                         self.week[12], str(row+1), self.week[13], str(row+1), self.week[14], str(row+1))
             cell.value = formula
             cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
             cell = self.overview.cell(row=row, column=7)  # opportunities
-            formula = ""
+            formula = "=IF(OR(C%s=12, C%s=10),(F%s+F%s)-D%s,0)" % \
+                      (str(row), str(row), str(row), str(row+1), str(row))
             cell.value = formula
             cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('G' + str(row) + ":" + 'G' + str(row+1))
             cell = self.overview.cell(row=row, column=8)  # difference from average
-            formula = ""
+            formula = "=IF(A%s=\"\",0, IF(OR(C%s=12,C%s=10),G%s-$G$%s,\"off list\"))" \
+                      % (str(row), str(row), str(row), str(row), str(self.footer_row+2))  # last row is avg footer
             cell.value = formula
             cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('H' + str(row) + ":" + 'H' + str(row + 1))
             row += 2
+
+    def get_totalovertime_formula(self, row, column):  # gives formulas for totals counting skipping rows.
+        """
+        the row argument is the starting row of the count,
+        the column is given as a number and matched to a letter with the dictionary
+        """
+        column_dict = {5: "E", 6: "F", 7: "G", 9: "I", 11: "K", 13: "M", 15: "O", 17: "Q"}
+        string = "=SUM("
+        while row < self.footer_row-2:
+            string += "{}{},".format(column_dict[column], row)
+            row += 2
+        string += "{}{})".format(column_dict[column], row)
+        return string
+
+    def build_overview_footer(self):  # create the footer at the bottom of the worksheet for averages and totals
+        cell = self.overview.cell(row=self.footer_row, column=5)  # label total overtime
+        cell.value = "total overtime:"
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=self.footer_row, column=6)  # calculate total overtime
+        formula = self.get_totalovertime_formula(7, 6)
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.overview.cell(row=self.footer_row, column=7)  # calculate total opportunities
+        formula = "=SUM(G%s:G%s)" % (str(6), str(self.footer_row - 2))
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.overview.cell(row=self.footer_row, column=8)  # label total opportunities
+        cell.value = "  :total opportunities"
+        cell.style = self.col_header
+        cell = self.overview.cell(row=self.footer_row+2, column=5)  # label average overtime
+        cell.value = "average overtime:"
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=self.footer_row+2, column=6)  # calculate average overtime
+        formula = "=F%s/$H$3" % self.footer_row
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.overview.cell(row=self.footer_row+2, column=7)  # calculate average opportunities
+        formula = "=G%s/$H$3" % (str(self.footer_row))
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.overview.cell(row=self.footer_row+2, column=8)  # label average opportunities
+        cell.value = "  :average opportunities"
+        cell.style = self.col_header
 
     def build_header_weeklysheets(self):  # build the header for the weekly worksheet
         for i in range(15):
@@ -470,7 +578,7 @@ class OTEquitSpreadsheet:
             cell.style = self.date_dov_title
             self.ws[i].merge_cells('P1:R1')
             cell = self.ws[i].cell(row=1, column=19)  # fill in week
-            cell.value = self.week[i]
+            cell.value = self.week_label[i]
             cell.style = self.date_dov
             cell = self.ws[i].cell(row=2, column=1)  # date
             cell.value = "dates: "
@@ -492,7 +600,7 @@ class OTEquitSpreadsheet:
             cell.style = self.date_dov_title
             self.ws[i].merge_cells('J3:R3')
             cell = self.ws[i].cell(row=3, column=19)  # calculate number of carriers
-            formula = ""
+            formula = "=%s!%s%s" % ("overview", "H", "3")
             cell.value = formula
             cell.style = self.calcs
 
@@ -559,22 +667,18 @@ class OTEquitSpreadsheet:
                 cell.value = "ot"
                 cell.style = self.ref_ot
                 cell = self.ws[i].cell(row=row, column=19)  # ref weekly total
-                formula = ""
+                formula = "=SUM(%s%s,%s%s,%s%s,%s%s,%s%s,%s%s,%s%s)" \
+                          % ("F", str(row), "H", str(row), "J", str(row), "L", str(row), "N", str(row),
+                             "P", str(row), "R", str(row))
                 cell.value = formula
                 cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
                 cell = self.ws[i].cell(row=row + 1, column=19)  # overtime weekly total
-                formula = ""
+                formula = "=SUM(%s%s:%s%s)" % ("E", str(row+1), "Q", str(row+1))
                 cell.value = formula
                 cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
                 row += 2
-
-    def start_column(self):  # returns the column position of the startdate as an odd number (5 to 17)
-        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-        i = 5  # since the first column is "E", start the column at 5.
-        for day in days:  # loop through tuple of days
-            if self.startdate.strftime("%A") == day:  # if the startdate matches the day
-                return i  # returns the column of the first date
-            i += 2  # increment the counter by two to skip over the refusals field
 
     @staticmethod
     def get_triad_merge(row, column):  # returns a string for for merge in triad group
@@ -589,28 +693,115 @@ class OTEquitSpreadsheet:
             ringrefset = self.ringrefset[carrier][date]  # get the ring ref set for that carrier and date
         return ringrefset
 
-    def build_triads(self):
-        row = 6
-        for c in range(len(self.carrier_overview)):
-            week_index = 0
-            column = self.start_column()
-            for i in range(len(self.date_array)):
-                ringrefset = self.get_triad_refset(c, i)
-                cell = self.ws[week_index].cell(row=row, column=column)  # refusal indicator field
-                cell.value = ringrefset[1]
-                cell.style = self.input_s
-                cell = self.ws[week_index].cell(row=row, column=column+1)  # refusal time field
-                cell.value = ringrefset[2]
-                cell.style = self.input_s
-                cell = self.ws[week_index].cell(row=row+1, column=column)  # overtime field
-                cell.value = ringrefset[0]
-                cell.style = self.input_s
-                self.ws[week_index].merge_cells(self.get_triad_merge(row, column))  # merge overtime field
-                column += 2
-                if column >= 19:
-                    column = 5
-                    week_index += 1
-            row += 2
+    def triads_delegator(self):
+        self.triad_row = 6
+        for c in range(len(self.carrier_overview)):  # for each carrier including empty sets for minimum rows
+            self.triad_week_index = 0  # week starts at zero
+            self.triad_column = 5  # column starts at first day due to front padding
+            for i in range(105):  # loop for self.front_padding + len(self.date_array) + self.end_padding
+                self.build_triads(c, i)
+            self.triad_row += 2
+
+    def build_triads(self, c, i):
+        ringrefset = self.get_triad_refset(c, i)
+        # refusal indicator field
+        cell = self.ws[self.triad_week_index].cell(row=self.triad_row, column=self.triad_column)
+        cell.value = ringrefset[1]
+        cell.style = self.input_s
+        # refusal time field
+        cell = self.ws[self.triad_week_index].cell(row=self.triad_row, column=self.triad_column + 1)
+        cell.value = Handler(ringrefset[2]).str_to_float_or_str()
+        cell.style = self.input_s
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        # overtime field
+        cell = self.ws[self.triad_week_index].cell(row=self.triad_row + 1, column=self.triad_column)
+        cell.value = Handler(ringrefset[0]).str_to_float_or_str()
+        cell.style = self.input_s
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        # merge overtime field
+        self.ws[self.triad_week_index].merge_cells(self.get_triad_merge(self.triad_row, self.triad_column))
+        self.triad_column += 2
+        if self.triad_column >= 19:
+            self.triad_column = 5
+            self.triad_week_index += 1
+
+    def build_worksheet_footer(self):
+        column_dict = {5: "E", 6: "F", 7: "G", 9: "I", 11: "K", 13: "M", 15: "O", 17: "Q"}
+        for i in range(len(self.ws)):  # for each worksheet
+            cell = self.ws[i].cell(row=self.footer_row, column=4)  # total overtime label
+            cell.value = "total overtime:  "
+            cell.style = self.date_dov_title
+            cell = self.ws[i].cell(row=self.footer_row+2, column=4)  # average overtime label
+            cell.value = "average overtime:  "
+            cell.style = self.date_dov_title
+            column_array = (5, 7, 9, 11, 13, 15, 17)
+            for col in column_array:  # loop though for each column
+                cell = self.ws[i].cell(row=self.footer_row, column=col)
+                formula = self.get_totalovertime_formula(7, col)
+                cell.value = formula
+                cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+                merge_string = self.get_triad_merge(self.footer_row-1, col)  # subtact 1 from row to match function
+                self.ws[i].merge_cells(merge_string)
+                cell = self.ws[i].cell(row=self.footer_row+2, column=col)
+                formula = "=%s%s/$S$3" % (column_dict[col], self.footer_row)
+                cell.value = formula
+                cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+                merge_string = self.get_triad_merge(self.footer_row + 1, col)  # subtact 1 from row to match function
+                self.ws[i].merge_cells(merge_string)
+
+    def build_instructions(self):
+        cell = self.instructions.cell(row=1, column=1)  # page title
+        cell.value = "OTDL Equitability Worksheet"
+        cell.style = self.ws_header
+        self.instructions.merge_cells('A1:E1')
+        cell = self.instructions.cell(row=3, column=1)  # page title
+        cell.value = "Instructions"
+        cell.style = self.col_header_instructions
+        self.instructions.merge_cells('A1:E1')
+        cell = self.instructions.cell(row=5, column=1)
+        text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in \n" \
+               "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
+                "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages \n" \
+               "will import the name so that you don’t have to write it 15 times.\n\n" \
+                "2. STATUS:  Enter the status on the first page only. Again formulas will do the work \n" \
+                "and copy it to other pages. Enter “12”, “10” or “off” for 12 hour preference, 10 hour \n" \
+                "preference or the carrier has gotten off the list. Leave the field blank if there is no \n" \
+                "carrier. Failure to follow these instructions will result in the formulas calculating the \n" \
+                "averages not working properly.\n\n" \
+                "3.  MAKE UP:  This applies to make up opportunities from grievance settlements. \n" \
+               "See JCAM Article 8.5.C.2 Remedies. This value is given in hours and clicks e.g. \n" \
+               "5.32 or 14.00.\n\n" \
+                "4. REFUSALS/OVERTIME: This displays refusals and overtime worked.\n\n" \
+                "5. OPPORTUNITIES:   This displays total opportunities for overtime. This is all \n" \
+               "refusals + overtime.\n\n" \
+                "6. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average \n" \
+               "overtime of all carriers and the individual carrier’s difference from that. If they have \n" \
+               "more than average, the number will be positive otherwise it will be negative. This will \n" \
+               "be the core of your case in your grievance for OTDL equitability violations.\n" \
+                "There are 15 worksheets. Each on represents a service week. Start with the first \n" \
+                "week and proceed day by day.\n\n" \
+                "7. For each day and each carrier there are are groups of three cells.\n\n" \
+                "TOP LEFT (smaller) CELL:  This is a one letter explanation for any refusal: You can\n" \
+                "use your own system, but my suggestions are: “p” for preference (the carrier \n" \
+                "refused on the grounds that they are on the 10 hour list), “a” for annual \n" \
+                "(the carrier missed overtime opportunities due to being on annual leave), “s” for sick \n" \
+                "leave, for non scheduled day (the carrier worked on their nonscheduled day – see JCAM \n" \
+                "Article 8.5.C.2.d Not Counted Toward “Equitability), “x” for exceptional \n" \
+                "circumstances (see JCAM Article 8.5.E - Exceptional Situations May Excuse \n" \
+                "Mandatory Overtime) and “r” for refusal (the carrier tells the supervisor to go jump \n" \
+                "in a lake).\n\n" \
+                "TOP RIGHT CELL: This is the amount of overtime that the carrier refused or was \n" \
+                "unable to work.\n\n" \
+                "BOTTOM CELL: This is overtime worked. Normally these is overtime worked off \n" \
+                "the carrier’s own route, but it could mean any overtime depending on any local \n" \
+                "agreements with management (LMOUs).\n\n" \
+                "At the very bottom , there are totals and averages for the day. These are for your \n" \
+                "information.\n"
+        cell.value = text
+        cell.style = self.instruct_text
+        self.instructions.merge_cells('A5:I47')
 
     def save_open(self):  # name the excel file
         quarter = self.full_quarter.replace(" ", "")

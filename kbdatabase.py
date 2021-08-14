@@ -103,7 +103,7 @@ class DataBase:
             (22, "pb_wal_otdl", "True"),
             (23, "pb_otdl_aux", "True"),
             (24, "invran_mode", "simple"),
-            (25, "min_ot_equit", 20),
+            (25, "min_ot_equit", 19),
             (26, "ot_calc_pref", "off_route")
         )
         for tol in tolerance_array:

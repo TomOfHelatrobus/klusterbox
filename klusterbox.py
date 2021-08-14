@@ -13265,7 +13265,7 @@ class MainFrame:
         ii = 1
         for line in self.carrier_list:
             rec_count = 0
-            # detect any out of station records and modify recset
+            # detect any out of station records and modify recset - function returns arrays with (startdate, carrier)
             line = CarrierRecFilter(line, self.start_date).detect_outofstation(projvar.invran_station)
             # if the row is even, then choose a color for it
             if i & 1:
@@ -13395,7 +13395,6 @@ class MainFrame:
             speed_menu.entryconfig(0, state=DISABLED)
             speed_menu.entryconfig(1, state=DISABLED)
         speed_menu.add_separator()
-        speed_menu.add_command(label="Speedsheets Archive", command= lambda: file_dialogue(dir_path('speedsheets')))
         speed_menu.add_command(label="Cheatsheet",
                                command=lambda: OpenText().open_docs(self.win.body, 'cheatsheet.txt'))
         speed_menu.add_command(label="Instructions",

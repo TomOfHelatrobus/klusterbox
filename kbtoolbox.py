@@ -639,6 +639,13 @@ class Handler:
         else:
             return self.data
 
+    def str_to_float_or_str(self):
+        try:
+            self.data = float(self.data)
+            return self.data
+        except ValueError:
+            return self.data
+
     @staticmethod
     def route_adj(route):  # convert five digit route numbers to four when the route number > 99
         if len(route) == 5:  # when the route number is five digits
@@ -1214,7 +1221,7 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
             if rec[5] == station:
                 record_set.append(rec)
             else:
-                to_add = [self.startdate, self.carrier]  # out of station records only date and name
+                to_add = [str(self.startdate), self.carrier]  # out of station records only date and name
                 record_set.append(to_add)
         return record_set
 
