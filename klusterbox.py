@@ -162,15 +162,29 @@ class RefusalWin:
             i += 3  # increment the counter
 
     def build_header(self):
-        Label(self.win.body, text="Refusals", font=macadj("bold", "Helvetica 18"), anchor="w") \
+        Label(self.win.body, text="Refusals: {}".format(self.carrier_name),
+              font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=self.row, column=0, sticky="w", columnspan=20)
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row)
+        self.row += 1
+        Label(self.win.body, text="Investigation Range: {} though {}"
+              .format(self.startdate.strftime("%m/%d/%Y"), self.enddate.strftime("%m/%d/%Y")))\
+            .grid(row=self.row, columnspan=20, sticky="w")
+        self.row += 1
+        Label(self.win.body, text="Station: {}".format(self.station)) \
+            .grid(row=self.row, columnspan=20, sticky="w")
+        self.row += 1
+        text = "Fill in the Refusal Indicator (optional) in the small field and any Refusal " \
+               "Times in the large field. "
+        Label(self.win.body, text=text, anchor="e", justify=LEFT).grid(row=self.row, columnspan=20)
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row)
         self.row += 1
         column = 0
         days = ("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri")
         for day in days:
-            Label(self.win.body, width=7, text=day, anchor="w")\
+            Label(self.win.body, width=7, text=day, anchor="w", fg="Blue")\
                 .grid(row=self.row, column=column+1, columnspan=3, sticky="w")
             column += 3
         self.row += 1
@@ -204,21 +218,31 @@ class RefusalWin:
 
     def buttons_frame(self):
         button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20,
-                      command=lambda: OtEquitability().create_from_refusals(self.win.topframe,
-                                                                            self.enddate, self.station))
+        button.config(text="Submit", width=20,
+                      command=lambda: self.apply(True))  # apply and do no return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
+
         button = Button(self.win.buttons)
-        button.config(text="Apply", width=20, command=lambda:self.apply())
+        button.config(text="Apply", width=20,
+                      command=lambda: self.apply(False))  # apply and do no return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
+
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20,
+                      command=lambda: OtEquitability()
+                      .create_from_refusals(self.win.topframe, self.enddate, self.station))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+
         self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
 
-    def apply(self):
+    def apply(self, home):
         # loop through all stringvars and check for errors
         for i in range(len(self.type_vars)):
             if not self.checktypes(i):  # check the refusal indicator
@@ -236,8 +260,10 @@ class RefusalWin:
                         self.delete(i)  # delete the record
                     else:  # if there is a time
                         self.update(i)  # update the record
-        # create a new object and recreate the window
-        RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate, self.station)
+        if home:  # return to the OT Preference screen
+            OtEquitability().create_from_refusals(self.win.topframe, self.enddate, self.station)
+        else:  # create a new object and recreate the window
+            RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate, self.station)
 
     def checktypes(self, i):
         type_var = self.type_vars[i].get().strip()
@@ -706,7 +732,7 @@ class OtEquitability:
             return False
         return True
 
-    def apply(self):
+    def apply(self, home):
         if not self.check_all():
             return
         updates = 0
@@ -728,8 +754,11 @@ class OtEquitability:
                 update = True
             if update:
                 updates += 1
-        self.status_report(updates)
-        self.reset_onrecs_and_vars()
+        if home:
+            MainFrame().start(self.win.topframe)
+        else:
+            self.status_report(updates)
+            self.reset_onrecs_and_vars()
 
     def reset_onrecs_and_vars(self):
         for i in range (len(self.pref_var)):
@@ -746,12 +775,25 @@ class OtEquitability:
 
     def buttons_frame(self):
         button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        button.config(text="Submit", width=17, command=lambda: self.apply(True))  # apply and return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
         button = Button(self.win.buttons)
-        button.config(text="Apply", width=20, command=lambda:self.apply())
+        button.config(text="Apply", width=18, command=lambda: self.apply(False))  # apply and no not return to main
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=18, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        # generate spreadsheet
+        button = Button(self.win.buttons)
+        button.config(text="SpreadSheet", width=17,
+                      command = lambda: OTEquitSpreadsheet()
+                      .create(self.win.topframe, self.startdate, self.quartinvran_station.get()))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
