@@ -39,7 +39,7 @@ from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
-version = "4.002"
+version = "4.003"
 release_date = "June 28, 2021"
 """
  _   _ _                             _

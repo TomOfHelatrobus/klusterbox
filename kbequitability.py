@@ -73,6 +73,8 @@ class QuarterRecs:
 class OTEquitSpreadsheet:
     def __init__(self):
         self.frame = None
+        self.pb = None  # the progress bar object
+        self.pbi = None  # progress bar counter index
         self.date = None
         self.station = None
         self.year = None
@@ -89,8 +91,10 @@ class OTEquitSpreadsheet:
         self.otcalcpref = "off_route"  # preference for overtime calculation - "off_route" or "all"
         self.carrier_overview = []  # a list of carrier's name, status and makeups
         self.date_array = []  # a list of all days in the quarter as a datetimes
+        self.assignment_check = []  # multidimensional array of carriers and days with no bid assignment
         self.front_padding = 0  # number of empty triad to fill worksheet prior to startdate
         self.end_padding = 0  # number of empty trids to fill worksheet prior to enddate
+        self.end_pad_indicator = 0  # shows days after last day for triad builder
         self.ringrefset = []  # multidimensional array - daily rings/refusals for each otdl carrier
         self.dates_breakdown = []  # a list of dates for display on spreadsheets
         self.week = ("w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12",
@@ -113,6 +117,7 @@ class OTEquitSpreadsheet:
         self.col_header_instructions = None
         self.input_name = None
         self.input_s = None
+        self.input_blue = None
         self.input_center = None
         self.calcs = None
         self.ws_name = None
@@ -123,6 +128,12 @@ class OTEquitSpreadsheet:
         self.frame = frame
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
+        self.pb = ProgressBarDe()
+        self.pb.max_count(10)  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
         self.station = station
         self.date = date  # a datetime object from the quarter is passed and used as date
         self.breakdown_date()  # the passed datetime object is broken down into year and month
@@ -134,6 +145,7 @@ class OTEquitSpreadsheet:
         self.get_carier_overview()  # build a list of carrier's name, status and makeups
         self.carrier_overview_add()  # adds empty sets so the lenght of carrier overview = minimum rows.
         self.get_date_array()  # get a list of all days in the quarter as datetime objects
+        self.get_assignment_check()  # get a multidimensional array of carriers time spent off assignment.
         self.get_front_padding()  # get number of empty triads needed to pad prior to startdate
         self.get_end_padding()  # get number of empty triads needed to pad after enddate
         self.get_ringrefset()  # build multidimensional array - daily rings/refusals for each carrier
@@ -182,7 +194,6 @@ class OTEquitSpreadsheet:
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         i = 6  #
         for day in days:  # loop through tuple of days"
-
             if self.startdate.strftime("%A") == day:  # if the startdate matches the day
                 return i  # returns the column of the first date
             i -= 1  # count down from Saturday
@@ -231,6 +242,9 @@ class OTEquitSpreadsheet:
             return ""
 
     def get_carier_overview(self):  # build a list of carrier's name, status and makeups
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Carrier Data... ")  # update progress bar text
         for recs in self.recset:  # loop through the recsets
             carrier = recs[0][1]  # get the carrier name
             status = "off"  # default status is off
@@ -256,16 +270,60 @@ class OTEquitSpreadsheet:
 
     def get_end_padding(self):  # get number of empty triads needed after enddate to fill worksheet
         self.end_padding = 105 - (self.front_padding + len(self.date_array))
+        self.end_pad_indicator = self.front_padding + len(self.date_array)
+
+    def get_assignment_check(self):  # get a multidimensional array of carriers time with no bid assignment
+        for i in range(len(self.carrier_overview)):
+            if not self.carrier_overview[i][0]:  # if the carrier is not empty set for minimum rows
+                self.assignment_check.append([])  # add empty into the array
+            elif not self.check_for_unassigned(i):  # if there is not a record with no assignment
+                self.assignment_check.append([])  # add empty into the array
+            else:  # if there is a carrier and they have been unassigned at some point in the quarter
+                self.assignment_check.append([])  # add to the array
+                self.get_unassigned(i)  # fill it with dates in which carrier was unassigned
+
+    def check_for_unassigned(self, i):  # check for any records where otdl carrier is unassigned
+        for rec in self.recset[i]:
+            if rec[4] == "" or rec[4] == "0000":
+                return True
+        return False
+
+    def get_unassigned(self, i):  # get a list of datetimes for periods where a carrier is unassigned.
+        loop = 0
+        dates = self.get_unassigned_dates(i)
+        for revrec in reversed(self.recset[i]):
+            if not revrec[4]:  # if there is no assignment for the record
+                date = max(Convert(revrec[0]).dt_converter(), self.startdate)  # handle RPRs, default to date in range
+                if loop + 1 != len(self.recset[i]):  # if there is at least one more record in the set
+                    while date < dates[loop + 1]:  # until the date matchs the next
+                        self.assignment_check[i].append(date)
+                        date += timedelta(days=1)
+                if loop + 1 == len(self.recset[i]):  # if this is the last record in the set
+                    while date != self.enddate + timedelta(days=1):
+                        self.assignment_check[i].append(date)
+                        date += timedelta(days=1)
+            loop += 1
+
+    def get_unassigned_dates(self, i):  # get reversed list of effective dates from the recset
+        dates = []
+        for revrec in reversed(self.recset[i]):
+            dates.append(Convert(revrec[0]).dt_converter())
+        return dates
 
     def get_ringrefset(self):    # build multidimensional array - daily rings/refusals for each otdl carrier
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
         for i in range(len(self.carrier_overview)):
+            # update progress bar text
+            self.pb.change_text("Gathering Carrier Rings: {}/{} ".format(i, len(self.carrier_overview)))
             self.ringrefset.append([])  # each carrier has an array
             self.get_daily_ringrefs(i)
 
-    def get_overtime(self, total, moves, code):  # find the overtime pending ot calculation preference and ns day code
-        if self.otcalcpref == "off_route":
+    def get_overtime(self, total, moves, code, has_route):
+        # find the overtime pending ot calculation preference and ns day code
+        if self.otcalcpref == "off_route" and has_route:
             return Overtime().proper_overtime(total, moves, code)
-        else:
+        else:  # default to straight overtime if the carrier has no route.
             return Overtime().straight_overtime(total, code)
 
     def get_daily_ringrefs(self, index):
@@ -275,6 +333,9 @@ class OTEquitSpreadsheet:
             add_this = ["", "", ""]
             daily_ringref.append(add_this)
         for date in self.date_array:  # get the ringrefs from the database or empty if none
+            has_route = True  # notes that the carrier has a bid assignment
+            if date in self.assignment_check[index]:  # if the date matchs a date where the carrier had no assignment
+                has_route = False  # note that the carrier had no assignment
             overtime = ""
             sql = "SELECT total, code, moves FROM rings3 WHERE rings_date = '%s' AND carrier_name = '%s'" \
                   % (date, carrier)
@@ -283,7 +344,7 @@ class OTEquitSpreadsheet:
                 total = results[0][0]
                 code = results[0][1]
                 moves = Moves().timeoffroute(results[0][2])  # calculate the time off route
-                overtime = self.get_overtime(total, moves, code)  # find the overtime
+                overtime = self.get_overtime(total, moves, code, has_route)  # find the overtime
             ref_type = ""
             ref_time = ""
             sql = "SELECT refusal_type, refusal_time FROM refusals WHERE refusal_date = '%s' AND carrier_name = '%s'" \
@@ -303,10 +364,10 @@ class OTEquitSpreadsheet:
         date = self.startdate
         days_til_end = self.starting_day()
         if not days_til_end:
-            display_date = date.strftime("%m/%d/%Y")
+            display_date = date.strftime("%a %m/%d/%Y")
         else:
             enddate = date + timedelta(days=days_til_end)
-            display_date = date.strftime("%m/%d/%Y") + " through " + enddate.strftime("%m/%d/%Y")
+            display_date = date.strftime("%a %m/%d/%Y") + " through " + enddate.strftime("%a %m/%d/%Y")
         self.dates_breakdown.append(display_date)
         date += timedelta(days=days_til_end + 1)
         for _ in range(14):  # loop once for each week
@@ -319,6 +380,9 @@ class OTEquitSpreadsheet:
         self.footer_row = (len(self.carrier_overview) * 2) + 7
 
     def build_workbook(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Workbook... ")  # update progress bar text
         self.ws = []
         self.wb = Workbook()  # define the workbook
         self.overview = self.wb.active  # create first worksheet
@@ -377,6 +441,13 @@ class OTEquitSpreadsheet:
         self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
                              border=Border(left=bd, right=bd, top=bd, bottom=bd),
                              alignment=Alignment(horizontal='right'))
+        self.input_blue = NamedStyle(name="input_blue", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                  fill=PatternFill(fgColor='79CDCD', fill_type='lightVertical'),
+                                  alignment=Alignment(horizontal='right'))
+        """fill_type: Value must be one of {'darkTrellis', 'darkGrid', 'lightVertical', 'darkDown', 'solid', 'lightUp', 
+        'lightHorizontal', 'mediumGray', 'lightTrellis', 'darkHorizontal', 'darkGray', 'lightGray', 'darkVertical', 
+        'gray125', 'darkUp', 'gray0625', 'lightDown', 'lightGrid'"""
         self.input_center = NamedStyle(name="input_center", font=Font(name='Arial', size=8),
                                   border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                   alignment=Alignment(horizontal='center'))
@@ -451,6 +522,9 @@ class OTEquitSpreadsheet:
         cell.style = self.col_center_header
 
     def build_main_overview(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Overview... ")  # update progress bar text
         row = 6
         for i in range(len(self.carrier_overview)):
             self.overview.row_dimensions[row].height = 13
@@ -525,7 +599,7 @@ class OTEquitSpreadsheet:
         the row argument is the starting row of the count,
         the column is given as a number and matched to a letter with the dictionary
         """
-        column_dict = {5: "E", 6: "F", 7: "G", 9: "I", 11: "K", 13: "M", 15: "O", 17: "Q"}
+        column_dict = {5: "E", 6: "F", 7: "G", 9: "I", 11: "K", 13: "M", 15: "O", 17: "Q", 19: "S"}
         string = "=SUM("
         while row < self.footer_row-2:
             string += "{}{},".format(column_dict[column], row)
@@ -568,6 +642,9 @@ class OTEquitSpreadsheet:
         cell.style = self.col_header
 
     def build_header_weeklysheets(self):  # build the header for the weekly worksheet
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Weekly Worksheets - Headers ")  # update progress bar text
         for i in range(15):
             cell = self.ws[i].cell(row=1, column=1)  # page title
             cell.value = "OTDL Equitability Worksheet"
@@ -647,6 +724,9 @@ class OTEquitSpreadsheet:
             cell.style = self.col_center_header
 
     def build_main_worksheets(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Weekly Worksheets - Body ")  # update progress bar text
         for i in range(len(self.ws)):  # for each worksheet
             row = 6
             for _ in range(len(self.carrier_overview)):  # for each carrier or empty set (get reach minimum rows)
@@ -663,7 +743,7 @@ class OTEquitSpreadsheet:
                 cell = self.ws[i].cell(row=row, column=4)  # ref label
                 cell.value = "ref"
                 cell.style = self.ref_ot
-                cell = self.ws[i].cell(row=row+1, column=4)  # ref label
+                cell = self.ws[i].cell(row=row+1, column=4)  # ot label
                 cell.value = "ot"
                 cell.style = self.ref_ot
                 cell = self.ws[i].cell(row=row, column=19)  # ref weekly total
@@ -694,29 +774,41 @@ class OTEquitSpreadsheet:
         return ringrefset
 
     def triads_delegator(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
         self.triad_row = 6
         for c in range(len(self.carrier_overview)):  # for each carrier including empty sets for minimum rows
+            # update progress bar text
+            self.pb.change_text("Building Weekly Worksheets - Triad Groups: row {}/{}"
+                                .format(c, len(self.carrier_overview)))
             self.triad_week_index = 0  # week starts at zero
             self.triad_column = 5  # column starts at first day due to front padding
             for i in range(105):  # loop for self.front_padding + len(self.date_array) + self.end_padding
                 self.build_triads(c, i)
             self.triad_row += 2
 
+    def triad_style(self, i):
+        if i < self.front_padding:
+            return self.input_blue
+        if i >= self.end_pad_indicator:
+            return self.input_blue
+        return self.input_s
+
     def build_triads(self, c, i):
         ringrefset = self.get_triad_refset(c, i)
         # refusal indicator field
         cell = self.ws[self.triad_week_index].cell(row=self.triad_row, column=self.triad_column)
         cell.value = ringrefset[1]
-        cell.style = self.input_s
+        cell.style = self.triad_style(i)
         # refusal time field
         cell = self.ws[self.triad_week_index].cell(row=self.triad_row, column=self.triad_column + 1)
         cell.value = Handler(ringrefset[2]).str_to_float_or_str()
-        cell.style = self.input_s
+        cell.style = self.triad_style(i)
         cell.number_format = "#,###.00;[RED]-#,###.00"
         # overtime field
         cell = self.ws[self.triad_week_index].cell(row=self.triad_row + 1, column=self.triad_column)
         cell.value = Handler(ringrefset[0]).str_to_float_or_str()
-        cell.style = self.input_s
+        cell.style = self.triad_style(i)
         cell.number_format = "#,###.00;[RED]-#,###.00"
         # merge overtime field
         self.ws[self.triad_week_index].merge_cells(self.get_triad_merge(self.triad_row, self.triad_column))
@@ -726,7 +818,7 @@ class OTEquitSpreadsheet:
             self.triad_week_index += 1
 
     def build_worksheet_footer(self):
-        column_dict = {5: "E", 6: "F", 7: "G", 9: "I", 11: "K", 13: "M", 15: "O", 17: "Q"}
+        column_dict = {5: "E", 6: "F", 7: "G", 9: "I", 11: "K", 13: "M", 15: "O", 17: "Q", 19: "S"}
         for i in range(len(self.ws)):  # for each worksheet
             cell = self.ws[i].cell(row=self.footer_row, column=4)  # total overtime label
             cell.value = "total overtime:  "
@@ -750,8 +842,21 @@ class OTEquitSpreadsheet:
                 cell.number_format = "#,###.00;[RED]-#,###.00"
                 merge_string = self.get_triad_merge(self.footer_row + 1, col)  # subtact 1 from row to match function
                 self.ws[i].merge_cells(merge_string)
+            cell = self.ws[i].cell(row=self.footer_row, column=19)
+            formula = self.get_totalovertime_formula(7, 19)
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            cell = self.ws[i].cell(row=self.footer_row + 2, column=19)
+            formula = "=%s%s/$S$3" % (column_dict[19], self.footer_row)
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
 
     def build_instructions(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Instructions... ")  # update progress bar text
         cell = self.instructions.cell(row=1, column=1)  # page title
         cell.value = "OTDL Equitability Worksheet"
         cell.style = self.ws_header
@@ -804,6 +909,9 @@ class OTEquitSpreadsheet:
         self.instructions.merge_cells('A5:I47')
 
     def save_open(self):  # name the excel file
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving Workbook... ")  # update progress bar text
         quarter = self.full_quarter.replace(" ", "")
         xl_filename = "ot_equit_" + quarter + ".xlsx"
         try:
@@ -825,4 +933,4 @@ class OTEquitSpreadsheet:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
-
+        self.pb.stop()
