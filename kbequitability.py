@@ -1,13 +1,11 @@
 # custom modules
-import projvar  # holds variables, including root, for use in all modules
 from kbtoolbox import *
 from tkinter import messagebox
 import os
+import subprocess
 # Spreadsheet Libraries
-from openpyxl import load_workbook
 from openpyxl import Workbook
-from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill, Protection
-from openpyxl.worksheet.pagebreak import Break
+from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill
 
 
 class QuarterRecs:
@@ -318,7 +316,6 @@ class OTEquitSpreadsheet:
 
     def get_ringrefset(self):    # build multidimensional array - daily rings/refusals for each otdl carrier
         self.pb.max_count(8 + (len(self.carrier_overview)*2))  # set length of progress bar
-        print(8 + (len(self.carrier_overview)*2))
         for i in range(len(self.carrier_overview)):
             # update progress bar text
             self.pb.change_text("Gathering Carrier Rings: {}/{} ".format(i, len(self.carrier_overview)))
@@ -925,7 +922,6 @@ class OTEquitSpreadsheet:
         self.pbi += 1  # increment progress bar counter
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving Workbook... ")  # update progress bar text
-        print(self.pbi)
         quarter = self.full_quarter.replace(" ", "")
         xl_filename = "ot_equit_" + quarter + ".xlsx"
         try:

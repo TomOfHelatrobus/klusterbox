@@ -1,5 +1,5 @@
 # custom modules
-import projvar  # holds variables, including root, for use in all modules
+# import projvar  # holds variables, including root, for use in all modules
 from kbreports import Reports, Messenger
 from kbtoolbox import *
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
@@ -26,14 +26,12 @@ from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
 from openpyxl import load_workbook
 from openpyxl import Workbook
-from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill, Protection
-from openpyxl.worksheet.pagebreak import Break
+from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill
 # PDF Converter Libraries
-import chardet
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter, resolve1
-from pdfminer.converter import TextConverter, PDFPageAggregator
+from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
@@ -164,27 +162,27 @@ class RefusalWin:
     def build_header(self):
         Label(self.win.body, text="Refusals: {}".format(self.carrier_name),
               font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, column=0, sticky="w", columnspan=20)
+            .grid(row=self.row, column=0, sticky="w", columnspan=27)
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row)
         self.row += 1
         Label(self.win.body, text="Investigation Range: {} though {}"
               .format(self.startdate.strftime("%m/%d/%Y"), self.enddate.strftime("%m/%d/%Y")), fg="red")\
-            .grid(row=self.row, columnspan=20, sticky="w")
+            .grid(row=self.row, columnspan=macadj(20, 27), sticky="w")
         self.row += 1
         Label(self.win.body, text="Station: {}".format(self.station)) \
-            .grid(row=self.row, columnspan=20, sticky="w")
+            .grid(row=self.row, columnspan=macadj(20, 27), sticky="w")
         self.row += 1
         text = "Fill in the Refusal Indicator (optional) in the small field and any Refusal " \
                "Times in the large field. "
-        Label(self.win.body, text=text, anchor="e", justify=LEFT).grid(row=self.row, columnspan=20)
+        Label(self.win.body, text=text, anchor="e", justify=LEFT).grid(row=self.row, columnspan=macadj(20, 27))
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row)
         self.row += 1
         column = 0
         days = ("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri")
         for day in days:
-            Label(self.win.body, width=7, text=day, anchor="w", fg="Blue")\
+            Label(self.win.body, width=macadj(7, 3), text=day, anchor="w", fg="Blue")\
                 .grid(row=self.row, column=column+1, columnspan=3, sticky="w")
             column += 3
         self.row += 1
@@ -192,14 +190,14 @@ class RefusalWin:
     def build(self):
         column = self.start_column()
         for i in range(len(self.time_vars)):
-            Label(self.win.body, width=2, text="").grid(row=self.row, column=column)  # blank column
+            Label(self.win.body, width=macadj(2, 0), text="").grid(row=self.row, column=column)  # blank column
             column += 1
-            Label(self.win.body, width=7, text=self.displaydate[i], fg="Gray", anchor="w")\
+            Label(self.win.body, width=macadj(7, 4), text=self.displaydate[i], fg="Gray", anchor="w")\
                 .grid(row=self.row, column=column, columnspan=2, sticky="w")  # display date
-            Entry(self.win.body, width=2, textvariable=self.type_vars[i])\
+            Entry(self.win.body, width=macadj(2, 1), textvariable=self.type_vars[i])\
                 .grid(row=self.row+1, column=column, sticky="w")  # entry field for type
             column += 1
-            Entry(self.win.body, width=5, textvariable=self.time_vars[i])\
+            Entry(self.win.body, width=macadj(5, 4), textvariable=self.time_vars[i])\
                 .grid(row=self.row+1, column=column, sticky="w")  # entry field for time
             column += 1
             if column >= 21:  # if the row is full
@@ -218,21 +216,21 @@ class RefusalWin:
 
     def buttons_frame(self):
         button = Button(self.win.buttons)
-        button.config(text="Submit", width=20,
+        button.config(text="Submit", width=macadj(20, 21),
                       command=lambda: self.apply(True))  # apply and do no return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
 
         button = Button(self.win.buttons)
-        button.config(text="Apply", width=20,
+        button.config(text="Apply", width=macadj(20, 21),
                       command=lambda: self.apply(False))  # apply and do no return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
 
         button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20,
+        button.config(text="Go Back", width=macadj(20, 21),
                       command=lambda: OtEquitability()
                       .create_from_refusals(self.win.topframe, self.enddate, self.station))
         if sys.platform == "win32":
@@ -401,7 +399,7 @@ class OtEquitability:
         self.makeup_var = []
         self.onrec_prefs_carriers = []
         self.onrec_prefs = []
-        self.onrec_makeups =[]
+        self.onrec_makeups = []
         # self.status_update = None
         self.delete_report = []  # list of ineligible carriers to be deleted from otdl prefence table
         self.frame = frame  # define the frame
@@ -505,13 +503,18 @@ class OtEquitability:
         Label(self.win.body, text="QUARTERLY INVESTIGATION RANGE").grid(row=self.row, column=0, columnspan=20,
                                                                         sticky="w")
         self.row += 1
-        Label(self.win.body, text="Year: ", fg="Gray", anchor="w").grid(row=self.row, column=0, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.quartinvran_year).grid(row=self.row, column=1, sticky="w")
-        Label(self.win.body, text="Quarter: ", fg="Gray").grid(row=self.row, column=2, sticky="w")
-        Entry(self.win.body, width=2, textvariable=self.quartinvran_quarter).grid(row=self.row, column=3, sticky="w")
-        Label(self.win.body, text="Station: ", fg="Gray").grid(row=self.row, column=4, sticky="w")
+        Label(self.win.body, text=macadj("Year: ", "Year:"), fg="Gray", anchor="w")\
+            .grid(row=self.row, column=0, sticky="w")
+        Entry(self.win.body, width=macadj(5, 4), textvariable=self.quartinvran_year)\
+            .grid(row=self.row, column=1, sticky="w")
+        Label(self.win.body, text=macadj("Quarter: ", "Quarter:"), fg="Gray")\
+            .grid(row=self.row, column=2, sticky="w")
+        Entry(self.win.body, width=macadj(2, 1), textvariable=self.quartinvran_quarter)\
+            .grid(row=self.row, column=3, sticky="w")
+        Label(self.win.body, text=macadj("Station: ", "Station:"), fg="Gray")\
+            .grid(row=self.row, column=4, sticky="w")
         om_station = OptionMenu(self.win.body, self.quartinvran_station, *self.stations_minus_outofstation)
-        om_station.config(width=macadj(31, 29))
+        om_station.config(width=macadj(31, 23))
         om_station.grid(row=self.row, column=5, columnspan=4, sticky=W, padx=2)
         # set and reset buttons for investigation range
         Button(self.win.body, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
@@ -667,7 +670,7 @@ class OtEquitability:
             subprocess.call(["open", dir_path('report') + filename])
 
     def build_header(self):
-        Label(self.win.body, text ="Name", fg="Gray").grid(row=self.row, column=1, sticky="w")
+        Label(self.win.body, text="Name", fg="Gray").grid(row=self.row, column=1, sticky="w")
         Label(self.win.body, text="Preference", fg="Gray").grid(row=self.row, column=5, sticky="w")
         Label(self.win.body, text="Make up", fg="Gray").grid(row=self.row, column=6, sticky="w")
         Label(self.win.body, text="Status", fg="Gray").grid(row=self.row, column=7, sticky="w")
@@ -684,8 +687,8 @@ class OtEquitability:
             om_pref = OptionMenu(self.win.body, self.pref_var[i], "12", "10", "track")
             om_pref.config(width=4)
             om_pref.grid(row=self.row, column=5, sticky="w")
-            Entry(self.win.body, textvariable=self.makeup_var[i], width=8, justify='right')\
-                .grid(row=self.row, column=6, sticky="w")
+            Entry(self.win.body, textvariable=self.makeup_var[i], width=macadj(8, 6), justify='right')\
+                .grid(row=self.row, column=6, sticky="w")  # make ups entry field
             status = "on"
             fg = "black"
             if self.get_status(carrier) == "off":  # if there is an error, display in red
@@ -695,7 +698,7 @@ class OtEquitability:
             consistant = "ok"
             fg = "black"
             if self.check_consistancy(carrier):  # if there is an error, display in red
-                consistant="error"
+                consistant = "error"
                 fg = "red"
             Label(self.win.body, text=consistant, fg=fg, anchor="w").grid(row=self.row, column=8, sticky="w")
             Button(self.win.body, text="report",
@@ -766,7 +769,7 @@ class OtEquitability:
             self.reset_onrecs_and_vars()
 
     def reset_onrecs_and_vars(self):
-        for i in range (len(self.pref_var)):
+        for i in range(len(self.pref_var)):
             pref = self.pref_var[i].get()
             makeup = Convert(self.makeup_var[i].get()).empty_not_zero()
             makeup = Convert(makeup).empty_or_hunredths()
@@ -780,24 +783,27 @@ class OtEquitability:
 
     def buttons_frame(self):
         button = Button(self.win.buttons)
-        button.config(text="Submit", width=17, command=lambda: self.apply(True))  # apply and return to main screen
+        button.config(text="Submit", width=macadj(17, 12),
+                      command=lambda: self.apply(True))  # apply and return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
         button = Button(self.win.buttons)
-        button.config(text="Apply", width=18, command=lambda: self.apply(False))  # apply and no not return to main
+        button.config(text="Apply", width=macadj(18, 12),
+                      command=lambda: self.apply(False))  # apply and no not return to main
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
         button = Button(self.win.buttons)
-        button.config(text="Go Back", width=18, command=lambda: MainFrame().start(frame=self.win.topframe))
+        button.config(text="Go Back", width=macadj(18, 12),
+                      command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
         # generate spreadsheet
         button = Button(self.win.buttons)
-        button.config(text="SpreadSheet", width=17,
-                      command = lambda: OTEquitSpreadsheet()
+        button.config(text="SpreadSheet", width=macadj(17, 12),
+                      command=lambda: OTEquitSpreadsheet()
                       .create(self.win.topframe, self.startdate, self.quartinvran_station.get()))
         if sys.platform == "win32":
             button.config(anchor="w")
@@ -823,18 +829,18 @@ class SpeedConfigGui:
             .grid(row=0, sticky="w", columnspan=4)
         Label(self.win.body, text=" ").grid(row=1, column=0)
         self.set_stringvars()
-        Label(self.win.body, text="NS Day Preferred Mode: ", width=macadj(40,30), anchor="w") \
+        Label(self.win.body, text="NS Day Preferred Mode: ", width=macadj(40, 30), anchor="w") \
             .grid(row=3, column=0, ipady=5, sticky="w")
         ns_pref = OptionMenu(self.win.body, self.ns_mode, "rotating", "fixed")
-        ns_pref.config(width=macadj(9,9))
+        ns_pref.config(width=macadj(9, 9))
         if sys.platform == "win32":
             ns_pref.config(anchor="w")
         ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
         Button(self.win.body, width=5, text="change",
                command=lambda: self.apply_ns_mode()).grid(row=3, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for SpeedSheets", width=macadj(30,30), anchor="w") \
+        Label(self.win.body, text="Minimum rows for SpeedSheets", width=macadj(30, 30), anchor="w") \
             .grid(row=4, column=0, ipady=5, sticky="w")
-        Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=macadj(40,30), anchor="w") \
+        Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=macadj(40, 30), anchor="w") \
             .grid(row=5, column=0, ipady=5, sticky="w")
         opt_breakdown = OptionMenu(self.win.body, self.abc_breakdown, "True", "False")
         opt_breakdown.config(width=macadj(9, 9))
@@ -843,7 +849,7 @@ class SpeedConfigGui:
         opt_breakdown.grid(row=5, column=1, columnspan=2, sticky="w", padx=4)
         Button(self.win.body, width=5, text="change",
                command=lambda: self.apply_abc_breakdown()).grid(row=5, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Employee ID tab", width=macadj(40,30), anchor="w") \
+        Label(self.win.body, text="Minimum rows for Employee ID tab", width=macadj(40, 30), anchor="w") \
             .grid(row=6, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_empid).grid(row=6, column=1, padx=4)
         Button(self.win.body, width=5, text="change",
@@ -851,7 +857,7 @@ class SpeedConfigGui:
         Button(self.win.body, width=5, text="info",
                command=lambda: self.info("min_spd_empid")) \
             .grid(row=6, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Alphabetically tab", width=macadj(40,30), anchor="w") \
+        Label(self.win.body, text="Minimum rows for Alphabetically tab", width=macadj(40, 30), anchor="w") \
             .grid(row=7, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_alpha).grid(row=7, column=1, padx=4)
         Button(self.win.body, width=5, text="change",
@@ -859,7 +865,7 @@ class SpeedConfigGui:
         Button(self.win.body, width=5, text="info",
                command=lambda: self.info("min_spd_alpha")) \
             .grid(row=7, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Alphabetical breakdown tabs", width=macadj(40,35), anchor="w") \
+        Label(self.win.body, text="Minimum rows for Alphabetical breakdown tabs", width=macadj(40, 35), anchor="w") \
             .grid(row=8, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_abc).grid(row=8, column=1, padx=4)
         Button(self.win.body, width=5, text="change",
