@@ -1,67 +1,6 @@
 
 Checklist for running pyinstaller for klusterbox
 
-Update version and docs. Git push.
-
-w64
-___  1. in the source code - klusterbox.py, change the variable for version and release date to reflect the current version number and release date. This is around line 35 under the comment "version variables". 
-
-___  2. navigate to the klusterbox project folder and open readme.txt.
-___  	a. update the "most recent version" and "released" near the top of the page. 
-___  	b. make any other changes to the readme.txt file that might be relevant.
-___  	c. save the changes.
-
-___  3. navigate to and open history.txt 
-___  	a. update the history, add changes made for the lastest version. 
-___  	b. save the changes. 
-
-4. upload the most recent version to git hub
-___  	a. open windows powershell
-___  	b. navigate to the project folder
-___  	c. type: git add .
-___  	d. type: git commit -m "your comments"
-___  	e. type: git push origin <branch>
-
-(optional) merge any branches that need to be merged with the following commands:
-___  	1. type: git remote <branch> eg git remote update
-___  	2. type: git merge <branch> eg git merge origin/mac
-___  	3. open docs where there is a conflict and resolve.
-___  	4. save resolved docs.
-___  	5. use add/commit/push to push resolved version to git master branch.
-
-(optional)
- to delete the branch 
-___  	6. go to computer with the non-master branch
-___  `	7. type git checkout master
-___  	8. type: git branch -D <branch>
-___  	9. type: git push origin --delete <branch>
-___  	10. type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive.
-
-----------------------------------------------------------------------
-
-if the klusterbox project folder is not installed on your hard drive.
-
-w32 mac
-___ ___  1. Install git on your computer if it is not already installed. 
-
-___ ___  2. Open powershell/terminal if not already opened and navigate to where you want the project folder to be placed. 
-
-___ ___  3. Go to github.com, click the "code" button, find the url in the clone section and copy that to clipboard.
-
-___ ___  4. In powershell/terminal type: git clone <github repo url>.
-
-----------------------------------------------------------------------
-
-use these alternate commands in git if the klusterbox project folder is already on the hard drive but is not current with the git repo. 
-
-w32 mac
-___ ___  1. open windows power shell or terminal.
-
-___ ___  2. navigate to the klusterbox project folder.
-
-___ ___  3. use type: git pull -p or git pull --prune to pull the most recent master branch to the hard drive. 
-
-----------------------------------------------------------------------
 
 Set up folders with updated/necessary files
 

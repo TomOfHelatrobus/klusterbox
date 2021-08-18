@@ -1,5 +1,7 @@
 PRE GO LIVE CHECKLIST
 
+
+
 ************************************  General Check  *************************************
 
 IDE____ APP____
@@ -53,6 +55,10 @@ ___ ___ ___ ___  create four new carriers, one of each NL,WAL, OTDL and AUX.
 		 eee, e PTF, - , -
 
 ___ ___ ___ ___  edit the new carrier
+
+
+___ ___ ___ ___  change the carrier's list status in the middle of the service week
+___ ___ ___ ___  ensure the two statuses are shown for the carrier on the main screen.
 ___ ___ ___ ___  change the carrier attributes though Status Change History
 
 		 Enter the following information for the carriers:
@@ -77,6 +83,12 @@ ___ ___ ___ ___  make sure the run the over max spreadsheet to make sure it gene
 ___ ___ ___ ___  check to see if that there are no errors with the formulas
 ___ ___ ___ ___  check that the station, date and pay period are correct
 
+            	 OTDL Equitability Spreadsheet
+
+___ ___ ___ ___  make sure the run the over max spreadsheet to make sure it generates
+___ ___ ___ ___  check to see if that there are no errors with the formulas
+___ ___ ___ ___  check that the station, date and pay period are correct
+
 
 *******************************  Reports Functionality  ********************************
 
@@ -91,7 +103,6 @@ ___ ___ ___ ___  generate Clock Rings Summary
                	 Pay Period Generator
  
 ___ ___ ___ ___  generate a guide for a random year
-
 
 
 

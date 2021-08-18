@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 4.002		
-released: June 28, 2021
+most recent version: 4.003		
+released: August 20, 2021
 
 Caution: 
 
@@ -17,7 +17,7 @@ To ensure proper operation of Klusterbox in Windows Legacy versions, make sure t
 
 Overview:
 
-Klusterbox is a computer program currently available on windows operating system and mac OS which assist NALC union stewards in the investigation of improper mandate grievances. Klusterbox has a graphic user interface which allows stewards to easily build list of carriers, entering in their names, what list they are on (such as OTDL, WAL, etc), their n/s day, their route or string and what station they are currently at. Klusterbox creates and uses a database to keep track of changes in carrier's statuses. Klusterbox also allows for easy entry of clock rings and can track when carriers are working off their routes, even when it happens multiple times per day (called Multiple Move Functionality). Klusterbox uses codes which help to track when non list carriers are working on their n/s days or when OTDL carriers call in sick. Klusterbox can generate a report for quick display or a spreadsheet which stewards can bring with them for informal A meetings. Klusterbox also tracks violations of the 12 and 60 hour rule and displays violations in a spreadsheet. Klusterbox will save the reports and spreadsheets generated in libraries which can be easily accessed. Klusterbox has an NSIS installer which can be used to install itself on Windows OS. 
+Klusterbox is a computer program currently available on windows operating system and mac OS which assist NALC union stewards in the investigation of improper mandate grievances. Klusterbox has a graphic user interface which allows stewards to easily build list of carriers, entering in their names, what list they are on (such as OTDL, WAL, etc), their n/s day, their route or string and what station they are currently at. Klusterbox creates and uses a database to keep track of changes in carrier's statuses. Klusterbox also allows for easy entry of clock rings and can track when carriers are working off their routes, even when it happens multiple times per day (called Multiple Move Functionality). Klusterbox uses codes which help to track when non list carriers are working on their n/s days or when OTDL carriers call in sick. Klusterbox can generate a report for quick display or a spreadsheet which stewards can bring with them for informal A meetings. Klusterbox also tracks violations of the 12 and 60 hour rule and displays violations in a spreadsheet. Klusterbox also tracks OTDL Equitability by the quarter. Klusterbox will save the reports and spreadsheets generated in libraries which can be easily accessed. Klusterbox has an NSIS installer which can be used to install itself on Windows OS. 
 
 Help and tutorials: 
 

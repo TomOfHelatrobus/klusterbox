@@ -1,0 +1,34 @@
+MASTER CHECKLIST
+
+
+
+*********************************  Updates and Checks  ***********************************
+
+ ____ . Run Post Development Checklist.
+ ____ . Run Pre Go Live Checklist on IDE for Windows.
+ ____ . Correct any errors and re push to git if any changes where made.
+ ____ . Run Pre Go Live Checklist on IDE for Mac.
+ ____ . Correct any errors and re push to git if any changes where made.
+
+
+************************************  Pyinstaller  ***************************************
+
+ ____ . Pull from git to Windows is changes were made.
+Run Pyinstaller Checklist for Windows 64 bit.
+ ____ . Generate app bundle.
+ ____ . Generate exe for legacy.
+ ____ . Run Pyinstaller Checklist for Mac.
+ ____ . Run Pyinstaller Checklist for Windows 32 bit.
+
+********************************  Create Distributions  **********************************
+
+ ____ . Run nis_script_wizard_checklist for Windows distribution.
+ ____ . Run create_dmg for the Mac Install.
+
+***************************************  Go Live  **************************************** 
+
+ ____ . Run Pre Go Live Checklist on APP for Windows 64 bit. 
+ ____ . Run Pre Go Live Checklist on APP for Windows 32 bit. 
+ ____ . Run Pre Go Live Checklist on Windows Legacy.
+ ____ . Run Pre Go Live Checklist on APP for Mac with DMG Installer.
+ ____ . Run Pre Go Live Checklist on APP for Windows.

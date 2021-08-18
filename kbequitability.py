@@ -129,7 +129,7 @@ class OTEquitSpreadsheet:
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
         self.pb = ProgressBarDe()
-        self.pb.max_count(10)  # set length of progress bar
+        self.pb.max_count(100)  # set length of progress bar
         self.pb.start_up()  # start the progress bar
         self.pbi = 1
         self.pb.move_count(self.pbi)  # increment progress bar
@@ -232,6 +232,15 @@ class OTEquitSpreadsheet:
         else:
             return pref[0][0]  # return the pulled from the database.
 
+    @staticmethod
+    def get_status_pref(status, pref):  # takes status and preference to get the status mode
+        if pref == "track" and not status:  # if not on otdl and prefence is track: status is track
+            return "track"
+        elif pref != "track" and not status:  # if not on the otdl and prefrence is not track: status is off
+            return "off"
+        else:  # if on the otdl
+            return pref
+
     def get_makeups(self, carrier):
         sql = "SELECT makeups FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
               % (carrier, self.full_quarter, self.station)
@@ -243,13 +252,10 @@ class OTEquitSpreadsheet:
 
     def get_carier_overview(self):  # build a list of carrier's name, status and makeups
         self.pbi += 1  # increment progress bar counter
-        self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Gathering Carrier Data... ")  # update progress bar text
         for recs in self.recset:  # loop through the recsets
             carrier = recs[0][1]  # get the carrier name
-            status = "off"  # default status is off
-            if self.get_status(recs):  # if the carrier is currently on the otdl
-                status = self.get_pref(recs)  # pull the otdl preference from the database
+            status = self.get_status_pref(self.get_status(recs), self.get_pref(recs))
             makeup = self.get_makeups(carrier)
             add_this = (carrier, status, makeup)
             self.carrier_overview.append(add_this)
@@ -292,7 +298,7 @@ class OTEquitSpreadsheet:
         loop = 0
         dates = self.get_unassigned_dates(i)
         for revrec in reversed(self.recset[i]):
-            if not revrec[4]:  # if there is no assignment for the record
+            if not revrec[4] or revrec[4] == "0000":  # if there is no assignment for the record
                 date = max(Convert(revrec[0]).dt_converter(), self.startdate)  # handle RPRs, default to date in range
                 if loop + 1 != len(self.recset[i]):  # if there is at least one more record in the set
                     while date < dates[loop + 1]:  # until the date matchs the next
@@ -311,11 +317,13 @@ class OTEquitSpreadsheet:
         return dates
 
     def get_ringrefset(self):    # build multidimensional array - daily rings/refusals for each otdl carrier
-        self.pbi += 1  # increment progress bar counter
-        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.max_count(8 + (len(self.carrier_overview)*2))  # set length of progress bar
+        print(8 + (len(self.carrier_overview)*2))
         for i in range(len(self.carrier_overview)):
             # update progress bar text
             self.pb.change_text("Gathering Carrier Rings: {}/{} ".format(i, len(self.carrier_overview)))
+            self.pbi += 1  # increment progress bar counter
+            self.pb.move_count(self.pbi)  # increment progress bar
             self.ringrefset.append([])  # each carrier has an array
             self.get_daily_ringrefs(i)
 
@@ -493,9 +501,10 @@ class OTEquitSpreadsheet:
         self.overview.merge_cells('F3:G3')
         cell = self.overview.cell(row=3, column=8)  # fill in number of carriers
         lastnum = ((len(self.carrier_overview)*2)+5)
-        formula = "=COUNTIF(%s!%s%s:%s!%s%s, %s)+COUNTIF(%s!%s%s:%s!%s%s, %s)" \
-                % ("overview", "C", str(6), "overview", "C", str(lastnum), str(12),
-                   "overview", "C", str(6), "overview", "C", str(lastnum), str(10))
+        formula = "=COUNTIF(%s!C%s:%s!C%s, %s)+COUNTIF(%s!C%s:%s!C%s, %s)+COUNTIF(%s!C%s:%s!C%s, \"track\")" \
+                  % ("overview", str(6), "overview", str(lastnum), str(12),
+                     "overview", str(6), "overview", str(lastnum), str(10),
+                     "overview", str(6), "overview", str(lastnum))
         cell.value = formula
         cell.style = self.calcs
 
@@ -549,12 +558,12 @@ class OTEquitSpreadsheet:
             cell.value = "ot"
             cell.style = self.ref_ot
             cell = self.overview.cell(row=row, column=6)  # refusals
-            formula = "=IF(OR(C%s=12, C%s=10)," \
+            formula = "=IF(OR(C%s=12, C%s=10, C%s=\"track\")," \
                       "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
                       "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
                       "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
                       "0" \
-                      % (str(row), str(row),
+                      % (str(row), str(row), str(row),
                          self.week[0], str(row), self.week[1], str(row), self.week[2], str(row),
                          self.week[3], str(row), self.week[4], str(row), self.week[5], str(row),
                          self.week[6], str(row), self.week[7], str(row), self.week[8], str(row),
@@ -564,12 +573,12 @@ class OTEquitSpreadsheet:
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             cell = self.overview.cell(row=row + 1, column=6)  # overtime
-            formula = "=IF(OR(C%s=12, C%s=10)," \
+            formula = "=IF(OR(C%s=12, C%s=10, C%s=\"track\")," \
                       "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
                       "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
                       "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
                       "0" \
-                      % (str(row), str(row),
+                      % (str(row), str(row), str(row),
                          self.week[0], str(row+1), self.week[1], str(row+1), self.week[2], str(row+1),
                          self.week[3], str(row+1), self.week[4], str(row+1), self.week[5], str(row+1),
                          self.week[6], str(row+1), self.week[7], str(row+1), self.week[8], str(row+1),
@@ -579,15 +588,15 @@ class OTEquitSpreadsheet:
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             cell = self.overview.cell(row=row, column=7)  # opportunities
-            formula = "=IF(OR(C%s=12, C%s=10),(F%s+F%s)-D%s,0)" % \
-                      (str(row), str(row), str(row), str(row+1), str(row))
+            formula = "=IF(OR(C%s=12, C%s=10, C%s=\"track\"),(F%s+F%s)-D%s,0)" % \
+                      (str(row), str(row), str(row), str(row), str(row+1), str(row))
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('G' + str(row) + ":" + 'G' + str(row+1))
             cell = self.overview.cell(row=row, column=8)  # difference from average
-            formula = "=IF(A%s=\"\",0, IF(OR(C%s=12,C%s=10),G%s-$G$%s,\"off list\"))" \
-                      % (str(row), str(row), str(row), str(row), str(self.footer_row+2))  # last row is avg footer
+            formula = "=IF(A%s=\"\",0, IF(OR(C%s=12,C%s=10, C%s=\"track\"),G%s-$G$%s,\"off list\"))" \
+                      % (str(row), str(row), str(row), str(row), str(row), str(self.footer_row+2))  # last row is avg
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -774,13 +783,13 @@ class OTEquitSpreadsheet:
         return ringrefset
 
     def triads_delegator(self):
-        self.pbi += 1  # increment progress bar counter
-        self.pb.move_count(self.pbi)  # increment progress bar
         self.triad_row = 6
         for c in range(len(self.carrier_overview)):  # for each carrier including empty sets for minimum rows
             # update progress bar text
             self.pb.change_text("Building Weekly Worksheets - Triad Groups: row {}/{}"
                                 .format(c, len(self.carrier_overview)))
+            self.pbi += 1  # increment progress bar counter
+            self.pb.move_count(self.pbi)  # increment progress bar
             self.triad_week_index = 0  # week starts at zero
             self.triad_column = 5  # column starts at first day due to front padding
             for i in range(105):  # loop for self.front_padding + len(self.date_array) + self.end_padding
@@ -866,52 +875,57 @@ class OTEquitSpreadsheet:
         cell.style = self.col_header_instructions
         self.instructions.merge_cells('A1:E1')
         cell = self.instructions.cell(row=5, column=1)
-        text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in \n" \
+        text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in " \
                "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
-                "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages \n" \
+                "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages " \
                "will import the name so that you don’t have to write it 15 times.\n\n" \
-                "2. STATUS:  Enter the status on the first page only. Again formulas will do the work \n" \
-                "and copy it to other pages. Enter “12”, “10” or “off” for 12 hour preference, 10 hour \n" \
-                "preference or the carrier has gotten off the list. Leave the field blank if there is no \n" \
-                "carrier. Failure to follow these instructions will result in the formulas calculating the \n" \
-                "averages not working properly.\n\n" \
-                "3.  MAKE UP:  This applies to make up opportunities from grievance settlements. \n" \
-               "See JCAM Article 8.5.C.2 Remedies. This value is given in hours and clicks e.g. \n" \
+                "2. STATUS:  Enter the status on the first page only. Again formulas will do the work " \
+                "and copy it to other pages. Enter “12” (for 12 hour preference), “10” (10 hour " \
+                "preference), “off” (if the carrier has gotten off the list) or “track” (if the carrier " \
+               "is off the list, but you want to continue tracking their equitability). Leave the field " \
+               "blank if there is no carrier. If a carrier name is in the “name” column and the “status” " \
+               "field is blank, the default status is “off”. If the status is “off”, the carrier's rings " \
+               "and refusals will not be calculated and the carrier will not be figured into the average." \
+               "\n\n" \
+                "3.  MAKE UP:  This applies to make up opportunities from grievance settlements. " \
+               "See JCAM Article 8.5.C.2 Remedies. This value is given in hours and clicks e.g. " \
                "5.32 or 14.00.\n\n" \
                 "4. REFUSALS/OVERTIME: This displays refusals and overtime worked.\n\n" \
-                "5. OPPORTUNITIES:   This displays total opportunities for overtime. This is all \n" \
+                "5. OPPORTUNITIES:   This displays total opportunities for overtime. This is all " \
                "refusals + overtime.\n\n" \
-                "6. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average \n" \
-               "overtime of all carriers and the individual carrier’s difference from that. If they have \n" \
-               "more than average, the number will be positive otherwise it will be negative. This will \n" \
-               "be the core of your case in your grievance for OTDL equitability violations.\n" \
-                "There are 15 worksheets. Each on represents a service week. Start with the first \n" \
+                "6. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average " \
+               "overtime of all carriers and the individual carrier’s difference from that. If they have " \
+               "more than average, the number will be positive otherwise it will be negative. This will " \
+               "be the core of your case in your grievance for OTDL equitability violations. " \
+                "There are 15 worksheets. Each on represents a service week. Start with the first " \
                 "week and proceed day by day.\n\n" \
                 "7. For each day and each carrier there are are groups of three cells.\n\n" \
-                "TOP LEFT (smaller) CELL:  This is a one letter explanation for any refusal: You can\n" \
-                "use your own system, but my suggestions are: “p” for preference (the carrier \n" \
-                "refused on the grounds that they are on the 10 hour list), “a” for annual \n" \
-                "(the carrier missed overtime opportunities due to being on annual leave), “s” for sick \n" \
-                "leave, for non scheduled day (the carrier worked on their nonscheduled day – see JCAM \n" \
-                "Article 8.5.C.2.d Not Counted Toward “Equitability), “x” for exceptional \n" \
-                "circumstances (see JCAM Article 8.5.E - Exceptional Situations May Excuse \n" \
-                "Mandatory Overtime) and “r” for refusal (the carrier tells the supervisor to go jump \n" \
+                "TOP LEFT (smaller) CELL:  This is a one letter explanation for any refusal: You can " \
+                "use your own system, but my suggestions are: “p” for preference (the carrier " \
+                "refused on the grounds that they are on the 10 hour list), “a” for annual " \
+                "(the carrier missed overtime opportunities due to being on annual leave), “s” for sick " \
+                "leave, for non scheduled day (the carrier worked on their nonscheduled day – see JCAM " \
+                "Article 8.5.C.2.d Not Counted Toward “Equitability), “x” for exceptional " \
+                "circumstances (see JCAM Article 8.5.E - Exceptional Situations May Excuse " \
+                "Mandatory Overtime) and “r” for refusal (the carrier tells the supervisor to go jump " \
                 "in a lake).\n\n" \
-                "TOP RIGHT CELL: This is the amount of overtime that the carrier refused or was \n" \
+                "TOP RIGHT CELL: This is the amount of overtime that the carrier refused or was " \
                 "unable to work.\n\n" \
-                "BOTTOM CELL: This is overtime worked. Normally these is overtime worked off \n" \
-                "the carrier’s own route, but it could mean any overtime depending on any local \n" \
+                "BOTTOM CELL: This is overtime worked. Normally these is overtime worked off " \
+                "the carrier’s own route, but it could mean any overtime depending on any local " \
                 "agreements with management (LMOUs).\n\n" \
-                "At the very bottom , there are totals and averages for the day. These are for your \n" \
-                "information.\n"
+                "At the very bottom , there are totals and averages for the day. These are for your " \
+                "information.\n\n\n\n\n\n\n"
         cell.value = text
         cell.style = self.instruct_text
+        cell.alignment = Alignment(wrap_text=True)
         self.instructions.merge_cells('A5:I47')
 
     def save_open(self):  # name the excel file
         self.pbi += 1  # increment progress bar counter
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving Workbook... ")  # update progress bar text
+        print(self.pbi)
         quarter = self.full_quarter.replace(" ", "")
         xl_filename = "ot_equit_" + quarter + ".xlsx"
         try:

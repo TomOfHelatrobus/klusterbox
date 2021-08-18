@@ -40,7 +40,7 @@ from pdfminer.pdfpage import PDFPage
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
 version = "4.003"
-release_date = "June 28, 2021"
+release_date = "August 20, 2021"
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -169,7 +169,7 @@ class RefusalWin:
         Label(self.win.body, text="").grid(row=self.row)
         self.row += 1
         Label(self.win.body, text="Investigation Range: {} though {}"
-              .format(self.startdate.strftime("%m/%d/%Y"), self.enddate.strftime("%m/%d/%Y")))\
+              .format(self.startdate.strftime("%m/%d/%Y"), self.enddate.strftime("%m/%d/%Y")), fg="red")\
             .grid(row=self.row, columnspan=20, sticky="w")
         self.row += 1
         Label(self.win.body, text="Station: {}".format(self.station)) \
@@ -681,15 +681,20 @@ class OtEquitability:
         for carrier in self.recset:
             Label(self.win.body, text=i+1, anchor="w").grid(row=self.row, column=0, sticky="w")
             Label(self.win.body, text=carrier[0][1], anchor="w").grid(row=self.row, column=1, columnspan=4, sticky="w")
-            om_pref = OptionMenu(self.win.body, self.pref_var[i], "12", "10")
+            om_pref = OptionMenu(self.win.body, self.pref_var[i], "12", "10", "track")
             om_pref.config(width=4)
             om_pref.grid(row=self.row, column=5, sticky="w")
             Entry(self.win.body, textvariable=self.makeup_var[i], width=8, justify='right')\
                 .grid(row=self.row, column=6, sticky="w")
-            Label(self.win.body, text=self.get_status(carrier), anchor="w").grid(row=self.row, column=7, sticky="w")
+            status = "on"
+            fg = "black"
+            if self.get_status(carrier) == "off":  # if there is an error, display in red
+                status = "off"
+                fg = "red"
+            Label(self.win.body, text=status, anchor="w", fg=fg).grid(row=self.row, column=7, sticky="w")
             consistant = "ok"
             fg = "black"
-            if self.check_consistancy(carrier):
+            if self.check_consistancy(carrier):  # if there is an error, display in red
                 consistant="error"
                 fg = "red"
             Label(self.win.body, text=consistant, fg=fg, anchor="w").grid(row=self.row, column=8, sticky="w")
@@ -9514,6 +9519,10 @@ class AboutKlusterbox:
         r += 1
         Label(self.win.body, text="").grid(row=r)
         r += 1
+        """
+        Enter all modules imported by klusterbox below as part of the sourcecode tuple. All modules must be in the 
+        klusterbox project folder.
+        """
         sourcecode = ("klusterbox.py",
                       "projvar.py",
                       "kbtoolbox.py",
@@ -9521,6 +9530,7 @@ class AboutKlusterbox:
                       "kbreports.py",
                       "kbspreadsheets.py",
                       "kbspeedsheets.py",
+                      "kbequitability.py",
                       )
         for i in range(len(sourcecode)):
             Button(self.win.body, text="read", width=macadj(7, 7),
