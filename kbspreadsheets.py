@@ -1,5 +1,5 @@
 import projvar  # custom libraries
-from kbtoolbox import inquire, CarrierList, dir_path, isfloat, Convert, Rings
+from kbtoolbox import inquire, CarrierList, dir_path, isfloat, Convert, Rings, ProgressBarDe
 # standard libraries
 from tkinter import messagebox
 import os
@@ -15,6 +15,8 @@ from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFi
 class ImpManSpreadsheet:
     def __init__(self):
         self.frame = None  # the frame of parent
+        self.pb = None  # progress bar object
+        self.pbi = 0  # progress bar count index
         self.startdate = None  # start date of the investigation
         self.enddate = None  # ending date of the investigation
         self.dates = []  # all days of the investigation
@@ -73,7 +75,14 @@ class ImpManSpreadsheet:
         self.frame = frame
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
+        self.pb = ProgressBarDe()
+        self.pb.max_count(100)  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
         self.get_dates()
+        self.get_pb_max_count()
         self.get_carrierlist()
         self.get_carrier_breakdown()  # breakdown carrier list into no list, wal, otdl, aux
         self.get_tolerances()  # get tolerances, minimum rows and page break preferences from tolerances table
@@ -94,17 +103,20 @@ class ImpManSpreadsheet:
         return False
 
     def get_dates(self):
-        self.startdate = projvar.invran_date
-        self.enddate = projvar.invran_date
-        self.dates = [projvar.invran_date, ]
-        if projvar.invran_weekly_span:
+        self.startdate = projvar.invran_date  # set daily investigation range as default - get start date
+        self.enddate = projvar.invran_date  # get end date
+        self.dates = [projvar.invran_date, ]  # create an array of days - only one day if daily investigation range
+        if projvar.invran_weekly_span:  # if the investigation range is weekly
             date = projvar.invran_date_week[0]
             self.startdate = projvar.invran_date_week[0]
             self.enddate = projvar.invran_date_week[6]
             self.dates = []
-            for i in range(7):
+            for i in range(7):  # create an array with all the days in the weekly investigation range
                 self.dates.append(date)
                 date += timedelta(days=1)
+
+    def get_pb_max_count(self):  # set length of progress bar
+        self.pb.max_count((len(self.dates)*4)+3) # once for each list in each day, plus reference, summary and saving
 
     def get_carrierlist(self):  # get record sets for all carriers
         self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
@@ -216,6 +228,9 @@ class ImpManSpreadsheet:
         self.reference.column_dimensions["E"].width = 6
 
     def build_refs(self):
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Reference Page")
         self.reference['B2'].style = self.list_header
         self.reference['B2'] = "Tolerances"
         self.reference['C3'] = self.tol_ot_ownroute  # overtime on own route tolerance
@@ -290,6 +305,12 @@ class ImpManSpreadsheet:
         cell.style = self.date_dov
         self.ws_list[self.i].merge_cells('B4:D4')
 
+    def increment_progbar(self):  # move the progress bar, update with info on what is being done
+        lst = ("No List", "Work Assignment", "Overtime Desired", "Auxiliary")
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building day {}: list: {}".format(self.day.strftime("%A"), lst[self.lsi]))
+
     def list_loop(self):  # loops four times. once for each list.
         self.lsi = 0  # iterations of the list loop method
         self.row = 6
@@ -300,6 +321,7 @@ class ImpManSpreadsheet:
             self.carrierloop()
             self.build_footer()
             self.pagebreak()
+            self.increment_progbar()
             self.lsi += 1
 
     def list_and_column_headers(self):  # builds headers for list and column
@@ -368,7 +390,6 @@ class ImpManSpreadsheet:
 
     def carrierlist_mod(self):  # add empty carrier records to carrier list until quantity matches minrows preference
         self.mod_carrierlist = self.carrier_breakdown[self.i][self.lsi]
-        # minrows = 0  # initialize minrows
         if self.pref[self.lsi] in ("nl",):  # if "no list"
             minrows = self.min_ss_nl
         elif self.pref[self.lsi] in ("wal",):  # if "work assignment list"
@@ -389,13 +410,13 @@ class ImpManSpreadsheet:
             self.get_last_row()  # record the number of the last row for total formulas in footers
             self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
             self.get_rings()  # get individual carrier rings for the day
-            self.display_recs()
-            if self.pref[self.lsi] in ("nl", "wal"):
-                self.get_movesarray()
-                self.display_moves()
-                self.display_formulas_non()
-            else:
-                self.display_formulas_ot()
+            self.display_recs()  # put the carrier and the first part of rings into the spreadsheet
+            if self.pref[self.lsi] in ("nl", "wal"):  # if the list is no list or work assignment
+                self.get_movesarray()  # get the moves
+                self.display_moves()  # display the moves
+                self.display_formulas_non()  # display the formulas
+            else:  # if otdl or aux
+                self.display_formulas_ot()  # display formulas for otdl/aux
             self.increment_rows()
 
     def get_last_row(self):  # record the number of the last row for totals formulas in footers
@@ -690,6 +711,9 @@ class ImpManSpreadsheet:
         self.row += 1
 
     def build_summary_header(self):  # summary headers
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building day Summary...")
         self.summary['A1'] = "Improper Mandate Worksheet"
         self.summary['A1'].style = self.ws_header
         self.summary.merge_cells('A1:E1')
@@ -782,6 +806,9 @@ class ImpManSpreadsheet:
             row += 2
         
     def save_open(self):  # name the excel file
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving...")
         r = "_w"
         if not projvar.invran_weekly_span:  # if investigation range is daily
             r = "_d"
@@ -805,6 +832,7 @@ class ImpManSpreadsheet:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
+        self.pb.stop()
 
 
 class OvermaxSpreadsheet:

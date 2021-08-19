@@ -1090,7 +1090,7 @@ class SpeedSheetCheck:
         self.frame = frame
         self.wb = wb
         self.path = path
-        self.interject = interject
+        self.interject = interject  # True = add to database/ False = pre-check
         self.carrier_count = 0
         self.rings_count = 0
         self.fatal_rpt = 0
@@ -1234,7 +1234,6 @@ class SpeedSheetCheck:
                         self.name_mentioned = False  # keeps names from being repeated in reports
                         self.carrier_count += 1  # get a count of the carriers for reports
                         is_name = True  # bool: the speedcell has a name
-                        # Handler().nonetype will convert any nonetypes to empty stings
                         day = Handler(ws.cell(row=ii, column=1).value).nonetype()
                         name = Handler(ws.cell(row=ii, column=2).value).nonetype()
                         list_stat = Handler(ws.cell(row=ii, column=5).value).nonetype()
@@ -1345,19 +1344,19 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
              "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri"}
 
     def check_all(self):
-        self.get_carrec()
-        self.check_name()
+        self.get_carrec()  # get carrier records and condense them into one array
+        self.check_name()  # check for errors with the carrier name
         self.check_employee_id_format()
         self.check_employee_id_situation()
         self.check_employee_id_use()
         self.check_list_status()
         self.check_ns()
         self.check_route()
-        if self.parent.interject:
+        if self.parent.interject:  # True = add to database/ False = pre-check
             self.add_recs()
         self.generate_report()
 
-    def get_carrec(self):
+    def get_carrec(self):  # get carrier records and condense them into one array
         carrec = CarrierRecSet(self.name, self.parent.start_date, self.parent.end_date, self.parent.station).get()
         self.filtered_recset = CarrierRecFilter(carrec, self.parent.start_date).filter_nonlist_recs()
         carrec = CarrierRecFilter(self.filtered_recset, self.parent.start_date).condense_recs_ns()
@@ -1367,7 +1366,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.onrec_nsday = carrec[3]
         self.onrec_route = carrec[4]
 
-    def check_name(self):
+    def check_name(self):  # check for errors with the carrier name
         if self.name == self.onrec_name:
             return
         if not NameChecker(self.name).check_characters():
@@ -1386,6 +1385,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             attn = "     ATTENTION: Carrier name should must contain one initial ideally, \n" \
                    "                unless more are needed to create a distinct carrier name.\n"
             self.attn_array.append(attn)
+        # self.name = NameChecker(self.name).add_comma_spacing()  # make sure there is a space after the comma
 
     def check_employee_id_situation(self):
         if self.index_id == "" and self.empid == "":  # if both emp id and name index are blank
@@ -1646,7 +1646,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         list_place = []
         ns_place = ""
         route_place = ""
-        if not self.parent.allowaddrecs:
+        if not self.parent.allowaddrecs:  # if all checks passed
             return
         if self.addlist != ["empty"]:
 
@@ -2592,7 +2592,7 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                 if stat != "out of station":
                     projvar.list_of_stations.remove(stat)
                 if projvar.invran_station == stat:
-                    reset("none")
+                    reset("none")  # reset initial value of globals
             if tab == "station_index":
                 if stat != "out of station":
                     sql = "DELETE FROM stations WHERE station = '%s'" % stat
@@ -2805,9 +2805,10 @@ def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
                              parent=frame)
     frame.destroy()
     masterframe.destroy()
-    reset("none")
+    reset("none")  # reset initial value of globals
     DataBase().setup()
     StartUp().start()
+
 
 def database_clean_carriers():  # delete carrier records where station no longer exist
     sql = "SELECT DISTINCT station FROM carriers"
@@ -10427,7 +10428,7 @@ def apply_station(switch, station, frame):
             database_clean_carriers()
             database_clean_rings()
             if projvar.invran_station == station:
-                reset("none")
+                reset("none")  # reset initial value of globals
     # access list of stations from database
     sql = "SELECT * FROM stations ORDER BY station"
     results = inquire(sql)
@@ -10452,7 +10453,7 @@ def station_update_apply(frame, old_station, new_station):
                              parent=frame)
         return
     if projvar.invran_station == old_station.get():
-        reset("none")
+        reset("none")  # reset initial value of globals
     go_ahead = True
     duplicate = False
     if new_station.get() in projvar.list_of_stations:
@@ -12964,8 +12965,7 @@ def input_carriers(frame):  # window for inputting new carriers
     c.config(scrollregion=c.bbox("all"))
 
 
-def reset(frame):
-    # reset initial value of globals
+def reset(frame):  # reset initial value of globals
     projvar.invran_year = None
     projvar.invran_month = None
     projvar.invran_day = None

@@ -890,6 +890,13 @@ class NameChecker:
                 return True
         else:
             return False
+    """
+        def add_comma_spacing(self):  # make sure there is a space between the comma and the first initial
+        s_name = self.name.split(",")
+        if s_name[1][0] != " ":
+            return s_name[0] + ", " + s_name[1]
+        return self.name
+    """
 
 
 class RouteChecker:

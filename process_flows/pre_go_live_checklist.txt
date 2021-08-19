@@ -37,14 +37,15 @@ ___ ___ ___ ___  confirm the program, database and archive are in the correct lo
 
 IDE____ APP____
 win mac win mac
-___ ___ ___ ___  Navigate to Management > Database. Press the red "reset" button. Make sure a 				 database is generated. 
+___ ___ ___ ___  Navigate to Management > Database. Press the red "reset" button. 
+___ ___ ___ ___  create a new station  
+___ ___ ___ ___  Make sure a database is generated. 
 
 
 ********************************** Core Functionality  *********************************
 
 IDE____ APP____
 win mac win mac
-___ ___ ___ ___  create a new station
 ___ ___ ___ ___  set the investigation range
 ___ ___ ___ ___  create four new carriers, one of each NL,WAL, OTDL and AUX. 
 
@@ -57,9 +58,12 @@ ___ ___ ___ ___  create four new carriers, one of each NL,WAL, OTDL and AUX.
 ___ ___ ___ ___  edit the new carrier
 
 
-___ ___ ___ ___  change the carrier's list status in the middle of the service week
+___ ___ ___ ___  change the bbb, b's list status from wal to nl in the middle of the 
+service week
 ___ ___ ___ ___  ensure the two statuses are shown for the carrier on the main screen.
 ___ ___ ___ ___  change the carrier attributes though Status Change History
+
+		 Enter Rings
 
 		 Enter the following information for the carriers:
 		 aaa,a NL 5200: 14.00, RS 20.00, mv off 11.50, mv on 12.50, rte 1111
@@ -69,7 +73,6 @@ ___ ___ ___ ___  change the carrier attributes though Status Change History
 		 ddd,d AUX 5200: lv type annual, lv time 8.00
 
 ___ ___ ___ ___  make sure the multi input function works
-___ ___ ___ ___  make sure the reports function works
 
             	 Spreadsheet
 
@@ -113,9 +116,10 @@ win mac win mac
 		 Go to Management > Speedsheet Settings > Alphabetical Breakdown.
 		 Ensure that Alphabetical Breakdown is set to False. 
 ___ ___ ___ ___  Generate Carrier Only Speedsheet 
+
 		 Create a new carrier:
-			
 		 fff, f, wal, thr, rte 1118, empid 01111111
+		 and save as an xlsx file.
 
 ___ ___ ___ ___  Run Pre-check. Make sure the report generates.
 ___ ___ ___ ___  Run Input to Database. Make sure the report generates.
