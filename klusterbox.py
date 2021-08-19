@@ -1,5 +1,4 @@
 # custom modules
-# import projvar  # holds variables, including root, for use in all modules
 from kbreports import Reports, Messenger
 from kbtoolbox import *
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
@@ -656,7 +655,7 @@ class OtEquitability:
             i += 1
         if consistant == "error":
             report.write('\n')
-            report.write('>>>Consistancy Error: \n'
+            report.write('>>>Consistency Error: \n'
                          'OTDL Carriers can not get back on the Over Time Desired List once they \n'
                          'have gotten off during the quarter. This will raise an  \"error\" \n'
                          'message in the Check column. If this is a mistake, edit the carrier\'s \n'
@@ -3243,8 +3242,12 @@ class RptWin:
             Label(results_frame, text="         ", anchor="w").grid(row=i, column=6, sticky="w")
             i += 1
         # apply and close buttons
-        Button(win.buttons, text="Go Back", width=20, bg="light yellow", anchor="w",
-               command=lambda: MainFrame().start(frame=win.topframe)).pack(side=LEFT)
+        button = Button(win.buttons)
+        button.config(text="Go Back", width=macadj(20, 20),
+                      command=lambda: MainFrame().start(frame=win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
         win.finish()
 
 
