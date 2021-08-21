@@ -13,12 +13,12 @@ MASTER CHECKLIST
 
 ************************************  Pyinstaller  ***************************************
 
- ____ . Pull from git to Windows is changes were made.
-Run Pyinstaller Checklist for Windows 64 bit.
- ____ . Generate app bundle.
- ____ . Generate exe for legacy.
- ____ . Run Pyinstaller Checklist for Mac.
+ ____ . Pull from git to Windows if changes were made.
+ ____ . Run Pyinstaller Checklist for Windows 64 bit.
+ ____ . Run Pyinstaller Checklist for Windows 64 bit: Generate exe for legacy.
  ____ . Run Pyinstaller Checklist for Windows 32 bit.
+ ____ . Run Pyinstaller Checklist for Windows 32 bit: Generate exe for legacy.
+ ____ . Run Pyinstaller Checklist for Mac.
 
 ********************************  Create Distributions  **********************************
 
