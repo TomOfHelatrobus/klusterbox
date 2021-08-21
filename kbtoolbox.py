@@ -68,6 +68,12 @@ def titlebar_icon(root):  # place icon in titlebar
             root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
         except TclError:
             pass
+    if sys.platform == "darwin" and projvar.platform == "macapp":
+        try:
+            path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', 'kb_icon2.jpg')
+            root.iconphoto(False, PhotoImage(file=path))
+        except TclError:
+            pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')

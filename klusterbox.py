@@ -9435,7 +9435,7 @@ class AboutKlusterbox:
         r = 0  # set row counter
         if projvar.platform == "macapp":
             path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', 'kb_about.jpg')
-        if projvar.platform == "winapp":
+        elif projvar.platform == "winapp":
             path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
         else:
             path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
@@ -13579,11 +13579,6 @@ if __name__ == "__main__":
     size_y = 600
     projvar.root.title("KLUSTERBOX version {}".format(version))
     titlebar_icon(projvar.root)  # place icon in titlebar
-    if sys.platform == "darwin" and projvar.platform == "py":  # put icon in doc for mac
-        try:
-            projvar.root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except TclError:
-            pass
     projvar.root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
     if len(projvar.list_of_stations) < 2:  # if there are no stations in the stations list
         StartUp().start()  # a start up screen for first time use
