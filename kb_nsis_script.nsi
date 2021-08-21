@@ -99,6 +99,7 @@ Section "MainSection" SEC01
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbreports.py"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbspeedsheets.py"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbspreadsheets.py"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbequitability.py"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbtoolbox.py"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kb_about.jpg"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kb_icon2.gif"
