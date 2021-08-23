@@ -36,8 +36,8 @@ from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
-version = "4.003"
-release_date = "August 20, 2021"
+version = "4.004"
+release_date = "Undetermined"
 """
  _   _ _                             _
 | |/ /| |              _            | |
