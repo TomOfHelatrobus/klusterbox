@@ -1239,6 +1239,22 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
         return record_set
 
 
+class PdfConverterFix:
+    def __init__(self, data):
+        self.data = data
+
+    """
+    pass the array of routes as data to the class, 
+    pass the count (an integer) to the method. 
+    method will add "000000" to the array until its length matches the count.
+    """
+    def route_filler(self, count):
+        if len(self.data) < count:
+            while len(self.data) < count:
+                self.data.append("000000")
+        return self.data
+
+
 class ProgressBarDe:  # determinate Progress Bar
     def __init__(self, title="Klusterbox", label="working", text="Stand by..."):
         self.title = title

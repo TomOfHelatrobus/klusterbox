@@ -35,6 +35,9 @@ tomandsusan4ever@msn.com
 Find out more about Klusterbox at:
 www.klusterbox.com
 
+Follow Klusterbox on Facebook:
+https://www.facebook.com/klusterbox
+
 Check out the github repo for source code development:
 https://github.com/TomOfHelatrobus
 

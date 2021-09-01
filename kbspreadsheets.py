@@ -75,7 +75,7 @@ class ImpManSpreadsheet:
         self.frame = frame
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
-        self.pb = ProgressBarDe()
+        self.pb = ProgressBarDe(label="Building Improper Mandates Spreadsheet")
         self.pb.max_count(100)  # set length of progress bar
         self.pb.start_up()  # start the progress bar
         self.pbi = 1
@@ -116,7 +116,7 @@ class ImpManSpreadsheet:
                 date += timedelta(days=1)
 
     def get_pb_max_count(self):  # set length of progress bar
-        self.pb.max_count((len(self.dates)*4)+3) # once for each list in each day, plus reference, summary and saving
+        self.pb.max_count((len(self.dates)*4)+3)  # once for each list in each day, plus reference, summary and saving
 
     def get_carrierlist(self):  # get record sets for all carriers
         self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()

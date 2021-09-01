@@ -1074,7 +1074,7 @@ class SpeedWorkBookGet:
                                  parent=frame)
             return
         else:
-            pb = ProgressBarIn(title="SpeedSheeets Workbook", label="hold on",
+            pb = ProgressBarIn(title="Klusterbox", label="SpeedSheeets Loading",
                                text="Loading and reading workbook. This could take a minute")
             wb = SpeedLoadThread(file_path)  # open workbook in separate thread
             wb.start()  # start loading workbook
@@ -1112,7 +1112,7 @@ class SpeedSheetCheck:
         self.name = ""
         self.allowaddrecs = True
         self.name_mentioned = False
-        self.pb = ProgressBarDe(title="Klusterbox SpeedSheet Check", label="working: ", text="Stand by...")
+        self.pb = ProgressBarDe(title="Klusterbox", label="SpeedSheet Checking", text="Stand by...")
         self.sheets = []
         self.sheet_count = 0
         self.sheet_rowcount = []
@@ -4350,6 +4350,8 @@ def pdf_converter(frame):
                       '"{}"'.format("0000"), '"{}"'.format(eid), '"{}"'.format(lastname), '"{}"'.format(fi[:1]),
                       '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"', '"0"']
         if len(jobs) > 0:
+            # if the route count is less than the jobs count, fill the route count
+            routes = PdfConverterFix(routes).route_filler(len(jobs))
             for i in range(len(jobs)):
                 base_line = [base_temp[i], '"{}"'.format(jobs[i].replace("-", "").strip()), '"0000"', '"7220-10"',
                              '"Q0"', '"{}"'.format(level[i]), '"N"', '"{}"'.format(routes[i]), '""', '"0000000"',
