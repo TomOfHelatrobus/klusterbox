@@ -498,10 +498,10 @@ class OTEquitSpreadsheet:
         self.overview.merge_cells('F3:G3')
         cell = self.overview.cell(row=3, column=8)  # fill in number of carriers
         lastnum = ((len(self.carrier_overview)*2)+5)
-        formula = "=COUNTIF(%s!C%s:%s!C%s, %s)+COUNTIF(%s!C%s:%s!C%s, %s)+COUNTIF(%s!C%s:%s!C%s, \"track\")" \
-                  % ("overview", str(6), "overview", str(lastnum), str(12),
-                     "overview", str(6), "overview", str(lastnum), str(10),
-                     "overview", str(6), "overview", str(lastnum))
+        formula = "=COUNTIF(%s!C%s:C%s, %s)+COUNTIF(%s!C%s:C%s, %s)+COUNTIF(%s!C%s:C%s, \"track\")" \
+                  % ("overview", str(6), str(lastnum), str(12),
+                     "overview", str(6), str(lastnum), str(10),
+                     "overview", str(6), str(lastnum))
         cell.value = formula
         cell.style = self.calcs
 
@@ -624,8 +624,8 @@ class OTEquitSpreadsheet:
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.overview.cell(row=self.footer_row, column=7)  # calculate total opportunities
-        formula = "=SUM(%s!G%s:%s!G%s)" \
-                  % ("overview", str(6), "overview", str(self.footer_row - 2))
+        formula = "=SUM(%s!G%s:G%s)" \
+                  % ("overview", str(6), str(self.footer_row - 2))
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -763,7 +763,7 @@ class OTEquitSpreadsheet:
                 cell.style = self.calcs
                 cell.number_format = "#,###.00;[RED]-#,###.00"
                 cell = self.ws[i].cell(row=row + 1, column=19)  # overtime weekly total
-                formula = "=SUM(%s!%s%s:%s!%s%s)" % (self.week[i], "E", str(row+1), self.week[i], "Q", str(row+1))
+                formula = "=SUM(%s!%s%s:%s%s)" % (self.week[i], "E", str(row+1), "Q", str(row+1))
                 cell.value = formula
                 cell.style = self.calcs
                 cell.number_format = "#,###.00;[RED]-#,###.00"
