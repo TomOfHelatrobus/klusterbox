@@ -37,7 +37,7 @@ from pdfminer.pdfpage import PDFPage
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
 version = "4.004"
-release_date = "Undetermined"
+release_date = "Sep. 1, 2021"
 """
  _   _ _                             _
 | |/ /| |              _            | |
