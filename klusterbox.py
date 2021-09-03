@@ -36,8 +36,8 @@ from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
-version = "4.003"
-release_date = "August 20, 2021"
+version = "4.004"
+release_date = "Sep. 1, 2021"
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -1074,7 +1074,7 @@ class SpeedWorkBookGet:
                                  parent=frame)
             return
         else:
-            pb = ProgressBarIn(title="SpeedSheeets Workbook", label="hold on",
+            pb = ProgressBarIn(title="Klusterbox", label="SpeedSheeets Loading",
                                text="Loading and reading workbook. This could take a minute")
             wb = SpeedLoadThread(file_path)  # open workbook in separate thread
             wb.start()  # start loading workbook
@@ -1112,7 +1112,7 @@ class SpeedSheetCheck:
         self.name = ""
         self.allowaddrecs = True
         self.name_mentioned = False
-        self.pb = ProgressBarDe(title="Klusterbox SpeedSheet Check", label="working: ", text="Stand by...")
+        self.pb = ProgressBarDe(title="Klusterbox", label="SpeedSheet Checking", text="Stand by...")
         self.sheets = []
         self.sheet_count = 0
         self.sheet_rowcount = []
@@ -4350,6 +4350,8 @@ def pdf_converter(frame):
                       '"{}"'.format("0000"), '"{}"'.format(eid), '"{}"'.format(lastname), '"{}"'.format(fi[:1]),
                       '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"', '"0"']
         if len(jobs) > 0:
+            # if the route count is less than the jobs count, fill the route count
+            routes = PdfConverterFix(routes).route_filler(len(jobs))
             for i in range(len(jobs)):
                 base_line = [base_temp[i], '"{}"'.format(jobs[i].replace("-", "").strip()), '"0000"', '"7220-10"',
                              '"Q0"', '"{}"'.format(level[i]), '"N"', '"{}"'.format(routes[i]), '""', '"0000000"',
@@ -9435,7 +9437,7 @@ class AboutKlusterbox:
         r = 0  # set row counter
         if projvar.platform == "macapp":
             path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', 'kb_about.jpg')
-        if projvar.platform == "winapp":
+        elif projvar.platform == "winapp":
             path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
         else:
             path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
@@ -13579,11 +13581,6 @@ if __name__ == "__main__":
     size_y = 600
     projvar.root.title("KLUSTERBOX version {}".format(version))
     titlebar_icon(projvar.root)  # place icon in titlebar
-    if sys.platform == "darwin" and projvar.platform == "py":  # put icon in doc for mac
-        try:
-            projvar.root.iconphoto(False, PhotoImage(file='kb_sub/kb_images/kb_icon2.gif'))
-        except TclError:
-            pass
     projvar.root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
     if len(projvar.list_of_stations) < 2:  # if there are no stations in the stations list
         StartUp().start()  # a start up screen for first time use

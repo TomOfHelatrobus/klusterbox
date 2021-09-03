@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 4.003		
-released: August 20, 2021
+most recent version: 4.004		
+released: Sep. 1, 2021
 
 Caution: 
 
@@ -34,6 +34,12 @@ tomandsusan4ever@msn.com
 
 Find out more about Klusterbox at:
 www.klusterbox.com
+
+Follow Klusterbox on Facebook:
+https://www.facebook.com/klusterbox
+
+Check out the github repo for source code development:
+https://github.com/TomOfHelatrobus
 
 License:
 

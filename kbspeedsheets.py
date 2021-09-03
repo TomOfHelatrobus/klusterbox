@@ -16,7 +16,7 @@ class SpeedSheetGen:
     def __init__(self, frame, full_report):
         self.frame = frame
         self.full_report = full_report  # true - all inclusive, false - carrier recs only
-        self.pb = ProgressBarDe()  # create the progress bar object
+        self.pb = ProgressBarDe(label="Building SpeedSheet")  # create the progress bar object
         self.db = SpeedSettings()  # calls values from tolerance table
         self.date = projvar.invran_date
         self.day_array = (str(projvar.invran_date.strftime("%a")).lower(),)  # if invran_weekly_span == False

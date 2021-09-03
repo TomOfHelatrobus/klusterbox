@@ -75,7 +75,7 @@ class ImpManSpreadsheet:
         self.frame = frame
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
-        self.pb = ProgressBarDe()
+        self.pb = ProgressBarDe(label="Building Improper Mandates Spreadsheet")
         self.pb.max_count(100)  # set length of progress bar
         self.pb.start_up()  # start the progress bar
         self.pbi = 1
@@ -116,7 +116,7 @@ class ImpManSpreadsheet:
                 date += timedelta(days=1)
 
     def get_pb_max_count(self):  # set length of progress bar
-        self.pb.max_count((len(self.dates)*4)+3) # once for each list in each day, plus reference, summary and saving
+        self.pb.max_count((len(self.dates)*4)+3)  # once for each list in each day, plus reference, summary and saving
 
     def get_carrierlist(self):  # get record sets for all carriers
         self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
@@ -1322,8 +1322,11 @@ class OvermaxSpreadsheet:
         self.instructions['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
         # instructions weekly self.violations
         self.instructions.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-        formula = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % \
-                  (page, str(i), page, str(i + 1), page, str(i), page, str(i + 1),)
+        formula = "=IF(%s!B%s = \"aux\",0,MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
+                    % (page, str(i), page, str(i), page, str(i + 1), page, str(i),
+                       page, str(i + 1))
+        # formula = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % \
+        #           (page, str(i), page, str(i + 1), page, str(i), page, str(i + 1),)
         self.instructions['S10'] = formula
         self.instructions['S10'].style = self.calcs
         self.instructions['S10'].number_format = "#,###.00;[RED]-#,###.00"
@@ -1653,9 +1656,12 @@ class OvermaxSpreadsheet:
             self.violations['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
             # weekly violation
             self.violations.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-            formula_c = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" \
-                        % ("violations", str(i), "violations", str(i + 1), "violations", str(i),
+            formula_c = "=IF(%s!B%s = \"aux\",0,MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
+                        % ("violations", str(i), "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1))
+            # formula_c = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" \
+            #             % ("violations", str(i), "violations", str(i + 1), "violations", str(i),
+            #                "violations", str(i + 1))
             self.violations['S' + str(i)] = formula_c
             self.violations['S' + str(i)].style = self.calcs
             self.violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"

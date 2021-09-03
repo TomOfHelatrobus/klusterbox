@@ -68,6 +68,12 @@ def titlebar_icon(root):  # place icon in titlebar
             root.iconbitmap('kb_sub/kb_images/kb_icon1.icns')
         except TclError:
             pass
+    if sys.platform == "darwin" and projvar.platform == "macapp":
+        try:
+            path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', 'kb_icon2.jpg')
+            root.iconphoto(False, PhotoImage(file=path))
+        except TclError:
+            pass
     if sys.platform == "linux":
         try:
             img = PhotoImage(file='kb_sub/kb_images/kb_icon2.gif')
@@ -1231,6 +1237,22 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
                 to_add = [str(self.startdate), self.carrier]  # out of station records only date and name
                 record_set.append(to_add)
         return record_set
+
+
+class PdfConverterFix:
+    def __init__(self, data):
+        self.data = data
+
+    """
+    pass the array of routes as data to the class, 
+    pass the count (an integer) to the method. 
+    method will add "000000" to the array until its length matches the count.
+    """
+    def route_filler(self, count):
+        if len(self.data) < count:
+            while len(self.data) < count:
+                self.data.append("000000")
+        return self.data
 
 
 class ProgressBarDe:  # determinate Progress Bar

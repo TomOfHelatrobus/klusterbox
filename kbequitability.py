@@ -95,10 +95,10 @@ class OTEquitSpreadsheet:
         self.end_pad_indicator = 0  # shows days after last day for triad builder
         self.ringrefset = []  # multidimensional array - daily rings/refusals for each otdl carrier
         self.dates_breakdown = []  # a list of dates for display on spreadsheets
-        self.week = ("w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12",
-                     "w13", "w14", "w15")
-        self.week_label = ("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
-                     "13", "14", "15")
+        self.week = ["w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13",
+                     "w14", "w15"]
+        self.week_label = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
+                     "13", "14", "15"]
         self.triad_week_index = 0
         self.triad_column = 0
         self.triad_row = 0
@@ -126,7 +126,7 @@ class OTEquitSpreadsheet:
         self.frame = frame
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
-        self.pb = ProgressBarDe()
+        self.pb = ProgressBarDe(label="Building OTDL Equitability Spreadsheet")
         self.pb.max_count(100)  # set length of progress bar
         self.pb.start_up()  # start the progress bar
         self.pbi = 1
@@ -448,7 +448,7 @@ class OTEquitSpreadsheet:
                              alignment=Alignment(horizontal='right'))
         self.input_blue = NamedStyle(name="input_blue", font=Font(name='Arial', size=8),
                                   border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                  fill=PatternFill(fgColor='79CDCD', fill_type='lightVertical'),
+                                  fill=PatternFill(fgColor='e1f7f3', fill_type='solid'),
                                   alignment=Alignment(horizontal='right'))
         """fill_type: Value must be one of {'darkTrellis', 'darkGrid', 'lightVertical', 'darkDown', 'solid', 'lightUp', 
         'lightHorizontal', 'mediumGray', 'lightTrellis', 'darkHorizontal', 'darkGray', 'lightGray', 'darkVertical', 
@@ -498,10 +498,10 @@ class OTEquitSpreadsheet:
         self.overview.merge_cells('F3:G3')
         cell = self.overview.cell(row=3, column=8)  # fill in number of carriers
         lastnum = ((len(self.carrier_overview)*2)+5)
-        formula = "=COUNTIF(%s!C%s:%s!C%s, %s)+COUNTIF(%s!C%s:%s!C%s, %s)+COUNTIF(%s!C%s:%s!C%s, \"track\")" \
-                  % ("overview", str(6), "overview", str(lastnum), str(12),
-                     "overview", str(6), "overview", str(lastnum), str(10),
-                     "overview", str(6), "overview", str(lastnum))
+        formula = "=COUNTIF(%s!C%s:C%s, %s)+COUNTIF(%s!C%s:C%s, %s)+COUNTIF(%s!C%s:C%s, \"track\")" \
+                  % ("overview", str(6), str(lastnum), str(12),
+                     "overview", str(6), str(lastnum), str(10),
+                     "overview", str(6), str(lastnum))
         cell.value = formula
         cell.style = self.calcs
 
@@ -555,12 +555,11 @@ class OTEquitSpreadsheet:
             cell.value = "ot"
             cell.style = self.ref_ot
             cell = self.overview.cell(row=row, column=6)  # refusals
-            formula = "=IF(OR(C%s=12, C%s=10, C%s=\"track\")," \
+            formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\")," \
                       "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
                       "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
-                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
-                      "0" \
-                      % (str(row), str(row), str(row),
+                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s),0)" \
+                      % ("overview", str(row), "overview", str(row), "overview", str(row),
                          self.week[0], str(row), self.week[1], str(row), self.week[2], str(row),
                          self.week[3], str(row), self.week[4], str(row), self.week[5], str(row),
                          self.week[6], str(row), self.week[7], str(row), self.week[8], str(row),
@@ -570,12 +569,12 @@ class OTEquitSpreadsheet:
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             cell = self.overview.cell(row=row + 1, column=6)  # overtime
-            formula = "=IF(OR(C%s=12, C%s=10, C%s=\"track\")," \
+            formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\")," \
                       "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
                       "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
                       "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
-                      "0" \
-                      % (str(row), str(row), str(row),
+                      "0)" \
+                      % ("overview", str(row), "overview", str(row), "overview", str(row),
                          self.week[0], str(row+1), self.week[1], str(row+1), self.week[2], str(row+1),
                          self.week[3], str(row+1), self.week[4], str(row+1), self.week[5], str(row+1),
                          self.week[6], str(row+1), self.week[7], str(row+1), self.week[8], str(row+1),
@@ -585,22 +584,24 @@ class OTEquitSpreadsheet:
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             cell = self.overview.cell(row=row, column=7)  # opportunities
-            formula = "=IF(OR(C%s=12, C%s=10, C%s=\"track\"),(F%s+F%s)-D%s,0)" % \
-                      (str(row), str(row), str(row), str(row), str(row+1), str(row))
+            formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\"),(%s!F%s+%s!F%s)-%s!D%s,0)" % \
+                      ("overview", str(row), "overview", str(row), "overview", str(row), "overview", str(row),
+                       "overview", str(row+1), "overview", str(row))
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('G' + str(row) + ":" + 'G' + str(row+1))
             cell = self.overview.cell(row=row, column=8)  # difference from average
-            formula = "=IF(A%s=\"\",0, IF(OR(C%s=12,C%s=10, C%s=\"track\"),G%s-$G$%s,\"off list\"))" \
-                      % (str(row), str(row), str(row), str(row), str(row), str(self.footer_row+2))  # last row is avg
+            formula = "=IF(%s!A%s=\"\",0, IF(OR(%s!C%s=12,%s!C%s=10, %s!C%s=\"track\"),%s!G%s-%s!$G$%s,\"off list\"))" \
+                      % ("overview", str(row), "overview", str(row), "overview", str(row), "overview", str(row),
+                         "overview", str(row), "overview", str(self.footer_row+2))  # last row is avg
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('H' + str(row) + ":" + 'H' + str(row + 1))
             row += 2
 
-    def get_totalovertime_formula(self, row, column):  # gives formulas for totals counting skipping rows.
+    def get_totalovertime_formula(self, sheet, row, column):  # gives formulas for totals counting skipping rows.
         """
         the row argument is the starting row of the count,
         the column is given as a number and matched to a letter with the dictionary
@@ -608,9 +609,9 @@ class OTEquitSpreadsheet:
         column_dict = {5: "E", 6: "F", 7: "G", 9: "I", 11: "K", 13: "M", 15: "O", 17: "Q", 19: "S"}
         string = "=SUM("
         while row < self.footer_row-2:
-            string += "{}{},".format(column_dict[column], row)
+            string += "{}!{}{},".format(sheet, column_dict[column], row)
             row += 2
-        string += "{}{})".format(column_dict[column], row)
+        string += "{}!{}{})".format(sheet, column_dict[column], row)
         return string
 
     def build_overview_footer(self):  # create the footer at the bottom of the worksheet for averages and totals
@@ -618,12 +619,13 @@ class OTEquitSpreadsheet:
         cell.value = "total overtime:"
         cell.style = self.date_dov_title
         cell = self.overview.cell(row=self.footer_row, column=6)  # calculate total overtime
-        formula = self.get_totalovertime_formula(7, 6)
+        formula = self.get_totalovertime_formula("overview", 7, 6)
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.overview.cell(row=self.footer_row, column=7)  # calculate total opportunities
-        formula = "=SUM(G%s:G%s)" % (str(6), str(self.footer_row - 2))
+        formula = "=SUM(%s!G%s:G%s)" \
+                  % ("overview", str(6), str(self.footer_row - 2))
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -634,12 +636,12 @@ class OTEquitSpreadsheet:
         cell.value = "average overtime:"
         cell.style = self.date_dov_title
         cell = self.overview.cell(row=self.footer_row+2, column=6)  # calculate average overtime
-        formula = "=F%s/$H$3" % self.footer_row
+        formula = "=%s!F%s/%s!$H$3" % ("overview", self.footer_row, "overview")
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.overview.cell(row=self.footer_row+2, column=7)  # calculate average opportunities
-        formula = "=G%s/$H$3" % (str(self.footer_row))
+        formula = "=%s!G%s/%s!$H$3" % ("overview", str(self.footer_row), "overview")
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -753,14 +755,15 @@ class OTEquitSpreadsheet:
                 cell.value = "ot"
                 cell.style = self.ref_ot
                 cell = self.ws[i].cell(row=row, column=19)  # ref weekly total
-                formula = "=SUM(%s%s,%s%s,%s%s,%s%s,%s%s,%s%s,%s%s)" \
-                          % ("F", str(row), "H", str(row), "J", str(row), "L", str(row), "N", str(row),
-                             "P", str(row), "R", str(row))
+                formula = "=SUM(%s!%s%s,%s!%s%s,%s!%s%s,%s!%s%s,%s!%s%s,%s!%s%s,%s!%s%s)" \
+                          % (self.week[i], "F", str(row), self.week[i], "H", str(row), self.week[i], "J", str(row),
+                             self.week[i], "L", str(row), self.week[i], "N", str(row), self.week[i], "P", str(row),
+                             self.week[i], "R", str(row))
                 cell.value = formula
                 cell.style = self.calcs
                 cell.number_format = "#,###.00;[RED]-#,###.00"
                 cell = self.ws[i].cell(row=row + 1, column=19)  # overtime weekly total
-                formula = "=SUM(%s%s:%s%s)" % ("E", str(row+1), "Q", str(row+1))
+                formula = "=SUM(%s!%s%s:%s%s)" % (self.week[i], "E", str(row+1), "Q", str(row+1))
                 cell.value = formula
                 cell.style = self.calcs
                 cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -835,26 +838,26 @@ class OTEquitSpreadsheet:
             column_array = (5, 7, 9, 11, 13, 15, 17)
             for col in column_array:  # loop though for each column
                 cell = self.ws[i].cell(row=self.footer_row, column=col)
-                formula = self.get_totalovertime_formula(7, col)
+                formula = self.get_totalovertime_formula(self.week[i], 7, col)
                 cell.value = formula
                 cell.style = self.calcs
                 cell.number_format = "#,###.00;[RED]-#,###.00"
                 merge_string = self.get_triad_merge(self.footer_row-1, col)  # subtact 1 from row to match function
                 self.ws[i].merge_cells(merge_string)
                 cell = self.ws[i].cell(row=self.footer_row+2, column=col)
-                formula = "=%s%s/$S$3" % (column_dict[col], self.footer_row)
+                formula = "=%s!%s%s/%s!$S$3" % (self.week[i], column_dict[col], self.footer_row, self.week[i])
                 cell.value = formula
                 cell.style = self.calcs
                 cell.number_format = "#,###.00;[RED]-#,###.00"
                 merge_string = self.get_triad_merge(self.footer_row + 1, col)  # subtact 1 from row to match function
                 self.ws[i].merge_cells(merge_string)
             cell = self.ws[i].cell(row=self.footer_row, column=19)
-            formula = self.get_totalovertime_formula(7, 19)
+            formula = self.get_totalovertime_formula(self.week[i], 7, 19)
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             cell = self.ws[i].cell(row=self.footer_row + 2, column=19)
-            formula = "=%s%s/$S$3" % (column_dict[19], self.footer_row)
+            formula = "=%s!%s%s/%s!$S$3" % (self.week[i], column_dict[19], self.footer_row, self.week[i])
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"

@@ -9,7 +9,7 @@ class DataBase:
         self.pbar = None
 
     def setup(self):
-        self.pbar = ProgressBarDe(title="Building Klusterbox Database", label="Running Setup: ", text="Starting Up")
+        self.pbar = ProgressBarDe(title="Klusterbox", label="Building Database", text="Starting Up")
         self.pbar.max_count(45)
         self.pbar.start_up()
         self.globals()
