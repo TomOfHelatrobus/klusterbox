@@ -5,10 +5,9 @@ Checklist for running pyinstaller for klusterbox
 Set up folders with updated/necessary files
 
 w64 w32 mac 
-___ ___ ___  1. make sure the kb_install folder is inside the klusterbox 
-project folder. If not, then create it.
+___ ___ ___  1. (in explorer/finder) make sure the kb_install folder is inside the klusterbox project folder. If not, then create it.
 
-2. copy and paste the most resent versions of source files into the kb_install folder.
+2. (in explorer/finder) copy and paste the most resent versions of source files into the kb_install folder.
 		
 		w64 w32 mac
 		___ ___ ___  1. klusterbox.py
@@ -20,9 +19,9 @@ project folder. If not, then create it.
 		___ ___ ___  7. kbspeedsheets.py
 		___ ___ ___  7. kbequitability.py
 		
-___ ___ ___  3. in terminal/ powershell, navigate to the klusterbox folder.
+___ ___ ___  3. (in terminal/ powershell) navigate to the klusterbox folder.
 
-___ ___ ___  4. verify that the virtual environment is installed by entering "pipenv shell" or "python -m pipenv shell". if the virtual environment is not installed, create it.
+___ ___ ___  4. (in terminal/ powershell)verify that the virtual environment is installed by entering "pipenv shell" or "python -m pipenv shell". if the virtual environment is not installed, create it.
  
 	w64 w32 mac
 	___ ___ ___  a. delete Pipfile if it exist in the directory
@@ -30,19 +29,19 @@ ___ ___ ___  4. verify that the virtual environment is installed by entering "pi
 	___ ___ ___  c. enter: "pip3 install pipenv" or "pip install --user pipenv"
 	___ ___ ___  d. start virtual environment with "pipenv shell"
 
-___ ___ ___  5. check the installed modules by entering: pip list
+___ ___ ___  5. (in terminal/ powershell)check the installed modules by entering: pip list
 
 ___ ___ ___  6. if the listed modules do not match those in the requirements list then install them. 
 	___ ___ ___  a. ensure the requirements file from the klusterbox project folder is present.
 	___ ___ ___  a. enter: pipenv install -r requirements.txt
 
-7. make sure that pyinstaller is installed inside the virtual environment (pyinstaller should be included in requirements.txt). 
+7. (in terminal/ powershell) make sure that pyinstaller is installed inside the virtual environment (pyinstaller should be included in requirements.txt). 
 	___ ___ ___  a type: pyinstaller --version
 	___ ___ ___  b. if pyinstaller is not installed use:
 		type: pip install pyinstaller 
 		or type pip3 install pyinstaller. 
 
-8. navigate to the kb_install folder
+8. (in terminal/ powershell) navigate to the kb_install folder
 
 ----------------------------------------------------------------------
 
@@ -51,11 +50,11 @@ Runing Pyinstaller and creating distro for Klusterbox Legacy version for Windows
 if you are creating a klusterbox.exe to be used WITHOUT an installer:
 
 w64 w32
-___ ___  1. make sure you are in the kb_install folder.
+___ ___  1. (in powershell) make sure you are in the kb_install folder.
 
-___ ___  #. create or copy/paste the kb_sub folder into the kb_install folder.
+___ ___  #. (in explorer) create or copy/paste the kb_sub folder into the kb_install folder.
 
-___ ___  2. in explorer, ensure the following files are in the kb_install/kb_sub folder. 
+___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_sub folder. 
 	___ ___  1. license.txt
 	___ ___  2. readme.txt
 	___ ___  3. history.txt
@@ -97,20 +96,20 @@ ___ ___  2. in explorer, ensure the following files are in the kb_install/kb_sub
 		___ ___ ___  6. kb_icon2.xpm (optional)
 		___ ___ ___  7. .DS_Store (ignore this in mac. delete in windows)
 
-___ ___  3. in powershell enter the following in the command line:
+___ ___  3. (in powershell) enter the following in the command line:
 
 if you have a klusterleg.spec file:
-	___  a. copy/paste klusterleg.spec into the kb_install folder
-	___  b. enter "pyinstaller klusterleg.spec"
+	___  a. (in explorer) copy/paste klusterleg.spec into the kb_install folder
+	___  b. (in powershell) enter "pyinstaller klusterleg.spec"
 
 else if you do not have a klusterleg.spec file:	
 	___  a. enter 
 	"pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py"
 	___  b. after pyinstaller runs, you can rename the klusterbox.spec file to klusterleg.spec and move it into the project file for later use. 
 
-___ ___  4. enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
+___ ___  4. (in explorer) enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
-6. delete the following folders/files from the kb_install folder:
+6. (in explorer) delete the following folders/files from the kb_install folder:
 	___ ___  a. build
 	___ ___  b. dist
 	___ ___  c. klusterbox.spec or klusterwin.spec or klusterleg.spec 
@@ -122,9 +121,9 @@ ___ ___  4. enter into the dist folder and copy the klusterbox.exe file and past
 	___ ___  i. kbspreadsheets.py
 	___ ___  j. kbspeedsheets.py
 
-___ ___  7. you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
+___ ___  7.(in explorer)  you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
-___ ___  8. select tnew zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v..._..bit' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003_64bit'.  
+___ ___  8. (in explorer) select tnew zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v..._..bit' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003_64bit'.  
 
 ___ ___  9. The compressed folder is ready for distribution. 
 
@@ -135,9 +134,9 @@ Running pyinstaller and creating app bundle for Windows.
 if you are creating an app bundle to be installed by a NSIS installer for windows: 
 
 w64 w32
-___ ___  1. make sure you are in the kb_install folder in powershell.
+___ ___  1. (in powershell) make sure you are in the kb_install folder.
 
-make sure the following files are in the kb_install folder:
+___ ___  #. (in explorer) make sure the following files are in the kb_install folder:
 
 	___ ___  a. klusterbox.py
 	___ ___  b. projvar.py
@@ -151,7 +150,7 @@ make sure the following files are in the kb_install folder:
 
 	leave the kb_sub folder alone if it is in there.
 
-___ ___  2. make sure the above files and the following are in the datas list of the spec file. 
+___ ___  2. (in explorer) make sure the above files and the following are in the datas list of the spec file. 
 	Pyinstaller will pull them from the project file, so there is no need to move them to 
 	kb_install. 
 	___ ___  a license.txt
@@ -161,22 +160,21 @@ ___ ___  2. make sure the above files and the following are in the datas list of
 	___ ___  e. cheatsheet.txt
 	___ ___  f. requirements.txt (list of necessary libraries for running klusterbox.py)
 	
-___ ___  3. make sure the image files are listed in the datas list of the spec file
+___ ___  3. (in explorer) make sure the image files are listed in the datas list of the spec file
 	(this references the kb_sub folder in the project folder):
 	___ ___  a. kb_sub/kb_images/kb_about.jpg	
 	___ ___  b. kb_sub/kb_images/kb_icon2.gif
 	___ ___  c. kb_sub/kb_images/kb_icon2.ico
 	___ ___  d. kb_sub/kb_images/kb_icon2.jpg
 
-___ ___  4. make sure the kluserwin.spec file (64 or 32 bit) is up to date, saved and in 
-	the kb_install folder.
+___ ___  4. (in explorer) make sure the klusterwin.spec file (64 or 32 bit) is up to date, saved and in the kb_install folder.
 
-___ ___  5. enter the following in the command line: 
+___ ___  5. (in powershell) enter the following in the command line: 
 
 	pyinstaller klusterwin.spec
 	or pyinstaller klusterwin32.spec ( for 32 bit OS)
 
-___ ___  6. wait for pyinstaller to run. When it has finished, you should get a prompt.
+___ ___  6. (in powershell) wait for pyinstaller to run. When it has finished, you should get a prompt.
 
 ___ ___  7. Make sure NSIS and NISedit is installed on your computer. 
 
@@ -206,9 +204,9 @@ optional: press "Test Installer" to make sure the installer functions properly.
 
 ___ ___  13. Close the "Make NSISW" and exit the NSIS program. 
 
-___ ___  14. In explorer, navigate to the klusterbox program file to find the Setup.exe file.
+___ ___  14. (in explorer) navigate to the klusterbox program file to find the Setup.exe file.
 
-___ ___  15. select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
+___ ___  15. (in explorer) select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
 
 ___ ___  16. This is ready for distribution. 
 
@@ -218,10 +216,11 @@ Running pyinstaller and making app bundle.
 
 if you are creating a distribution for mac OS. 
 
-mac
-___  1. make sure you are in the kb_install folder in terminal
+___  #. (in finder) copy and paste the klustermac.spec file from the klusterbox project folder to the kb_install folder. 
 
-___  2. enter the following in the command line: 
+___  1. (in terminal) make sure you are in the kb_install folder
+
+___  2. (in terminal) enter the following in the command line: 
 
 	pyinstaller klustermac.spec
   
@@ -240,7 +239,7 @@ If creating a zip file for distribution:
 
 	___  4. A klusterbox.zip file will appear in the folder.
  
-	___  5. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003'.  
+	___  5. select the new zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v..._mac' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003_mac'.  
 
 	___  6. The compressed folder is ready for distribution.
 

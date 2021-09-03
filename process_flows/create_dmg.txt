@@ -1,3 +1,4 @@
+
 Creating DMG Installer for Mac OS Distribution
 
 ___  1. go to the project folder and copy/paste kb_install.png to the desktop.
