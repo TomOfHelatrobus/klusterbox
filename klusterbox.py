@@ -4,7 +4,7 @@ from kbtoolbox import *
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText
-from kbequitability import QuarterRecs, OTEquitSpreadsheet
+from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox, filedialog, ttk
@@ -36,8 +36,8 @@ from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
-version = "4.004"
-release_date = "Sep. 1, 2021"
+version = "4.005"
+release_date = "undetermined"
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -341,6 +341,271 @@ class RefusalWin:
         commit(sql)
 
 
+class OtDistribution:
+    def __init__(self):
+        self.frame = None
+        self.win = None
+        self.row = 0
+        self.quartinvran_year = None  # StringVar for investigation range
+        self.quartinvran_quarter = None
+        self.quartinvran_station = None
+        self.new_quartinvran_year = None
+        self.new_quartinvran_quarter = None
+        self.new_quartinvran_station = None
+        self.stations_minus_outofstation = None
+        self.carrierlist = []  # distinct list of carriers by station and quarter
+        self.recset = []  # recset of otdl carriers
+        self.eligible_carriers = []  # all carriers on otdl during quarter
+        self.ineligible_carriers = []  # carriers with no otdl rec during quarter, but a rec in otdl prefs
+        self.startdate = datetime(1, 1, 1)
+        self.enddate = datetime(1, 1, 1)
+        self.station = ""
+        self.quarter = ""
+        self.range = None
+        self.list_option_otdl = None
+        self.list_option_wal = None
+        self.list_option_nl = None
+        self.list_option_aux = None
+        self.list_option_ptf = None
+        self.list_option_array = []
+        self.status_update = ""
+
+    def create(self, frame):  # called from the main screen to build ot preferences screen
+        self.frame = frame
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+        self.startup_stringvars()
+        self.setup_listoption_stringvars()
+        self.create_lower()
+
+    def re_create(self, frame):  # called from the ot preferences screen when invran is changed.
+        self.row = 0  # re initialize vars
+        self.startdate = datetime(1, 1, 1)
+        self.enddate = datetime(1, 1, 1)
+        self.station = ""
+        self.quarter = ""
+        self.frame = frame  # define the frame
+        self.win = MakeWindow()
+        self.re_startup_stringvars()
+        self.setup_listoption_stringvars()
+        self.create_lower()
+
+    def create_lower(self):
+        self.get_quarter()
+        self.get_stations_list()
+        self.get_dates()  # get startdate, enddate and station
+        self.win.create(self.frame)
+        self.build_quarterinvran()
+        self.investigation_status()
+        self.build_range()
+        self.build_list_options()
+        self.buttons_frame()
+        self.win.finish()
+
+    def get_stations_list(self):  # get a list of stations for station optionmenu
+        self.stations_minus_outofstation = projvar.list_of_stations[:]
+        self.stations_minus_outofstation.remove("out of station")
+        if len(self.stations_minus_outofstation) == 0:
+            self.stations_minus_outofstation.append("undefined")
+
+    def get_dates(self):  # find startdate, enddate and station
+        year = int(self.quartinvran_year.get())
+        startdate = (datetime(year, 1, 1), datetime(year, 4, 1), datetime(year, 7, 1), datetime(year, 10, 1))
+        enddate = (datetime(year, 3, 31), datetime(year, 6, 30), datetime(year, 9, 30), datetime(year, 12, 31))
+        self.startdate = startdate[int(self.quartinvran_quarter.get())-1]
+        self.enddate = enddate[int(self.quartinvran_quarter.get())-1]
+        if self.quartinvran_station.get() == "undefined":
+            self.station = ""
+        else:
+            self.station = self.quartinvran_station.get()
+
+    def build_quarterinvran(self):
+        Label(self.win.body, text="Overtime Distribution", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=self.row, column=0, sticky="w", columnspan=20)
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row, column=0)
+        self.row += 1
+        Label(self.win.body, text="QUARTERLY INVESTIGATION RANGE")\
+            .grid(row=self.row, column=0, columnspan=20, sticky="w")
+        self.row += 1
+        Label(self.win.body, text=macadj("Year: ", "Year:"), fg="Gray", anchor="w")\
+            .grid(row=self.row, column=0, sticky="w")
+        Entry(self.win.body, width=macadj(5, 4), textvariable=self.quartinvran_year)\
+            .grid(row=self.row, column=1, sticky="w")
+        Label(self.win.body, text=macadj("Quarter: ", "Quarter:"), fg="Gray")\
+            .grid(row=self.row, column=2, sticky="w")
+        Entry(self.win.body, width=macadj(2, 1), textvariable=self.quartinvran_quarter)\
+            .grid(row=self.row, column=3, sticky="w")
+        Label(self.win.body, text=macadj("Station: ", "Station:"), fg="Gray")\
+            .grid(row=self.row, column=4, sticky="w")
+        om_station = OptionMenu(self.win.body, self.quartinvran_station, *self.stations_minus_outofstation)
+        om_station.config(width=macadj(31, 23))
+        om_station.grid(row=self.row, column=5, columnspan=4, sticky=W, padx=2)
+        # set and reset buttons for investigation range
+        Button(self.win.body, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
+               fg=macadj("white", "green"), command=lambda: self.set_invran()).grid(row=self.row, column=9, padx=2)
+        Button(self.win.body, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
+               fg=macadj("white", "red")).grid(row=self.row, column=10, padx=2)
+        self.row += 1
+        self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
+
+    def investigation_status(self):  # provide message on status of investigation range
+        Label(self.win.body, text="").grid(row=self.row, column=0)
+        self.row += 1
+        Label(self.win.body, text="WEEKLY INVESTIGATION RANGE") \
+            .grid(row=self.row, column=0, columnspan=20, sticky="w")
+        self.row += 1
+        # Investigation date SET/NOT SET notification
+        if projvar.invran_weekly_span is None:
+            Label(self.win.body, text="Investigation date/range not set") \
+                .grid(row=self.row, column=0, columnspan=8, sticky="w")
+        elif projvar.invran_weekly_span == 0:  # if the investigation range is one day
+            f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
+            Label(self.win.body, text="Day Set: {} --> Pay Period: {}".format(f_date, projvar.pay_period))\
+                .grid(row=self.row, column=0, columnspan=8, sticky="w")
+        else:
+            # if the investigation range is weekly
+            f_date = projvar.invran_date_week[0].strftime("%a - %b %d, %Y")
+            end_f_date = projvar.invran_date_week[6].strftime("%a - %b %d, %Y")
+            Label(self.win.body, text="{0} through {1} --> Pay Period: {2}"
+                  .format(f_date, end_f_date, projvar.pay_period))\
+                .grid(row=self.row, column=0, columnspan=8, sticky="w")
+
+    def build_range(self):
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row, column=0)
+        self.row += 1
+        Label(self.win.body, text="Spread Sheet Range: ").grid(row=self.row, column=0, columnspan=8, sticky="w")
+        self.row += 1
+        self.range = StringVar(self.win.body)
+        self.range.set('weekly')
+        Radiobutton(self.win.body, text="Quarterly", variable=self.range, value='quarterly', justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
+        Radiobutton(self.win.body, text="Weekly", variable=self.range, value='weekly', justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+
+    def build_list_options(self):
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row, column=0)
+        self.row += 1
+        Label(self.win.body, text="List Options: ").grid(row=self.row, column=0, columnspan=8, sticky="w")
+        self.row += 1
+        Checkbutton(self.win.body, text="OTDL", variable=self.list_option_otdl, justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
+        Checkbutton(self.win.body, text="Work Assignment", variable=self.list_option_wal, justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
+        Checkbutton(self.win.body, text="No List", variable=self.list_option_nl, justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
+        Checkbutton(self.win.body, text="Auxiliary", variable=self.list_option_aux, justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
+        Checkbutton(self.win.body, text="Part Time Flex", variable=self.list_option_ptf, justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
+
+    def set_invran(self):
+        if not self.check_quarterinvran():
+            return
+        self.re_create(self.win.topframe)
+
+    def check_quarterinvran(self):
+        if not isint(self.quartinvran_year.get()):
+            self.error_msg("The year must be a numeric.")
+            return False
+        if not len(self.quartinvran_year.get()) == 4:
+            self.error_msg("Year must have four digits.")
+            return False
+        if not isint(self.quartinvran_quarter.get()):
+            self.error_msg("The quarter must be an integer.")
+            return False
+        if int(self.quartinvran_quarter.get()) not in (1, 2, 3, 4):
+            self.error_msg("Acceptable values for Quarter are limited to 1, 2, 3 or 4.")
+            return False
+        if self.quartinvran_station.get() == "undefined":
+            self.error_msg("You must select a station to set the investigation range.")
+            return False
+        self.new_quartinvran_year = self.quartinvran_year.get()
+        self.new_quartinvran_quarter = self.quartinvran_quarter.get()
+        self.new_quartinvran_station = self.quartinvran_station.get()
+        return True
+
+    def startup_stringvars(self):
+        if projvar.invran_weekly_span is None:  # if no investigation range is set
+            date = datetime.now()
+            station = "undefined"
+        elif projvar.invran_weekly_span:  # if the investigation range is weekly
+            date = projvar.invran_date_week[6]
+            station = projvar.invran_station
+        else:
+            date = projvar.invran_date  # if the investigation range is daily
+            station = projvar.invran_station
+        year = date.strftime("%Y")
+        month = date.strftime("%m")
+        quarter = Quarter(month).find()  # get the quarter from the month
+        self.quartinvran_year = StringVar(self.win.body)
+        self.quartinvran_quarter = StringVar(self.win.body)
+        self.quartinvran_station = StringVar(self.win.body)
+        self.quartinvran_year.set(year)
+        self.quartinvran_quarter.set(quarter)
+        self.quartinvran_station.set(station)
+
+    def re_startup_stringvars(self):
+        self.quartinvran_year = StringVar(self.win.body)
+        self.quartinvran_quarter = StringVar(self.win.body)
+        self.quartinvran_station = StringVar(self.win.body)
+        self.quartinvran_year.set(self.new_quartinvran_year)
+        self.quartinvran_quarter.set(self.new_quartinvran_quarter)
+        self.quartinvran_station.set(self.new_quartinvran_station)
+
+    def setup_listoption_stringvars(self):
+        self.list_option_otdl = IntVar(self.win.body)
+        self.list_option_wal = IntVar(self.win.body)
+        self.list_option_nl = IntVar(self.win.body)
+        self.list_option_aux = IntVar(self.win.body)
+        self.list_option_ptf = IntVar(self.win.body)
+        self.list_option_otdl.set(0)
+        self.list_option_wal.set(0)
+        self.list_option_nl.set(0)
+        self.list_option_aux.set(0)
+        self.list_option_ptf.set(0)
+
+    def get_quarter(self):  # creates quarter in format "2021-3"
+        self.quarter = self.quartinvran_year.get() + "-" + self.quartinvran_quarter.get()
+
+    def buttons_frame(self):
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=macadj(18, 12),
+                      command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        # generate spreadsheet
+        button = Button(self.win.buttons)
+        button.config(text="SpreadSheet", width=macadj(17, 12),
+                      command=lambda: (self.set_listoption_array(), OTDistriSpreadsheet().create
+                      (self.win.topframe, self.startdate, self.quartinvran_station.get(), self.range.get(),
+                       self.list_option_array)))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.status_update.pack(side=LEFT)
+
+    def set_listoption_array(self):
+        self.list_option_array = []
+        options = ("otdl", "wal", "nl", "aux", "ptf")
+        strvars = (self.list_option_otdl.get(), self.list_option_wal.get(), self.list_option_nl.get(),
+                   self.list_option_aux.get(), self.list_option_ptf.get())
+        for i in range(len(strvars)):
+            if strvars[i]:
+                self.list_option_array.append(options[i])
+        print(self.list_option_array)
+
+
 class OtEquitability:
     def __init__(self):
         self.frame = None
@@ -489,7 +754,8 @@ class OtEquitability:
 
     def get_recsets(self):
         for carrier in self.carrierlist:
-            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs("otdl")
+            otlist = ("otdl", )
+            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs(otlist)
             if rec:
                 self.recset.append(rec)
 
@@ -13191,13 +13457,13 @@ class MainFrame:
             Label(self.invest_frame, text="Station: ", fg="grey").grid(row=1, column=2, sticky=W)
             Label(self.invest_frame, text="Set/Reset: ", fg="grey").grid(row=1, column=3, columnspan=2, sticky=W)
         # create widget row
-        Entry(self.invest_frame, textvariable=self.invran_date, width=macadj(14,9), justify='center')\
+        Entry(self.invest_frame, textvariable=self.invran_date, width=macadj(14, 9), justify='center')\
             .grid(row=2, column=0, padx=2)
         om_range = OptionMenu(self.invest_frame, self.invran, "week", "day")
         om_range.config(width=4)
         om_range.grid(row=2, column=1, sticky=W, padx=2)
         om_station = OptionMenu(self.invest_frame, self.station, *self.stations_minus_outofstation)
-        om_station.config(width=macadj(31,29))
+        om_station.config(width=macadj(31, 29))
         om_station.grid(row=2, column=2, sticky=W, padx=2)
         # set and reset buttons for investigation range
         Button(self.invest_frame, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
@@ -13382,12 +13648,16 @@ class MainFrame:
                                command=lambda r_rings="x": OvermaxSpreadsheet().create(self.win.topframe))
         ot_date = projvar.invran_date  # build argument for ot equitability spreadsheet
         if projvar.invran_weekly_span:  # if the investigation range is weekly
-            ot_date = projvar. invran_date_week[6]   # pass the last day of the investigation range as datetime
+            ot_date = projvar.invran_date_week[6]   # pass the last day of the investigation range as datetime
         basic_menu.add_command(label="OT Equitability Spreadsheet",
                                command=lambda: OTEquitSpreadsheet().
                                create(self.win.topframe, ot_date, self.station.get()))
+        basic_menu.add_command(label="OT Distribution Spreadsheet",
+                               command=lambda:OTDistriSpreadsheet().
+                               create(self.win.topframe, projvar.invran_date_week[0], self.station.get()))
         basic_menu.add_separator()
         basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
+        basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="Informal C", command=lambda: informalc(self.win.topframe))
         basic_menu.add_separator()
@@ -13407,6 +13677,7 @@ class MainFrame:
             basic_menu.entryconfig(4, state=DISABLED)
             basic_menu.entryconfig(5, state=DISABLED)
             basic_menu.entryconfig(6, state=DISABLED)
+            basic_menu.entryconfig(7, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)

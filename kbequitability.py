@@ -16,13 +16,7 @@ class QuarterRecs:
         self.station = station
 
     def get_filtered_recs(self, ls):
-        lst = ("otdl", )
-        if ls == "non":
-            lst = ("nl", "wal")
-        if ls == "aux":
-            lst = ("aux", )
-        if ls == "ptf":
-            lst = ("ptf", )
+        lst = ls  # the ls arguement is an array with ot list types (otdl, wal, nl, aux, ptf)
         recset = self.get_recs()
         if recset is None:
             return
@@ -201,7 +195,8 @@ class OTEquitSpreadsheet:
 
     def get_recsets(self):
         for carrier in self.carrierlist:
-            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs("otdl")
+            otlist = ("otdl", )  # list type for carriers wanted
+            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs(otlist)
             if rec:
                 self.recset.append(rec)
 
@@ -947,3 +942,84 @@ class OTEquitSpreadsheet:
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
         self.pb.stop()
+
+
+class OTDistriSpreadsheet:
+    def __init__(self):
+        self.frame = None
+        self.pb = None  # the progress bar object
+        self.pbi = None  # progress bar counter index
+        self.date = None
+        self.station = None
+        self.rangeopt = None
+        self.listoptions = None
+        self.year = None
+        self.month = None
+        self.startdate = None
+        self.enddate = None
+        self.quarter = None
+        self.full_quarter = None
+        self.startdate_index = []
+        self.enddate_index = []
+        self.carrierlist = []
+        self.recset = []
+        self.minrows = 1
+        self.otcalcpref = "off_route"  # preference for overtime calculation - "off_route" or "all"
+
+    def create(self, frame, date, station, rangeopt, listoptions):
+        self.frame = frame
+        if not self.ask_ok():  # abort if user selects cancel from askokcancel
+            return
+        self.pb = ProgressBarDe(label="Building OT Distribution Spreadsheet")
+        self.pb.max_count(100)  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
+        self.station = station
+        self.rangeopt = rangeopt
+        self.listoptions = listoptions
+        self.date = date  # a datetime object from the quarter is passed and used as date
+
+        self.pb.stop()
+
+    def ask_ok(self):
+        if messagebox.askokcancel("Spreadsheet generator",
+                                  "Do you want to generate a spreadsheet?",
+                                  parent=self.frame):
+            return True
+        return False
+
+    def breakdown_date(self):  # breakdown the date into year and month
+        self.year = int(self.date.strftime("%Y"))
+        self.month = int(self.date.strftime("%m"))
+
+    def define_quarter(self):
+        self.quarter = Quarter(self.month).find()  # convert the month into a quarter - 1 through 4.
+        self.full_quarter = str(self.year) + "-" + str(self.quarter)  # create a string expressing the year - quarter
+
+    def get_dates(self):
+        self.startdate_index = (datetime(self.year, 1, 1), datetime(self.year, 4, 1), datetime(self.year, 7, 1),
+                     datetime(self.year, 10, 1))
+        self.enddate_index = (datetime(self.year, 3, 31), datetime(self.year, 6, 30), datetime(self.year, 9, 30),
+                   datetime(self.year, 12, 31))
+        self.startdate = self.startdate_index[int(self.quarter) - 1]
+        self.enddate = self.enddate_index[int(self.quarter) - 1]
+
+    def starting_day(self):  # returns the column position of the startdate as an odd number (5 to 17)
+        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        i = 6  #
+        for day in days:  # loop through tuple of days"
+            if self.startdate.strftime("%A") == day:  # if the startdate matches the day
+                return i  # returns the column of the first date
+            i -= 1  # count down from Saturday
+
+    def get_carrierlist(self):
+        self.carrierlist = CarrierList(self.startdate, self.enddate, self.station).get_distinct()
+
+    def get_recsets(self):
+        for carrier in self.carrierlist:
+            otlist = ("nl", "wal")
+            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs(otlist)
+            if rec:
+                self.recset.append(rec)
