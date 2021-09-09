@@ -1,4 +1,5 @@
 # custom modules
+import projvar
 from kbtoolbox import *
 from tkinter import messagebox
 import os
@@ -965,6 +966,13 @@ class OTDistriSpreadsheet:
         self.recset = []
         self.minrows = 1
         self.otcalcpref = "off_route"  # preference for overtime calculation - "off_route" or "all"
+        self.carrier_overview = []  # a list of carrier's name, status and makeups
+        self.date_array = []  # a list of all days in the quarter as a datetimes
+        self.assignment_check = []  # multidimensional array of carriers and days with no bid assignment
+        self.front_padding = 0
+        self.end_padding = 0
+        self.end_pad_indicator = 0  # shows days after last day for triad builder
+        self.ringsset = []
 
     def create(self, frame, date, station, rangeopt, listoptions):
         self.frame = frame
@@ -980,7 +988,23 @@ class OTDistriSpreadsheet:
         self.rangeopt = rangeopt
         self.listoptions = listoptions
         self.date = date  # a datetime object from the quarter is passed and used as date
-
+        self.breakdown_date()
+        self.define_quarter()
+        self.get_dates()
+        self.starting_day()
+        self.get_carrierlist()
+        self.get_recsets()  # filter the carrierlist to get only carriers with selected list statuses
+        self.get_settings()  # get minimum rows and ot calculation preference
+        self.get_carier_overview()  # build a list of carrier's name, status and makeups
+        self.carrier_overview_add()  # adds empty sets so the lenght of carrier overview = minimum rows.
+        self.get_date_array()  # get a list of all days in the quarter as datetime objects
+        self.get_assignment_check()  # get a multidimensional array of carriers time spent off assignment.
+        if rangeopt == "quarterly":  # front and end padding is only needed for quarterly investigations
+            self.get_front_padding()
+            self.get_end_padding()
+        print(len(self.recset), self.recset)
+        self.get_ringsset()
+        print(len(self.ringsset), self.ringsset)
         self.pb.stop()
 
     def ask_ok(self):
@@ -1003,8 +1027,11 @@ class OTDistriSpreadsheet:
                      datetime(self.year, 10, 1))
         self.enddate_index = (datetime(self.year, 3, 31), datetime(self.year, 6, 30), datetime(self.year, 9, 30),
                    datetime(self.year, 12, 31))
-        self.startdate = self.startdate_index[int(self.quarter) - 1]
+        self.startdate = self.startdate_index[int(self.quarter) - 1]  # if investigation range is quarterly
         self.enddate = self.enddate_index[int(self.quarter) - 1]
+        if self.rangeopt == "weekly":  # if investigation range is weekly
+            self.startdate = projvar.invran_date_week[0]
+            self.enddate = projvar.invran_date_week[6]
 
     def starting_day(self):  # returns the column position of the startdate as an odd number (5 to 17)
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
@@ -1014,12 +1041,136 @@ class OTDistriSpreadsheet:
                 return i  # returns the column of the first date
             i -= 1  # count down from Saturday
 
-    def get_carrierlist(self):
+    def get_carrierlist(self):  # get a distinct list of carrier names for the investigation range
         self.carrierlist = CarrierList(self.startdate, self.enddate, self.station).get_distinct()
 
     def get_recsets(self):
         for carrier in self.carrierlist:
-            otlist = ("nl", "wal")
-            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs(otlist)
+            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station)\
+                .get_filtered_recs(self.listoptions)
             if rec:
                 self.recset.append(rec)
+
+    def get_settings(self):  # get minimum rows and ot calculation preference
+        sql = "SELECT tolerance FROM tolerances"
+        result = inquire(sql)
+        self.minrows = int(result[25][0])
+        self.otcalcpref = result[26][0]
+
+    @staticmethod
+    def get_status(recs):  # return the carrier's list status
+        add_plus = False
+        status = recs[0][2]
+        for i in range(len(recs)):  # loop through all recs in recset
+            if recs[i][2] != status:  # check for any list statuses that differ from the first
+                add_plus = True
+        if add_plus:  # add a "+" if there is more than one list status
+            status = status + "+"
+        return status
+
+    def get_carier_overview(self):  # build a list of carrier's name, status and makeups
+        self.pbi += 1  # increment progress bar counter
+        self.pb.change_text("Gathering Carrier Data... ")  # update progress bar text
+        for recs in self.recset:  # loop through the recsets
+            carrier = recs[0][1]  # get the carrier name
+            status = self.get_status(recs)
+            add_this = (carrier, status)
+            self.carrier_overview.append(add_this)
+
+    def carrier_overview_add(self):  # adds empty sets so the lenght of carrier overview = minimum rows.
+        while len(self.carrier_overview) < self.minrows:
+            add_this = ("", "")
+            self.carrier_overview.append(add_this)
+
+    def get_date_array(self):  # get a list of all days in the quarter as datetime objects
+        running_date = self.startdate
+        while running_date <= self.enddate:
+            self.date_array.append(running_date)
+            running_date += timedelta(days=1)
+
+    def get_front_padding(self):  # get the number of empty triads to put before startdate to fill worksheet
+        self.front_padding = 6 - self.starting_day()
+
+    def get_end_padding(self):  # get number of empty triads needed after enddate to fill worksheet
+        self.end_padding = 105 - (self.front_padding + len(self.date_array))
+        self.end_pad_indicator = self.front_padding + len(self.date_array)
+
+    def get_assignment_check(self):  # get a multidimensional array of carriers time with no bid assignment
+        for i in range(len(self.carrier_overview)):
+            if not self.carrier_overview[i][0]:  # if the carrier is not empty set for minimum rows
+                self.assignment_check.append([])  # add empty into the array
+            elif not self.check_for_unassigned(i):  # if there is not a record with no assignment
+                self.assignment_check.append([])  # add empty into the array
+            else:  # if there is a carrier and they have been unassigned at some point in the quarter
+                self.assignment_check.append([])  # add to the array
+                self.get_unassigned(i)  # fill it with dates in which carrier was unassigned
+
+    def check_for_unassigned(self, i):  # check for any records where otdl carrier is unassigned
+        for rec in self.recset[i]:
+            if rec[4] == "" or rec[4] == "0000":
+                return True
+        return False
+
+    def get_unassigned(self, i):  # get a list of datetimes for periods where a carrier is unassigned.
+        loop = 0
+        dates = self.get_unassigned_dates(i)
+        for revrec in reversed(self.recset[i]):
+            if not revrec[4] or revrec[4] == "0000":  # if there is no assignment for the record
+                date = max(Convert(revrec[0]).dt_converter(), self.startdate)  # handle RPRs, default to date in range
+                if loop + 1 != len(self.recset[i]):  # if there is at least one more record in the set
+                    while date < dates[loop + 1]:  # until the date matches the next
+                        self.assignment_check[i].append(date)
+                        date += timedelta(days=1)
+                if loop + 1 == len(self.recset[i]):  # if this is the last record in the set
+                    while date != self.enddate + timedelta(days=1):
+                        self.assignment_check[i].append(date)
+                        date += timedelta(days=1)
+            loop += 1
+
+    def get_unassigned_dates(self, i):  # get reversed list of effective dates from the recset
+        dates = []
+        for revrec in reversed(self.recset[i]):
+            dates.append(Convert(revrec[0]).dt_converter())
+        return dates
+
+    def get_ringsset(self):    # build multidimensional array - daily rings/refusals for each otdl carrier
+        # self.pb.max_count(8 + (len(self.carrier_overview)*2))  # set length of progress bar
+        for i in range(len(self.carrier_overview)):
+            # update progress bar text
+            self.pb.change_text("Gathering Carrier Rings: {}/{} ".format(i, len(self.carrier_overview)))
+            self.pbi += 1  # increment progress bar counter
+            self.pb.move_count(self.pbi)  # increment progress bar
+            self.ringsset.append([])  # each carrier has an array
+            self.get_daily_rings(i)
+
+    def get_overtime(self, total, moves, code, has_route):
+        # find the overtime pending ot calculation preference and ns day code
+        if self.otcalcpref == "off_route" and has_route:
+            return Overtime().proper_overtime(total, moves, code)
+        else:  # default to straight overtime if the carrier has no route.
+            return Overtime().straight_overtime(total, code)
+
+    def get_daily_rings(self, index):
+        daily_ring = []
+        carrier = self.carrier_overview[index][0]  # get the carrier name using carrier overview md array and index
+        for _ in range(self.front_padding):  # insert front padding so empty cells fill worksheet
+            add_this = ["", "", ""]
+            daily_ring.append(add_this)
+        for date in self.date_array:  # get the ringrefs from the database or empty if none
+            has_route = True  # notes that the carrier has a bid assignment
+            if date in self.assignment_check[index]:  # if the date matchs a date where the carrier had no assignment
+                has_route = False  # note that the carrier had no assignment
+            overtime = ""
+            sql = "SELECT total, code, moves FROM rings3 WHERE rings_date = '%s' AND carrier_name = '%s'" \
+                  % (date, carrier)
+            results = inquire(sql)
+            if results:
+                total = results[0][0]
+                code = results[0][1]
+                moves = Moves().timeoffroute(results[0][2])  # calculate the time off route
+                overtime = self.get_overtime(total, moves, code, has_route)  # find the overtime
+            daily_ring.append(overtime)
+        for _ in range(self.end_padding):  # insert front padding so empty cells fill worksheet
+            add_this = ""
+            daily_ring.append(add_this)
+        self.ringsset[index] = daily_ring

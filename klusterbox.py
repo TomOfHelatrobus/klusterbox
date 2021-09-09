@@ -13652,9 +13652,10 @@ class MainFrame:
         basic_menu.add_command(label="OT Equitability Spreadsheet",
                                command=lambda: OTEquitSpreadsheet().
                                create(self.win.topframe, ot_date, self.station.get()))
-        basic_menu.add_command(label="OT Distribution Spreadsheet",
-                               command=lambda:OTDistriSpreadsheet().
-                               create(self.win.topframe, projvar.invran_date_week[0], self.station.get()))
+        listoptions = ("wal", "nl")  # ot distribution spreadsheet will show only work assignment and no list carriers
+        basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda:OTDistriSpreadsheet()
+                               .create(self.win.topframe, projvar.invran_date_week[0], self.station.get(),
+                                       "weekly", listoptions))
         basic_menu.add_separator()
         basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
         basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
