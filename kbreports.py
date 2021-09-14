@@ -401,4 +401,16 @@ class Messenger:
                    "carrier's assignment are calculated as overtime.\n\n" \
                    "(Overtime for OTDL carriers with no assignment will \n" \
                    "automatically use the \"all\" overtime calculation.)\n"
+        if switch == "min_ot_dist":
+            text = "Sets the minimum number of rows for the " \
+                   "Overtime Distribution spreadsheet. \n\n" \
+                   "Enter a value between 1 and 100"
+        if switch == "ot_calc_pref_dist":
+            text = "Overtime Calculation Preferences:\n\n" \
+                   "all: All overtime over 8 hours as well as ns days \n" \
+                   "are calculated as overtime. \n\n" \
+                   "off route: Only overtime hours worked off of the \n" \
+                   "carrier's assignment are calculated as overtime.\n\n" \
+                   "(Overtime for OTDL carriers with no assignment will \n" \
+                   "automatically use the \"all\" overtime calculation.)\n"
         messagebox.showinfo("About Tolerances and Settings", text, parent=self.frame)

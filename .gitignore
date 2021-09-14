@@ -24,6 +24,7 @@ __pycache__
 /kb_sub/infc_grv
 /kb_sub/report
 /kb_sub/ot_equitability
+/kb_sub/ot_distribution
 
 # ignore license and readme files in kb_sub dir
 

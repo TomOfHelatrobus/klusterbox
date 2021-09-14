@@ -603,7 +603,6 @@ class OtDistribution:
         for i in range(len(strvars)):
             if strvars[i]:
                 self.list_option_array.append(options[i])
-        print(self.list_option_array)
 
 
 class OtEquitability:
@@ -10206,6 +10205,8 @@ class SpreadsheetConfig:
         self.pb_otdl_aux = True  # page break between otdl and auxiliary
         self.min_ot_equit = None  # minimum rows for ot equitability spreadsheet
         self.ot_calc_pref = None  # overtime calcuations preference for otdl equitability
+        self.min_ot_dist = None  # minimum rows for ot distribution spreadsheet
+        self.ot_calc_pref_dist = None  # overtime calcuations preference for otdl distribution
         self.min_nl_var = None
         self.min_wal_var = None
         self.min_otdl_var = None
@@ -10216,6 +10217,8 @@ class SpreadsheetConfig:
         self.pb_otdl_aux_var = None  # page break between otdl and auxiliary
         self.min_ot_equit_var = None  # minimum rows for ot equitability spreadsheet
         self.ot_calc_pref_var = None  # overtime calcuations preference for otdl equitability
+        self.min_ot_dist_var = None  # minimum rows for ot distribution spreadsheet
+        self.ot_calc_pref_dist_var = None  # overtime calcuations preference for otdl distribution
         self.status_update = None  # Label(self.win.buttons, text="", fg="red")
         self.report_counter = 0
         self.check_i = 0  # the iteration of the apply/check method
@@ -10229,6 +10232,8 @@ class SpreadsheetConfig:
         self.add_pb_otdl_aux = True  # page break between otdl and auxiliary
         self.add_min_ot_equit = None
         self.add_ot_calc_pref = None
+        self.add_min_ot_dist = None  # minimum rows for ot distribution spreadsheet
+        self.add_ot_calc_pref_dist = None  # overtime calcuations preference for otdl distribution
 
     def start(self, frame):
         self.frame = frame
@@ -10259,6 +10264,9 @@ class SpreadsheetConfig:
         # otdl equitability vars
         self.min_ot_equit = results[25][0]  # minimum rows
         self.ot_calc_pref = results[26][0]  # ot calculation preference
+        # overtime distribution vars
+        self.min_ot_dist = results[27][0]  # minimum rows
+        self.ot_calc_pref_dist = results[28][0]  # ot calculations preference
 
     def build_stringvars(self):    # create stringvars
         self.min_nl_var = StringVar(self.win.body)
@@ -10271,6 +10279,8 @@ class SpreadsheetConfig:
         self.pb_otdl_aux_var = StringVar(self.win.body)
         self.min_ot_equit_var = StringVar(self.win.body)
         self.ot_calc_pref_var = StringVar(self.win.body)
+        self.min_ot_dist_var = StringVar(self.win.body)
+        self.ot_calc_pref_dist_var = StringVar(self.win.body)
 
     def set_stringvars(self):  # set stringvar values
         self.min_nl_var.set(self.min_nl)
@@ -10283,6 +10293,8 @@ class SpreadsheetConfig:
         self.pb_otdl_aux_var.set(self.pb_otdl_aux)
         self.min_ot_equit_var.set(self.min_ot_equit)
         self.ot_calc_pref_var.set(self.ot_calc_pref)
+        self.min_ot_dist_var.set(self.min_ot_dist)
+        self.ot_calc_pref_dist_var.set(self.ot_calc_pref_dist)
 
     def build(self):
         row = 0
@@ -10368,6 +10380,7 @@ class SpreadsheetConfig:
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
+
         # Display header for OTDL Equitability Spread Sheet
         Label(self.win.body, text="OTDL Equitability Spreadsheet Settings",
               font=macadj("bold", "Helvetica 18")) \
@@ -10393,6 +10406,34 @@ class SpreadsheetConfig:
             .grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+
+        # Display header for Overtime Distribution Spread Sheet
+        Label(self.win.body, text="Overtime Distribution Spreadsheet Settings",
+              font=macadj("bold", "Helvetica 18")) \
+            .grid(row=row, column=0, sticky="w", columnspan=4)
+        row += 1
+        Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+        # Display widgets for Overtime Distribution Spread Sheet
+        Label(self.win.body, text="Minimum rows for Overtime Distribution", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_ot_dist_var).grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_ot_dist")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Overtime Calculation Preference", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_ot_equit = OptionMenu(self.win.body, self.ot_calc_pref_dist_var, "all", "off_route")
+        om_ot_equit.config(width=7)
+        om_ot_equit.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("ot_calc_pref_dist")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="").grid(row=row, column=0)
+
         row += 1
         dashes = ""
         dashcount = 71
@@ -10436,11 +10477,13 @@ class SpreadsheetConfig:
         num = "25"
         over_num = "30"
         ot_num = "19"  # default for otdl equitability minimum rows
+        ot_dist_num = "25"  # default for ot distribution minimum rows
         msg = "Minimum rows reset to default. "
         if order == "one":
             num = "1"
             over_num = "1"
             ot_num = "1"
+            ot_dist_mum = "25"
             msg = "Minimum rows set to one. "
         self.status_update.config(text="{}".format(msg))
         types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
@@ -10453,12 +10496,17 @@ class SpreadsheetConfig:
         # set minimum row value for otdl equitability
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (ot_num, "min_ot_equit")
         commit(sql)
+        # set minimum row value for ot distribution
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (ot_dist_num, "min_ot_dist")
+        commit(sql)
         pagebreaks = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux")
         if order == "default":
             for pb in pagebreaks:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("True", pb)
                 commit(sql)
             sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("off_route", "ot_calc_pref")
+            commit(sql)
+            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("off_route", "ot_calc_pref_dist")
             commit(sql)
         self.get_settings()
         self.set_stringvars()
@@ -10492,20 +10540,22 @@ class SpreadsheetConfig:
         return True
 
     def apply(self, go_home):
-        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux, self.min_overmax, self.min_ot_equit)
+        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux, self.min_overmax, self.min_ot_equit,
+                      self.min_ot_dist)
         onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux)
-        onrecs_misc = (self.ot_calc_pref, )
+        onrecs_misc = (self.ot_calc_pref, self.ot_calc_pref_dist)
         check_these = (self.min_nl_var.get(), self.min_wal_var.get(), self.min_otdl_var.get(), self.min_aux_var.get(),
-                       self.min_overmax_var.get(), self.min_ot_equit_var.get())
+                       self.min_overmax_var.get(), self.min_ot_equit_var.get(), self.min_ot_dist_var.get())
         add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux, self.add_min_overmax,
-                     self.add_min_ot_equit]
-        categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux", "min_ss_overmax", "min_ot_equit")
+                     self.add_min_ot_equit, self.add_min_ot_dist]
+        categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux", "min_ss_overmax", "min_ot_equit",
+                      "min_ot_dist")
         pbs = (self.pb_nl_wal_var.get(), self.pb_wal_otdl_var.get(), self.pb_otdl_aux_var.get())
         add_pbs = [self.add_pb_nl_wal, self.add_pb_wal_otdl, self.add_pb_otdl_aux]
         pb_categories = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux")
-        misc = (self.ot_calc_pref_var.get(), )  # misc stringvars
-        add_misc = [self.add_ot_calc_pref, ]  # misc values to update to database
-        misc_categories = ("ot_calc_pref", )  # list of records in the tolerance table.
+        misc = (self.ot_calc_pref_var.get(), self.ot_calc_pref_dist_var.get())  # misc stringvars
+        add_misc = [self.add_ot_calc_pref, self.add_ot_calc_pref_dist]  # misc values to update to database
+        misc_categories = ("ot_calc_pref", "ot_calc_pref_dist")  # list of records in the tolerance table.
         self.check_i = 0
         for var in check_these:  # check each of the minimum rows stringvars
             if not self.check(var):  # if any fail
@@ -13750,6 +13800,8 @@ class MainFrame:
                                         command=lambda: file_dialogue(dir_path('over_max')))
         reportsarchive_menu.add_command(label="OT Equitability",
                                         command=lambda: file_dialogue(dir_path('ot_equitability')))
+        reportsarchive_menu.add_command(label="OT Distribution",
+                                        command=lambda: file_dialogue(dir_path('ot_distribution')))
         reportsarchive_menu.add_command(label="Everything Report",
                                         command=lambda: file_dialogue(dir_path('ee_reader')))
         reportsarchive_menu.add_command(label="Weekly Availability",
@@ -13768,6 +13820,8 @@ class MainFrame:
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('over_max')))
         cleararchive.add_command(label="OT Equitability",
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('ot_equitability')))
+        cleararchive.add_command(label="OT Distribution",
+                                 command=lambda: remove_file_var(self.win.topframe, dir_path('ot_distribution')))
         cleararchive.add_command(label="Everything Report",
                                  command=lambda: remove_file_var(self.win.topframe, dir_path('ee_reader')))
         cleararchive.add_command(label="Weekly Availability",

@@ -481,6 +481,12 @@ class OTEquitSpreadsheet:
         cell.value = date
         cell.style = self.date_dov
         self.overview.merge_cells('B2:E2')
+        cell = self.overview.cell(row=3, column=1)  # ot type label
+        cell.value = "ot type: "
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=3, column=2)  # fill in ot type
+        cell.value = self.otcalcpref
+        cell.style = self.date_dov
         cell = self.overview.cell(row=2, column=6)  # station
         cell.value = "station: "
         cell.style = self.date_dov_title
@@ -668,6 +674,12 @@ class OTEquitSpreadsheet:
             cell.value = self.dates_breakdown[i]
             cell.style = self.date_dov
             self.ws[i].merge_cells('B2:J2')
+            cell = self.ws[i].cell(row=3, column=1)  # ot type label
+            cell.value = "ot type: "
+            cell.style = self.date_dov_title
+            cell = self.ws[i].cell(row=3, column=2)  # fill in ot type
+            cell.value = self.otcalcpref
+            cell.style = self.date_dov
             cell = self.ws[i].cell(row=2, column=11)  # station
             cell.value = "station: "
             cell.style = self.date_dov_title
@@ -952,7 +964,7 @@ class OTDistriSpreadsheet:
         self.pbi = None  # progress bar counter index
         self.date = None
         self.station = None
-        self.rangeopt = None
+        self.rangeopt = None  # "weekly" or "quarterly"
         self.listoptions = None
         self.year = None
         self.month = None
@@ -971,8 +983,37 @@ class OTDistriSpreadsheet:
         self.assignment_check = []  # multidimensional array of carriers and days with no bid assignment
         self.front_padding = 0
         self.end_padding = 0
-        self.end_pad_indicator = 0  # shows days after last day for triad builder
+        self.end_pad_indicator = 7  # shows days after last day for triad builder
         self.ringsset = []
+        self.dates_breakdown = []  # a list of dates for display on spreadsheets
+        self.sheetcount = 15  # there are 15 weekly sheets in a quarterly investigation
+        self.daycount = 105  # there are 105 days in a quarterly investigation
+        self.week = ["w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13",
+                     "w14", "w15"]
+        self.week_label = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
+                           "13", "14", "15"]
+        self.footer_row = 0
+        self.wb = None  # workbook
+        self.overview = None  # first worksheet which summarizes all the following worksheets
+        self.ws = None  # worksheet
+        self.instructions = None  # last worksheet which provides instructions
+        self.ws_header = None  # NamedStyles for spreadsheet
+        self.date_dov = None
+        self.date_dov_title = None
+        self.col_header = None
+        self.col_center_header = None
+        self.col_header_instructions = None
+        self.input_name = None
+        self.input_s = None
+        self.input_blue = None
+        self.input_center = None
+        self.calcs = None
+        self.ws_name = None
+        self.ref_ot = None
+        self.instruct_text = None
+        self.weekly_row = None
+        self.weekly_week_index = None
+        self.weekly_column = None
 
     def create(self, frame, date, station, rangeopt, listoptions):
         self.frame = frame
@@ -986,6 +1027,10 @@ class OTDistriSpreadsheet:
         self.pb.change_text("Gathering Data... ")
         self.station = station
         self.rangeopt = rangeopt
+        if self.rangeopt == "weekly":  # unless the investigation range is weekly
+            self.sheetcount = 1  # then there is only one week.
+        if self.rangeopt == "weekly":   # if the investigation range is weekly
+            self.daycount = 7  # then there are 7 days
         self.listoptions = listoptions
         self.date = date  # a datetime object from the quarter is passed and used as date
         self.breakdown_date()
@@ -1002,10 +1047,24 @@ class OTDistriSpreadsheet:
         if rangeopt == "quarterly":  # front and end padding is only needed for quarterly investigations
             self.get_front_padding()
             self.get_end_padding()
-        print(len(self.recset), self.recset)
         self.get_ringsset()
-        print(len(self.ringsset), self.ringsset)
-        self.pb.stop()
+        self.get_date_breakdown()  # build an array of dates for display on the spreadsheets
+        self.get_footer_row()  # get the row where the footer will be
+        self.build_workbook()  # build the spreadsheet and define the worksheets.
+        self.set_dimensions_overview()  # column widths for overview sheet
+        self.set_dimensions_weekly()  # column widths for weekly worksheets
+        self.get_styles()  # define workbook styles
+        self.build_header_overview()  # build the header for overview worksheet
+        self.build_columnheader_overview()  # build column headers for overview worksheet
+        self.build_main_overview()  # build main body for overview worksheet
+        self.build_overview_footer()  # create the footer at the bottom of the worksheet for averages and totals
+        self.build_header_weeklysheets()  # build the header for the weekly worksheet
+        self.build_columnheader_worksheets()  # build column headers for weekly worksheet
+        self.build_main_worksheets()  # build the main parts of the worksheet save the triad groups
+        self.daily_delegator()  # orders which cells to build for weekly worksheet
+        self.build_worksheet_footer()
+        self.build_instructions()
+        self.save_open()  # save and open the spreadsheet
 
     def ask_ok(self):
         if messagebox.askokcancel("Spreadsheet generator",
@@ -1054,8 +1113,8 @@ class OTDistriSpreadsheet:
     def get_settings(self):  # get minimum rows and ot calculation preference
         sql = "SELECT tolerance FROM tolerances"
         result = inquire(sql)
-        self.minrows = int(result[25][0])
-        self.otcalcpref = result[26][0]
+        self.minrows = int(result[27][0])
+        self.otcalcpref = result[28][0]
 
     @staticmethod
     def get_status(recs):  # return the carrier's list status
@@ -1065,7 +1124,7 @@ class OTDistriSpreadsheet:
             if recs[i][2] != status:  # check for any list statuses that differ from the first
                 add_plus = True
         if add_plus:  # add a "+" if there is more than one list status
-            status = status + "+"
+            status = status + " +"
         return status
 
     def get_carier_overview(self):  # build a list of carrier's name, status and makeups
@@ -1134,7 +1193,7 @@ class OTDistriSpreadsheet:
         return dates
 
     def get_ringsset(self):    # build multidimensional array - daily rings/refusals for each otdl carrier
-        # self.pb.max_count(8 + (len(self.carrier_overview)*2))  # set length of progress bar
+        self.pb.max_count(8 + (len(self.carrier_overview)*2))  # set length of progress bar
         for i in range(len(self.carrier_overview)):
             # update progress bar text
             self.pb.change_text("Gathering Carrier Rings: {}/{} ".format(i, len(self.carrier_overview)))
@@ -1154,7 +1213,7 @@ class OTDistriSpreadsheet:
         daily_ring = []
         carrier = self.carrier_overview[index][0]  # get the carrier name using carrier overview md array and index
         for _ in range(self.front_padding):  # insert front padding so empty cells fill worksheet
-            add_this = ["", "", ""]
+            add_this = ""
             daily_ring.append(add_this)
         for date in self.date_array:  # get the ringrefs from the database or empty if none
             has_route = True  # notes that the carrier has a bid assignment
@@ -1174,3 +1233,487 @@ class OTDistriSpreadsheet:
             add_this = ""
             daily_ring.append(add_this)
         self.ringsset[index] = daily_ring
+
+    def get_date_breakdown(self):
+        date = self.startdate
+        days_til_end = self.starting_day()
+        if not days_til_end:
+            display_date = date.strftime("%a %m/%d/%Y")
+        else:
+            enddate = date + timedelta(days=days_til_end)
+            display_date = date.strftime("%a %m/%d/%Y") + " through " + enddate.strftime("%a %m/%d/%Y")
+        self.dates_breakdown.append(display_date)
+        date += timedelta(days=days_til_end + 1)
+        for _ in range(14):  # loop once for each week
+            enddate = date + timedelta(days=6)
+            display_date = date.strftime("%m/%d/%Y") + " through " + enddate.strftime("%m/%d/%Y")
+            self.dates_breakdown.append(display_date)
+            date += timedelta(weeks=1)
+
+    def get_footer_row(self):  # get the number of the row where the footer will go.
+        self.footer_row = len(self.carrier_overview) + 7
+
+    def build_workbook(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Workbook... ")  # update progress bar text
+        self.ws = []
+        self.wb = Workbook()  # define the workbook
+        self.overview = self.wb.active  # create first worksheet
+        self.overview.title = "overview"  # give the first worksheet a name
+        for i in range(self.sheetcount):  # create worksheet for remaining weeks (15 or 1)
+            self.ws.append(self.wb.create_sheet(self.week[i]))  # create subsequent worksheets
+            self.ws[i].title = self.week[i]  # title subsequent worksheets
+        self.instructions = self.wb.create_sheet("instructions")
+
+    def set_dimensions_overview(self):
+        self.overview.column_dimensions["A"].width = 6
+        self.overview.column_dimensions["B"].width = 14
+        self.overview.column_dimensions["C"].width = 6
+        self.overview.column_dimensions["D"].width = 7
+        self.overview.column_dimensions["E"].width = 11
+        self.overview.column_dimensions["F"].width = 11
+        self.overview.column_dimensions["G"].width = 12
+        self.overview.column_dimensions["H"].width = 12
+
+    def set_dimensions_weekly(self):
+        for i in range(self.sheetcount):
+            self.ws[i].column_dimensions["A"].width = 6
+            self.ws[i].column_dimensions["B"].width = 14
+            self.ws[i].column_dimensions["C"].width = 6
+            self.ws[i].column_dimensions["D"].width = 5
+            self.ws[i].column_dimensions["E"].width = 5
+            self.ws[i].column_dimensions["F"].width = 5
+            self.ws[i].column_dimensions["G"].width = 5
+            self.ws[i].column_dimensions["H"].width = 5
+            self.ws[i].column_dimensions["I"].width = 5
+            self.ws[i].column_dimensions["J"].width = 5
+            self.ws[i].column_dimensions["K"].width = 7
+            self.ws[i].column_dimensions["L"].width = 4
+            self.ws[i].column_dimensions["M"].width = 2
+            self.ws[i].column_dimensions["N"].width = 4
+            self.ws[i].column_dimensions["O"].width = 2
+            self.ws[i].column_dimensions["P"].width = 4
+            self.ws[i].column_dimensions["Q"].width = 2
+            self.ws[i].column_dimensions["R"].width = 4
+            self.ws[i].column_dimensions["S"].width = 7
+
+    def get_styles(self):  # Named styles for workbook
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                         alignment=Alignment(horizontal='right'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8))
+        self.col_center_header = NamedStyle(name="col_center_header", font=Font(bold=True, name='Arial', size=8),
+                                            alignment=Alignment(horizontal='center'))
+        self.col_header_instructions = \
+            NamedStyle(name="col_header_instructions", font=Font(bold=True, name='Arial', size=10))
+        self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                     alignment=Alignment(horizontal='left'))
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
+        self.input_blue = NamedStyle(name="input_blue", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                     fill=PatternFill(fgColor='e1f7f3', fill_type='solid'),
+                                     alignment=Alignment(horizontal='right'))
+        """fill_type: Value must be one of {'darkTrellis', 'darkGrid', 'lightVertical', 'darkDown', 'solid', 'lightUp', 
+        'lightHorizontal', 'mediumGray', 'lightTrellis', 'darkHorizontal', 'darkGray', 'lightGray', 'darkVertical', 
+        'gray125', 'darkUp', 'gray0625', 'lightDown', 'lightGrid'"""
+        self.input_center = NamedStyle(name="input_center", font=Font(name='Arial', size=8),
+                                       border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                       alignment=Alignment(horizontal='center'))
+        self.calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
+                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                alignment=Alignment(horizontal='right'))
+        self.ws_name = NamedStyle(name="ws_name", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                  fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                  alignment=Alignment(horizontal='left'))
+        self.ref_ot = NamedStyle(name="ref_ot", font=Font(name='Arial', size=8),
+                                 border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                 fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                 alignment=Alignment(horizontal='center'))
+        self.instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=10),
+                                        alignment=Alignment(horizontal='left'))
+
+    def build_header_overview(self):  # build the header for overview worksheet
+        cell = self.overview.cell(row=1, column=1)  # page title
+        cell.value = "Overtime Distribution Worksheet"
+        cell.style = self.ws_header
+        self.overview.merge_cells('A1:E1')
+        cell = self.overview.cell(row=2, column=1)  # date
+        cell.value = "dates: "
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=2, column=2)  # fill in dates
+        date = self.startdate.strftime("%m/%d/%Y") + " through " + \
+               self.enddate.strftime("%m/%d/%Y")
+        cell.value = date
+        cell.style = self.date_dov
+        self.overview.merge_cells('B2:D2')
+        cell = self.overview.cell(row=3, column=1)  # ot type label
+        cell.value = "ot type: "
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=3, column=2)  # fill in ot type
+        date = self.otcalcpref
+        cell.value = date
+        cell.style = self.date_dov
+        cell = self.overview.cell(row=2, column=5)  # station
+        cell.value = "station: "
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=2, column=6)  # fill in station
+        cell.value = self.station
+        cell.style = self.date_dov
+        self.overview.merge_cells('F2:H2')
+        cell = self.overview.cell(row=3, column=3)  # number of carriers
+        cell.value = "# of carriers without restrictions: "
+        cell.style = self.date_dov_title
+        self.overview.merge_cells('C3:E3')
+        cell = self.overview.cell(row=3, column=6)  # fill in number of carriers
+        lastnum = (len(self.carrier_overview) + 6)
+        formula = "=COUNTA(%s!C%s:C%s)-COUNTA(%s!D%s:D%s" \
+                  % ("overview", str(6), str(lastnum),
+                     "overview", str(6), str(lastnum))
+        cell.value = formula
+        cell.style = self.calcs
+
+    def build_columnheader_overview(self):
+        cell = self.overview.cell(row=5, column=1)  # name
+        cell.value = "name"
+        cell.style = self.col_header
+        self.overview.merge_cells('A5:B5')
+        cell = self.overview.cell(row=5, column=3)  # list status
+        cell.value = "list"
+        cell.style = self.col_center_header
+        cell = self.overview.cell(row=5, column=4)  # medical
+        cell.value = "medical"
+        cell.style = self.col_center_header
+        cell = self.overview.cell(row=5, column=5)  # overtime
+        cell.value = "overtime"
+        cell.style = self.col_center_header
+        cell = self.overview.cell(row=5, column=6)  # diff from avg
+        cell.value = "diff from avg"
+        cell.style = self.col_center_header
+
+    def build_main_overview(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Overview... ")  # update progress bar text
+        row = 6
+        for i in range(len(self.carrier_overview)):
+            self.overview.row_dimensions[row].height = 13
+            self.overview.row_dimensions[row+1].height = 13
+            cell = self.overview.cell(row=row, column=1)  # name
+            cell.value = self.carrier_overview[i][0]
+            cell.style = self.input_name
+            self.overview.merge_cells('A' + str(row) + ':' + 'B' + str(row))
+            cell = self.overview.cell(row=row, column=3)  # list status
+            cell.value = Handler(self.carrier_overview[i][1]).str_to_int_or_str()
+            cell.style = self.input_center
+            cell = self.overview.cell(row=row, column=4)  # medical
+            cell.value = ""
+            cell.style = self.input_center
+            cell = self.overview.cell(row=row, column=5)  # overtime
+            if self.rangeopt == "quarterly":
+                formula = "=IF(%s!A%s=\"\",\"\"," \
+                          "IF(%s!D%s=\"\"," \
+                          "SUM(%s!K%s, %s!K%s, %s!K%s, %s!K%s, %s!K%s, " \
+                          "%s!K%s, %s!K%s, %s!K%s, %s!K%s, %s!K%s, " \
+                          "%s!K%s, %s!K%s, %s!K%s, %s!K%s, %s!K%s,0))" \
+                          % ("overview", str(row), "overview", str(row),
+                             self.week[0], str(row), self.week[1], str(row), self.week[2], str(row),
+                             self.week[3], str(row), self.week[4], str(row), self.week[5], str(row),
+                             self.week[6], str(row), self.week[7], str(row), self.week[8], str(row),
+                             self.week[9], str(row), self.week[10], str(row), self.week[11], str(row),
+                             self.week[12], str(row), self.week[13], str(row), self.week[14], str(row))
+            else:
+                formula = "=IF(%s!A%s=\"\",\"\",IF(%s!D%s=\"\",%s!K%s,0))" \
+                          % ("overview", str(row), "overview", str(row), self.week[0], str(row))
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            cell = self.overview.cell(row=row, column=6)  # difference from average
+            formula = "=IF(%s!A%s=\"\",\"\", IF(%s!D%s=\"\",%s!E%s-%s!$E$%s,\"restrictions\"))" \
+                      % ("overview", str(row), "overview", str(row),
+                         "overview", str(row), "overview", str(self.footer_row+1))  # last row is avg
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            row += 1
+
+    def build_overview_footer(self):  # create the footer at the bottom of the worksheet for averages and totals
+        cell = self.overview.cell(row=self.footer_row, column=4)  # label total overtime
+        cell.value = "total overtime:"
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=self.footer_row, column=5)  # calculate total overtime
+        formula = "=SUM(%s!E6:E%s)" % ("overview", self.footer_row - 2)
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.overview.cell(row=self.footer_row + 1, column=4)  # label average overtime
+        cell.value = "average overtime:"
+        cell.style = self.date_dov_title
+        cell = self.overview.cell(row=self.footer_row + 1, column=5)  # calculate average overtime
+        formula = "=%s!E%s/%s!$F$3" % ("overview", self.footer_row, "overview")
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+
+    def build_header_weeklysheets(self):  # build the header for the weekly worksheet
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Weekly Worksheets - Headers ")  # update progress bar text
+        for i in range(self.sheetcount):
+            cell = self.ws[i].cell(row=1, column=1)  # page title
+            cell.value = "Overtime Distribution Worksheet"
+            cell.style = self.ws_header
+            self.ws[i].merge_cells('A1:G1')
+            if self.rangeopt == "quarterly":
+                cell = self.ws[i].cell(row=1, column=8)  # week (label)
+                cell.value = "week: "
+                cell.style = self.date_dov_title
+                self.ws[i].merge_cells('H1:I1')
+                cell = self.ws[i].cell(row=1, column=10)  # fill in week
+                cell.value = self.week_label[i]
+                cell.style = self.date_dov
+            cell = self.ws[i].cell(row=2, column=1)  # date (label)
+            cell.value = "dates: "
+            cell.style = self.date_dov_title
+            cell = self.ws[i].cell(row=2, column=2)  # fill in date
+            cell.value = self.dates_breakdown[i]
+            cell.style = self.date_dov
+            self.ws[i].merge_cells('B2:E2')
+            cell = self.ws[i].cell(row=2, column=8)  # station (label)
+            cell.value = "station: "
+            cell.style = self.date_dov_title
+            self.ws[i].merge_cells('H2:I2')
+            cell = self.ws[i].cell(row=2, column=10)  # fill in station
+            cell.value = self.station
+            cell.style = self.date_dov
+            self.ws[i].merge_cells('J2:M2')
+            cell = self.ws[i].cell(row=3, column=1)  # ot type label
+            cell.value = "ot type: "
+            cell.style = self.date_dov_title
+            cell = self.ws[i].cell(row=3, column=2)  # fill in ot type
+            date = self.otcalcpref
+            cell.value = date
+            cell.style = self.date_dov
+            cell = self.ws[i].cell(row=3, column=5)  # number of carriers
+            cell.value = "# of carriers without restrictions: "
+            cell.style = self.date_dov_title
+            self.ws[i].merge_cells('E3:I3')
+            cell = self.ws[i].cell(row=3, column=10)  # calculate number of carriers
+            formula = "=%s!%s%s" % ("overview", "F", "3")
+            cell.value = formula
+            cell.style = self.calcs
+            self.ws[i].merge_cells('J3:K3')
+
+    def build_columnheader_worksheets(self):
+        for i in range(self.sheetcount):
+            cell = self.ws[i].cell(row=5, column=1)  # name
+            cell.value = "name"
+            cell.style = self.col_header
+            self.ws[i].merge_cells('A5:B5')
+            cell = self.ws[i].cell(row=5, column=3)  # status
+            cell.value = "status"
+            cell.style = self.col_header
+            # self.ws[i].merge_cells('C5:D5')
+            cell = self.ws[i].cell(row=5, column=4)  # sat
+            cell.value = "sat"
+            cell.style = self.col_center_header
+            cell = self.ws[i].cell(row=5, column=5)  # sun
+            cell.value = "sun"
+            cell.style = self.col_center_header
+            cell = self.ws[i].cell(row=5, column=6)  # mon
+            cell.value = "mon"
+            cell.style = self.col_center_header
+            cell = self.ws[i].cell(row=5, column=7)  # tue
+            cell.value = "tue"
+            cell.style = self.col_center_header
+            cell = self.ws[i].cell(row=5, column=8)  # wed
+            cell.value = "wed"
+            cell.style = self.col_center_header
+            cell = self.ws[i].cell(row=5, column=9)  # thu
+            cell.value = "thu"
+            cell.style = self.col_center_header
+            cell = self.ws[i].cell(row=5, column=10)  # fri
+            cell.value = "fri"
+            cell.style = self.col_center_header
+            cell = self.ws[i].cell(row=5, column=11)  # weekly
+            cell.value = "weekly"
+            cell.style = self.col_center_header
+
+    def build_main_worksheets(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Weekly Worksheets - Body ")  # update progress bar text
+        for i in range(len(self.ws)):  # for each worksheet
+            row = 6
+            for _ in range(len(self.carrier_overview)):  # for each carrier or empty set (get reach minimum rows)
+                cell = self.ws[i].cell(row=row, column=1)  # name
+                formula = "=IF(%s!A%s = \"\",\"\",%s!A%s)" % ("overview", str(row), "overview", str(row))
+                cell.value = formula
+                cell.style = self.ws_name
+                self.ws[i].merge_cells('A' + str(row) + ":" + "B" + str(row))
+                cell = self.ws[i].cell(row=row, column=3)  # status
+                formula = "=IF(%s!C%s = \"\",\"\",%s!C%s)" % ("overview", str(row), "overview", str(row))
+                cell.value = formula
+                cell.style = self.ref_ot
+                self.ws[i].merge_cells('C' + str(row) + ":" + "C" + str(row))
+                cell = self.ws[i].cell(row=row, column=11)  # overtime weekly total
+                formula = "=SUM(%s!%s%s:%s%s)" % (self.week[i], "D", str(row), "J", str(row))
+                cell.value = formula
+                cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+                row += 1
+
+    def daily_delegator(self):
+        self.weekly_row = 6
+        for c in range(len(self.carrier_overview)):  # for each carrier including empty sets for minimum rows
+            # update progress bar text
+            self.pb.change_text("Building Weekly Worksheets - Daily Cells: row {}/{}"
+                                .format(c, len(self.carrier_overview)))
+            self.pbi += 1  # increment progress bar counter
+            self.pb.move_count(self.pbi)  # increment progress bar
+            self.weekly_week_index = 0  # week starts at zero
+            self.weekly_column = 4  # column starts at first day due to front padding
+            for i in range(self.daycount):  # loop for self.front_padding + len(self.date_array) + self.end_padding
+                self.build_daily(c, i)
+            self.weekly_row += 1
+
+    def daily_style(self, i):
+        if i < self.front_padding:
+            return self.input_blue
+        if i >= self.end_pad_indicator:
+            return self.input_blue
+        return self.input_s
+
+    def build_daily(self, c, i):
+        ringsset = self.get_daily_refset(c, i)
+        # overtime field
+        cell = self.ws[self.weekly_week_index].cell(row=self.weekly_row, column=self.weekly_column)
+        cell.value = Handler(ringsset).str_to_float_or_str()
+        cell.style = self.daily_style(i)
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.weekly_column += 1
+        if self.weekly_column >= 11:
+            self.weekly_column = 4
+            self.weekly_week_index += 1
+
+    def get_daily_refset(self, carrier, date):
+        ringsset = ""  # default is empty string
+        if self.carrier_overview[carrier][0]:  # if the carrier overview is not an empty set
+            ringsset = self.ringsset[carrier][date]  # get the ring ref set for that carrier and date
+        return ringsset
+
+    def build_worksheet_footer(self):
+        column_dict = {4: "D", 5: "E", 6: "F", 7: "G", 8: "H", 9: "I", 10: "J", 11: "K", 12: "L", 13: "M", 15: "O",
+                       17: "Q", 19: "S"}
+        for i in range(len(self.ws)):  # for each worksheet
+            cell = self.ws[i].cell(row=self.footer_row, column=3)  # total overtime label
+            cell.value = "total overtime:  "
+            cell.style = self.date_dov_title
+            cell = self.ws[i].cell(row=self.footer_row+2, column=3)  # average overtime label
+            cell.value = "average overtime:  "
+            cell.style = self.date_dov_title
+            column_array = (4, 5, 6, 7, 8, 9, 10)
+            for col in column_array:  # loop though for each column
+                cell = self.ws[i].cell(row=self.footer_row, column=col)
+                formula = "=SUM(%s!%s%s:%s%s)" % \
+                          (self.week[i], column_dict[col], 6, column_dict[col], self.footer_row - 2)
+                cell.value = formula
+                cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+                cell = self.ws[i].cell(row=self.footer_row+2, column=col)
+                formula = "=%s!%s%s/%s!$J$3" % (self.week[i], column_dict[col], self.footer_row, self.week[i])
+                cell.value = formula
+                cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+            cell = self.ws[i].cell(row=self.footer_row, column=11)
+            formula = "=SUM(%s!K%s:K%s)" % (self.week[i], 6, self.footer_row-2)
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            cell = self.ws[i].cell(row=self.footer_row + 2, column=11)
+            formula = "=%s!K%s/%s!$J$3" % (self.week[i], self.footer_row, self.week[i])
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+
+    def build_instructions(self):
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Instructions... ")  # update progress bar text
+        cell = self.instructions.cell(row=1, column=1)  # page title
+        cell.value = "Overtime Distribution Worksheet"
+        cell.style = self.ws_header
+        self.instructions.merge_cells('A1:E1')
+        cell = self.instructions.cell(row=3, column=1)  # page title
+        cell.value = "Instructions"
+        cell.style = self.col_header_instructions
+        self.instructions.merge_cells('A1:E1')
+        cell = self.instructions.cell(row=5, column=1)
+        text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in " \
+               "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
+                "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages " \
+               "will import the name so that you don’t have to write it 15 times.\n\n" \
+                "2. LIST:  Enter the status on the first page only. Again formulas will do the work " \
+                "and copy it to other pages. Options are \"otdl\", \"wal\", \"nl\", \"aux\" or \"ptf\". " \
+               "Leave the field blank if there is no carrier. This field does not affect any formulas " \
+               "and is for the user\'s information only. " \
+               "\n\n" \
+                "3. MEDICAL: This field shows if the carrier has medical restrictions. If the carrier has " \
+               "medical restrictions, enter \"yes\" into the cell, although any word or character will work. " \
+               "Entering anything into this cell will cause formulas to change the average number of carriers, " \
+               "zero out the overtime cell and will put \"restrictions\" into the \"diff from avg\" cell. \n\n" \
+                "4. OVERTIME: This displays refusals and overtime worked. Information is pulled from the following " \
+               "weekly worksheets. \n\n" \
+                "5. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average " \
+               "overtime of all carriers and the individual carrier’s difference from that. If they have " \
+               "more than average, the number will be positive otherwise it will be negative. \n\n" \
+                "6. There are 15 worksheets for quarterly investigations and one worksheet for weekly " \
+               "investigations. Each worksheet represents a service week. Start with the first week and " \
+               "proceed day by day.\n\n" \
+                "7. For each day and each carrier there are is one cell.This cell shows the amount of  overtime " \
+               "worked. If the overtime calculations preference is \"off route\" then only overtime worked off the " \
+               "carrier\'s route will be shown, if the preference is \"all\" then all of the carrier\'s overtime " \
+               "both off and on their own route will be shown.\n\n" \
+                "At the very bottom , there are totals and averages for the day. These are for your " \
+                "information.\n\n\n\n\n\n\n"
+        cell.value = text
+        cell.style = self.instruct_text
+        cell.alignment = Alignment(wrap_text=True)
+        self.instructions.merge_cells('A5:I47')
+
+    def save_open(self):  # name the excel file
+        self.pbi += 1  # increment progress bar counter
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving Workbook... ")  # update progress bar text
+        quarter = self.full_quarter.replace(" ", "")
+        rang = "_q"
+        if self.rangeopt == "weekly":
+            rang = "_w"
+        xl_filename = "ot_dist_" + quarter + rang + ".xlsx"
+        try:
+            self.wb.save(dir_path('ot_distribution') + xl_filename)
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.frame)
+            if sys.platform == "win32":
+                os.startfile(dir_path('ot_distribution') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/ot_distribution/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('ot_distribution') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not opened. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=self.frame)
+        self.pb.stop()

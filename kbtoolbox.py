@@ -1284,7 +1284,6 @@ class ProgressBarDe:  # determinate Progress Bar
     def move_count(self, count):  # changes the count of the progress bar
         self.pb['value'] = count
         self.pb_root.update()
-        # projvar.root.update()
 
     def change_text(self, text):  # changes the text of the progress bar
         self.pb_text.config(text="{}".format(text))

@@ -10,7 +10,7 @@ class DataBase:
 
     def setup(self):
         self.pbar = ProgressBarDe(title="Klusterbox", label="Building Database", text="Starting Up")
-        self.pbar.max_count(45)
+        self.pbar.max_count(53)
         self.pbar.start_up()
         self.globals()
         self.tables()
@@ -104,7 +104,9 @@ class DataBase:
             (23, "pb_otdl_aux", "True"),
             (24, "invran_mode", "simple"),
             (25, "min_ot_equit", 19),
-            (26, "ot_calc_pref", "off_route")
+            (26, "ot_calc_pref", "off_route"),
+            (27, "min_ot_dist", 25),
+            (28, "ot_calc_pref_dist", "off_route")
         )
         for tol in tolerance_array:
             self.pbar_counter += 1
