@@ -568,8 +568,8 @@ class OtDistribution:
         self.list_option_aux = IntVar(self.win.body)
         self.list_option_ptf = IntVar(self.win.body)
         self.list_option_otdl.set(0)
-        self.list_option_wal.set(0)
-        self.list_option_nl.set(0)
+        self.list_option_wal.set(1)
+        self.list_option_nl.set(1)
         self.list_option_aux.set(0)
         self.list_option_ptf.set(0)
 
@@ -10483,7 +10483,7 @@ class SpreadsheetConfig:
             num = "1"
             over_num = "1"
             ot_num = "1"
-            ot_dist_mum = "25"
+            ot_dist_num = "1"
             msg = "Minimum rows set to one. "
         self.status_update.config(text="{}".format(msg))
         types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
