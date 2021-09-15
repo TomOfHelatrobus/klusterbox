@@ -926,7 +926,7 @@ class OTEquitSpreadsheet:
                 "information.\n\n\n\n\n\n\n"
         cell.value = text
         cell.style = self.instruct_text
-        cell.alignment = Alignment(wrap_text=True)
+        cell.alignment = Alignment(wrap_text=True, vertical='top')
         self.instructions.merge_cells('A5:I47')
 
     def save_open(self):  # name the excel file
@@ -1374,7 +1374,7 @@ class OTDistriSpreadsheet:
         self.overview.merge_cells('C3:E3')
         cell = self.overview.cell(row=3, column=6)  # fill in number of carriers
         lastnum = (len(self.carrier_overview) + 6)
-        formula = "=COUNTA(%s!C%s:C%s)-COUNTA(%s!D%s:D%s" \
+        formula = "=COUNTA(%s!A%s:A%s)-COUNTA(%s!D%s:D%s" \
                   % ("overview", str(6), str(lastnum),
                      "overview", str(6), str(lastnum))
         cell.value = formula
@@ -1438,7 +1438,7 @@ class OTDistriSpreadsheet:
             cell = self.overview.cell(row=row, column=6)  # difference from average
             formula = "=IF(%s!A%s=\"\",\"\", IF(%s!D%s=\"\",%s!E%s-%s!$E$%s,\"restrictions\"))" \
                       % ("overview", str(row), "overview", str(row),
-                         "overview", str(row), "overview", str(self.footer_row+1))  # last row is avg
+                         "overview", str(row), "overview", str(self.footer_row+2))  # last row is avg
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -1453,10 +1453,10 @@ class OTDistriSpreadsheet:
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
-        cell = self.overview.cell(row=self.footer_row + 1, column=4)  # label average overtime
+        cell = self.overview.cell(row=self.footer_row + 2, column=4)  # label average overtime
         cell.value = "average overtime:"
         cell.style = self.date_dov_title
-        cell = self.overview.cell(row=self.footer_row + 1, column=5)  # calculate average overtime
+        cell = self.overview.cell(row=self.footer_row + 2, column=5)  # calculate average overtime
         formula = "=%s!E%s/%s!$F$3" % ("overview", self.footer_row, "overview")
         cell.value = formula
         cell.style = self.calcs
@@ -1518,7 +1518,7 @@ class OTDistriSpreadsheet:
             cell.style = self.col_header
             self.ws[i].merge_cells('A5:B5')
             cell = self.ws[i].cell(row=5, column=3)  # status
-            cell.value = "status"
+            cell.value = "list"
             cell.style = self.col_header
             # self.ws[i].merge_cells('C5:D5')
             cell = self.ws[i].cell(row=5, column=4)  # sat
@@ -1659,33 +1659,43 @@ class OTDistriSpreadsheet:
         text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in " \
                "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
                 "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages " \
-               "will import the name so that you don’t have to write it 15 times.\n\n" \
+               "will import the name so that you don’t have to repeat it.\n\n" \
                 "2. LIST:  Enter the status on the first page only. Again formulas will do the work " \
                 "and copy it to other pages. Options are \"otdl\", \"wal\", \"nl\", \"aux\" or \"ptf\". " \
+               "A \"+\" indicates that the carrier was on additional list during the investigation period. " \
                "Leave the field blank if there is no carrier. This field does not affect any formulas " \
                "and is for the user\'s information only. " \
                "\n\n" \
                 "3. MEDICAL: This field shows if the carrier has medical restrictions. If the carrier has " \
                "medical restrictions, enter \"yes\" into the cell, although any word or character will work. " \
+               "Although the column in titled \"medical\" you can use it for any situation where you want the " \
+               "carrier\'s times to be removed from the totals and averages. This column does not pull data from " \
+               "Klusterbox and must be entered in on the spreadsheet as Klusterbox does not track medical " \
+               "restrictions " \
                "Entering anything into this cell will cause formulas to change the average number of carriers, " \
                "zero out the overtime cell and will put \"restrictions\" into the \"diff from avg\" cell. \n\n" \
                 "4. OVERTIME: This displays refusals and overtime worked. Information is pulled from the following " \
                "weekly worksheets. \n\n" \
                 "5. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average " \
-               "overtime of all carriers and the individual carrier’s difference from that. If they have " \
+               "overtime for individual carriers. It pulls the total average overtime from the bottom of the " \
+               "page and calculates the difference for each individual carrier. If the carrier has " \
                "more than average, the number will be positive otherwise it will be negative. \n\n" \
-                "6. There are 15 worksheets for quarterly investigations and one worksheet for weekly " \
-               "investigations. Each worksheet represents a service week. Start with the first week and " \
-               "proceed day by day.\n\n" \
-                "7. For each day and each carrier there are is one cell.This cell shows the amount of  overtime " \
+                "6. WEEKLY WORKSHEETS: There are 15 worksheets for quarterly investigations and one worksheet " \
+               "for weekly investigations. Each worksheet represents a service week. Start with the first week " \
+               "and proceed day by day. If generated by Klusterbox, carrier clock rings will be pulled from " \
+               "the database to calculate the carrier\'s overtime.\n\n" \
+                "7. INPUT CELLS IN WEEKLY WORKSHEETS: Check the top of the page for \"ot type\", this will either " \
+               "be \"off_route\" (the default), or \"all\" when the spreadsheet is generated by Klusterbox. " \
+               "For each day and each carrier there are is one cell. This cell shows the amount of overtime " \
                "worked. If the overtime calculations preference is \"off route\" then only overtime worked off the " \
                "carrier\'s route will be shown, if the preference is \"all\" then all of the carrier\'s overtime " \
-               "both off and on their own route will be shown.\n\n" \
+               "both off and on their own route will be shown. If the carrier has no route, the calculation will " \
+               "default to \"all\" during the time the carrier is unassigned.\n\n" \
                 "At the very bottom , there are totals and averages for the day. These are for your " \
                 "information.\n\n\n\n\n\n\n"
         cell.value = text
         cell.style = self.instruct_text
-        cell.alignment = Alignment(wrap_text=True)
+        cell.alignment = Alignment(wrap_text=True, vertical='top')
         self.instructions.merge_cells('A5:I47')
 
     def save_open(self):  # name the excel file

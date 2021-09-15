@@ -457,18 +457,18 @@ class OtDistribution:
         self.row += 1
         # Investigation date SET/NOT SET notification
         if projvar.invran_weekly_span is None:
-            Label(self.win.body, text="Investigation date/range not set") \
+            Label(self.win.body, text="Investigation date/range not set", fg="red") \
                 .grid(row=self.row, column=0, columnspan=8, sticky="w")
         elif projvar.invran_weekly_span == 0:  # if the investigation range is one day
             f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
-            Label(self.win.body, text="Day Set: {} --> Pay Period: {}".format(f_date, projvar.pay_period))\
+            Label(self.win.body, text="Day Set: {} --> Pay Period: {}".format(f_date, projvar.pay_period), fg="red")\
                 .grid(row=self.row, column=0, columnspan=8, sticky="w")
         else:
             # if the investigation range is weekly
             f_date = projvar.invran_date_week[0].strftime("%a - %b %d, %Y")
             end_f_date = projvar.invran_date_week[6].strftime("%a - %b %d, %Y")
             Label(self.win.body, text="{0} through {1} --> Pay Period: {2}"
-                  .format(f_date, end_f_date, projvar.pay_period))\
+                  .format(f_date, end_f_date, projvar.pay_period), fg="red")\
                 .grid(row=self.row, column=0, columnspan=8, sticky="w")
 
     def build_range(self):
@@ -2293,7 +2293,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.fyi_array.append(fyi)
 
     def check_leave_type(self):  # check the leave type
-        all_codes = ("none", "annual", "sick", "holiday", "other")
+        all_codes = ("none", "annual", "sick", "holiday", "other", "combo")
         self.lv_type = str(self.lv_type)  # make sure lv type is a string
         self.lv_type = self.lv_type.strip()  # remove whitespace
         self.lv_type = self.lv_type.lower()  # force lv type to be lowercase
@@ -11915,7 +11915,7 @@ class EnterRings:
         nolist_codes = ("none", "ns day")
         ot_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
         aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
-        lv_options = ("none", "annual", "sick", "holiday", "other")
+        lv_options = ("none", "annual", "sick", "holiday", "other", "combo")
         option_menu = ["om0", "om1", "om2", "om3", "om4", "om5", "om6"]
         lv_option_menu = ["lom0", "lom1", "lom2", "lom3", "lom4", "lom5", "lom6"]
         total_widget = ["tw0", "tw1", "tw2", "tw3", "tw4", "tw5", "tw6"]
@@ -11986,10 +11986,6 @@ class EnterRings:
                 # Moves
                 if column == 6:  # don't show moves for aux, ptf and (maybe) otdl
                     self.new_entry(frame[i], day[i])  # MOVES on, off and route entry widgets
-                    # if self.now_moves.strip():
-                    #     self.new_entry(frame[i], day[i])  # MOVES on, off and route entry widgets
-                    # else:
-                    #     self.new_entry(frame[i], day[i])
                     Button(frame[i], text="more moves", command=lambda x=i: self.new_entry(frame[x], day[x])) \
                         .grid(row=grid_i, column=5)
                 self.now_moves = ""  # zero out self.now_moves so more moves button works properly
@@ -13729,6 +13725,7 @@ class MainFrame:
             basic_menu.entryconfig(5, state=DISABLED)
             basic_menu.entryconfig(6, state=DISABLED)
             basic_menu.entryconfig(7, state=DISABLED)
+            basic_menu.entryconfig(10, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)

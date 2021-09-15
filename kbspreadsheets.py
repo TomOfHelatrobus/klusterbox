@@ -1089,14 +1089,14 @@ class OvermaxSpreadsheet:
         self.instructions.merge_cells('A1:R1')
         self.instructions['A1'] = "12 and 60 Hour Violations Instructions"
         self.instructions['A1'].style = self.ws_header
-        self.instructions.row_dimensions[3].height = 165
+        self.instructions.row_dimensions[3].height = 180
         self.instructions['A3'].style = self.instruct_text
         self.instructions.merge_cells('A3:X3')
         self.instructions['A3'] = "Instructions: \n" \
                               "1. Fill in the name \n" \
                               "2. Fill in the list. Enter either “otdl”,”wal”,”nl”,“aux” or “ptf” in list columns. " \
                               "Use only lowercase. \n" \
-                              "   If you do not enter anything, the default is “otdl\n" \
+                              "   If you do not enter anything, the default is “otdl. \n" \
                               "\totdl = overtime desired list\n" \
                               "\twal = work assignment list\n" \
                               "\tnl = no list \n" \
@@ -1118,6 +1118,7 @@ class OvermaxSpreadsheet:
                               "6. The gray fields will fill automatically. Do not enter an information in " \
                               "these fields as it will delete the formulas.\n" \
                               "7. Field O will show the violation in hours which you should seek a remedy for. \n"
+        self.instructions['A3'].alignment = Alignment(wrap_text=True, vertical='top')
         for x in range(4, 20):
             self.instructions.row_dimensions[x].height = 10  # adjust all row height
         self.instructions.merge_cells('D6:Q6')
@@ -1472,6 +1473,7 @@ class OvermaxSpreadsheet:
                            "violations and the\n" \
                            "     weekly violation, it shows the sum of the two. " \
                            "This is the value which the steward should seek a remedy for."
+        self.instructions['A14'].alignment = Alignment(wrap_text=True, vertical='top')
 
     def violated_recs(self):
         """
