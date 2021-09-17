@@ -147,6 +147,7 @@ class OTEquitSpreadsheet:
         self.build_workbook()  # build the spreadsheet and define the worksheets.
         self.set_dimensions_overview()  # column widths for overview sheet
         self.set_dimensions_weekly()  # column widths for weekly worksheets
+        self.set_dimensions_instructions()  # column widths for instructions sheet
         self.get_styles()  # define workbook styles
         self.build_header_overview()  # build the header for overview worksheet
         self.build_columnheader_overview()  # build column headers for overview worksheet
@@ -424,6 +425,14 @@ class OTEquitSpreadsheet:
             self.ws[i].column_dimensions["Q"].width = 2
             self.ws[i].column_dimensions["R"].width = 4
             self.ws[i].column_dimensions["S"].width = 7
+
+    def set_dimensions_instructions(self):
+        self.instructions.column_dimensions["A"].width = 14
+        self.instructions.column_dimensions["B"].width = 14
+        self.instructions.column_dimensions["C"].width = 14
+        self.instructions.column_dimensions["D"].width = 14
+        self.instructions.column_dimensions["E"].width = 14
+        self.instructions.column_dimensions["F"].width = 14
 
     def get_styles(self):  # Named styles for workbook
         bd = Side(style='thin', color="80808080")  # defines borders
@@ -874,14 +883,14 @@ class OTEquitSpreadsheet:
         self.pbi += 1  # increment progress bar counter
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building Instructions... ")  # update progress bar text
+        self.instructions.merge_cells('A1:F1')  # merge cells for page title
+        self.instructions.merge_cells('A5:F47')  # merge cells for instructions
         cell = self.instructions.cell(row=1, column=1)  # page title
         cell.value = "OTDL Equitability Worksheet"
         cell.style = self.ws_header
-        self.instructions.merge_cells('A1:E1')
-        cell = self.instructions.cell(row=3, column=1)  # page title
+        cell = self.instructions.cell(row=3, column=1)  # sub header
         cell.value = "Instructions"
         cell.style = self.col_header_instructions
-        self.instructions.merge_cells('A1:E1')
         cell = self.instructions.cell(row=5, column=1)
         text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in " \
                "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
@@ -927,7 +936,6 @@ class OTEquitSpreadsheet:
         cell.value = text
         cell.style = self.instruct_text
         cell.alignment = Alignment(wrap_text=True, vertical='top')
-        self.instructions.merge_cells('A5:I47')
 
     def save_open(self):  # name the excel file
         self.pbi += 1  # increment progress bar counter
@@ -1053,6 +1061,7 @@ class OTDistriSpreadsheet:
         self.build_workbook()  # build the spreadsheet and define the worksheets.
         self.set_dimensions_overview()  # column widths for overview sheet
         self.set_dimensions_weekly()  # column widths for weekly worksheets
+        self.set_dimensions_instructions()  # column widths for instructions sheet
         self.get_styles()  # define workbook styles
         self.build_header_overview()  # build the header for overview worksheet
         self.build_columnheader_overview()  # build column headers for overview worksheet
@@ -1298,6 +1307,14 @@ class OTDistriSpreadsheet:
             self.ws[i].column_dimensions["R"].width = 4
             self.ws[i].column_dimensions["S"].width = 7
 
+    def set_dimensions_instructions(self):
+        self.instructions.column_dimensions["A"].width = 14
+        self.instructions.column_dimensions["B"].width = 14
+        self.instructions.column_dimensions["C"].width = 14
+        self.instructions.column_dimensions["D"].width = 14
+        self.instructions.column_dimensions["E"].width = 14
+        self.instructions.column_dimensions["F"].width = 14
+
     def get_styles(self):  # Named styles for workbook
         bd = Side(style='thin', color="80808080")  # defines borders
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
@@ -1374,7 +1391,7 @@ class OTDistriSpreadsheet:
         self.overview.merge_cells('C3:E3')
         cell = self.overview.cell(row=3, column=6)  # fill in number of carriers
         lastnum = (len(self.carrier_overview) + 6)
-        formula = "=COUNTA(%s!A%s:A%s)-COUNTA(%s!D%s:D%s" \
+        formula = "=COUNTA(%s!A%s:A%s)-COUNTA(%s!D%s:D%s)" \
                   % ("overview", str(6), str(lastnum),
                      "overview", str(6), str(lastnum))
         cell.value = formula
@@ -1422,7 +1439,7 @@ class OTDistriSpreadsheet:
                           "IF(%s!D%s=\"\"," \
                           "SUM(%s!K%s, %s!K%s, %s!K%s, %s!K%s, %s!K%s, " \
                           "%s!K%s, %s!K%s, %s!K%s, %s!K%s, %s!K%s, " \
-                          "%s!K%s, %s!K%s, %s!K%s, %s!K%s, %s!K%s,0))" \
+                          "%s!K%s, %s!K%s, %s!K%s, %s!K%s, %s!K%s,0)))" \
                           % ("overview", str(row), "overview", str(row),
                              self.week[0], str(row), self.week[1], str(row), self.week[2], str(row),
                              self.week[3], str(row), self.week[4], str(row), self.week[5], str(row),
@@ -1647,14 +1664,14 @@ class OTDistriSpreadsheet:
         self.pbi += 1  # increment progress bar counter
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building Instructions... ")  # update progress bar text
+        self.instructions.merge_cells('A1:F1')  # merge cells for title
+        self.instructions.merge_cells('A5:F47')  # merge cells for instructions
         cell = self.instructions.cell(row=1, column=1)  # page title
         cell.value = "Overtime Distribution Worksheet"
         cell.style = self.ws_header
-        self.instructions.merge_cells('A1:E1')
-        cell = self.instructions.cell(row=3, column=1)  # page title
+        cell = self.instructions.cell(row=3, column=1)  # sub header
         cell.value = "Instructions"
         cell.style = self.col_header_instructions
-        self.instructions.merge_cells('A1:E1')
         cell = self.instructions.cell(row=5, column=1)
         text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in " \
                "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
@@ -1670,8 +1687,8 @@ class OTDistriSpreadsheet:
                "medical restrictions, enter \"yes\" into the cell, although any word or character will work. " \
                "Although the column in titled \"medical\" you can use it for any situation where you want the " \
                "carrier\'s times to be removed from the totals and averages. This column does not pull data from " \
-               "Klusterbox and must be entered in on the spreadsheet as Klusterbox does not track medical " \
-               "restrictions " \
+               "Klusterbox and must be manually entered in on the spreadsheet as Klusterbox does not track " \
+               "medical restrictions. " \
                "Entering anything into this cell will cause formulas to change the average number of carriers, " \
                "zero out the overtime cell and will put \"restrictions\" into the \"diff from avg\" cell. \n\n" \
                 "4. OVERTIME: This displays refusals and overtime worked. Information is pulled from the following " \
@@ -1692,11 +1709,10 @@ class OTDistriSpreadsheet:
                "both off and on their own route will be shown. If the carrier has no route, the calculation will " \
                "default to \"all\" during the time the carrier is unassigned.\n\n" \
                 "At the very bottom , there are totals and averages for the day. These are for your " \
-                "information.\n\n\n\n\n\n\n"
+                "information.\n"
         cell.value = text
         cell.style = self.instruct_text
         cell.alignment = Alignment(wrap_text=True, vertical='top')
-        self.instructions.merge_cells('A5:I47')
 
     def save_open(self):  # name the excel file
         self.pbi += 1  # increment progress bar counter

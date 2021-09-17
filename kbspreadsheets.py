@@ -202,17 +202,17 @@ class ImpManSpreadsheet:
     def set_dimensions(self):
         for i in range(len(self.dates)):
             self.ws_list[i].oddFooter.center.text = "&A"
-            self.ws_list[i].column_dimensions["A"].width = 14
+            self.ws_list[i].column_dimensions["A"].width = 20
             self.ws_list[i].column_dimensions["B"].width = 5
             self.ws_list[i].column_dimensions["C"].width = 6
             self.ws_list[i].column_dimensions["D"].width = 6
             self.ws_list[i].column_dimensions["E"].width = 6
             self.ws_list[i].column_dimensions["F"].width = 6
             self.ws_list[i].column_dimensions["G"].width = 6
-            self.ws_list[i].column_dimensions["H"].width = 6
+            self.ws_list[i].column_dimensions["H"].width = 7
             self.ws_list[i].column_dimensions["I"].width = 6
             self.ws_list[i].column_dimensions["J"].width = 6
-            self.ws_list[i].column_dimensions["K"].width = 6
+            self.ws_list[i].column_dimensions["K"].width = 7
         self.summary.column_dimensions["A"].width = 14
         self.summary.column_dimensions["B"].width = 9
         self.summary.column_dimensions["C"].width = 9
@@ -225,12 +225,13 @@ class ImpManSpreadsheet:
         self.reference.column_dimensions["B"].width = 8
         self.reference.column_dimensions["C"].width = 8
         self.reference.column_dimensions["D"].width = 2
-        self.reference.column_dimensions["E"].width = 6
+        self.reference.column_dimensions["E"].width = 50
 
     def build_refs(self):
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building Reference Page")
+        # tolerances
         self.reference['B2'].style = self.list_header
         self.reference['B2'] = "Tolerances"
         self.reference['C3'] = self.tol_ot_ownroute  # overtime on own route tolerance
@@ -245,8 +246,9 @@ class ImpManSpreadsheet:
         self.reference['C5'].style = self.input_s
         self.reference['C5'].number_format = "#,###.00;[RED]-#,###.00"
         self.reference['E5'] = "availability tolerance"
+        # note guide
         self.reference['B7'].style = self.list_header
-        self.reference['B7'] = "Code Guide"
+        self.reference['B7'] = "Note Guide"
         self.reference['C8'] = "ns day"
         self.reference['C8'].style = self.input_s
         self.reference['E8'] = "Carrier worked on their non scheduled day"
@@ -268,6 +270,62 @@ class ImpManSpreadsheet:
         self.reference['C15'] = "excused"
         self.reference['C15'].style = self.input_s
         self.reference['E15'] = "Carrier excused from mandatory overtime"
+
+        # column headers
+        self.reference['B17'].style = self.list_header
+        self.reference['B17'] = "Column Headers"
+
+        self.reference['C18'] = "Name"
+        self.reference['C18'].style = self.input_s
+        self.reference['E18'] = "The name of the carrier. "
+
+        self.reference['C19'] = "note"
+        self.reference['C19'].style = self.input_s
+        self.reference['E19'] = "special circumstances. See note guide above."
+
+        self.reference['C20'] = "5200"
+        self.reference['C20'].style = self.input_s
+        self.reference['E20'] = "Total hours worked"
+
+        self.reference['C21'] = "RS"
+        self.reference['C21'].style = self.input_s
+        self.reference['E21'] = "Return to station time."
+
+        self.reference['C22'] = "MV off"
+        self.reference['C22'].style = self.input_s
+        self.reference['E22'] = "time moved off own route"
+
+        self.reference['C23'] = "MV on"
+        self.reference['C23'].style = self.input_s
+        self.reference['E23'] = "time moved on/returned to own route"
+
+        self.reference['C24'] = "Route"
+        self.reference['C24'].style = self.input_s
+        self.reference['E24'] = "route of overtime/pivot"
+
+        self.reference['C25'] = "MV Total"
+        self.reference['C25'].style = self.input_s
+        self.reference['E25'] = "time spent on overtime/pivot off route"
+
+        self.reference['C26'] = "OT"
+        self.reference['C26'].style = self.input_s
+        self.reference['E26'] = "Daily overtime"
+
+        self.reference['C27'] = "off rte"
+        self.reference['C27'].style = self.input_s
+        self.reference['E27'] = "total daily time spent off route"
+
+        self.reference['C28'] = "OT off"
+        self.reference['C28'].style = self.input_s
+        self.reference['E28'] = "Daily overtime off route"
+
+        self.reference['C30'] = "to 10"
+        self.reference['C30'].style = self.input_s
+        self.reference['E30'] = "Total availability to 10 hours"
+
+        self.reference['C31'] = "to 12"
+        self.reference['C31'].style = self.input_s
+        self.reference['E31'] = "Total availability to 12 hours"
         
     def build_ws_loop(self):
         self.i = 0
@@ -369,7 +427,7 @@ class ImpManSpreadsheet:
         cell.value = "off rt"
         cell.style = self.col_header
         cell = self.ws_list[self.i].cell(row=self.row, column=11)
-        cell.value = "OT off rt"
+        cell.value = "OT off"
         cell.style = self.col_header
         self.row += 1
 
@@ -523,17 +581,21 @@ class ImpManSpreadsheet:
                   % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                      self.day_of_week[self.i], str(self.row))
         if self.pref[self.lsi] == "nl":  # use alternate formula for non list carriers
-            ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s,IF(%s!C%s <= 8 + reference!C3, 0, MAX(%s!C%s - 8, 0)))" \
+            ot_formula = "=IF(%s!B%s =\"ns day\",%s!C%s," \
+                         "IF(%s!C%s <= 8 + reference!C$3, 0, MAX(%s!C%s - 8, 0)))" \
                          % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                             self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
         off_rt_formula = "=%s!H%s" % (self.day_of_week[self.i], str(self.row))  # copy data from column H/ MV total
-        ot_off_rt_formula = "=IF(OR(%s!B%s=\"ns day\",%s!J%s >= %s!C%s), " \
-                  "%s!C%s, IF(%s!C%s <= 8 + reference!C4, 0, " \
-                  "MIN(MAX(%s!C%s - 8, 0),IF(%s!J%s <= reference!C4,0, %s!J%s))))" \
-                  % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+        ot_off_rt_formula = "=IF(%s!C%s=\"\",0, " \
+                    "IF(OR(%s!B%s=\"ns day\",%s!J%s>=%s!C%s),%s!C%s, " \
+                    "IF(%s!C%s<=8+reference!C4,0, " \
+                    "MIN(MAX(%s!C%s-8,0), " \
+                    "IF(%s!J%s<=reference!C4,0,%s!J%s)))))" \
+                    % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
+                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                     self.day_of_week[self.i], str(self.row))
         formulas = (ot_formula, off_rt_formula, ot_off_rt_formula)
         column_i = 0
         for formula in formulas:
@@ -1089,10 +1151,16 @@ class OvermaxSpreadsheet:
         self.instructions.merge_cells('A1:R1')
         self.instructions['A1'] = "12 and 60 Hour Violations Instructions"
         self.instructions['A1'].style = self.ws_header
-        self.instructions.row_dimensions[3].height = 180
+        self.instructions.row_dimensions[3].height = 260
         self.instructions['A3'].style = self.instruct_text
         self.instructions.merge_cells('A3:X3')
-        self.instructions['A3'] = "Instructions: \n" \
+        self.instructions['A3'] = "Caution: \n" \
+                                  "Using the Apple Numbers Spreadsheet program is not recommended. Apple Numbers " \
+                                  "does not support vertical text or hidden fields, both of which are used in the " \
+                                  "12 and 60 Hour Violations Spreadsheet. If you are using Mac, you can download " \
+                                  "Libre Office Calc, which is recommended, for free. Microsoft Excel or Google Docs " \
+                                  "will also work properly. \n\n" \
+                              "Instructions: \n" \
                               "1. Fill in the name \n" \
                               "2. Fill in the list. Enter either “otdl”,”wal”,”nl”,“aux” or “ptf” in list columns. " \
                               "Use only lowercase. \n" \
@@ -1326,8 +1394,6 @@ class OvermaxSpreadsheet:
         formula = "=IF(%s!B%s = \"aux\",0,MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
                     % (page, str(i), page, str(i), page, str(i + 1), page, str(i),
                        page, str(i + 1))
-        # formula = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" % \
-        #           (page, str(i), page, str(i + 1), page, str(i), page, str(i + 1),)
         self.instructions['S10'] = formula
         self.instructions['S10'].style = self.calcs
         self.instructions['S10'].number_format = "#,###.00;[RED]-#,###.00"
@@ -1442,7 +1508,7 @@ class OvermaxSpreadsheet:
         self.instructions['P12'].style = self.col_center_header
         self.instructions.merge_cells('P12:Q12')
         # legend section
-        self.instructions.row_dimensions[14].height = 180
+        self.instructions.row_dimensions[14].height = 210
         self.instructions['A14'].style = self.instruct_text
         self.instructions.merge_cells('A14:X14')
         self.instructions['A14'] = "Legend: \n" \
