@@ -37,7 +37,7 @@ from pdfminer.pdfpage import PDFPage
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
 version = "4.005"
-release_date = "undetermined"
+release_date = "Sep. 20, 2021"
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -9739,13 +9739,23 @@ class AboutKlusterbox:
         r += 1
         Label(self.win.body, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
-        Label(self.win.body, text="    Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        Label(self.win.body, text="Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
         Label(self.win.body, text="    tomandsusan4ever@msn.com", anchor=W)\
             .grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
-        Label(self.win.body, text="    (please put \"klusterbox\" in the subject line", anchor=W) \
+        Label(self.win.body, text="    (please put \"klusterbox\" in the subject line)", anchor=W) \
             .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="I've found that some emails get filtered out by the junk folder so", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="Message me on Facebook Messenger:", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        kb_link = Label(self.win.body, text="    facebook.com/thomas.weeks.artist", fg="blue", cursor="hand2")
+        kb_link.grid(row=r, columnspan=6, sticky="w")
+        kb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/thomas.weeks.artist"))
         r += 1
         Label(self.win.body, text="    720.280.0415", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1

@@ -9,7 +9,7 @@
 Klusterbox
 Copyright 2019 Thomas Weeks
 most recent version: 4.004		
-released: Sep. 1, 2021
+released: Sep. 20, 2021
 
 Caution: 
 
@@ -30,7 +30,8 @@ Contact:
 Feed back and comments are welcome. My contact information is:
 Thomas Weeks
 tomandsusan4ever@msn.com
-720.280.0415 - call or text. 
+720.280.0415 - call or text.
+message me on facebook: facebook.com/thomas.weeks.artist 
 
 Find out more about Klusterbox at:
 www.klusterbox.com

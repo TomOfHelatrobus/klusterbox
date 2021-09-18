@@ -270,59 +270,45 @@ class ImpManSpreadsheet:
         self.reference['C15'] = "excused"
         self.reference['C15'].style = self.input_s
         self.reference['E15'] = "Carrier excused from mandatory overtime"
-
         # column headers
         self.reference['B17'].style = self.list_header
         self.reference['B17'] = "Column Headers"
-
         self.reference['C18'] = "Name"
         self.reference['C18'].style = self.input_s
         self.reference['E18'] = "The name of the carrier. "
-
         self.reference['C19'] = "note"
         self.reference['C19'].style = self.input_s
         self.reference['E19'] = "special circumstances. See note guide above."
-
         self.reference['C20'] = "5200"
         self.reference['C20'].style = self.input_s
         self.reference['E20'] = "Total hours worked"
-
         self.reference['C21'] = "RS"
         self.reference['C21'].style = self.input_s
         self.reference['E21'] = "Return to station time."
-
         self.reference['C22'] = "MV off"
         self.reference['C22'].style = self.input_s
         self.reference['E22'] = "time moved off own route"
-
         self.reference['C23'] = "MV on"
         self.reference['C23'].style = self.input_s
         self.reference['E23'] = "time moved on/returned to own route"
-
         self.reference['C24'] = "Route"
         self.reference['C24'].style = self.input_s
         self.reference['E24'] = "route of overtime/pivot"
-
         self.reference['C25'] = "MV Total"
         self.reference['C25'].style = self.input_s
         self.reference['E25'] = "time spent on overtime/pivot off route"
-
         self.reference['C26'] = "OT"
         self.reference['C26'].style = self.input_s
         self.reference['E26'] = "Daily overtime"
-
         self.reference['C27'] = "off rte"
         self.reference['C27'].style = self.input_s
         self.reference['E27'] = "total daily time spent off route"
-
         self.reference['C28'] = "OT off"
         self.reference['C28'].style = self.input_s
         self.reference['E28'] = "Daily overtime off route"
-
         self.reference['C30'] = "to 10"
         self.reference['C30'].style = self.input_s
         self.reference['E30'] = "Total availability to 10 hours"
-
         self.reference['C31'] = "to 12"
         self.reference['C31'].style = self.input_s
         self.reference['E31'] = "Total availability to 12 hours"
