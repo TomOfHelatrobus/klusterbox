@@ -5,6 +5,7 @@ from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
+from kbcsv_repair import CsvRepair
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox, filedialog, ttk
@@ -36,8 +37,8 @@ from pdfminer.pdfpage import PDFPage
 # PDF Splitter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
-version = "4.005"
-release_date = "Sep. 20, 2021"
+version = "4.006"
+release_date = "Undetermined"
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -88,7 +89,7 @@ class ProgressBarIn:  # Indeterminate Progress Bar
         self.pb_root.destroy()
 
 
-class RefusalWin:
+class RefusalWin:  # create a window for refusals for otdl equitability
     def __init__(self):
         self.frame = None
         self.win = None
@@ -2859,7 +2860,7 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                     reset("none")  # reset initial value of globals
             if tab == "station_index":
                 if stat != "out of station":
-                    sql = "DELETE FROM stations WHERE station = '%s'" % stat
+                    sql = "DELETE FROM station_index WHERE kb_station = '%s'" % stat
                     commit(sql)
             if tab == "rings3":
                 # determine operator based on time_range
@@ -6486,7 +6487,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                 pp = poe_add_pay_periods[i].get().zfill(2)
                 one = "1"
                 pp = pp + one  # format pp so it can fit in find_pp()
-                dt = find_pp(int(year), pp)
+                dt = find_pp(int(year), pp)  # returns the starting date of the pp when given year and pay period
                 dt += timedelta(days=20)
                 paydays.append(dt)
                 sql = "INSERT INTO informalc_payouts (year,pp,payday,carrier_name,hours,rate,amount) " \
@@ -6882,7 +6883,7 @@ def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availabi
             t_range = True
     year = int(tacs_pp[:-3])  # set the globals
     pp = tacs_pp[-3:]
-    t_date = find_pp(year, pp)
+    t_date = find_pp(year, pp)  # returns the starting date of the pp when given year and pay period
     s_year = t_date.strftime("%Y")
     s_mo = t_date.strftime("%m")
     s_day = t_date.strftime("%d")
@@ -7405,1643 +7406,1991 @@ def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
         return results
 
 
-def auto_precheck():
-    # delete any records from name index which don't have corresponding records in carriers table
-    sql = "SELECT kb_name FROM name_index"
-    kb_name = inquire(sql)
-    sql = "SELECT carrier_name FROM carriers"
-    results = inquire(sql)
-    carriers = []
-    for item in results:
-        if item not in carriers: carriers.append(item)
-    count = 0
-    # create progressbar
-    pb_root = Tk()  # create a window for the progress bar
-    pb_root.geometry("%dx%d+%d+%d" % (500, 50, 200, 300))
-    pb_root.title("Database Maintenance")
-    titlebar_icon(pb_root)  # place icon in titlebar
-    pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
-    pb_label.pack(side=LEFT)
-    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-    pb.pack(side=LEFT)
-    pb["maximum"] = len(kb_name)  # set length of progress bar
-    pb.start()
-    i = 0
-    for name in kb_name:
-        pb["value"] = i  # increment progress bar
-        if name not in carriers:
-            sql = "DELETE FROM name_index WHERE kb_name = '%s'" % name
-            commit(sql)
-            count += 1
-        pb_root.update()
-        i += 1
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    pb_root.destroy()
+class AutoDataEntry:
+    def __init__(self):
+        self.frame = None
+        self.file_path = None
+        self.a_file = None  # the openned csv file
+        self.tacs_station = None  # the station from the ee report
+        self.t_range = None  # false - one day/ true - weekly ee report
+        self.t_date = None  # the starting date of the pp
+        self.station_index = []  # create a list of klusterbox stations
+        self.possible_stations = []  # array of all stations in stations table minus station index
+        self.tacs_list = []  # Get the names from tacs report
+        self.check_these = []
+        self.new_carrier = []  # new carriers who have duplicate names send these to auto indexer 6
+        self.name_sorter = []  # stores stringvar objects for name pairing in an array
+        self.to_addname = []  # initialize array of names to be added.
+        self.tried_names = []
+        self.is_mac = macadj(False, True)  # returns True for mac, False if not mac
+        self.csv_fix = None
+        self.target_file = None
 
+    def run(self, frame):
+        self.frame = frame
+        self.AutoSetUp(self).run(self.frame)
 
-def gen_carrier_list():
-    sql = ""
-    # generate in range carrier list
-    if projvar.invran_weekly_span:  # select sql dependant on range
-        sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
-              " FROM carriers WHERE effective_date <= '%s' " \
-              "ORDER BY carrier_name, effective_date desc" % projvar.invran_date_week[6]
-    if not projvar.invran_weekly_span:   # if investigation range is weekly
-        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
-              " FROM carriers WHERE effective_date <= '%s' " \
-              "ORDER BY carrier_name, effective_date desc" % projvar.invran_date
-    results = inquire(sql)  # call function to access database
-    carrier_list = []  # initialize arrays for data sorting
-    candidates = []
-    more_rows = []
-    pre_invest = []
-    for i in range(len(results)):  # take raw data and sort into appropriate arrays
-        candidates.append(results[i])  # put name into candidates array
-        jump = "no"  # triggers an analysis of the candidates array
-        if i != len(results) - 1:  # if the loop has not reached the end of the list
-            if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
-                jump = "yes"  # bypasses an analysis of the candidates array
-        if jump == "no":
-            # sort into records in investigation range and those prior
-            for record in candidates:
-                # if record falls in investigation range - add it to more rows array
-                if projvar.invran_weekly_span:  # if investigation range is weekly
-                    if str(projvar.invran_date_week[1]) <= record[0] <= str(projvar.invran_date_week[6]):
-                        more_rows.append(record)
-                    if record[0] <= str(projvar.invran_date_week[0]) and len(pre_invest) == 0:
-                        pre_invest.append(record)
-                if not projvar.invran_weekly_span:  # if investigation range is daily...
-                    # if date match and no pre_investigation
-                    if record[0] <= str(projvar.invran_date) and len(pre_invest) == 0:
-                        pre_invest.append(record)  # add rec to pre_invest array
-            # find carriers who start in the middle of the investigation range CATEGORY ONE
-            if len(more_rows) > 0 and len(pre_invest) == 0:
-                station_anchor = "no"
-                for each in more_rows:  # check if any records place the carrier in the selected station
-                    if each[5] == projvar.invran_station:
-                        station_anchor = "yes"  # if so, set the station anchor
-                if station_anchor == "yes":
-                    list(more_rows)
-                    for each in more_rows:
-                        x = list(each)  # convert the tuple to a list
-                        carrier_list.append(x)  # add it to the list
-            # find carriers with records before and during the investigation range CATEGORY TWO
-            if len(more_rows) > 0 and len(pre_invest) > 0:
-                station_anchor = "no"
-                for each in more_rows + pre_invest:
-                    if each[5] == projvar.invran_station:
-                        station_anchor = "yes"
-                if station_anchor == "yes":
-                    xx = list(pre_invest[0])
-                    carrier_list.append(xx)
-            # find carrier with records from only before investigation range.CATEGORY THREE
-            if len(more_rows) == 0 and len(pre_invest) == 1:
-                for each in pre_invest:
-                    if each[5] == projvar.invran_station:
-                        x = list(pre_invest[0])
-                        carrier_list.append(x)
-            del more_rows[:]
-            del pre_invest[:]
-            del candidates[:]
-    return carrier_list
+    def get_file(self):  # read the csv file and assign to self.a_file attribute
+        self.target_file = open(self.file_path, newline="")
+        self.a_file = csv.reader(self.target_file)
 
+    def go_back(self, frame):
+        """
+        This first closes the opened csv file is being read
+        Then destroys the temporary csv file created by CsvRepair() and referenced by self.file_path.
+        Then the MainFrame() is called to return the user to the main screen.
+        This is called with self.parent.go_back(frame)
+        """
+        self.target_file.close()
+        self.csv_fix.destroy()
+        MainFrame().start(frame=frame)
 
-def gen_nameindex_dict():
-    sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
-    results = inquire(sql)
-    n_dict = {}
-    for line in results:  # loop to fill arrays
-        n_dict[line[2]] = line[1]
-    return n_dict
+    class AutoSetUp:
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.tacs_pp = None  # pay period read from csv file
+            self.tacs_index = []  # create a list of tacs station names
+            self.kb_stations = []  # array of all stations in stations table
 
+        def run(self, frame):
+            self.frame = frame
+            if not self.get_path():  # get the path to the employee everything report
+                return  # return if invalid response
+            self.parent.csv_fix = CsvRepair()  # create a CsvRepair object
+            # returns a file path for a checked and, if needed, fixed csv file.
+            self.parent.file_path = self.parent.csv_fix.run(self.parent.file_path)
+            self.auto_precheck()  # delete recs from name index which don't have corresponding recs in carriers table
+            self.parent.get_file()  # read the csv file and assign to self.a_file attribute
+            if not self.check_file():  # check for invalid file, find station and pay period
+                return  # return if invalid response
+            if not self.check_range():  # check that file covers full service week
+                return  # return if invalid response
+            if not self.check_tacs_station():  # check that file has a station
+                return  # return if invalid response
+            self.get_tacs_date()  # get the date from tacs
+            self.get_stations()  # build arrays of stations
+            if self.parent.tacs_station not in self.tacs_index:
+                self.parent.AutoIndexer1(self.parent).run(self.frame)
+            else:
+                self.parent.AutoIndexer2(self.parent).run(self.frame)
 
-def auto_indexer_1(frame, file_path):  # pair station from tacs to correct station in klusterbox/ part 1
-    auto_precheck()
-    with open(file_path, newline="") as file:
-        a_file = csv.reader(file)
-        cc = 0
-        for line in a_file:
-            if cc == 0 and line[0][:8] != "TAC500R3":
-                messagebox.showwarning("File Selection Error",
-                                       "The selected file does not appear to be an "
-                                       "Employee Everything report.",
-                                       parent=frame)
-                return
-            if cc == 3:
-                tacs_pp = line[0]  # find the pay period
-                tacs_station = line[2]  # find the station
-                break
-            cc += 1
-        cc = 0
-        range_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        for line in a_file:  # find the range
-            if line[18] in range_days:
-                range_days.remove(line[18])
-            if cc == 150: break  # survey 150 lines before breaking to anaylize results.
-            cc += 1
-        if len(range_days) > 5:
-            t_range = False  # set the range
-            messagebox.showwarning("File Selection Error",
-                                   "Employee Everything Reports that cover only one day /n"
-                                   "are not supported in this version of Klusterbox.",
-                                   parent=frame)
-            return
-        else:
-            t_range = True
-    year = int(tacs_pp[:-3])
-    pp = tacs_pp[-3:]
-    t_date = find_pp(year, pp)
-    sql = "SELECT tacs_station, kb_station, finance_num FROM station_index"
-    results = inquire(sql)
-    station_index = []  # create a list of klusterbox names
-    tacs_index = []
-    for line in results:
-        station_index.append(line[1])
-        tacs_index.append(line[0])
-    sql = "SELECT station FROM stations"
-    results = inquire(sql)
-    kb_stations = []
-    for record in results:
-        kb_stations.append(record[0])
-    frame.destroy()
-    f = Frame(projvar.root)
-    f.pack(fill=BOTH, side=LEFT)
-    s = Scrollbar(f)  # link up the canvas and scrollbar
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=10)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    ff = Frame(c)  # create the frame inside the canvas
-    c.create_window((0, 0), window=ff, anchor=NW)
-    possible_stations = []
-    for item in kb_stations:
-        possible_stations.append(item)
-    if len(tacs_station) == 0:
-        messagebox.showwarning("Auto Data Entry Error",
-                               "The Employee Everything Report is corrupt. Data Entry will stop.  \n"
-                               "The Employee Everything Report does not include "
-                               "information about the station. This could be caused by an error of the pdf "
-                               "converter. If you can obtain an Employee Everything Report from management in "
-                               "csv format, you should have better results.",
-                               parent=f)
-        MainFrame().start(frame=f)
-        return
+        def get_path(self):  # get the path to the employee everything report or return False
+            path = dir_filedialog()
+            self.parent.file_path = filedialog.askopenfilename(initialdir=path,
+                                                               filetypes=[("Excel files", "*.csv *.xls")])
+            if self.parent.file_path == "":  # if there is no selections - end
+                return False
+            elif self.parent.file_path[-4:].lower() == ".csv" or self.parent.file_path[-4:].lower() == ".xls":
+                return True
+            else:  # if an csv nor xls is selected - end
+                messagebox.showerror("Report Generator",
+                                     "The file you have selected is not a .csv or .xls file. "
+                                     "You must select a file with a .csv or .xls extension.",
+                                     parent=self.frame)
+                return False
 
-    station_index.append("out of station")
-    possible_stations = [x for x in possible_stations if x not in station_index]
-    Label(ff, text="Station Pairing", font=macadj("bold", "Helvetica 18"), pady=10) \
-        .grid(row=0, column=0, columnspan=4, sticky=W)  # page contents
-    Label(ff, text="Match the station detected from TACS with a pre-existing station\n "
-                   "or use ADD STATION to add the station if there isn't a match.", justify=LEFT) \
-        .grid(row=1, column=0, columnspan=4, sticky=W)
-    Label(ff, text="Detected Station: ", anchor="w").grid(row=2, column=0, sticky="w")
-    Label(ff, text=tacs_station, fg="blue").grid(row=3, column=0, columnspan=4)
-    Label(ff, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky=W)
-    station_sorter = StringVar(ff)
-    station_options = ["select matching station"] + possible_stations + ["ADD STATION"]
-    station_sorter.set(station_options[0])
-    option_menu = OptionMenu(ff, station_sorter, *station_options)
-    option_menu.config(width=30)
-    option_menu.grid(row=5, column=0, columnspan=2, sticky=W)
-    Label(ff, text=" ", justify=LEFT).grid(row=6, column=0, sticky=W)
-    Label(ff, text="If the station is not present in the drop down menu, select  \n "
-                   "ADD STATION from the menu and enter the new station name \n"
-                   "below to pair it with the station originating the report", justify=LEFT) \
-        .grid(row=7, column=0, columnspan=4, sticky=W)
-    Label(ff, text=" ", justify=LEFT).grid(row=8, column=0, sticky=W)
-    Label(ff, text="Enter New Station Name: ", anchor="w").grid(row=9, column=0, columnspan=4, sticky=W)
-    # insert entry for station name
-    station_new = StringVar(ff)
-    Entry(ff, width=35, textvariable=station_new).grid(row=10, column=0, columnspan=4, sticky=W)
-    Label(ff, text=" ", justify=LEFT).grid(row=11, column=0, sticky=W)
-    Button(ff, text="OK", width=8, command=lambda: apply_auto_indexer_1
-    (f, file_path, tacs_station, station_sorter.get(), station_new.get(), t_date, t_range)) \
-        .grid(row=12, column=2, sticky=W)
-    Button(ff, text="Cancel", width=8, command=lambda: MainFrame().start(frame=f)).grid(row=12, column=3, sticky=W)
-    if tacs_station in tacs_index:
-        auto_indexer_2(f, file_path, t_date, tacs_station, t_range)
-    else:
-        c.config(scrollregion=c.bbox("all"))
-        projvar.root.update()
-        mainloop()
-
-
-def apply_auto_indexer_1(frame, file_path, tacs_station, station_sorter, station_new, t_date, t_range):
-    sql = "SELECT kb_station FROM station_index"
-    result = inquire(sql)
-    station_index = []
-    for ss in result:
-        station_index.append(ss[0])
-    station_new = station_new.strip()
-    if station_sorter == "select matching station":
-        messagebox.showerror("Data Entry Error",
-                             "You must select a station or ADD STATION",
-                             parent=frame)
-        return
-    elif station_sorter == "ADD STATION" and station_new == "":
-        messagebox.showerror("Data Entry Error",
-                             "You must provide a name for the new station.",
-                             parent=frame)
-        return
-    elif station_sorter == "ADD STATION" and station_new != "":
-        if station_new not in projvar.list_of_stations:
-            sql = "INSERT INTO stations (station) VALUES('%s')" % station_new
-        commit(sql)
-        if station_new not in projvar.list_of_stations:
-            projvar.list_of_stations.append(station_new)
-        if len(tacs_station) != 0:  # add to the station index to the dbase unless tacs_station is empty.
-            sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
-                  % (tacs_station, station_new, "")
-            commit(sql)
-        messagebox.showinfo("Database Updated",
-                            "The {} station has been added to the list of stations automatically "
-                            "recognized.".format(station_new),
-                            parent=frame)
-    elif station_sorter != "ADD STATION" and station_new != "":
-        messagebox.showerror("Data Entry Error",
-                             "You can not select a station from the drop down menu AND enter "
-                             "a station in the text field.",
-                             parent=frame)
-        return
-    else:
-        sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
-              % (tacs_station, station_sorter, "")
-        commit(sql)
-        messagebox.showinfo("Database Updated",
-                            "The {} station has been paired to the {} station. In the future, this association "
-                            "will be automatically recognized.".format(tacs_station, station_sorter),
-                            parent=frame)
-    auto_indexer_2(frame, file_path, t_date, tacs_station, t_range)
-
-
-def auto_indexer_2(frame, file_path, t_date, tacs_station, t_range):  # Pairing screen #1
-    s_year = t_date.strftime("%Y")
-    s_mo = t_date.strftime("%m")
-    s_day = t_date.strftime("%d")
-    sql = "SELECT kb_station FROM station_index WHERE tacs_station = '%s'" % tacs_station
-    station = inquire(sql)
-    set_globals(s_year, s_mo, s_day, t_range, station[0][0], "None")
-    sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
-    results = inquire(sql)
-    name_index = []  # create a list of klusterbox names
-    id_index = []  # create a list of emp ids
-    for line in results:
-        name_index.append(line[1])
-        id_index.append(line[2].zfill(8))
-    carrier_list = gen_carrier_list()  # generate an in range carrier list
-    c_list = []  # create a list of unique names from carrier list (a set)
-    for each in carrier_list:
-        if each[1] not in c_list:
-            c_list.append(each[1])
-    # Get the names from tacs report
-    tacs_list = []
-    good_jobs = ("134", "844", "434")
-    with open(file_path, newline="") as file:
-        a_file = csv.reader(file)
-        cc = 0
-        for line in a_file:
-            if cc > 1 and line[19] in good_jobs:
-                # create a note for carrier's assignment - reg w/route, reg floater or aux
-                route = line[25].zfill(6)
-                lvl = line[23].zfill(2)
-                if line[19] == "134" and lvl == "01":
-                    tac_route = route[1] + route[2] + route[3] + route[4] + route[5]
-                    assignment = "reg " + Handler(tac_route).routes_adj()
-                elif line[19] == "134" and lvl == "02":
-                    assignment = "reg " + "floater"
-                elif line[19] == "434":
-                    assignment = "part time flex"
-                elif line[19] == "844":
-                    assignment = "auxiliary"
-                else:
-                    assignment = "undetected"
-                lastname = line[5].lower().replace("\'", " ")
-                add_to_list = [line[4].zfill(8), lastname, line[6].lower(),
-                               assignment]  # create list to insert in list
-                tacs_list.append(add_to_list)
-            cc += 1
-    holder = ["", "", "", ""]  # find the duplicates and remove them where there is both BASE and TEMP
-    to_remove = []
-    put_back = []
-    for item in tacs_list:  # crawler goes down the list to identify Temp entries
-        if item[0] == holder[0]:
-            if item == holder:
-                to_remove.append(holder)  # remove both records
-            if item != holder:
-                to_remove.append(holder)
-                to_remove.append(item)
-            put_back.append(item)  # put the later record back in the list
-        holder = item  # hold the record to compare in the next loop
-    tacs_list = [x for x in tacs_list if x not in to_remove]  # remove the duplicates
-    for record in put_back:  # put the Temp record back into the tacs_list
-        tacs_list.append(record)
-    tacs_list.sort(key=itemgetter(1))  # re-alphabetize the list of carriers
-    add = 0  # create tallies for reports
-    rec = 0
-    out = 0
-    to_remove = []  # carriers who are already or newly placed in name index - remove them from further processing
-    new_carrier = []  # new carriers who have duplicate names send these to auto indexer 6
-    dup_array = []
-    check_these = []
-    # create progressbar
-    pb_root = Tk()  # create a window for the progress bar
-    pb_root.geometry("%dx%d+%d+%d" % (500, 50, 200, 300))
-    pb_root.title("Database Maintenance")
-    titlebar_icon(pb_root)  # place icon in titlebar
-    pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
-    pb_label.pack(side=LEFT)
-    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-    pb.pack(side=LEFT)
-    pb["maximum"] = len(tacs_list)  # set length of progress bar
-    pb.start()
-    i = 0
-    for each in tacs_list:
-        pb["value"] = i  # increment progress bar
-        tac_str = "{}, {}".format(each[1], each[2])  # tac str is last name and first initial from tacs report
-        if tac_str in c_list and each[0] not in id_index:  # if there is an identical match between kb and tacs names:
-            if tac_str in name_index:  # if there is a dup name / need a complete list of carrier names from index
-                new_carrier.append(each)  # maybe just pass information via new_carrier and add later
-            else:  # go ahead and pair the emp id with the name in carriers
-                sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id ) VALUES('%s','%s','%s')" \
-                      % (tac_str, tac_str, each[0])
-                name_index.append(tac_str)
-                id_index.append(each[0])
-            add += 1
-            commit(sql)
-            to_remove.append(each[0])
-            name_index.append(tac_str)
-        elif each[0] in id_index:  # RECOGNIZED -  the emp id is already in the name index
-            to_remove.append(each[0])
-            check_these.append(each)
-            rec += 1
-        else:
-            out += 1
-        pb_root.update()  # update the progress bar
-        i += 1
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    pb_root.destroy()  # destroy the progress bar
-    # find the carriers in name_index who have records w/ eff dates in the future
-    dont_check = []  # remove items from check these if future carriers are found
-    for name in check_these:
-        sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % name[0]
-        result = inquire(sql)
-        kb_name = result[0][0]
-        sql = "SELECT effective_date,carrier_name FROM carriers " \
-              "WHERE carrier_name = '%s' AND effective_date <= '%s' " \
-              "ORDER BY effective_date DESC" % (kb_name, projvar.invran_date_week[0])
-        result = inquire(sql)
-        if not result:
-            new_carrier.append(name)  # will add as new carrier in AI 3
-            dont_check.append(name[0])  # removes from check these array
-            to_remove.append(name[0])  # removes from tacs list
-    check_these = [x for x in check_these if x[0] not in dont_check]  # removes don't check from check these
-    """
-    messagebox.showinfo("Processing Carriers", 
-    "{} Carrier names were added to the database\n"
-   "{} Carrier names were recognized as pre-existing in the database.\n"
-   "{} Carrier names have not been handled."
-    .format(add, rec, out), 
-    parent=frame)
-    """
-    tacs_list = [x for x in tacs_list if x[0] not in new_carrier]
-    tacs_list = [x for x in tacs_list if x[0] not in to_remove]
-    sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
-    results = inquire(sql)
-    name_sorter = []
-    tried_names = []
-    for item in name_index:
-        tried_names.append(item)
-    name_index = []  # create a list of klusterbox names
-    for line in results:
-        name_index.append(line[1])
-    # route to appropriate function based on array contents
-    if len(tacs_list) < 1 and len(new_carrier) < 1 and len(check_these) < 1:  # all tacs list resolved/ nothing to check
-        auto_indexer_6(frame, file_path)  # to straight to entering rings
-    elif len(tacs_list) < 1 and len(new_carrier) > 0:  # all tacs list resolved/ new names unresolved
-        auto_indexer_4(frame, file_path, new_carrier, check_these)  # add new carriers in AI6
-    elif len(tacs_list) < 1 and len(new_carrier) < 1 and len(
-            check_these) > 0:  # tacs and new carriers resolved/ carriers to check
-        auto_indexer_5(frame, file_path, check_these)  # step to AI  to check discrepancies
-    else:  # If there are candidates sort, generate PAIRING SCREEN 1
-        frame.destroy()
-        f = Frame(projvar.root)
-        f.pack(fill=BOTH, side=LEFT)
-        c1 = Canvas(f)
-        c1.pack(fill=BOTH, side=BOTTOM),
-        Button(c1, text="Continue", width=macadj(8,15), command=lambda: auto_indexer_3
-        (f, file_path, tacs_list, name_sorter, tried_names, new_carrier, check_these)).grid(row=0, column=0)
-        Button(c1, text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
-        s = Scrollbar(f)  # link up the canvas and scrollbar
-        c = Canvas(f, width=1600)
-        s.pack(side=RIGHT, fill=BOTH)
-        c.pack(side=LEFT, fill=BOTH, pady=10, padx=10)
-        s.configure(command=c.yview, orient="vertical")
-        c.configure(yscrollcommand=s.set)
-        if sys.platform == "win32":
-            c.bind_all('<MouseWheel>',
-                       lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-        elif sys.platform == "darwin":
-            c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-        elif sys.platform == "linux":
-            c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-            c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-        ff = Frame(c)  # create the frame inside the canvas
-        c.create_window((0, 0), window=ff, anchor=NW)
-        c_list = [x for x in c_list if x not in name_index]
-        Label(ff, text="Search for Name Matches #1", font=macadj("bold", "Helvetica 18"), pady=10) \
-            .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
-        wintext = \
-        "Look for possible matches for each unrecognized name. If the name has already been entered manually, you \n"
-        "should be able to find it on this screen or the next. It is possible that the name has no match, if that is \n"
-        "the case then select \"ADD NAME\" in the next screen. You can change the default between \"NOT FOUND\" and \n"
-        "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
-        mactext = \
-            "Look for possible matches for each unrecognized name. If the name has already been \n"\
-            "entered manually, you should be able to find it on this screen or the next. It is \n"\
-            "possible that the name has no match, if that is the case then select \"ADD NAME\" in \n"\
-            "the next screen. You can change the default between \"NOT FOUND\" and \"DISCARD\" \n"\
-            "using the buttons below. Information from TACS is shown in blue\n\n"
-        text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
-        Label(ff, text=macadj(wintext, mactext) + text, justify=LEFT) \
-            .grid(row=1, column=0, columnspan=10, sticky="w")
-        Button(ff, text="DISCARD", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 1)) \
-            .grid(row=2, column=3, sticky="w", columnspan=2)
-        Label(ff, text="switch default to DISCARD").grid(row=2, column=1, sticky="w", columnspan=2)
-        Button(ff, text="NOT FOUND", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 0)) \
-            .grid(row=3, column=3, sticky="w", columnspan=2)
-        Label(ff, text="switch default to NOT FOUND").grid(row=3, column=1, sticky="w", columnspan=2)
-        Label(ff, text="").grid(row=4, column=0)
-
-        Label(ff, text="Name", fg="grey").grid(row="5", column="1", sticky="w")
-        Label(ff, text="Assignment", fg="grey").grid(row="5", column="2", sticky="w")
-        Label(ff, text="Candidates", fg="grey").grid(row="5", column="3", sticky="w")
-        cc = 6
-        i = 0
-        color = "blue"
-        for t_name in tacs_list:
-            possible_names = []
-            Label(ff, text=str(i + 1), anchor="w").grid(row=cc, column=0, sticky="w")
-            Label(ff, text=t_name[1] + ", " + t_name[2], anchor="w", width=15, fg=color) \
-                .grid(row=cc, column=1, sticky="w")  # name
-            Label(ff, text=t_name[3], anchor="w", width=10, fg=color) \
-                .grid(row=cc, column=2, sticky="w")  # assignment
-            # build option menu for unmatched tacs names
-            for c_name in c_list:
-                if c_name[0] == t_name[1][0]:
-                    possible_names.append(c_name)
-                    tried_names.append(c_name)
-            name_options = ["NOT FOUND", "DISCARD"] + possible_names
-            name_sorter.append(StringVar(ff))
-            option_menu = OptionMenu(ff, name_sorter[i], *name_options)
-            name_sorter[i].set(name_options[0])
-            option_menu.config(width=15)
-            option_menu.grid(row=cc, column=3, sticky="w")  # possible matches
-            if len(possible_names) == 1:  # display indicator for possible matches
-                Label(ff, text=str(len(possible_names)) + " name").grid(row=cc, column=4, sticky="w")
-            if len(possible_names) > 1:
-                Label(ff, text=str(len(possible_names)) + " names").grid(row=cc, column=4, sticky="w")
-            cc += 1
-            i += 1
-        projvar.root.update()
-        c.config(scrollregion=c.bbox("all"))
-        mainloop()
-
-
-def auto_indexer_3(frame, file_path, tacs_list, name_sorter, tried_names, new_carrier, check_these):
-    # apply pairing screen #1 and create pairing screen #2
-    i = 0  # count iterations of loops
-    dis = 0  # count of discarded items
-    out = 0  # count of unresolved items
-    pair = 0  # count of added items
-    to_remove = []  # intialized array of names to be removed from tacs names
-    not_found = []  # initialize array of names to be futher analyzed.
-    to_nameindex = []  # initialize array of names to be be paired in name index
-    for item in name_sorter:
-        if item.get() == "DISCARD":
-            to_remove.append(tacs_list[i][0])
-            dis += 1
-        elif item.get() == "NOT FOUND":
-            not_found.append(tacs_list[i])
-            out += 1
-        else:
-            to_add = [tacs_list[i], item.get()]
-            to_nameindex.append(to_add)
-            to_remove.append(tacs_list[i][0])
-            check_these.append(tacs_list[i])
-            pair += 1
-        i += 1
-    tacs_list = [x for x in tacs_list if x[0] not in to_remove]
-    for item in to_nameindex:
-        tac_str = "{}, {}".format(item[0][1], item[0][2])  # tac str is last name and first initial from tacs report
-        sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s','%s','%s')" \
-              % (tac_str, item[1], item[0][0])
-        commit(sql)
-    """
-# message screens to summerize output
-    messagebox.showinfo("Processing Carriers", 
-    "{} Carrier names were paired to names in klusterbox\n"
-    "{} Carrier names were discarded.\n"
-    "{} Carrier names have not been handled."
-    .format(pair, dis, out), parent=frame)
-    """
-    # build possible names for option menus
-    sql = "SELECT kb_name FROM name_index"
-    results = inquire(sql)
-    name_index = []  # create a list of klusterbox names
-    for line in results:
-        name_index.append(line[0])
-    sql = "SELECT carrier_name FROM carriers ORDER BY carrier_name"  # get all names from the carrier list
-    results = inquire(sql)  # call function to access database
-    c_list = []
-    for item in results:
-        if item[0] not in c_list and item[0] not in tried_names and item[0] not in name_index:
-            c_list.append(item[0])
-    name_sorter = []  # page contents
-    frame.destroy()  # destroy old frame and build new frame
-    f = Frame(projvar.root)
-    f.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(f)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="Continue", width=macadj(8,15), command=lambda: apply_auto_indexer_3
-    (f, c1, file_path, tacs_list, name_sorter, new_carrier, c_list, check_these)).grid(row=0, column=0)
-    Button(c1, text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=f)).grid(row=0, column=1)
-    s = Scrollbar(f)  # link up the canvas and scrollbar
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    ff = Frame(c)  # create the frame inside the canvas
-    c.create_window((0, 0), window=ff, anchor=NW)
-    # route to functions conditional on arrays
-    if len(tacs_list) < 1 and len(check_these) > 0:  # if empty tacs list and something in check these
-        auto_indexer_5(f, file_path, check_these)
-    elif len(tacs_list) < 1 and len(check_these) < 1:
-        auto_indexer_6(f, file_path)
-    else:
-        Label(ff, text="Search for Name Matches #2", font=macadj("bold", "Helvetica 18"), pady=10) \
-            .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
-        wintext = \
-            "Look for possible matches for each unrecognized name. If the name has already been entered manually, \n"\
-            " you should be able to find it on this screen. It is possible that the name has no match, if that is \n"\
-            "the case then select \"ADD NAME\" in this screen. You can change the default between \"ADD NAME\" and \n"\
-            "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
-        mactext = \
-            "Look for possible matches for each unrecognized name. If the name has already been \n" \
-            "entered manually, you should be able to find it on this screen. It is possible that \n" \
-            "the name has no match, if that is the case then select \"ADD NAME\" in this screen. \n" \
-            "You can change the default between \"ADD NAME\" and \"DISCARD\" using the buttons \n" \
-            "below. Information from TACS is shown in blue\n\n"
-        text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                                                          projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
-        Label(ff, text=macadj(wintext, mactext) + text, justify=LEFT).grid(row=1, column=0, columnspan=10, sticky="w")
-        Button(ff, text="DISCARD", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 1)) \
-            .grid(row=2, column=3, sticky="w", columnspan=2)
-        Label(ff, text="switch default to DISCARD").grid(row=2, column=1, sticky="w", columnspan=2)
-        Button(ff, text="ADD NAME", width=10, command=lambda: indexer_default(name_sorter, i + 1, name_options, 0)) \
-            .grid(row=3, column=3, sticky="w", columnspan=2)
-        Label(ff, text="switch default to ADD NAME").grid(row=3, column=1, sticky="w", columnspan=2)
-        Label(ff, text="").grid(row=4, column=0)
-        Label(ff, text="Name", fg="grey").grid(row="5", column="1", sticky="w")
-        Label(ff, text="Assignment", fg="grey").grid(row="5", column="2", sticky="w")
-        Label(ff, text="Candidates", fg="grey").grid(row="5", column="3", sticky="w")
-        cc = 6  # item and grid row counter
-        i = 0  # count iterations of the loop
-        color = "blue"
-        for t_name in tacs_list:
-            possible_names = []
-            Label(ff, text=str(i + 1), anchor="w").grid(row=cc, column=0)
-            Label(ff, text=t_name[1] + ", " + t_name[2], anchor="w", width=15, fg=color).grid(row=cc, column=1)  # name
-            Label(ff, text=t_name[3], anchor="w", width=10, fg=color).grid(row=cc, column=2)  # assignment
-            # build option menu for unmatched tacs names
-            for c_name in c_list:
-                if c_name[0] == t_name[1][0]:
-                    possible_names.append(c_name)
-            name_options = ["ADD NAME", "DISCARD"] + possible_names
-            name_sorter.append(StringVar(ff))
-            option_menu = OptionMenu(ff, name_sorter[i], *name_options)
-            name_sorter[i].set(name_options[0])
-            option_menu.config(width=15)
-            option_menu.grid(row=cc, column=3)  # possible matches
-            if len(possible_names) == 1:  # display indicator for possible matches
-                Label(ff, text=str(len(possible_names)) + " name").grid(row=cc, column=4)
-            if len(possible_names) > 1:
-                Label(ff, text=str(len(possible_names)) + " names").grid(row=cc, column=4)
-            cc += 1
-            i += 1
-        projvar.root.update()
-        c.config(scrollregion=c.bbox("all"))
-        mainloop()
-
-
-def indexer_default(widget, count, options, choice):  # changes the default for the optionmenu widget
-    for i in range(count - 1):
-        widget[i].set(options[choice])
-
-
-def apply_auto_indexer_3(frame, buttons, file_path, tacs_list, name_sorter, new_carrier, c_list,
-                         check_these):  # apply pairing screen 2
-    # process incoming data
-    i = 0  # count iterations of the loops.
-    dis = 0  # count of discarded items
-    add = 0  # count of added items
-    pair = 0  # count of names paired to klusterbox names
-    to_remove = []  # intialized array of names to be removed from tacs names
-    to_addname = []  # initialize array of names to be added.
-    to_nameindex = []  # initialize array of names to be be paired in name index
-    sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
-    results = inquire(sql)
-    n_index = []  # create a list of klusterbox names
-    id_index = []  # create a list of emp ids
-    for line in results:  # loop to fill arrays
-        n_index.append(line[1])
-        id_index.append(line[2])
-    for item in name_sorter:  # sort passed data from auto index 4
-        if item.get() == "DISCARD":
-            to_remove.append(tacs_list[i][0])
-            dis += 1
-        elif item.get() == "ADD NAME":
-            to_addname.append(tacs_list[i])
-            add += 1
-        else:
-            to_add = [tacs_list[i], item.get()]
-            to_nameindex.append(to_add)
-            to_remove.append(tacs_list[i][0])
-            check_these.append(tacs_list[i])
-            pair += 1
-        i += 1
-    pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
-    pb_label.grid(row=0, column=2)
-    pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
-    pb.grid(row=0, column=3)
-    pb["maximum"] = len(to_nameindex)  # set length of progress bar
-    pb.start()
-    i = 0
-    for item in to_nameindex:  # when a name from the optionmenu was selected
-        pb["value"] = i  # increment progress bar
-        # tac str is last name and first initial from tacs report
-        tac_str = "{}, {}".format(item[0][1], item[0][2])
-        sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s','%s','%s')" \
-              % (tac_str, item[1], item[0][0])
-        commit(sql)
-        buttons.update()  # update the progress bar
-        i += 1
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-
-    to_chg = []  # array of items from to_addname where the name needs to be modified with emp id
-    new_name = []  # array of new names which have been modified with emp id
-    for name in new_carrier:
-        to_addname.append(name)  # add new carriers in list to be added to carrier table
-    pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
-    pb_label.grid(row=0, column=2)
-    pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
-    pb.grid(row=0, column=3)
-    pb["maximum"] = len(to_addname)  # set length of progress bar
-    pb.start()
-    i = 0
-    for item in to_addname:  # when add name was selected from option menu
-        pb["value"] = i  # increment progress bar
-        tacs_str = "{}, {}".format(item[1], item[2])  # tacs str is last name and first initial from tacs report
-        kb_str = "{}, {}".format(item[1], item[2])  # kb str is last name and first initial from tacs report
-        if kb_str in n_index or kb_str in c_list:  # detect matches with name index
-            sql = "SELECT emp_id, kb_name FROM name_index WHERE emp_id = '%s'" % item[0]
-            result = inquire(sql)
-            if not result:
-                kb_str = "{} {}".format(kb_str, item[0])
-                to_chg.append(item)
-                mod_name = "{} {}".format(item[2], item[0])
-                new_name.append(mod_name)
-            if result:  # if the carrier is in the name index
-                if result[0][1] != kb_str:  # if the kb name is not the same in the name index record - change name
-                    to_chg.append(item)
-                    mod_name = result[0][1].split(",")
-                    mod_name = mod_name[1].strip()
-                    new_name.append(mod_name)
-        n_index.append(kb_str)  # add to n_index array so dups can be detected
-        sql = "SELECT emp_id FROM name_index WHERE emp_id = '%s'" % item[0]
-        result = inquire(sql)
-        if not result:
-            sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s','%s','%s')" \
-                  % (tacs_str, str(kb_str), item[0])
-            commit(sql)
-        buttons.update()  # update the progress bar
-        i += 1
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    """
-    # message screens to summerize output
-    messagebox.showinfo("Processing Carriers", "{} Carrier names were added to the database\n"
-                                               "{} Carrier names were paired to names in klusterbox\n"
-                                               "{} Carrier names were discarded.\n"
-                                               .format(add, pair, dis), parent=frame)
-    """
-    count = 0  # swap out the names which have been modified in to_addname
-    for item in to_chg:  # for each item to be swapped
-        to_addname.remove(item)  # clear out the old one
-        mod_str = [item[0], item[1], new_name[count], item[3]]  # create a modified array with modified name
-        to_addname.append(mod_str)  # put in the new one
-        count += 1
-
-    if len(to_addname) > 0:
-        auto_indexer_4(frame, file_path, to_addname, check_these)
-    elif len(check_these) > 0:
-        auto_indexer_5(frame, file_path, check_these)
-    else:
-        auto_indexer_6(frame, file_path)
-
-
-def auto_indexer_4(frame, file_path, to_addname, check_these):  # add new carriers to carrier table / pairing screen #3
-    is_mac = macadj(False, True)
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    frame.destroy()
-    opt_nsday = []  # make an array of "day / color" options for option menu
-    full_ns_dict = {}
-    # get ns structure preference from database
-    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
-    result = inquire(sql)
-    ns_toggle = result[0][0]  # modify available ns days per ns_toggle
-    if ns_toggle == "rotation":
-        remove_array = ("sat", "mon", "tue", "wed", "thu", "fri")
-    else:
-        remove_array = ("green", "brown", "red", "black", "yellow", "blue")
-    ns_code_mod = dict()  # copy the projvar.ns_code dict to ns_code_mod using dict()
-    for key in projvar.ns_code:
-        ns_code_mod[key] = projvar.ns_code[key]
-    for key in remove_array:
-        if key in ns_code_mod:
-            del ns_code_mod[key]  # modify available ns days per ns_toggle
-
-    for each in ns_code_mod:  #
-        ns_option = ns_code_mod[each] + " - " + each  # make a string for each day/color
-        if each == "none":
-            ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
-        opt_nsday.append(ns_option)
-    for each in opt_nsday:  # Make a dictionary to match full days and option menu options
-        for day in days:
-            if day[:3] == each[:3]:
-                full_ns_dict[day] = each  # creates full_ns_dict
-        if each[-4:] == "none":
-            ns_option = "       " + " - " + "none"  # if the ns day is "none" - make a special string
-            full_ns_dict["None"] = ns_option  # creates full_ns_dict None option
-    results = gen_ns_dict(file_path, to_addname)  # returns id and name
-    ns_dict = {}  # create dictionary for ns day data
-    for ids in results:  # loop to fill dictionary with ns day info
-        ns_dict[ids[0]] = ids[1]
-    f = Frame(projvar.root)
-    f.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(f)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="Continue", width=macadj(8,15), command=lambda: apply_auto_indexer_4
-    (f, c1, file_path, to_addname, carrier_name, l_s, l_ns, route, check_these)).pack(side=LEFT)
-    Button(c1, text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=f)).pack(side=LEFT)
-    s = Scrollbar(f)  # link up the canvas and scrollbar
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    ff = Frame(c)  # create the frame inside the canvas
-    c.create_window((0, 0), window=ff, anchor=NW)
-    Label(ff, text="Input New Carriers", font=macadj("bold", "Helvetica 18"), pady=10) \
-        .grid(row=0, column=0, sticky="w", columnspan=6)  # Pairing Screen #3
-    wintext = \
-        "Enter in information for carriers not already recorded in the Klusterbox database. You can use the TACS \n" \
-        "information (shown in blue),as a guide if it is accurate. As OTDL/WAL information is not in TACS, it is \n" \
-        "not shown and this information will have to requested from management. Routes must be only 4 digits \n" \
-        "long. In cases were there are multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
-    mactext = \
-        "Enter in information for carriers not already recorded in the Klusterbox database. You can \n" \
-        "use the TACS information (shown in blue),as a guide if it is accurate. As OTDL/WAL \n" \
-        "information is not in TACS, it is not shown and this information will have to requested \n" \
-        "from management. Routes must be only 4 digits long. In cases were there are multiple \n" \
-        "routes, the routes must be separated by a \"/\" backslash.\n\n"
-    text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
-    Label(ff, text=macadj(wintext,mactext)+text, justify=LEFT).grid(row=1, column=0, sticky="w", columnspan=6)
-    y = 2  # count for the row
-    Label(ff, text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
-    Label(ff, text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
-    Label(ff, text="NS Day", fg="Grey").grid(row=y, column=2, sticky="w")
-    Label(ff, text="Route_s", fg="Grey").grid(row=y, column=3, sticky="w")
-    if not is_mac:
-        Label(ff, text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
-        Label(ff, text="              ", fg="Grey").grid(row=y, column=5, sticky="w")
-    y += 1
-    i = 0  # count the instances of the array
-    carrier_name = []  # create array for carrier names
-    l_s = []  # create array for list status
-    l_ns = []  # create array for ns days
-    route = []  # create array for routes
-    color = "blue"
-    for name in to_addname:
-        Label(ff, text=name[1] + ", " + name[2], fg=color).grid(row=y, column=0, sticky="w")
-        carrier_name.append(str(name[1] + ", " + name[2]))
-        Label(ff, text=macadj("not in record", "unknown"), fg=color).grid(row=y, column=1, sticky="w")
-        Label(ff, text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
-        Label(ff, text=name[3], fg=color).grid(row=y, column=3, sticky="w")
-        if not is_mac:
-            Label(ff, text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
-        y += 1
-        list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
-        if name[3] == "auxiliary":
-            lx = 4  # configure defaults for list status
-        elif name[3] == "part time flex":
-            lx = 3  # set as ptf
-        else:
-            lx = 2  # set as 'nl' if not 'aux'
-        l_s.append(StringVar(ff))
-        l_s[i].set(list_options[lx])  # set the list status
-        list_status = OptionMenu(ff, l_s[i], *list_options)
-        list_status.config(width=macadj(5, 4))
-        list_status.grid(row=y, column=1, sticky="w")
-        l_ns.append(StringVar(ff))  # create optionmenu for ns days
-        l_ns[i].set(full_ns_dict[str(ns_dict[name[0]])])  # set ns day default
-        ns_day = OptionMenu(ff, l_ns[i], *opt_nsday)
-        ns_day.config(width=macadj(12, 10))
-        ns_day.grid(row=y, column=2, sticky="w")
-        route.append(StringVar(ff))  # create entry field for route
-        Entry(ff, width=24, textvariable=route[i]).grid(row=y, column=3, sticky="w")  # create entry for routes
-        if "reg " in name[3] and name[3] != "reg floater":
-            rte = name[3].replace("reg ", "")
-        else:
-            rte = ""
-        route[i].set(rte)
-        y += 1
-        i += 1
-        Label(ff, text="").grid(row=y, column=0, sticky="w")
-        y += 1
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
-    mainloop()
-
-
-def apply_auto_indexer_4(frame, buttons, file_path, to_addname, carrier_name, l_s, l_ns, route,
-                         check_these):  # adds new carriers to the carriers table
-    eff_date = projvar.invran_date_week[0]    # if investigation range is weekly
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        eff_date = projvar.invran_date
-    station = StringVar(frame)  # put station var in a StringVar object
-    station.set(projvar.invran_station)
-    pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
-    pb_label.pack(side=LEFT)
-    pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
-    pb.pack(side=LEFT)
-    pb["maximum"] = len(carrier_name)  # set length of progress bar
-    pb.start()
-    for i in range(len(carrier_name)):
-        pb["value"] = i  # increment progress bar
-        passed_ns = l_ns[i].get().split(" - ")  # clean the passed ns day data
-        clean_ns = StringVar(frame)  # put ns day var in StringVar object
-        clean_ns.set(passed_ns[1])
-        # check moves/route and enter data into rings table
-        if apply_2(eff_date, carrier_name[i], l_s[i], clean_ns, route[i], station, frame) == "error":
-            auto_indexer_4(frame, file_path, to_addname, check_these)
-            return
-        buttons.update()
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    results = []
-    for name in carrier_name:
-        sql = "SELECT * FROM carriers WHERE carrier_name == '%s' and effective_date == '%s'" % (name, eff_date)
-        result = inquire(sql)
-        if result:
-            results.append(result)
-    if len(results) >= len(carrier_name) and len(check_these) > 0:
-        auto_indexer_5(frame, file_path, check_these)
-    elif len(results) >= len(carrier_name):
-        auto_indexer_6(frame, file_path)
-    else:
-        return
-
-
-def auto_indexer_5(frame, file_path, check_these):  # correct discrepancies
-    is_mac = macadj(False, True)
-    if len(check_these) == 0: auto_indexer_6(frame, file_path)
-    check_these.sort(key=itemgetter(1))  # sort the incoming tacs information
-    frame.destroy()
-    opt_nsday = []  # make an array of "day / color" options for option menu
-    ns_opt_dict = {}  # creates a dictionary of ns colors/ options for menu
-    for each in projvar.ns_code:  # creates the option menu options for ns day menu
-        ns_option = projvar.ns_code[each] + " - " + each  # make a string for each day/color
-        ns_opt_dict[each] = ns_option
-        if each == "none":
-            ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
-            ns_opt_dict[each] = ns_option
-        opt_nsday.append(ns_option)
-    results = gen_ns_dict(file_path, check_these)  # returns id and name
-    ns_dict = {}  # create dictionary for ns day data
-    for id in results:  # loop to fill dictionary with ns day info
-        ns_dict[id[0]] = id[1]
-    carrier_list = gen_carrier_list()  # generate an in range carrier list
-    carriers_names_list = []  # generate list of only names from 'in range carrier list'
-    for name in carrier_list:
-        carriers_names_list.append(name[1])
-    name_dict = gen_nameindex_dict()  # generate dictionary for emp id to kb_name
-    remainders = []  # find carriers in 'check these' but not in 'in range carrier list' aka 'remainders'
-    for name in check_these:
-        if name_dict[name[0]] not in carriers_names_list:
-            remainders.append(name)
-    for name in remainders:  # get carriers data from carriers for remainders
-        sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s'" \
-              "ORDER BY effective_date desc" % (name_dict[name[0]], projvar.invran_date_week[0])
-        result = inquire(sql)
-        carrier_list.append(list(result[0]))
-    carrier_list.sort(key=itemgetter(1))  # resort carrier list after additions
-    code_ns = NsDayDict(projvar.invran_date_week[0]).gen_rev_ns_dict()  # generate reverse ns code dictionary
-    wd = front_window("none")  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
-    header = Frame(wd[3])
-    header.grid(row=0, columnspan=6, sticky="w")
-    Label(header, text="Discrepancy Resolution Screen", font=macadj("bold", "Helvetica 18"), pady=10) \
-        .grid(row=0, sticky="w")
-    Label(header, text=
-    "Correct any discrepancies and inconsistencies that exist between the incoming TACS data (in blue) \n"
-    "and the information currently recorded in the Klusterbox database (below in the entry fields and \n"
-    "option menus)to reflect the carrier's status accurately. This will update the Klusterbox database. \n"
-    "Routes must 4  or 5 digits long. In cases where there are multiple routes, the routes must be \n"
-    "separated by a \"/\" backslash.\n\n"
-    "Investigation Range: {0} through {1}\n\n"
-          .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                  projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT)\
-                  .grid(row=1, sticky="w")
-    y = 1  # count for the row
-    if not is_mac:
-        Label(wd[3], text="    ", fg="Grey").grid(row=y, column=0, sticky="w")
-    Label(wd[3], text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
-    Label(wd[3], text="NS Day", fg="Grey").grid(row=y, column=2, sticky="w")
-    Label(wd[3], text="Route_s", fg="Grey").grid(row=y, column=3, sticky="w")
-    Label(wd[3], text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
-    Label(wd[3], text=macadj("             ", ""), fg="Grey").grid(row=y, column=5, sticky="w")
-    y += 1
-    i = 0  # count the instances of the array
-    carrier_name = []  # create array for carrier names
-    l_s = []  # create array for list status
-    l_ns = []  # create array for ns days
-    e_route = []  # create array for routes
-    l_station = []
-    aux_list_tuple = ("aux", "ptf")
-    reg_list_tuple = ("nl", "wal", "otdl")
-    skip_this_screen = "yes"
-    for name in check_these:
-        for k_name in carrier_list:
-            if name_dict[name[0]] == k_name[1]:
-                if name[3] == "auxiliary":  # parse assignments from tacs list
-                    tlist = aux_list_tuple
-                    tnsday = "none"
-                    troute = ""
-                if name[3] == "part time flex":  # parse assignments from tacs list
-                    tlist = aux_list_tuple
-                    tnsday = "none"
-                    troute = ""
-                if name[3][-4:].isnumeric():
-                    tlist = reg_list_tuple
-                    tnsday = code_ns[str(ns_dict[name[0]])]
-                    troute = name[3][-4:]
-                if name[3][-7:] == "floater":
-                    tlist = reg_list_tuple
-                    tnsday = code_ns[str(ns_dict[name[0]])]
-                    troute = "floater"
-                if name[3] == "undetected":
-                    tlist = "undetected"
-                    tnsday = code_ns[str(ns_dict[name[0]])]
-                    troute = "undetected"
-                tstation = projvar.invran_station
-                trip_wire = "set"
-                # check tacs data against data in carriers table/ klusterbox
-                if k_name[2] not in tlist:
-                    trip_wire = "sprung"  # check list status
-                if k_name[3] != tnsday:
-                    trip_wire = "sprung"  # check nsday
-                k_rte_len = len(k_name[4].split('/'))  # check route
-                if k_rte_len == 0:  # check if route is aux
-                    if troute != "":
-                        trip_wire = "sprung"
-                if k_rte_len == 1:  # check if route is regular
-                    if troute != k_name[4]:
-                        trip_wire = "sprung"
-                if k_rte_len == 5:  # check if route is floater
-                    if troute != "floater":
-                        trip_wire = "sprung"
-                if tstation != k_name[5]:  # check if station is correct
-                    trip_wire = "sprung"
-                if trip_wire == "sprung":
-                    skip_this_screen = "no"  # if there are no discrepancies, then skip the screen
-                    # create the page content
-                    color = "blue"
-                    name_f = Frame(wd[3])  # create separate frame for names
-                    name_f.grid(row=y, columnspan=6, sticky="w")
-                    Label(name_f, text="Name: ", fg="Grey").grid(row=0, column=0, sticky="w")
-                    Label(name_f, text=name[1] + ", " + name[2], fg=color).grid(row=0, column=1, sticky="w")
-                    Label(name_f, text=" / " + k_name[1]).grid(row=0, column=2, sticky="w")
-                    y += 1
-                    if not is_mac:
-                        Label(wd[3], text="    ", fg=color).grid(row=y, column=0, sticky="w")
-                    Label(wd[3], text=macadj("not in record", "unknown"), fg=color).grid(row=y, column=1, sticky="w")
-                    Label(wd[3], text=str(ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
-                    Label(wd[3], text=name[3], fg=color).grid(row=y, column=3, sticky="w")
-                    Label(wd[3], text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
-                    y += 1
-                    carrier_name.append(k_name[1])  # add kb name to the array
-                    list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
-                    l_s.append(StringVar(wd[3]))
-                    l_s[i].set(k_name[2])  # set the list status
-                    list_status = OptionMenu(wd[3], l_s[i], *list_options)
-                    list_status.config(width=macadj(6, 4))
-                    list_status.grid(row=y, column=1, sticky="w")
-                    l_ns.append(StringVar(wd[3]))  # create optionmenu for ns days
-                    l_ns[i].set(ns_opt_dict[k_name[3]])  # set ns day default
-                    ns_day = OptionMenu(wd[3], l_ns[i], *opt_nsday)
-                    ns_day.config(width=macadj(12, 8))
-                    ns_day.grid(row=y, column=2, sticky="w")
-                    e_route.append(StringVar(wd[3]))  # create entry field for route
-                    Entry(wd[3], width=25, textvariable=e_route[i]) \
-                        .grid(row=y, column=3, sticky="w")  # create entry for routes
-                    e_route[i].set(k_name[4])
-                    l_station.append(StringVar(wd[3]))
-                    l_station[i].set(k_name[5])
-                    list_station = OptionMenu(wd[3], l_station[i], *projvar.list_of_stations)
-                    list_station.config(width=macadj(25, 18))
-                    list_station.grid(row=y, column=4, sticky="w")
-                    y += 1
-                    Label(wd[3], text="").grid(row=y, column=1)
-                    y += 1
-                    i += 1
-    Button(wd[4], text="Continue", width=macadj(8,15),
-           command=lambda: apply_auto_indexer_5(wd[0], wd[4], file_path, carrier_name, l_s, l_ns, e_route,
-                                                l_station, check_these)).pack(side=LEFT)
-    Button(wd[4], text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
-    if skip_this_screen == "yes":
-        auto_indexer_6(wd[0], file_path)
-    else:
-        rear_window(wd)  # get rear window objects
-
-
-def apply_auto_indexer_5(frame, buttons, file_path, carrier_name, l_s, l_ns, e_route, l_station, check_these):
-    # adds new carriers to the carriers table
-    eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        eff_date = projvar.invran_date
-    pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
-    pb_label.pack(side=LEFT)
-    pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
-    pb.pack(side=LEFT)
-    pb["maximum"] = len(carrier_name)  # set length of progress bar
-    pb.start()
-    for i in range(len(carrier_name)):
-        pb["value"] = i  # increment progress bar
-        passed_ns = l_ns[i].get().split(" - ")  # clean the passed ns day data
-        clean_ns = StringVar(frame)  # put ns day var in StringVar object
-        clean_ns.set(passed_ns[1])
-        if apply_2_auto_indexer_5(frame, eff_date, carrier_name[i],
-                                  l_s[i], clean_ns, e_route[i], l_station[i]) == "error":
-            auto_indexer_5(frame, file_path, check_these)
-            return
-        buttons.update()
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    auto_indexer_6(frame, file_path)
-
-
-def apply_2_auto_indexer_5(frame, date, carrier, ls, ns, route, station):
-    if len(route.get()) > 29:
-        messagebox.showerror("Route number input error",
-                             "There can be no more than five routes per carrier "
-                             "(for T6 carriers).\n Routes numbers must be four or five digits long.\n"
-                             "If there are multiple routes, route numbers must be separated by "
-                             "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                             "commas or empty spaces", parent=frame)
-        return "error"
-    route_list = route.get().split("/")
-    for item in route_list:
-        item = item.strip()
-        if item != "":
-            if len(item) < 4 or len(item) > 5:
-                messagebox.showerror("Route number input error",
-                                     "Routes numbers must be four or five digits long.\n"
-                                     "If there are multiple routes, route numbers must be separated by "
-                                     "the \'/\' character. For example: 1001/1015/10124/10224/0972. "
-                                     "Do not use commas or empty spaces",
-                                     parent=frame)
-                return "error"
-        if item.isdigit() == FALSE and item != "":
-            messagebox.showerror("Route number input error",
-                                 "Route numbers must be numbers and can not contain "
-                                 "letters",
-                                 parent=frame)
-            return "error"
-    route_input = Handler(route.get()).routes_adj()
-    if route_input == "0000":
-        route_input = ""
-    sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
-          "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" % (carrier, date)
-    results = inquire(sql)
-    if len(results) == 0:
-        sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
-              " VALUES('%s','%s','%s','%s','%s','%s')" \
-              % (date, carrier, ls.get(), ns.get(), route_input, station.get())
-        commit(sql)
-    elif len(results) == 1:
-        sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
-              "WHERE effective_date = '%s' and carrier_name = '%s'" % \
-              (ls.get(), ns.get(), route_input, station.get(), date, carrier)
-        commit(sql)
-    elif len(results) > 1:
-        sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % (date, carrier)
-        commit(sql)
-        sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
-              " VALUES('%s','%s','%s','%s','%s','%s')" \
-              % (date, carrier, ls.get(), ns.get(), route_input, station.get())
-        commit(sql)
-
-
-def auto_indexer_6(frame, file_path):  # identify and remove any carriers in the carrier
-    # list who are not in the TACS list
-    carrier_list = gen_carrier_list()  # create names_list array
-    names_list = []
-    for name in carrier_list:
-        if name[1] not in names_list:
-            names_list.append(name[1])
-    tacs_ids = []  # generate tacs list
-    good_jobs = ("844", "134", "434")
-    with open(file_path, newline="") as file:
-        a_file = csv.reader(file)
-        to_add = ("x", "x")  # create placeholder for
-        for line in a_file:
-            if len(line) > 19:  # if there are enough items in the line
-                if line[18] == "Temp":
-                    to_add = (line[4].zfill(8), line[19])
-                elif line[19] != "Temp" or line[19] != "Base":
-                    if to_add != ("x", "x"):  # if not placeholder
-                        tacs_ids.append(to_add)  # add tacs data to the array
-                        to_add = ("x", "x")  # reset placeholder
-                if line[18] == "Base":
-                    to_add = (line[4].zfill(8), line[19])
-    filtered_ids = []  # filter the tacs ids to only good jobs
-    for item in tacs_ids:
-        if item[1] in good_jobs:
-            filtered_ids.append(item)
-    del tacs_ids
-    t_names = []  # matches emp id to the kb name
-    for name in filtered_ids:  #
-        sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % (name[0])
-        result = inquire(sql)  # check dbase for a match
-        if result:  # if there is a match in the dbase, then add data to array
-            t_names.append(result[0][0])
-    ex_carrier = []  # carriers in carrier list but not tacs data
-    for name in names_list:  # for each name in carrier list
-        if name not in t_names:  # if they are not also in the tacs data
-            ex_carrier.append(name)  # then add them to the array
-    wd = front_window(frame)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
-    header = Frame(wd[3])
-    header.grid(row=0, columnspan=5, sticky="w")
-    Label(header, text="Carriers No Longer At Station", font=macadj("bold", "Helvetica 18"), pady=10) \
-        .grid(row=0, sticky="w")
-    wintext = "Klusterbox has detected that the following carriers may no longer be at the station. "\
-        "If they are no longer at the\n station, then please use the option menu below to move "\
-        "them to the correct station (if listed). If the correct \nis not listed or the carrier "\
-        "is no longer working for the post office, then select \"out of station\".\n\n"
-    mactext = \
-        "Klusterbox has detected that the following carriers may no longer be at the station. If they \n" \
-        "are no longer at the station, then please use the option menu below to move them to the \n" \
-        "correct station (if listed). If the correct is not listed or the carrier is no longer working \n" \
-        "for the post office, then select \"out of station\".\n\n"
-    text = "Investigation Range: {0} through {1}\n\n".format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
-                                                      projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
-    Label(header, text=macadj(wintext, mactext) + text, justify=LEFT).grid(row=1, sticky="w")
-    y = 1  # count for the row
-    Label(wd[3], text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
-    Label(wd[3], text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
-    if sys.platform != "darwin":
-        Label(wd[3], text="Route_s", fg="Grey").grid(row=y, column=2, sticky="w")
-    Label(wd[3], text="Station", fg="Grey").grid(row=y, column=3, sticky="w")
-    Label(wd[3], text="             ", fg="Grey").grid(row=y, column=4, sticky="w")
-    y += 1
-    carrier_name = []
-    list_status = []
-    ns_day = []
-    route = []
-    station = []
-    new_station = []
-    cc = 0
-    for name in ex_carrier:
-        sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
-              "ORDER BY effective_date DESC" \
-              % (name, projvar.invran_date_week[0])
-        result = inquire(sql)
-        carrier_name.append(StringVar(wd[3]))  # store name
-        carrier_name[cc].set(result[0][1])
-        Button(wd[3], text=result[0][1], relief=RIDGE, width=25, anchor="w") \
-            .grid(row=y, column=0, sticky="w")  # name
-        list_status.append(StringVar(wd[3]))  # store list status
-        list_status[cc].set(result[0][2])
-        Button(wd[3], text=result[0][2], relief=RIDGE, width=7, anchor="w") \
-            .grid(row=y, column=1, sticky="w")  # list
-        ns_day.append(StringVar(wd[3]))  # store ns day
-        ns_day[cc].set(result[0][3])
-        route.append(StringVar(wd[3]))  # store route
-        route[cc].set(result[0][4])
-        if sys.platform != "darwin":
-            Button(wd[3], text=result[0][4], relief=RIDGE, width=20, anchor="w") \
-                .grid(row=y, column=2, sticky="w")  # route
-        station.append(StringVar(wd[3]))  # store station
-        station[cc].set(result[0][5])
-        new_station.append(StringVar(wd[3]))
-        new_station[cc].set("out of station")
-        stat_om = OptionMenu(wd[3], new_station[cc], *projvar.list_of_stations)  # station
-        if sys.platform != "darwin":
-            stat_om.config(width=25, anchor="w")
-        else:
-            stat_om.config(width=25)
-        stat_om.grid(row=y, column=3, sticky="w")
-        Label(wd[3], text="                     ").grid(row=y, column=4)
-        cc += 1
-        y += 1
-    if len(carrier_name) == 0:
-        auto_skimmer(wd[0], file_path)
-    else:
-        Button(wd[4], text="Continue", width=macadj(8,15),
-               command=lambda: apply_auto_indexer_6(wd[0], wd[4], file_path, carrier_name,
-                                                    list_status, ns_day, route, station, new_station)).pack(side=LEFT)
-        Button(wd[4], text="Cancel", width=macadj(8,15), command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
-        rear_window(wd)
-
-
-def apply_auto_indexer_6(frame, buttons, file_path, carrier_name, list_status, ns_day, route, station, new_station):
-    date = projvar.invran_date_week[0]
-    pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
-    pb_label.pack(side=LEFT)
-    pb = ttk.Progressbar(buttons, length=400, mode="determinate")  # create progress bar
-    pb.pack(side=LEFT)
-    pb["maximum"] = len(carrier_name)  # set length of progress bar
-    pb.start()
-    for i in range(len(carrier_name)):
-        pb["value"] = i  # increment progress bar
-        if station[i].get() != new_station[i].get():
-            apply_2_auto_indexer_5(frame, date, carrier_name[i].get(), list_status[i],
-                                   ns_day[i], route[i], new_station[i])
-        buttons.update()
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    auto_skimmer(frame, file_path)
-
-
-def auto_skimmer(frame, file_path):
-    global allow_zero_top
-    global allow_zero_bottom
-    global skippers
-    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_top"
-    result = inquire(sql)
-    allow_zero_top = result[0][0]
-    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_bottom"
-    result = inquire(sql)
-    allow_zero_bottom = result[0][0]
-    sql = "SELECT code FROM skippers"  # get skippers data from dbase
-    results = inquire(sql)
-    skippers = []  # fill the array for skippers
-    for item in results:
-        skippers.append(item[0])
-    carrier_list_cleaning_for_auto_skimmer(frame)
-    if messagebox.askokcancel("Auto Rings",
-                              "Do you want to automatically enter the rings?",
-                              parent=frame):
-        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-        mv_codes = ("BT", "MV", "ET")
-        carrier = []
-        pb_root = Tk()  # create a window for the progress bar
-        pb_root.title("Entering Carrier Rings")
-        titlebar_icon(pb_root)  # place icon in titlebar
-        pb_label = Label(pb_root, text="Updating Rings: ")  # make label for progress bar
-        pb_label.grid(row=0, column=0, sticky="w")
-        pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-        pb.grid(row=1, column=0, sticky="w")
-        pb_text = Label(pb_root, text="", anchor="w")
-        pb_text.grid(row=2, column=0, sticky="w")
-        with open(file_path, newline="") as file:
-            a_file = csv.reader(file)
-            row_count = sum(1 for row in a_file)  # get number of rows in csv file
-        with open(file_path, newline="") as file:
-            a_file = csv.reader(file)
-            pb["maximum"] = int(row_count)  # set length of progress bar
-            pb.start()
+        @staticmethod
+        def auto_precheck():
+            # delete any records from name index which don't have corresponding records in carriers table
+            sql = "SELECT kb_name FROM name_index"
+            kb_name = inquire(sql)
+            sql = "SELECT carrier_name FROM carriers"
+            results = inquire(sql)
+            carriers = []
+            for item in results:
+                if item not in carriers: carriers.append(item)
+            # create progressbar
+            pb = ProgressBarDe(title="Database Maintenance", label="Updating Changes: ")
+            pb.max_count(len(kb_name))
+            pb.start_up()
             i = 0
+            for name in kb_name:
+                pb.move_count(i)  # increment progress bar
+                if name not in carriers:
+                    sql = "DELETE FROM name_index WHERE kb_name = '%s'" % name
+                    commit(sql)
+                i += 1
+            pb.stop()  # stop and destroy the progress bar
+
+        def check_file(self):  # check for invalid file, find station and pay period
+            self.parent.get_file()  # read the csv file
             cc = 0
-            good_id = "no"
-            for line in a_file:
-                pb["value"] = i  # increment progress bar
-                if cc == 0:
-                    if line[0][:8] != "TAC500R3":
-                        messagebox.showwarning("File Selection Error",
-                                               "The selected file does not appear to be an "
-                                               "Employee Everything report.",
-                                               parent=frame)
-                        return
-                if cc != 0:
-                    if good_id != line[4] and good_id != "no":  # if new carrier or employee
-                        auto_weekly_analysis(carrier)  # trigger analysis
-                        del carrier[:]  # empty array
-                        good_id = "no"  # reset trigger
-                    # find first line of specific carrier
-                    if line[18] == "Base" and line[19] in ("844", "134", "434"):
-                        good_id = line[4]  # set trigger to id of carriers who are FT or aux carriers
-                        carrier.append(line)  # gather times and moves for anaylsis
-                        pb_text.config(text="Entering rings for {}".format(line[5]))
-                    if good_id == line[4] and line[18] != "Base":
-                        if line[18] in days:  # get the hours for each day
-                            carrier.append(line)  # gather times and moves for anaylsis
-                        if line[19] in mv_codes and line[32] != "(W)Ring Deleted From PC":
-                            carrier.append(line)  # gather times and moves for anaylsis
-                        pb_text.config(text="Entering rings for {}".format(line[5]))
+            for line in self.parent.a_file:
+                if cc == 0 and line[0][:8] != "TAC500R3":
+                    messagebox.showwarning("File Selection Error",
+                                           "The selected file does not appear to be an "
+                                           "Employee Everything report.",
+                                           parent=self.frame)
+                    return False
+                if cc == 3:
+                    self.tacs_pp = line[0]  # find the pay period
+                    self.parent.tacs_station = line[2]  # find the station
+                    break
+                cc += 1
+            return True
+
+        def check_range(self):  # check that file covers full service week
+            """
+            self.parent.a_file is not refreshed. So the loop will will start on line 4 of the csv file. The
+            loop will read 150 lines of the code and pick up all the range_days to ensure that a full week is
+            covered.
+            """
+            cc = 0
+            range_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            for line in self.parent.a_file:  # find the range
+                if line[18] in range_days:
+                    range_days.remove(line[18])
+                if cc == 150: break  # survey 150 lines before breaking to anaylize results.
+                cc += 1
+            if len(range_days) > 5:
+                self.parent.t_range = False  # set the range
+                messagebox.showwarning("File Selection Error",
+                                       "Employee Everything Reports that cover only one day /n"
+                                       "are not supported in this version of Klusterbox.",
+                                       parent=self.parent.frame)
+                return False
+            else:
+                self.parent.t_range = True
+            return True
+
+        def check_tacs_station(self):  # make sure the csv has a stations
+            if len(self.parent.tacs_station) == 0:
+                messagebox.showwarning("Auto Data Entry Error",
+                                       "The Employee Everything Report is corrupt. Data Entry will stop.  \n"
+                                       "The Employee Everything Report does not include "
+                                       "information about the station. This could be caused by an error of the pdf "
+                                       "converter. If you can obtain an Employee Everything Report from management in "
+                                       "csv format, you should have better results.",
+                                       parent=self.frame)
+                return False
+            return True
+
+        def get_tacs_date(self):  # get the tacs date expressed as pay period
+            year = int(self.tacs_pp[:-3])
+            pp = self.tacs_pp[-3:]
+            self.parent.t_date = find_pp(year, pp)  # returns the starting date of the pp when given year and pay period
+
+        def get_stations(self):
+            sql = "SELECT tacs_station, kb_station, finance_num FROM station_index"
+            results = inquire(sql)
+            for line in results:
+                self.parent.station_index.append(line[1])  # build station index
+                self.tacs_index.append(line[0])  # build tacs_index
+            sql = "SELECT station FROM stations"
+            results = inquire(sql)
+            for record in results:
+                self.kb_stations.append(record[0])  # build kb_stations
+            for item in self.kb_stations:
+                self.parent.possible_stations.append(item)  # build possible stations
+            self.parent.station_index.append("out of station")
+            self.parent.possible_stations = \
+                [x for x in self.parent.possible_stations if x not in self.parent.station_index]
+
+    class AutoIndexer1:  # The station pairing screen
+        """ This screen will only appear if station does not have a record in the station index table.
+         If there is not a record in the staton index table, this screen will allow to pair the station with
+         a station in the stations table which is not already paired in the station index. Or the screen will
+         allow the user to enter a completely new station which will be added to the station table and the
+         station index table. """
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.win = None  # creates a window object
+            self.station_sorter = None
+            self.station_new = None
+
+        def run(self, frame):
+            self.frame = frame
+            self.get_window_object()
+            self.station_screen()
+
+        def get_window_object(self):
+            self.win = MakeWindow()
+            self.win.create(self.frame)
+
+        def station_screen(self):  # pair station from tacs to correct station in klusterbox/ part 1
+            Label(self.win.body, text="Station Pairing", font=macadj("bold", "Helvetica 18"), pady=10) \
+                .grid(row=0, column=0, columnspan=4, sticky=W)  # page contents
+            Label(self.win.body, text="Match the station detected from TACS with a pre-existing station\n "
+                           "or use ADD STATION to add the station if there isn't a match.", justify=LEFT) \
+                .grid(row=1, column=0, columnspan=4, sticky=W)
+            Label(self.win.body, text="Detected Station: ", anchor="w").grid(row=2, column=0, sticky="w")
+            Label(self.win.body, text=self.parent.tacs_station, fg="blue").grid(row=3, column=0, columnspan=4)
+            Label(self.win.body, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky=W)
+            self.station_sorter = StringVar(self.win.body)
+            station_options = ["select matching station"] + self.parent.possible_stations + ["ADD STATION"]
+            self.station_sorter.set(station_options[0])
+            option_menu = OptionMenu(self.win.body, self.station_sorter, *station_options)
+            option_menu.config(width=30)
+            option_menu.grid(row=5, column=0, columnspan=2, sticky=W)
+            Label(self.win.body, text=" ", justify=LEFT).grid(row=6, column=0, sticky=W)
+            Label(self.win.body, text="If the station is not present in the drop down menu, select  \n "
+                           "ADD STATION from the menu and enter the new station name \n"
+                           "below to pair it with the station originating the report", justify=LEFT) \
+                .grid(row=7, column=0, columnspan=4, sticky=W)
+            Label(self.win.body, text=" ", justify=LEFT).grid(row=8, column=0, sticky=W)
+            Label(self.win.body, text="Enter New Station Name: ", anchor="w")\
+                .grid(row=9, column=0, columnspan=4, sticky=W)
+            # insert entry for station name
+            self.station_new = StringVar(self.win.body)
+            Entry(self.win.body, width=35, textvariable=self.station_new).grid(row=10, column=0, columnspan=4, sticky=W)
+            button_cancel = Button(self.win.buttons)  # cancel button
+            button_cancel.config(text="Go Back", width=20, command=lambda: self.parent.go_back(self.win.topframe))
+            if sys.platform == "win32":
+                button_cancel.config(anchor="w")
+            button_cancel.pack(side=LEFT)
+            button_apply = Button(self.win.buttons)  # apply button
+            button_apply.config(text="Submit", width=20, command=lambda: self.apply())
+            if sys.platform == "win32":
+                button_apply.config(anchor="w")
+            button_apply.pack(side=LEFT)
+            self.win.fill(11, 30)  # add white space at bottom of page
+            self.win.finish()  # close out the window function
+
+        def apply(self):
+            if self.check():  # if the user entered data passes all checks
+                self.insert()  # insert the user entered data into the database
+                self.parent.AutoIndexer2(self.parent).run(self.win.topframe)
+            else:  # if the user entered data fails the checks
+                frame = self.win.topframe  # store the frame object so __init__ does not destroy it
+                self.__init__(self.parent)  # re initialize the class
+                self.run(frame)  # re run the methods of the class
+
+        def check(self):
+            self.station_new = self.station_new.get()
+            self.station_new = self.station_new.strip()
+            """ user didn't select station from the option menu or didn't select ADD STATION and entered a station 
+            in the entry widget """
+            if self.station_sorter.get() == "select matching station":  # user selected the label and not a station
+                messagebox.showerror("Data Entry Error",
+                                     "You must select a station or ADD STATION",
+                                     parent=self.win.topframe)
+                return False
+            """ user selected add station but gave no station """
+            if self.station_sorter.get() == "ADD STATION" and self.station_new == "":
+                messagebox.showerror("Data Entry Error",
+                                     "You must provide a name for the new station.",
+                                     parent=self.win.topframe)
+                return False
+            """ user selected station and added station - error """
+            if self.station_sorter.get() != "ADD STATION" and self.station_new != "":
+                messagebox.showerror("Data Entry Error",
+                                     "You can not select a station from the drop down menu AND enter "
+                                     "a station in the text field.",
+                                     parent=self.win.topframe)
+                return False
+            return True
+
+        def insert(self):
+            if self.station_sorter.get() == "ADD STATION":
+                """ if the user is using ADD STATION  to enter a new station not in the option menu """
+                # add the new station to the stations table if it is not already there.
+                if self.station_new not in projvar.list_of_stations:
+                    sql = "INSERT INTO stations (station) VALUES('%s')" % self.station_new
+                    commit(sql)
+                    projvar.list_of_stations.append(self.station_new)
+                # add the station to the station index
+                sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
+                      % (self.parent.tacs_station, self.station_new, "")
+                commit(sql)
+                messagebox.showinfo("Database Updated",
+                                    "The {} station has been added to the list of stations automatically "
+                                    "recognized.".format(self.station_new),
+                                    parent=self.win.topframe)
+            else:
+                """ if the carrier is selecting a station from the drop down menu. add the station to the 
+                station index """
+                sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
+                      % (self.parent.tacs_station, self.station_sorter.get(), "")
+                commit(sql)
+                messagebox.showinfo("Database Updated",
+                                    "The {} station has been paired to the {} station. In the future, this association "
+                                    "will be automatically recognized."
+                                    .format(self.parent.tacs_station, self.station_sorter.get()),
+                                    parent=self.win.topframe)
+
+    class AutoIndexer2:  # Search for name matchs #1
+        """ This screen will give the user the opportunity to pair carriers with records in the carrier table
+        to new carriers from the employee everything report. Carriers with names that match exactly will be
+        matched/paired automatically. Only carriers with no record in the name index will appear in this screen.
+        If a new carrier has a name exactly matching an existing carrier, that carrier's employee id number
+        will be added to the end of their name because the name is a unique identifier. """
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.name_index = []  # create a list of klusterbox names
+            self.id_index = []  # create a list of emp ids
+            self.c_list = []  # create a list of unique names from carrier list (a set)
+            self.to_remove = []  # intialized array of names to be removed from tacs names
+            self.win = None
+            self.possible_names = []  # an array of possible matches of kb names and tacs names
+            self.possible_match = False  # False if there are no possible matches ever
+
+        def run(self, frame):  # namepairing_create
+            self.frame = frame
+            self.set_globals()
+            self.get_carrier_indexes()
+            self.get_carrier_list()
+            self.parent.get_file()  # read the csv file and assign to self.a_file attribute
+            self.get_tacslist()
+            self.remove_tacs_duplicates()
+            self.qualify_tacslist()
+            self.get_new_carrier()
+            self.limit_tacslist()
+            self.get_name_index()
+            self.namepairing_router()
+
+        def set_globals(self):
+            s_year = self.parent.t_date.strftime("%Y")
+            s_mo = self.parent.t_date.strftime("%m")
+            s_day = self.parent.t_date.strftime("%d")
+            sql = "SELECT kb_station FROM station_index WHERE tacs_station = '%s'" % self.parent.tacs_station
+            station = inquire(sql)
+            set_globals(s_year, s_mo, s_day, self.parent.t_range, station[0][0], "None")
+
+        def get_carrier_indexes(self):
+            sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
+            results = inquire(sql)
+            for line in results:
+                self.name_index.append(line[1])  # create a list of klusterbox names
+                self.id_index.append(line[2].zfill(8))  # create a list of emp ids
+
+        def get_carrier_list(self):
+            """ this method creates a list of carriers who are currently at the station during the dates of the
+            investigation range. This is stored in the self.c_list array"""
+            carrier_list = gen_carrier_list()  # generate an in range carrier list
+            for each in carrier_list:  # create a list of unique names from carrier list (a set)
+                if each[1] not in self.c_list:
+                    self.c_list.append(each[1])
+
+        def get_tacslist(self):  # Get the names from tacs report and create tacs_list
+            good_jobs = ("134", "844", "434")
+            cc = 0
+            for line in self.parent.a_file:
+                if cc > 1 and line[19] in good_jobs:
+                    # create a note for carrier's assignment - reg w/route, reg floater or aux
+                    route = line[25].zfill(6)
+                    lvl = line[23].zfill(2)
+                    if line[19] == "134" and lvl == "01":
+                        tac_route = route[1] + route[2] + route[3] + route[4] + route[5]
+                        assignment = "reg " + Handler(tac_route).routes_adj()
+                    elif line[19] == "134" and lvl == "02":
+                        assignment = "reg " + "floater"
+                    elif line[19] == "434":
+                        assignment = "part time flex"
+                    elif line[19] == "844":
+                        assignment = "auxiliary"
+                    else:
+                        assignment = "undetected"
+                    lastname = line[5].lower().replace("\'", " ")
+                    add_to_list = [line[4].zfill(8), lastname, line[6].lower(),
+                                   assignment]  # create list to insert in list
+                    self.parent.tacs_list.append(add_to_list)
+                cc += 1
+
+        def remove_tacs_duplicates(self):
+            holder = ["", "", "", ""]  # find the duplicates and remove them where there is both BASE and TEMP
+            put_back = []
+            for item in self.parent.tacs_list:  # crawler goes down the list to identify Temp entries
+                if item[0] == holder[0]:
+                    if item == holder:
+                        self.to_remove.append(holder)  # remove both records
+                    if item != holder:
+                        self.to_remove.append(holder)
+                        self.to_remove.append(item)
+                    put_back.append(item)  # put the later record back in the list
+                holder = item  # hold the record to compare in the next loop
+            # remove the duplicates
+            self.parent.tacs_list = [x for x in self.parent.tacs_list if x not in self.to_remove]  
+            for record in put_back:  # put the Temp record back into the tacs_list
+                self.parent.tacs_list.append(record)
+            self.parent.tacs_list.sort(key=itemgetter(1))  # re-alphabetize the list of carriers
+
+        def qualify_tacslist(self):
+            sql = ""
+            add = 0  # create tallies for reports
+            rec = 0
+            out = 0
+            # carriers who are already or newly placed in name index - remove them from further processing
+            self.to_remove = []
+            pb = ProgressBarDe(title="Database Maintenance", label="Updating Changes: ")  # create progressbar
+            pb.max_count(len(self.parent.tacs_list))  # set length of progress bar
+            pb.start_up()
+            i = 0
+            for each in self.parent.tacs_list:
+                pb.move_count(i)  # increment progress bar
+                tac_str = "{}, {}".format(each[1], each[2])  # tac str is last name and first initial from tacs report
+                # if there is an identical match between kb and tacs names:
+                if tac_str in self.c_list and each[0] not in self.id_index:
+                    # if there is a dup name / need a complete list of carrier names from index
+                    if tac_str in self.name_index:
+                        # maybe just pass information via new_carrier and add later
+                        self.parent.new_carrier.append(each)  
+                    else:  # go ahead and pair the emp id with the name in carriers
+                        sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id ) VALUES('%s','%s','%s')" \
+                              % (tac_str, tac_str, each[0])
+                        self.name_index.append(tac_str)
+                        self.id_index.append(each[0])
+                    add += 1
+                    commit(sql)
+                    self.to_remove.append(each[0])
+                    self.name_index.append(tac_str)
+                elif each[0] in self.id_index:  # RECOGNIZED -  the emp id is already in the name index
+                    self.to_remove.append(each[0])
+                    self.parent.check_these.append(each)
+                    rec += 1
+                else:
+                    out += 1
+                i += 1
+            pb.stop()  # stop and destroy the progress bar
+
+        def get_new_carrier(self):
+            # find the carriers in name_index who have records w/ eff dates in the future
+            dont_check = []  # remove items from check these if future carriers are found
+            for name in self.parent.check_these:
+                sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % name[0]
+                result = inquire(sql)
+                kb_name = result[0][0]
+                sql = "SELECT effective_date,carrier_name FROM carriers " \
+                      "WHERE carrier_name = '%s' AND effective_date <= '%s' " \
+                      "ORDER BY effective_date DESC" % (kb_name, projvar.invran_date_week[0])
+                result = inquire(sql)
+                if not result:
+                    self.parent.new_carrier.append(name)  # will add as new carrier in AI 3
+                    dont_check.append(name[0])  # removes from check these array
+                    self.to_remove.append(name[0])  # removes from tacs list
+            # removes don't check from check these
+            self.parent.check_these = [x for x in self.parent.check_these if x[0] not in dont_check]
+
+        def limit_tacslist(self):
+            self.parent.tacs_list = [x for x in self.parent.tacs_list if x[0] not in self.parent.new_carrier]
+            self.parent.tacs_list = [x for x in self.parent.tacs_list if x[0] not in self.to_remove]
+
+        def get_name_index(self):
+            sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
+            results = inquire(sql)
+            for item in self.name_index:
+                self.parent.tried_names.append(item)
+            self.name_index = []  # create a list of klusterbox names
+            for line in results:
+                self.name_index.append(line[1])
+
+        def namepairing_router(self):  # route to appropriate function based on array contents
+            # all tacs list resolved/ nothing to check
+            if len(self.parent.tacs_list) < 1 and len(self.parent.new_carrier) < 1 and len(self.parent.check_these) < 1:
+                self.parent.AutoIndexer6(self.parent).run(self.frame)  # to straight to entering rings
+            # all tacs list resolved/ new names unresolved
+            elif len(self.parent.tacs_list) < 1 and len(self.parent.new_carrier) > 0:
+                self.parent.AutoIndexer4(self.parent).run(self.frame)  # add new carriers in AI6
+            # tacs and new carriers resolved/ carriers to check
+            elif len(self.parent.tacs_list) < 1 and len(self.parent.new_carrier) < 1 and \
+                    len(self.parent.check_these) > 0:
+                # step to AI  to check discrepancies
+                self.parent.AutoIndexer5(self.parent).run(self.frame)
+            else:  # If there are candidates sort, generate PAIRING SCREEN 1
+                self.namepairing_screen()
+
+        def namepairing_screen(self):  # Pairing screen #1
+            self.c_list = [x for x in self.c_list if x not in self.name_index]
+            self.win = MakeWindow()
+            self.win.create(self.frame)
+            Label(self.win.body, text="Search for Name Matches #1", font=macadj("bold", "Helvetica 18"), pady=10) \
+                .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
+            wintext = "Look for possible matches for each unrecognized name. If the name has already been entered " \
+                      "manually, you \n should be able to find it on this screen or the next. It is possible " \
+                      "that the " \
+                      "name has no match, if that is \n the case then select \"ADD NAME\" in the next screen. " \
+                      "You can " \
+                      "change the default between \"NOT FOUND\" and \n \"DISCARD\" using the buttons below. " \
+                      "Information from TACS is shown in blue\n\n"
+            mactext = \
+                "Look for possible matches for each unrecognized name. If the name has already been \n" \
+                "entered manually, you should be able to find it on this screen or the next. It is \n" \
+                "possible that the name has no match, if that is the case then select \"ADD NAME\" in \n" \
+                "the next screen. You can change the default between \"NOT FOUND\" and \"DISCARD\" \n" \
+                "using the buttons below. Information from TACS is shown in blue\n\n"
+            text = "Investigation Range: {0} through {1}\n\n".format(
+                projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+            Label(self.win.body, text=macadj(wintext, mactext) + text, justify=LEFT) \
+                .grid(row=1, column=0, columnspan=10, sticky="w")
+            Button(self.win.body, text="DISCARD", width=10,
+                   command=lambda: self.indexer_default(self.parent.name_sorter, i + 1, name_options, 1)) \
+                .grid(row=2, column=3, sticky="w", columnspan=2)
+            Label(self.win.body, text="switch default to DISCARD").grid(row=2, column=1, sticky="w", columnspan=2)
+            Button(self.win.body, text="NOT FOUND", width=10,
+                   command=lambda: self.indexer_default(self.parent.name_sorter, i + 1, name_options, 0)) \
+                .grid(row=3, column=3, sticky="w", columnspan=2)
+            Label(self.win.body, text="switch default to NOT FOUND").grid(row=3, column=1, sticky="w", columnspan=2)
+            Label(self.win.body, text="").grid(row=4, column=0)
+            Label(self.win.body, text="Name", fg="grey").grid(row="5", column="1", sticky="w")
+            Label(self.win.body, text="Assignment", fg="grey").grid(row="5", column="2", sticky="w")
+            Label(self.win.body, text="Candidates", fg="grey").grid(row="5", column="3", sticky="w")
+            cc = 6
+            i = 0
+            color = "blue"
+            for t_name in self.parent.tacs_list:  # for each name in the tacs report
+                self.get_possible_names(t_name)  # fill the self.possible names array
+                if self.possible_names:
+                    Label(self.win.body, text=str(i + 1), anchor="w").grid(row=cc, column=0, sticky="w")
+                    Label(self.win.body, text=t_name[1] + ", " + t_name[2], anchor="w", width=15, fg=color) \
+                        .grid(row=cc, column=1, sticky="w")  # name
+                    Label(self.win.body, text=t_name[3], anchor="w", width=10, fg=color) \
+                        .grid(row=cc, column=2, sticky="w")  # assignment
+                name_options = ["NOT FOUND", "DISCARD"] + self.possible_names
+                self.parent.name_sorter.append(StringVar(self.win.body))
+                option_menu = OptionMenu(self.win.body, self.parent.name_sorter[i], *name_options)
+                self.parent.name_sorter[i].set(name_options[0])
+                option_menu.config(width=15)
+                if self.possible_names:
+                    option_menu.grid(row=cc, column=3, sticky="w")  # possible matches
+                    if len(self.possible_names) == 1:  # display indicator for possible matches
+                        Label(self.win.body, text=str(len(self.possible_names)) + " name")\
+                            .grid(row=cc, column=4, sticky="w")
+                    elif len(self.possible_names) > 1:
+                        Label(self.win.body, text=str(len(possible_names)) + " names")\
+                            .grid(row=cc, column=4, sticky="w")
+                    else:  # display indicator for possible matches
+                        Label(self.win.body, text="no match", fg="grey").grid(row=cc, column=4, sticky="w")
                 cc += 1
                 i += 1
-                pb_root.update()
-            auto_weekly_analysis(carrier)  # when loop ends, run final analysis
-            del carrier[:]  # empty array
+            Button(self.win.buttons, text="Continue", width=macadj(15, 16),
+                   command=lambda: self.parent.AutoIndexer3(self.parent).run(self.win.topframe)).grid(row=0, column=0)
+            Button(self.win.buttons, text="Cancel", width=macadj(15, 16),
+                   command=lambda: self.parent.go_back(self.win.topframe)).grid(row=0, column=1)
+            if not self.possible_match:  # if there are no possible matches to any carrier names
+                self.parent.AutoIndexer3(self.parent).run(self.win.topframe)  # go to next screen
+            else:
+                self.win.finish()  # otherwise stay on this screen
+
+        def get_possible_names(self, t_name):
+            self.possible_names = []
+            for c_name in self.c_list:
+                """ if the first letter of a carrier name has no record in the name index and matches the 
+                 carrier name from the tacs report - append the name to the possible names array so it cann 
+                 be used in the option menu. """
+                if c_name[0:3] == t_name[1][0:3]:
+                    self.possible_names.append(c_name)
+                    self.parent.tried_names.append(c_name)
+                    self.possible_match = True
+
+        @staticmethod
+        def indexer_default(widget, count, options, choice):  # changes the default for the optionmenu widget
+            for i in range(count - 1):
+                widget[i].set(options[choice])
+            
+    class AutoIndexer3:  # Carrier pairing screen -
+        # allows users to match new carrier entries to carriers already in klusterbox.
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.to_remove = []  # intialized array of names to be removed from tacs names
+            self.to_nameindex = []  # initialize array of names to be be paired in name index
+            self.c_list = []
+            self.win = None
+            self.n_index = []  # an array of all klusterbox names with records in the name index table
+            self.to_chg = []  # changes for apply ai3
+            self.new_name = []  # array of new names which have been modified with emp id
+
+        def run(self, frame):
+            self.frame = frame
+            self.apply_namepairing_1()  # apply pairing screen
+            # if empty tacs list and something in check these
+            if len(self.parent.tacs_list) < 1 and len(self.parent.check_these) > 0:  
+                self.parent.AutoIndexer5(self.parent).run(self.frame)
+            elif len(self.parent.tacs_list) < 1 and len(self.parent.check_these) < 1:
+                self.parent.AutoIndexer6(self.parent).run(self.frame)
+            else:
+                self.build_namepairing_options()
+                self.namepairing_screen_2()  # create pairing screen #2
+    
+        def apply_namepairing_1(self):  # apply pairing screen #1 / AutoIndexer 2
+            i = 0  # count iterations of loops
+            dis = 0  # count of discarded items
+            out = 0  # count of unresolved items
+            pair = 0  # count of added items
+            self.to_remove = []  # intialized array of names to be removed from tacs names
+            not_found = []  # initialize array of names to be futher analyzed.
+            for item in self.parent.name_sorter:
+                if item.get() == "DISCARD":
+                    self.to_remove.append(self.parent.tacs_list[i][0])
+                    dis += 1
+                elif item.get() == "NOT FOUND":
+                    not_found.append(self.parent.tacs_list[i])
+                    out += 1
+                else:
+                    to_add = [self.parent.tacs_list[i], item.get()]
+                    self.to_nameindex.append(to_add)
+                    self.to_remove.append(self.parent.tacs_list[i][0])
+                    self.parent.check_these.append(self.parent.tacs_list[i])
+                    pair += 1
+                i += 1
+            self.parent.tacs_list = [x for x in self.parent.tacs_list if x[0] not in self.to_remove]
+            for item in self.to_nameindex:
+                # tac str is last name and first initial from tacs report
+                tac_str = "{}, {}".format(item[0][1], item[0][2])  
+                sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s','%s','%s')" \
+                      % (tac_str, item[1], item[0][0])
+                commit(sql)
+            """
+        # message screens to summerize output
+            messagebox.showinfo("Processing Carriers", 
+            "{} Carrier names were paired to names in klusterbox\n"
+            "{} Carrier names were discarded.\n"
+            "{} Carrier names have not been handled."
+            .format(pair, dis, out), parent=frame)
+            """
+    
+        def build_namepairing_options(self):  # build possible names for option menus
+            sql = "SELECT kb_name FROM name_index"
+            results = inquire(sql)
+            name_result = []  # create a list of klusterbox names
+            for line in results:
+                name_result.append(line[0])
+            sql = "SELECT carrier_name FROM carriers ORDER BY carrier_name"  # get all names from the carrier list
+            results = inquire(sql)  # call function to access database
+            for item in results:
+                if item[0] not in self.c_list and item[0] not in self.parent.tried_names and item[0] not in name_result:
+                    self.c_list.append(item[0])
+    
+        def namepairing_screen_2(self):  # create pairing screen #2
+            self.win = MakeWindow()
+            self.win.create(self.frame)
+            self.parent.name_sorter = []  # page contents
+            Label(self.win.body, text="Search for Name Matches #2", font=macadj("bold", "Helvetica 18"), pady=10) \
+                .grid(row=0, column=0, sticky="w", columnspan=10)  # page contents
+            wintext = \
+                "Look for possible matches for each unrecognized name. If the name has already been entered " \
+                "manually, \n" \
+                " you should be able to find it on this screen. It is possible that the name has no match, if " \
+                "that is \n" \
+                "the case then select \"ADD NAME\" in this screen. You can change the default between \"ADD NAME\" " \
+                "and \n" \
+                "\"DISCARD\" using the buttons below. Information from TACS is shown in blue\n\n"
+            mactext = \
+                "Look for possible matches for each unrecognized name. If the name has already been \n" \
+                "entered manually, you should be able to find it on this screen. It is possible that \n" \
+                "the name has no match, if that is the case then select \"ADD NAME\" in this screen. \n" \
+                "You can change the default between \"ADD NAME\" and \"DISCARD\" using the buttons \n" \
+                "below. Information from TACS is shown in blue\n\n"
+            text = "Investigation Range: {0} through {1}\n\n".format(
+                projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+            Label(self.win.body, text=macadj(wintext, mactext) + text, justify=LEFT)\
+                .grid(row=1, column=0, columnspan=10, sticky="w")
+            Button(self.win.body, text="DISCARD", width=10,
+                   command=lambda: self.indexer_default(self.parent.name_sorter, i + 1, name_options, 1)) \
+                .grid(row=2, column=3, sticky="w", columnspan=2)
+            Label(self.win.body, text="switch default to DISCARD").grid(row=2, column=1, sticky="w", columnspan=2)
+            Button(self.win.body, text="ADD NAME", width=10,
+                   command=lambda: self.indexer_default(self.parent.name_sorter, i + 1, name_options, 0)) \
+                .grid(row=3, column=3, sticky="w", columnspan=2)
+            Label(self.win.body, text="switch default to ADD NAME").grid(row=3, column=1, sticky="w", columnspan=2)
+            Label(self.win.body, text="").grid(row=4, column=0)
+            Label(self.win.body, text="Name", fg="grey").grid(row="5", column="1", sticky="w")
+            Label(self.win.body, text="Assignment", fg="grey").grid(row="5", column="2", sticky="w")
+            Label(self.win.body, text="Candidates", fg="grey").grid(row="5", column="3", sticky="w")
+            cc = 6  # item and grid row counter
+            i = 0  # count iterations of the loop
+            color = "blue"
+            for t_name in self.parent.tacs_list:
+                possible_names = []
+                Label(self.win.body, text=str(i + 1), anchor="w").grid(row=cc, column=0)
+                Label(self.win.body, text=t_name[1] + ", " + t_name[2], anchor="w", width=15, fg=color)\
+                    .grid(row=cc, column=1)  # name
+                Label(self.win.body, text=t_name[3], anchor="w", width=10, fg=color)\
+                    .grid(row=cc, column=2)  # assignment
+                # build option menu for unmatched tacs names
+                for c_name in self.c_list:
+                    if c_name[0] == t_name[1][0]:
+                        possible_names.append(c_name)
+                name_options = ["ADD NAME", "DISCARD"] + possible_names
+                self.parent.name_sorter.append(StringVar(self.win.body))
+                option_menu = OptionMenu(self.win.body, self.parent.name_sorter[i], *name_options)
+                self.parent.name_sorter[i].set(name_options[0])
+                option_menu.config(width=15)
+                option_menu.grid(row=cc, column=3)  # possible matches
+                if len(possible_names) == 1:  # display indicator for possible matches
+                    Label(self.win.body, text=str(len(possible_names)) + " name").grid(row=cc, column=4)
+                if len(possible_names) > 1:
+                    Label(self.win.body, text=str(len(possible_names)) + " names").grid(row=cc, column=4)
+                cc += 1
+                i += 1
+            Button(self.win.buttons, text="Continue", width=macadj(15, 16),
+                   command=lambda: self.ai3_apply()) \
+                .grid(row=0, column=0)
+            Button(self.win.buttons, text="Cancel", width=macadj(15, 16),
+                   command=lambda: self.parent.go_back(self.win.topframe)).grid(row=0, column=1)
+            self.win.finish()
+    
+        @staticmethod
+        def indexer_default(widget, count, options, choice):  # changes the default for the optionmenu widget
+            for i in range(count - 1):
+                widget[i].set(options[choice])
+    
+        def ai3_apply(self):  # apply pairing screen 2
+            self.build_n_index()
+            self.ai3_apply_sort()  # discard, add or pair name
+            self.insert_to_nameindex()  # add names to name index
+            self.insert_to_addname()  # add names to name index
+            # self.apply_ai3_report()  # message screens to summerize output
+            self.build_addname()  # build to_addname array
+            if len(self.parent.to_addname) > 0:  # route conditional on arrays
+                self.parent.AutoIndexer4(self.parent).run(self.win.topframe)
+            elif len(self.parent.check_these) > 0:
+                self.parent.AutoIndexer5(self.parent).run(self.win.topframe)
+            else:
+                self.parent.AutoIndexer6(self.parent).run(self.win.topframe)
+    
+        def build_n_index(self):
+            """ creates an array of all klusterbox names with records in the name index table. """
+            sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
+            results = inquire(sql)
+            self.n_index = []  # create a list of klusterbox names
+            for line in results:  # loop to fill arrays
+                self.n_index.append(line[1])
+    
+        def ai3_apply_sort(self):  # discard, add or pair name
+            i = 0  # count iterations of the loops..
+            for item in self.parent.name_sorter:  # sort passed data from auto index 4
+                if item.get() == "DISCARD":
+                    self.to_remove.append(self.parent.tacs_list[i][0])
+                    # dis += 1  # count of discarded items
+                elif item.get() == "ADD NAME":
+                    self.parent.to_addname.append(self.parent.tacs_list[i])
+                    # add += 1
+                else:
+                    to_add = [self.parent.tacs_list[i], item.get()]
+                    self.to_nameindex.append(to_add)
+                    self.to_remove.append(self.parent.tacs_list[i][0])
+                    self.parent.check_these.append(self.parent.tacs_list[i])
+                    # pair += 1  # count of paired items
+                i += 1
+    
+        def insert_to_nameindex(self):  # add names to name index
+            pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
+            pb_label.grid(row=0, column=2)
+            pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
+            pb.grid(row=0, column=3)
+            pb["maximum"] = len(self.to_nameindex)  # set length of progress bar
+            pb.start()
+            i = 0
+            for item in self.to_nameindex:  # when a name from the optionmenu was selected
+                if self.no_record(item[0][0]):  # check for a record in name index by employee id #
+                    # tac str is last name and first initial from tacs report
+                    tac_str = "{}, {}".format(item[0][1], item[0][2])
+                    sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s','%s','%s')" \
+                          % (tac_str, item[1], item[0][0])
+                    commit(sql)
+                pb["value"] = i  # increment progress bar
+                self.win.buttons.update()  # update the progress bar
+                i += 1
             pb.stop()  # stop and destroy the progress bar
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()
-            pb_root.destroy()
-        messagebox.showinfo("Auto Rings",
-                            "The Employee Everything Report has been sucessfully inputed into the database",
-                            parent=frame)
-        MainFrame().start(frame=frame)
-    else:
-        MainFrame().start(frame=frame)
 
+        @staticmethod
+        def no_record(empid):  # check for a record in name index by employee id #
+            sql = "SELECT emp_id FROM name_index WHERE emp_id = '%s'" % empid
+            result = inquire(sql)
+            if result:
+                return False  # if there is a record
+            return True  # if there is no record
+    
+        def insert_to_addname(self):  # add names to name index
+            self.to_chg = []  # array of items from to_addname where the name needs to be modified with emp id
+            self.new_name = []  # array of new names which have been modified with emp id
+            for name in self.parent.new_carrier:
+                self.parent.to_addname.append(name)  # add new carriers in list to be added to carrier table
+            pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
+            pb_label.grid(row=0, column=2)
+            pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
+            pb.grid(row=0, column=3)
+            pb["maximum"] = len(self.parent.to_addname)  # set length of progress bar
+            pb.start()
+            i = 0
+            for item in self.parent.to_addname:  # when add name was selected from option menu
+                pb["value"] = i  # increment progress bar
+                tacs_str = "{}, {}".format(item[1], item[2])  # tacs str is last name and first initial from tacs report
+                kb_str = "{}, {}".format(item[1], item[2])  # kb str is last name and first initial from tacs report
+                if kb_str in self.n_index or kb_str in self.c_list:  # detect matches with name index
+                    sql = "SELECT emp_id, kb_name FROM name_index WHERE emp_id = '%s'" % item[0]
+                    result = inquire(sql)
+                    if not result:
+                        kb_str = "{} {}".format(kb_str, item[0])
+                        self.to_chg.append(item)
+                        mod_name = "{} {}".format(item[2], item[0])
+                        self.new_name.append(mod_name)
+                    if result:  # if the carrier is in the name index
+                        # if the kb name is not the same in the name index record - change name
+                        if result[0][1] != kb_str:  
+                            self.to_chg.append(item)
+                            mod_name = result[0][1].split(",")
+                            mod_name = mod_name[1].strip()
+                            self.new_name.append(mod_name)
+                self.n_index.append(kb_str)  # add to n_index array so dups can be detected
+                sql = "SELECT emp_id FROM name_index WHERE emp_id = '%s'" % item[0]
+                result = inquire(sql)
+                if not result:
+                    sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s','%s','%s')" \
+                          % (tacs_str, str(kb_str), item[0])
+                    commit(sql)
+                self.win.buttons.update()  # update the progress bar
+                i += 1
+            pb.stop()  # stop and destroy the progress bar
+            pb_label.destroy()  # destroy the label for the progress bar
+            pb.destroy()
+    
+        def apply_ai3_report(self):  # message screens to summerize output
+            messagebox.showinfo("Processing Carriers", "{} Carrier names were added to the database\n"
+                                                       "{} Carrier names were paired to names in klusterbox\n"
+                                                       "{} Carrier names were discarded.\n"
+                                                       .format(len(self.parent.to_addname), len(self.to_nameindex),
+                                                       len(self.to_remove)), parent=self.win.topframe)
+    
+        def build_addname(self):  # build to_addname array
+            count = 0  # swap out the names which have been modified in self.parent.to_addname
+            for item in self.to_chg:  # for each item to be swapped
+                self.parent.to_addname.remove(item)  # clear out the old one
+                # create a modified array with modified name
+                mod_str = [item[0], item[1], self.new_name[count], item[3]]
+                self.parent.to_addname.append(mod_str)  # put in the new one
+                count += 1
 
-def auto_weekly_analysis(array):
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    day_dict = {}
-    x = 0
-    for item in days:  # make a dictionary for each day in the week
-        day_dict[item] = projvar.invran_date_week[x]
-        x += 1
-    rings = []
-    input_rings = []
-    good_day = "no"
-    for line in array:
-        if line[18] in days and line[18] != good_day and good_day != "no":
-            to_input = auto_daily_analysis(rings)
-            input_rings.append(to_input)
-            del rings[:]
-            good_day = line[18]
-        if line[18] == "Base" and line[19] in ("844", "134", "434"):  # find first line of specific carrier
-            continue  # gather base line data
-        elif line[18] == "Temp" and line[19] in ("844", "134", "434"):  # find first line of specific carrier
-            continue  # gather base line data
-        else:
-            if line[18] in days and line[18] == good_day:
-                rings.append(line)
-            if line[18] in days and good_day == "no":  # day change triggers
-                good_day = line[18]
-                rings.append(line)
-            if line[18] not in days:
-                rings.append(line)
-    to_input = auto_daily_analysis(rings)  # call function for last line
-    input_rings.append(to_input)  # add the proto array for an array
-    # return input_rings # send it back to auto skimmer()
-    if input_rings[0] is not None:
-        sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % input_rings[0][1]
-        result = inquire(sql)  # check to verify that they are in the name index
-        if result:  # if there is a match in the name index, then continue
-            kb_name = result[0][0]  # get the kb name which correlates to the emp id
-            for line in input_rings:
+    class AutoIndexer4:  # input new carrier information after a check
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.opt_nsday = []  # make an array of "day / color" options for option menu
+            self.full_ns_dict = {}
+            self.ns_dict = {}  # create dictionary for ns day data
+            self.eff_date = None  # effective date for apply
+            self.station = None  # station as stringvar for apply
+            self.changecount = None
+            self.win = None
+            self.ai4_carrier_name = []  # create array for carrier names
+            self.ai4_l_s = []  # create array for list status
+            self.ai4_l_ns = []  # create array for ns days
+            self.ai4_route = []  # create array for route/s
+
+        def run(self, frame):  # add new carriers to carrier table / pairing screen #3
+            self.frame = frame
+            self.ai4_opt_nsday()
+            self.ai4_full_ns_dict()
+            self.ai4_ns_dict()
+            self.ai4_screen()
+
+        def ai4_opt_nsday(self):  # get ns structure preference from database
+            sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
+            result = inquire(sql)
+            ns_toggle = result[0][0]  # modify available ns days per ns_toggle
+            if ns_toggle == "rotation":
+                remove_array = ("sat", "mon", "tue", "wed", "thu", "fri")
+            else:
+                remove_array = ("green", "brown", "red", "black", "yellow", "blue")
+            ns_code_mod = dict()  # copy the projvar.ns_code dict to ns_code_mod using dict()
+            for key in projvar.ns_code:
+                ns_code_mod[key] = projvar.ns_code[key]
+            for key in remove_array:
+                if key in ns_code_mod:
+                    del ns_code_mod[key]  # modify available ns days per ns_toggle
+            for each in ns_code_mod:  #
+                ns_option = ns_code_mod[each] + " - " + each  # make a string for each day/color
+                if each == "none":
+                    ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
+                self.opt_nsday.append(ns_option)
+
+        def ai4_full_ns_dict(self):
+            days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+            for each in self.opt_nsday:  # Make a dictionary to match full days and option menu options
+                for day in days:
+                    if day[:3] == each[:3]:
+                        self.full_ns_dict[day] = each  # creates full_ns_dict
+                if each[-4:] == "none":
+                    ns_option = "       " + " - " + "none"  # if the ns day is "none" - make a special string
+                    self.full_ns_dict["None"] = ns_option  # creates full_ns_dict None option
+
+        def ai4_ns_dict(self):
+            results = gen_ns_dict(self.parent.file_path, self.parent.to_addname)  # returns id and name
+            for ids in results:  # loop to fill dictionary with ns day info
+                self.ns_dict[ids[0]] = ids[1]
+            return self.ns_dict
+
+        def ai4_screen(self):
+            self.win = MakeWindow()
+            self.win.create(self.frame)
+            Label(self.win.body, text="Input New Carriers", font=macadj("bold", "Helvetica 18"), pady=10) \
+                .grid(row=0, column=0, sticky="w", columnspan=6)  # Pairing Screen #3
+            wintext = \
+                "Enter in information for carriers not already recorded in the Klusterbox database. You can use " \
+                "the TACS \n" \
+                "information (shown in blue),as a guide if it is accurate. As OTDL/WAL information is not in TACS, " \
+                "it is \n" \
+                "not shown and this information will have to requested from management. Routes must be only 4 " \
+                "digits \n" \
+                "long. In cases were there are multiple routes, the routes must be separated by a \"/\" backslash.\n\n"
+            mactext = \
+                "Enter in information for carriers not already recorded in the Klusterbox database. You can \n" \
+                "use the TACS information (shown in blue),as a guide if it is accurate. As OTDL/WAL \n" \
+                "information is not in TACS, it is not shown and this information will have to requested \n" \
+                "from management. Routes must be only 4 digits long. In cases were there are multiple \n" \
+                "routes, the routes must be separated by a \"/\" backslash.\n\n"
+            text = "Investigation Range: {0} through {1}\n\n"\
+                .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                        projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+            # is_mac = macadj(False, True)
+            Label(self.win.body, text=macadj(wintext, mactext) + text, justify=LEFT)\
+                .grid(row=1, column=0, sticky="w", columnspan=6)
+            y = 2  # count for the row
+            Label(self.win.body, text="Name", fg="Grey").grid(row=y, column=0, sticky="w")
+            Label(self.win.body, text=macadj("List Status", "List"), fg="Grey").grid(row=y, column=1, sticky="w")
+            Label(self.win.body, text="NS Day", fg="Grey").grid(row=y, column=2, sticky="w")
+            Label(self.win.body, text="Route_s", fg="Grey").grid(row=y, column=3, sticky="w")
+            if not self.parent.is_mac:
+                Label(self.win.body, text="Station", fg="Grey").grid(row=y, column=4, sticky="w")
+                Label(self.win.body, text="              ", fg="Grey").grid(row=y, column=5, sticky="w")
+            y += 1
+            i = 0  # count the instances of the array
+            color = "blue"
+            for name in self.parent.to_addname:
+                Label(self.win.body, text=name[1] + ", " + name[2], fg=color).grid(row=y, column=0, sticky="w")
+                self.ai4_carrier_name.append(str(name[1] + ", " + name[2]))
+                Label(self.win.body, text=macadj("not in record", "unknown"), fg=color)\
+                    .grid(row=y, column=1, sticky="w")
+                Label(self.win.body, text=str(self.ns_dict[name[0]]), fg=color).grid(row=y, column=2, sticky="w")
+                Label(self.win.body, text=name[3], fg=color).grid(row=y, column=3, sticky="w")
+                if not self.parent.is_mac:
+                    Label(self.win.body, text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
+                y += 1
+                list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
+                if name[3] == "auxiliary":
+                    lx = 4  # configure defaults for list status
+                elif name[3] == "part time flex":
+                    lx = 3  # set as ptf
+                else:
+                    lx = 2  # set as 'nl' if not 'aux'
+                self.ai4_l_s.append(StringVar(self.win.body))
+                self.ai4_l_s[i].set(list_options[lx])  # set the list status
+                list_status = OptionMenu(self.win.body, self.ai4_l_s[i], *list_options)
+                list_status.config(width=macadj(5, 4))
+                list_status.grid(row=y, column=1, sticky="w")
+                self.ai4_l_ns.append(StringVar(self.win.body))  # create optionmenu for ns days
+                self.ai4_l_ns[i].set(self.full_ns_dict[str(self.ns_dict[name[0]])])  # set ns day default
+                ns_day = OptionMenu(self.win.body, self.ai4_l_ns[i], *self.opt_nsday)
+                ns_day.config(width=macadj(12, 10))
+                ns_day.grid(row=y, column=2, sticky="w")
+                self.ai4_route.append(StringVar(self.win.body))  # create entry field for route
+                # create entry for routes
+                Entry(self.win.body, width=24, textvariable=self.ai4_route[i]).grid(row=y, column=3, sticky="w")
+                if "reg " in name[3] and name[3] != "reg floater":
+                    rte = name[3].replace("reg ", "")
+                else:
+                    rte = ""
+                self.ai4_route[i].set(rte)
+                y += 1
+                i += 1
+                Label(self.win.body, text="").grid(row=y, column=0, sticky="w")
+                y += 1
+            Button(self.win.buttons, text="Continue", width=macadj(15, 16),
+                   command=lambda: self.ai4_apply()).pack(side=LEFT)
+            Button(self.win.buttons, text="Cancel", width=macadj(15, 16),
+                   command=lambda: self.parent.go_back(self.win.topframe)).pack(side=LEFT)
+            self.win.finish()
+
+        def ai4_apply(self):  # adds new carriers to the carriers table
+            self.ai4_date()  # get the effective date
+            self.ai4_station()  # get the station as a stringvar (apply2 reads station as stringvar)
+            if self.ai4_check():
+                self.ai4_count_change()
+                # route conditional to arrays
+                if len(self.changecount) >= len(self.ai4_carrier_name) and len(self.parent.check_these) > 0:
+                    self.parent.AutoIndexer5(self.parent).run(self.win.topframe)
+                elif len(self.changecount) >= len(self.ai4_carrier_name):
+                    self.parent.AutoIndexer6(self.parent).run(self.win.topframe)
+                else:
+                    return
+            else:
+                frame = self.win.topframe  # prevent the object from being obliterated by rerunning __init__
+                self.__init__(self.parent)  # re initialize the child class
+                # self.re_init(self.parent)  # re initialize the child class
+                # self.run(self.win.topframe)
+                self.run(frame)
+
+        def ai4_date(self):  # get the effective date
+            self.eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
+            if not projvar.invran_weekly_span:  # if investigation range is daily
+                self.eff_date = projvar.invran_date
+
+        def ai4_station(self):  # get the station as a stringvar (apply2 reads station as stringvar)
+            self.station = StringVar(self.win.body)  # put station var in a StringVar object
+            self.station.set(projvar.invran_station)
+
+        def ai4_check(self):  # check and enter carrier info
+            pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
+            pb_label.pack(side=LEFT)
+            pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
+            pb.pack(side=LEFT)
+            pb["maximum"] = len(self.ai4_carrier_name)  # set length of progress bar
+            pb.start()
+            for i in range(len(self.ai4_carrier_name)):
+                pb["value"] = i  # increment progress bar
+                passed_ns = self.ai4_l_ns[i].get().split(" - ")  # clean the passed ns day data
+                clean_ns = StringVar(self.win.body)  # put ns day var in StringVar object
+                clean_ns.set(passed_ns[1])
+                # check moves/route and enter data into rings table
+                if not apply_2(self.eff_date, self.ai4_carrier_name[i], self.ai4_l_s[i], clean_ns,
+                               self.ai4_route[i], self.station, self.win.body):
+                    return False
+                self.win.buttons.update()
+            pb.stop()  # stop and destroy the progress bar
+            pb_label.destroy()  # destroy the label for the progress bar
+            pb.destroy()
+            return True
+
+        def ai4_count_change(self):  # get count of carrier changes for current day
+            self.changecount = []
+            for name in self.ai4_carrier_name:
+                sql = "SELECT * FROM carriers WHERE carrier_name == '%s' and effective_date == '%s'" \
+                      % (name, self.eff_date)
+                result = inquire(sql)
+                if result:
+                    self.changecount.append(result)
+
+    class AutoIndexer5:  # discrepancy resolution screen
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.opt_nsday = []  # make an array of "day / color" options for option menu
+            self.ns_opt_dict = {}  # creates a dictionary of ns colors/ options for menu
+            self.full_ns_dict = {}
+            self.ns_dict = {}  # create dictionary for ns day data
+            self.name_dict = {}  # generate dictionary for emp id to kb_name
+            self.carriers_names_list = []  # generate list of only names from 'in range carrier list'
+            self.ai5_carrier_list = None
+            self.code_ns = None
+            self.win = None
+            self.y = 1  # count for the row
+            self.i = 0  # count the instances of the array for the screen
+            self.carrier_name = []  # create array for carrier names  # attributes for screen
+            self.l_s = []  # create array for list status
+            self.l_ns = []  # create array for ns days
+            self.e_route = []  # create array for routes
+            self.l_station = []  # create array for stations
+            self.aux_list_tuple = ("aux", "ptf")
+            self.reg_list_tuple = ("nl", "wal", "otdl")
+            self.skip_this_screen = True
+            self.color = "blue"  # the display color of information from tacs
+
+        def run(self, frame):
+            self.frame = frame
+            if len(self.parent.check_these) == 0:
+                self.parent.AutoIndexer6(self.parent).run(self.frame)
+            else:
+                self.parent.check_these.sort(key=itemgetter(1))  # sort the incoming tacs information
+                self.ai5_opt_nsday()  # creates the option menu options for ns day menu
+                self.ai5_ns_dict()  # create dictionary for ns day data
+                self.ai5_nameindex_dict()  # generate dictionary for emp id to kb_name
+                self.ai5_carrierlist()  # generate list of only names from 'in range carrier list'
+                self.ai5_nscode()  # generate reverse ns code dict
+                self.ai5_screen()
+
+        def ai5_opt_nsday(self):
+            for each in projvar.ns_code:  # creates the option menu options for ns day menu
+                ns_option = projvar.ns_code[each] + " - " + each  # make a string for each day/color
+                self.ns_opt_dict[each] = ns_option
+                if each == "none":
+                    ns_option = "       " + " - " + each  # if the ns day is "none" - make a special string
+                    self.ns_opt_dict[each] = ns_option
+                self.opt_nsday.append(ns_option)
+
+        def ai5_ns_dict(self):  # create dictionary for ns day data
+            results = gen_ns_dict(self.parent.file_path, self.parent.check_these)  # returns id and name
+            for id in results:  # loop to fill dictionary with ns day info
+                self.ns_dict[id[0]] = id[1]
+                
+        def ai5_nameindex_dict(self):  # generate dictionary for emp id to kb_name
+            sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
+            results = inquire(sql)
+            for line in results:  # loop to fill arrays
+                self.name_dict[line[2]] = line[1]
+
+        def ai5_carrierlist(self):  # generate list of only names from 'in range carrier list'
+            self.ai5_carrier_list = gen_carrier_list()  # generate an in range carrier list
+            for name in self.ai5_carrier_list:
+                self.carriers_names_list.append(name[1])
+            remainders = []  # find carriers in 'check these' but not in 'in range carrier list' aka 'remainders'
+            for name in self.parent.check_these:
+                if self.name_dict[name[0]] not in self.carriers_names_list:
+                    remainders.append(name)
+            for name in remainders:  # get carriers data from carriers for remainders
+                sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s'" \
+                      "ORDER BY effective_date desc" % (self.name_dict[name[0]], projvar.invran_date_week[0])
+                result = inquire(sql)
+                self.ai5_carrier_list.append(list(result[0]))
+            self.ai5_carrier_list.sort(key=itemgetter(1))  # resort carrier list after additions
+            
+        def ai5_nscode(self):
+            self.code_ns = NsDayDict(projvar.invran_date_week[0]).gen_rev_ns_dict()  # generate reverse ns code dict
+            
+        def ai5_screen(self):
+            self.win = MakeWindow()
+            self.win.create(self.frame)
+            self.ai5_screen_header()
+            self.ai5_screen_labels()
+            self.ai5_find_discrepancies()
+            self.ai5_screen_buttons()
+            
+        def ai5_screen_header(self):
+            header = Frame(self.win.body)
+            header.grid(row=0, columnspan=6, sticky="w")
+            Label(header, text="Discrepancy Resolution Screen", font=macadj("bold", "Helvetica 18"), pady=10) \
+                .grid(row=0, sticky="w")
+            Label(header, text="Correct "
+            "any discrepancies and inconsistencies that exist between the incoming TACS data (in blue) \n"
+            "and the information currently recorded in the Klusterbox database (below in the entry fields and \n"
+            "option menus)to reflect the carrier's status accurately. This will update the Klusterbox database. \n"
+            "Routes must 4  or 5 digits long. In cases where there are multiple routes, the routes must be \n"
+            "separated by a \"/\" backslash.\n\n"
+            "Investigation Range: {0} through {1}\n\n"
+                  .format(projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                          projvar.invran_date_week[6].strftime("%a - %b %d, %Y")), justify=LEFT) \
+                .grid(row=1, sticky="w")
+            
+        def ai5_screen_labels(self):
+            if not self.parent.is_mac:  # skip labels if the os is mac
+                Label(self.win.body, text="    ", fg="Grey").grid(row=self.y, column=0, sticky="w")
+                Label(self.win.body, text=macadj("List Status", "List"), fg="Grey")\
+                    .grid(row=self.y, column=1, sticky="w")
+                Label(self.win.body, text="NS Day", fg="Grey").grid(row=self.y, column=2, sticky="w")
+                Label(self.win.body, text="Route_s", fg="Grey").grid(row=self.y, column=3, sticky="w")
+                Label(self.win.body, text="Station", fg="Grey").grid(row=self.y, column=4, sticky="w")
+                Label(self.win.body, text=macadj("             ", ""), fg="Grey")\
+                    .grid(row=self.y, column=5, sticky="w")
+                self.y += 1
+                
+        def ai5_find_discrepancies(self):  # look for any discrepancies in carrier list
+            tlist = ()
+            tnsday = "none"
+            troute = ""
+            for name in self.parent.check_these:
+                for k_name in self.ai5_carrier_list:
+                    if self.name_dict[name[0]] == k_name[1]:  # if the names match
+                        if name[3] == "auxiliary":  # parse assignments from tacs list
+                            tlist = self.aux_list_tuple
+                            tnsday = "none"
+                            troute = ""
+                        if name[3] == "part time flex":  # parse assignments from tacs list
+                            tlist = self.aux_list_tuple
+                            tnsday = "none"
+                            troute = ""
+                        if name[3][-4:].isnumeric():
+                            tlist = self.reg_list_tuple
+                            tnsday = self.code_ns[str(self.ns_dict[name[0]])]
+                            troute = name[3][-4:]
+                        if name[3][-7:] == "floater":
+                            tlist = self.reg_list_tuple
+                            tnsday = self.code_ns[str(self.ns_dict[name[0]])]
+                            troute = "floater"
+                        if name[3] == "undetected":
+                            tlist = "undetected"
+                            tnsday = self.code_ns[str(self.ns_dict[name[0]])]
+                            troute = "undetected"
+                        discrepancy = False
+                        # check tacs data against data in carriers table/ klusterbox
+                        if k_name[2] not in tlist:  # check list status
+                            discrepancy = True
+                        if k_name[3] != tnsday:  # check nsday
+                            discrepancy = True
+                        k_rte_len = len(k_name[4].split('/'))  # check route
+                        if k_rte_len == 0:  # check if route is aux
+                            if troute != "":
+                                discrepancy = True
+                        if k_rte_len == 1:  # check if route is regular
+                            if troute != k_name[4]:
+                                discrepancy = True
+                        if k_rte_len == 5:  # check if route is floater
+                            if troute != "floater":
+                                discrepancy = True
+                        if projvar.invran_station != k_name[5]:  # check if station is correct
+                            discrepancy = True
+                        if discrepancy:  # if there are no discrepancies, then skip the screen
+                            self.skip_this_screen = False
+                            self.ai5_display_discrepancies(name, k_name)
+        
+        def ai5_display_discrepancies(self, name, k_name):
+            name_f = Frame(self.win.body)  # create separate frame for names
+            name_f.grid(row=self.y, columnspan=6, sticky="w")
+            Label(name_f, text="Name: ", fg="Grey").grid(row=0, column=0, sticky="w")
+            Label(name_f, text=name[1] + ", " + name[2], fg=self.color).grid(row=0, column=1, sticky="w")
+            Label(name_f, text=" / " + k_name[1]).grid(row=0, column=2, sticky="w")
+            self.y += 1
+            if not self.parent.is_mac:
+                Label(self.win.body, text="    ", fg=self.color).grid(row=self.y, column=0, sticky="w")
+            Label(self.win.body, text=macadj("not in record", "unknown"), fg=self.color) \
+                .grid(row=self.y, column=1, sticky="w")
+            Label(self.win.body, text=str(self.ns_dict[name[0]]), fg=self.color).grid(row=self.y, column=2, sticky="w")
+            Label(self.win.body, text=name[3], fg=self.color).grid(row=self.y, column=3, sticky="w")
+            Label(self.win.body, text=projvar.invran_station, fg=self.color).grid(row=self.y, column=4, sticky="w")
+            self.y += 1
+            self.carrier_name.append(k_name[1])  # add kb name to the array
+            list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
+            self.l_s.append(StringVar(self.win.body))
+            self.l_s[self.i].set(k_name[2])  # set the list status
+            list_status = OptionMenu(self.win.body, self.l_s[self.i], *list_options)
+            list_status.config(width=macadj(6, 4))
+            list_status.grid(row=self.y, column=1, sticky="w")
+            self.l_ns.append(StringVar(self.win.body))  # create optionmenu for ns days
+            self.l_ns[self.i].set(self.ns_opt_dict[k_name[3]])  # set ns day default
+            ns_day = OptionMenu(self.win.body, self.l_ns[self.i], *self.opt_nsday)
+            ns_day.config(width=macadj(12, 8))
+            ns_day.grid(row=self.y, column=2, sticky="w")
+            self.e_route.append(StringVar(self.win.body))  # create entry field for route
+            Entry(self.win.body, width=25, textvariable=self.e_route[self.i]) \
+                .grid(row=self.y, column=3, sticky="w")  # create entry for routes
+            self.e_route[self.i].set(k_name[4])
+            self.l_station.append(StringVar(self.win.body))
+            self.l_station[self.i].set(k_name[5])
+            list_station = OptionMenu(self.win.body, self.l_station[self.i], *projvar.list_of_stations)
+            list_station.config(width=macadj(25, 18))
+            list_station.grid(row=self.y, column=4, sticky="w")
+            self.y += 1
+            Label(self.win.body, text="").grid(row=self.y, column=1)
+            self.y += 1
+            self.i += 1
+
+        def ai5_screen_buttons(self):
+            Button(self.win.buttons, text="Continue", width=macadj(15, 16),
+                   command=lambda: self.ai5_apply()).pack(side=LEFT)
+            Button(self.win.buttons, text="Cancel", width=macadj(15, 16),
+                   command=lambda: self.parent.go_back(self.win.topframe)).pack(side=LEFT)
+            if self.skip_this_screen:
+                self.parent.AutoIndexer6(self.parent).run(self.win.topframe)
+            else:
+                self.win.finish()  # get rear window objects
+
+        def ai5_apply(self):  # generate progressbar - sends data to be checked
+            eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
+            if not projvar.invran_weekly_span:  # if investigation range is daily
+                eff_date = projvar.invran_date
+            pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
+            pb_label.pack(side=LEFT)
+            pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
+            pb.pack(side=LEFT)
+            pb["maximum"] = len(self.carrier_name)  # set length of progress bar
+            pb.start()
+            for i in range(len(self.carrier_name)):
+                pb["value"] = i  # increment progress bar
+                passed_ns = self.l_ns[i].get().split(" - ")  # clean the passed ns day data
+                clean_ns = StringVar(self.win.topframe)  # put ns day var in StringVar object
+                clean_ns.set(passed_ns[1])
+                if not self.check_and_apply(self.win.topframe, eff_date, self.carrier_name[i],
+                                          self.l_s[i], clean_ns, self.e_route[i], self.l_station[i]):
+                    frame = self.win.topframe  # prevent the object from being obliterated by rerunning __init__
+                    self.__init__(self.parent)  # re initialize the child class
+                    self.run(frame)
+                    return
+                self.win.buttons.update()
+            pb.stop()  # stop and destroy the progress bar
+            pb_label.destroy()  # destroy the label for the progress bar
+            pb.destroy()
+            self.parent.AutoIndexer6(self.parent).run(self.win.topframe)
+
+        @staticmethod
+        def check_and_apply(frame, date, carrier, ls, ns, route, station):  # adds new carriers to the carriers table
+            if len(route.get()) > 29:
+                messagebox.showerror("Route number input error",
+                                     "There can be no more than five routes per carrier "
+                                     "(for T6 carriers).\n Routes numbers must be four or five digits long.\n"
+                                     "If there are multiple routes, route numbers must be separated by "
+                                     "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
+                                     "commas or empty spaces", parent=frame)
+                return False
+            route_list = route.get().split("/")
+            for item in route_list:
+                item = item.strip()
+                if item != "":
+                    if len(item) < 4 or len(item) > 5:
+                        messagebox.showerror("Route number input error",
+                                             "Routes numbers must be four or five digits long.\n"
+                                             "If there are multiple routes, route numbers must be separated by "
+                                             "the \'/\' character. For example: 1001/1015/10124/10224/0972. "
+                                             "Do not use commas or empty spaces",
+                                             parent=frame)
+                        return False
+                if item.isdigit() == FALSE and item != "":
+                    messagebox.showerror("Route number input error",
+                                         "Route numbers must be numbers and can not contain "
+                                         "letters",
+                                         parent=frame)
+                    return False
+            route_input = Handler(route.get()).routes_adj()
+            if route_input == "0000":
+                route_input = ""
+            sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
+                  "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" % (carrier, date)
+            results = inquire(sql)
+            if len(results) == 0:
+                sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                      " VALUES('%s','%s','%s','%s','%s','%s')" \
+                      % (date, carrier, ls.get(), ns.get(), route_input, station.get())
+                commit(sql)
+            elif len(results) == 1:
+                sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
+                      "WHERE effective_date = '%s' and carrier_name = '%s'" % \
+                      (ls.get(), ns.get(), route_input, station.get(), date, carrier)
+                commit(sql)
+            elif len(results) > 1:
+                sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % (date, carrier)
+                commit(sql)
+                sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                      " VALUES('%s','%s','%s','%s','%s','%s')" \
+                      % (date, carrier, ls.get(), ns.get(), route_input, station.get())
+                commit(sql)
+            return True
+
+    class AutoIndexer6:  # detect carriers who are no longer in station
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.names_list = []  # list of carriers in investigation range.
+            self.filtered_ids = []  # filter the tacs ids to only good jobs
+            self.t_names = []  # matches emp id to the kb name
+            self.ex_carrier = []  # carriers in carrier list but not tacs data
+            self.win = None
+            self.y = 1  # count for the row
+            self.carrier_name = []
+            self.list_status = []
+            self.ns_day = []
+            self.route = []
+            self.station = []
+            self.new_station = []
+            self.cc = 0
+
+        def run(self, frame):
+            self.frame = frame
+            self.ai6_nameslist()  # create the names list array
+            self.ai6_filtered_ids()
+            self.ai6_t_names()
+            self.ai6_ex_carriers()
+            if len(self.ex_carrier) == 0:
+                self.parent.AutoSkimmer(self.parent).run(self.frame)
+            else:
+                self.ai6_screen()  # create the 'carriers no longer in station' screen
+                self.ai6_screen_header()
+                self.ai6_screen_labels()
+                self.ai6_screen_loop()
+                self.ai6_screen_buttons()
+                self.win.finish()
+
+        def ai6_nameslist(self):  # list who are not in the TACS list
+            carrier_list = gen_carrier_list()  # create names_list array
+            for name in carrier_list:  # eliminate duplicate names
+                if name[1] not in self.names_list:
+                    self.names_list.append(name[1])
+
+        def ai6_filtered_ids(self):  # filter the tacs ids to get the good jobs
+            self.parent.get_file()  # read the csv file
+            tacs_ids = []  # generate tacs list
+            good_jobs = ("844", "134", "434")
+            to_add = ("x", "x")  # create placeholder for
+            for line in self.parent.a_file:
+                if len(line) > 19:  # if there are enough items in the line
+                    if line[18] == "Temp":
+                        to_add = (line[4].zfill(8), line[19])
+                    elif line[19] != "Temp" or line[19] != "Base":
+                        if to_add != ("x", "x"):  # if not placeholder
+                            tacs_ids.append(to_add)  # add tacs data to the array
+                            to_add = ("x", "x")  # reset placeholder
+                    if line[18] == "Base":
+                        to_add = (line[4].zfill(8), line[19])
+            self.filtered_ids = []  # filter the tacs ids to only good jobs
+            for item in tacs_ids:
+                if item[1] in good_jobs:
+                    self.filtered_ids.append(item)
+            del tacs_ids
+
+        def ai6_t_names(self):
+            for name in self.filtered_ids:  #
+                sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % (name[0])
+                result = inquire(sql)  # check dbase for a match
+                if result:  # if there is a match in the dbase, then add data to array
+                    self.t_names.append(result[0][0])
+
+        def ai6_ex_carriers(self):  # get a list of carriers no longer in the station
+            for name in self.names_list:  # for each name in carrier list
+                if name not in self.t_names:  # if they are not also in the tacs data
+                    self.ex_carrier.append(name)  # then add them to the array
+
+        def ai6_screen(self):
+            self.win = MakeWindow()
+            self.win.create(self.frame)
+
+        def ai6_screen_header(self):
+            header = Frame(self.win.body)
+            header.grid(row=0, columnspan=5, sticky="w")
+            Label(header, text="Carriers No Longer At Station", font=macadj("bold", "Helvetica 18"), pady=10) \
+                .grid(row=0, sticky="w")
+            wintext = "Klusterbox has detected that the following carriers may no longer be at the station. " \
+                      "If they are no longer at the\n station, then please use the option menu below to move " \
+                      "them to the correct station (if listed). If the correct \nis not listed or the carrier " \
+                      "is no longer working for the post office, then select \"out of station\".\n\n"
+            mactext = \
+                "Klusterbox has detected that the following carriers may no longer be at the station. If they \n" \
+                "are no longer at the station, then please use the option menu below to move them to the \n" \
+                "correct station (if listed). If the correct is not listed or the carrier is no longer working \n" \
+                "for the post office, then select \"out of station\".\n\n"
+            text = "Investigation Range: {0} through {1}\n\n".format(
+                projvar.invran_date_week[0].strftime("%a - %b %d, %Y"),
+                projvar.invran_date_week[6].strftime("%a - %b %d, %Y"))
+            Label(header, text=macadj(wintext, mactext) + text, justify=LEFT).grid(row=1, sticky="w")
+
+        def ai6_screen_labels(self):
+            Label(self.win.body, text="Name", fg="Grey").grid(row=self.y, column=0, sticky="w")
+            Label(self.win.body, text=macadj("List Status", "List"), fg="Grey").grid(row=self.y, column=1, sticky="w")
+            if sys.platform != "darwin":
+                Label(self.win.body, text="Route_s", fg="Grey").grid(row=self.y, column=2, sticky="w")
+            Label(self.win.body, text="Station", fg="Grey").grid(row=self.y, column=3, sticky="w")
+            Label(self.win.body, text="             ", fg="Grey").grid(row=self.y, column=4, sticky="w")
+            self.y += 1
+
+        def ai6_screen_loop(self):
+            for name in self.ex_carrier:
+                sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
+                      "ORDER BY effective_date DESC" \
+                      % (name, projvar.invran_date_week[0])
+                result = inquire(sql)
+                self.carrier_name.append(StringVar(self.win.body))  # store name
+                self.carrier_name[self.cc].set(result[0][1])
+                Button(self.win.body, text=result[0][1], relief=RIDGE, width=25, anchor="w") \
+                    .grid(row=self.y, column=0, sticky="w")  # name
+                self.list_status.append(StringVar(self.win.body))  # store list status
+                self.list_status[self.cc].set(result[0][2])
+                Button(self.win.body, text=result[0][2], relief=RIDGE, width=7, anchor="w") \
+                    .grid(row=self.y, column=1, sticky="w")  # list
+                self.ns_day.append(StringVar(self.win.body))  # store ns day
+                self.ns_day[self.cc].set(result[0][3])
+                self.route.append(StringVar(self.win.body))  # store route
+                self.route[self.cc].set(result[0][4])
+                if sys.platform != "darwin":
+                    Button(self.win.body, text=result[0][4], relief=RIDGE, width=20, anchor="w") \
+                        .grid(row=self.y, column=2, sticky="w")  # route
+                self.station.append(StringVar(self.win.body))  # store station
+                self.station[self.cc].set(result[0][5])
+                self.new_station.append(StringVar(self.win.body))
+                self.new_station[self.cc].set("out of station")
+                stat_om = OptionMenu(self.win.body, self.new_station[self.cc], *projvar.list_of_stations)  # station
+                if sys.platform != "darwin":
+                    stat_om.config(width=25, anchor="w")
+                else:
+                    stat_om.config(width=25)
+                stat_om.grid(row=self.y, column=3, sticky="w")
+                Label(self.win.body, text="                     ").grid(row=self.y, column=4)
+                self.cc += 1
+                self.y += 1
+
+        def ai6_screen_buttons(self):
+            Button(self.win.buttons, text="Continue", width=macadj(15, 16),
+                   command=lambda: self.ai6_apply()).pack(side=LEFT)
+            Button(self.win.buttons, text="Cancel", width=macadj(15, 16),
+                   command=lambda: self.parent.go_back(self.win.topframe)).pack(side=LEFT)
+
+        def ai6_apply(self):
+            date = projvar.invran_date_week[0]
+            pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
+            pb_label.pack(side=LEFT)
+            pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
+            pb.pack(side=LEFT)
+            pb["maximum"] = len(self.carrier_name)  # set length of progress bar
+            pb.start()
+            for i in range(len(self.carrier_name)):
+                pb["value"] = i  # increment progress bar
+                if self.station[i].get() != self.new_station[i].get():  # if there is a change of station
+                    self.parent.AutoIndexer5(self.parent).check_and_apply(self.win.topframe, date,
+                    self.carrier_name[i].get(), self.list_status[i], self.ns_day[i], self.route[i], self.new_station[i])
+                self.win.buttons.update()
+            pb.stop()  # stop and destroy the progress bar
+            pb_label.destroy()  # destroy the label for the progress bar
+            pb.destroy()
+            # self.auto_skimmer(self.win.topframe, self.file_path)
+            self.parent.AutoSkimmer(self.parent).run(self.win.topframe)
+
+    class AutoSkimmer:
+        """
+        This class enters in the clock rings by reading the employee everything report csv. While the above
+        classes focused on the Base and Temp lines, this class focus on the lines dealing with hours worked,
+        paid leave, unpaid leave, begin tour, moves an end tour.
+        """
+        def __init__(self, parent):
+            self.parent = parent
+            self.frame = None
+            self.allow_zero_top = None
+            self.allow_zero_bottom = None
+            self.skippers = None
+            self.days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+            self.mv_codes = ("BT", "MV", "ET")
+            self.day_dict = {}  # make a dictionary for each day in the week
+            self.carrier_lines = []
+            self.weekly_protoarray = []  # an array of daily_protoarrays
+            self.daily_protoarray = []  # returned from daily analysis
+            self.newest_carrier = []
+            self.kb_name = ""  # carrier name from nameindex table
+            self.routes = []  # get route/s
+            self.c_code = "none"  # notes ns day hit
+            self.mv_triad = []  # triad is route#, start time off route, end time off route
+            self.mv_str = ""  # moves
+            self.hr_52 = ""  # paid leave
+            self.rs = ""  # return to station time
+            self.lv_type = ""  # 5200 leave type
+            self.lv_time = ""  # 5200 leave time
+            self.current_array = []  # product of skim weekly - formatted data to dbase input
+            # variables for build_protoarray()
+            self.daily_rings = []
+            self.daily_line = []
+            self.day_name = ""
+            self.day_hr_52 = 0.0  # work hours
+            self.day_hr_55 = 0.0  # annual leave
+            self.day_hr_56 = 0.0  # sick leave
+            self.day_hr_58 = 0.0  # holiday leave
+            self.day_hr_62 = 0.0  # guaranteed time
+            self.day_hr_86 = 0.0  # other paid leave
+            self.day_rs = 0
+            self.day_code = ""
+            self.day_moves = []
+            self.day_leave_type = []
+            self.day_leave_time = []
+            self.day_final_leave_type = ""
+            self.day_final_leave_time = 0.0
+            self.day_dayofweek = None
+            # variables for fix carrier lines
+            self.new_order = []
+
+        def run(self, frame):
+            self.frame = frame
+            self.skim_configs()  # get configuration settings
+            carrier_list_cleaning_for_auto_skimmer(self.frame)
+            self.skim_day_dict()  # make a dictionary for each day in the week
+            if not self.skim_check_csv():  # checks for employee everything report
+                self.parent.go_back(self.frame)  # quit and return to main screen
+            else:
+                if not messagebox.askokcancel("Automatic Rings Entry",
+                                          "Do you want to automatically enter the rings?",
+                                          parent=self.frame):
+                    self.parent.go_back(self.frame)  # quit and return to main screen
+                else:
+                    self.skim_enter_rings()
+                    messagebox.showinfo("Automatic Rings Entry",
+                                        "The Employee Everything Report has been sucessfully inputed into the database",
+                                        parent=self.frame)
+                    self.parent.go_back(self.frame)  # quit and return to main screen
+
+        def skim_configs(self):  # get configuration settings
+            sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_top"
+            result = inquire(sql)
+            self.allow_zero_top = result[0][0]
+            sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_bottom"
+            result = inquire(sql)
+            self.allow_zero_bottom = result[0][0]
+            sql = "SELECT code FROM skippers"  # get skippers data from dbase
+            results = inquire(sql)
+            self.skippers = []  # fill the array for skippers
+            for item in results:
+                self.skippers.append(item[0])
+
+        def skim_day_dict(self):
+            x = 0
+            for item in self.days:  # make a dictionary for each day in the week
+                self.day_dict[item] = projvar.invran_date_week[x]
+                x += 1
+
+        def skim_check_csv(self):  # checks for employee everything report
+            self.parent.get_file()  # read the csv file
+            for line in self.parent.a_file:
+                if line[0][:8] == "TAC500R3":
+                    return True
+                else:
+                    messagebox.showwarning("File Selection Error",
+                                           "The selected file does not appear to be an "
+                                           "Employee Everything report.", parent=self.frame)
+                    return False
+
+        def skim_enter_rings(self):
+            """
+            Takes the entire csv file, goes line by line and breaks it up into one chunk per carrier
+            and sends it to the skim weekly for further breakdown by day
+            """
+            self.parent.get_file()  # read the csv file
+            row_count = sum(1 for row in self.parent.a_file)  # get number of rows in csv file
+            self.parent.get_file()  # read the csv file
+            pb = ProgressBarDe(title="Entering Carrier Rings", label="Updating Rings: ", text="Stand by...")
+            pb.max_count(int(row_count))
+            pb.start_up()
+            i = 0
+            cc = 0
+            good_id = "no"
+            for line in self.parent.a_file:
+                pb.move_count(i)
+                if cc != 0:
+                    if good_id != line[4] and good_id != "no":  # if new carrier_lines or employee
+                        self.skim_weekly()  # trigger analysis
+                        del self.carrier_lines[:]  # empty array
+                        good_id = "no"  # reset trigger
+                    # find first line of specific carrier_lines
+                    if line[18] == "Base" and line[19] in ("844", "134", "434"):
+                        good_id = line[4]  # set trigger to id of carriers who are FT or aux carriers
+                        self.carrier_lines.append(line)  # gather times and moves for anaylsis
+                        pb.change_text("Entering rings for {}".format(line[5]))
+                    if good_id == line[4] and line[18] != "Base":
+                        if line[18] in self.days:  # get the hours for each day
+                            self.carrier_lines.append(line)  # gather times and moves for anaylsis
+                        if line[19] in self.mv_codes and line[32] != "(W)Ring Deleted From PC":
+                            self.carrier_lines.append(line)  # gather times and moves for anaylsis
+                        pb.change_text("Entering rings for {}".format(line[5]))
+                cc += 1
+                i += 1
+            self.skim_weekly()  # when loop ends, run final analysis
+            del self.carrier_lines[:]  # empty array
+            pb.stop()  # stop and destroy the progress bar
+
+        def skim_weekly(self):
+            """
+            Takes the carrier lines sent by enter rings method and sends it to input rings to convert
+            it into an array of proto arrays - one for each day collected in input rings
+            """
+            self.fix_carrierlines()
+            del self.weekly_protoarray[:]  # delete prior input rings
+            self.skim_input_rings()  # build an array of protoarrays
+            if self.weekly_protoarray[0] is not None:
+                result = self.skim_check_nameindex()  # get the carriers employee id number
+                if result:  # if there is an employee id number in the name index, then continue
+                    if self.skim_check_carriers(result):  # get the kb name which correlates to the emp id
+                        self.skim_detect_nsday()  # find the ns day for the carrier
+                        self.skim_get_routes()  # create an array of the carrier's routes for self.routes
+                        for i in range(len(self.weekly_protoarray)):  # loop for each day of carrier information
+                            self.daily_protoarray = self.weekly_protoarray[i]
+                            """ should be dealing with input rings and not protoarray as input rings is a storage 
+                            array for the daily protoarrays"""
+                            self.skim_detect_moves()  # find the moves if any
+                            if not self.allow_zero_bottom:
+                                self.allow_zero_bottom()
+                            if not self.allow_zero_top:
+                                self.allow_zero_top()
+                            self.skim_get_movestring()
+                            if self.skim_get_hour52():
+                                self.skim_returntostation()
+                                self.skim_get_leavetime()
+                                self.skim_current_array()
+                                self.skim_input_update()
+
+        def fix_carrierlines(self):
+            """
+            This method solves a problem of lines in the employee everything report being slightly out of
+            sequence such as a move coming before a begin tour or a move coming after an end tour. This method
+            rearranges the begin tour, moves and end tour lines to make sure begin tour rings come first, moves
+            are in the middle and end tours are last. Lines which are not BT, Moves or ET keep their original
+            positions.
+            """
+            self.new_order = []  # carrier lines restructured
+            moves_holder = []
+            for line in self.carrier_lines:
+                if line[19] in self.mv_codes:  # mv_codes is ("BT", "MV", "ET")
+                    moves_holder.append(line)  # captures the BT, MV or ET lines
+                else:
+                    if moves_holder:  # if there are BT, MV or ET lines in the move holder
+                        self.fix_carrierline_moves(moves_holder)  # call a method to put them in proper order
+                        del moves_holder[:]  # delete the contents of the array
+                    self.new_order.append(line)  # non-BT, MV or ET lines go straight to the new order array.
+            if moves_holder:  # at the end of the loop check if there are BT, MV or ET lines in the move holder
+                self.fix_carrierline_moves(moves_holder)  # call a method to put them in proper order
+            self.carrier_lines = self.new_order[:]  # carrier lines is over written with correctly order array
+
+        def fix_carrierline_moves(self, moves_holder):  # puts the BT, MV and ET lines in proper order
+            bt_array = []  # holds begin tour lines
+            mv_array = []  # hold moves lines
+            et_array = []  # holds end tour lines
+            for move in moves_holder:  # loop through the BT, MV or ET lines
+                if move[19] == "BT":
+                    bt_array.append(move)  # capture begin tours in an array
+                if move[19] == "MV":
+                    mv_array.append(move)  # capture moves in an array
+                if move[19] == "ET":
+                    et_array.append(move)  # captures end tours in an array
+            for move in (bt_array + mv_array + et_array):  # with the lines in the proper order...
+                self.new_order.append(move)  # put the BT, MV or ET lines into the new order array
+
+        def skim_input_rings(self):
+            """
+            Takes The carrier lines from enter rings method and creates a daily protoarrays for the
+            investigation range.
+            """
+            rings = []
+            good_day = "no"
+            for line in self.carrier_lines:
+                if line[18] in self.days and line[18] != good_day and good_day != "no":
+                    to_input = self.build_protoarray(rings)  # returns the protoarray for one day
+                    self.weekly_protoarray.append(to_input)
+                    del rings[:]
+                    good_day = line[18]
+                if line[18] == "Base" and line[19] in ("844", "134", "434"):  # find first line of specific carrier
+                    continue  # gather base line data
+                elif line[18] == "Temp" and line[19] in ("844", "134", "434"):  # find first line of specific carrier
+                    continue  # gather base line data
+                else:
+                    if line[18] in self.days and line[18] == good_day:
+                        rings.append(line)
+                    if line[18] in self.days and good_day == "no":  # day change triggers
+                        good_day = line[18]
+                        rings.append(line)
+                    if line[18] not in self.days:
+                        rings.append(line)
+            to_input = self.build_protoarray(rings)  # call function for last line  # returns the protoarray for one day
+            self.weekly_protoarray.append(to_input)  # add the proto array for an array
+
+        def skim_check_nameindex(self):
+            sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % self.weekly_protoarray[0][1]
+            result = inquire(sql)  # check to verify that they are in the name index
+            return result  # if there is a match in the name index, then continue
+                
+        def skim_check_carriers(self, result):    
+            self.kb_name = result[0][0]  # get the kb name which correlates to the emp id
+            for line in self.weekly_protoarray:
+                self.daily_protoarray = line
                 sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s FROM" \
                       " carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
-                      "ORDER BY effective_date DESC" % (kb_name, day_dict[line[0]])
+                      "ORDER BY effective_date DESC" % (self.kb_name, self.day_dict[self.daily_protoarray[0]])
                 result = inquire(sql)
                 for array in result:  # find the most recent carrier record
                     eff_date = datetime.strptime(array[0], '%Y-%m-%d %H:%M:%S')
-                    if eff_date <= day_dict[line[0]]:
-                        newest_carrier = array
+                    if eff_date <= self.day_dict[self.daily_protoarray[0]]:
+                        self.newest_carrier = array
                         break  # stop. we only need the most recent record
-                if not result:
-                    return
-                # find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code
-                if newest_carrier[2] in ("nl", "wal", "otdl"):
-                    if day_dict[line[0]].strftime("%a") == projvar.ns_code[newest_carrier[3]] and float(line[2]) > 0:
-                        c_code = "ns day"
-                    else:
-                        c_code = "none"
-                elif newest_carrier[2] in ("otdl", "ptf", "aux"):
-                    if line[4] == "":
-                        c_code = "none"  # line[4] is the code from proto-array
-                    else:
-                        c_code = line[4]  # can be sick or annual
+                if result:
+                    return True
+                return False
+                
+        def skim_detect_nsday(self):
+            # find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code
+            if self.newest_carrier[2] in ("nl", "wal", "otdl"):
+                if self.day_dict[self.daily_protoarray[0]].strftime("%a") == projvar.ns_code[self.newest_carrier[3]] and \
+                        float(self.daily_protoarray[2]) > 0:
+                    self.c_code = "ns day"
                 else:
-                    c_code = "none"
-                routes = []  # create an array for routes
-                if newest_carrier[4] != "":
-                    routes = newest_carrier[4].split("/")
-                # find the moves if any
-                mv_triad = []  # triad is route#, start time off route, end time off route
-                route_holder = ""
-                if len(routes) > 0:  # if the route is in kb
-                    pair = "closed"  # trigger opens when a move set needs to be closed
-                    for m in line[5]:  # loop through all the rings
-                        mv_time = Convert(m[1]).zero_or_hundredths()  # assign move time variable and format
-                        if m[3] not in routes and pair == "closed":
-                            if m[3] == "0000" and m[2] in skippers:  # sometimes off route is not off route
-                                continue
-                            else:
-                                route_holder = m[3]  # hold route to put at end of triad
-                                mv_triad.append(mv_time)  # add start time to second place of triad
-                                pair = "open"
-                        if m[3] in routes and pair == "open":
-                            mv_triad.append(mv_time)  # add end time to third place of triad
-                            mv_triad.append(route_holder)
-                            pair = "closed"
-                    if pair == "open":  # if open at end, then close it with the last ring
-                        # assign move time variable and format for the last move if pair == 'open'
-                        mv_time = Convert(line[5][len(line[5]) - 1][1]).zero_or_hundredths()
-                        mv_triad.append(mv_time)
-                        mv_triad.append(route_holder)
-                if not allow_zero_bottom:
-                    if len(mv_triad) > 0:  # find and remove duplicate ET rings at end
-                        # if the last 2 are the same
-                        if mv_triad[int(len(mv_triad) - 3)] == mv_triad[int(len(mv_triad) - 2)]:
-                            mv_triad.pop()  # pop out the last triad
-                            mv_triad.pop()
-                            mv_triad.pop()
-                if not allow_zero_top:
-                    if len(mv_triad) > 0:  # find and remove rings in the front
-                        if mv_triad[0] == mv_triad[1]:
-                            mv_triad.pop(0)  # pop out the triad
-                            mv_triad.pop(0)
-                            mv_triad.pop(0)
-                mv_str = ','.join(mv_triad)  # format array as string to fit in dbase
-                # if hours worked > 0 or there is a code or a leave type
-                if float(line[2]) > 0 or c_code != "none" or line[6] != "":
-                    hr_52 = line[2]  # assign 5200 hours variable
-                    if RingTimeChecker(hr_52).check_for_zeros():  # adjust hr_52to version 4 record standards
-                        hr_52 = ""
-                    else:
-                        hr_52 = Convert(hr_52).hundredths()
-                    rs = line[3]  # assign return to station variable
-                    if RingTimeChecker(rs).check_for_zeros():  # adjust rs to version 4 record standards
-                        rs = ""
-                    else:
-                        rs = Convert(rs).hundredths()
-                    lv_time = float(line[7])  # assign leave time variable
-                    lv_type = line[6]  # assign leave type variable
-                    lv_type = Convert(line[6]).none_not_empty()  # adjust lv type to version 4 record standards
-                    if RingTimeChecker(lv_time).check_for_zeros():  # adjust lv time to version 4 record standards
-                        lv_time = ""
-                    else:
-                        lv_time = Convert(lv_time).hundredths()
-                    current_array = [str(day_dict[line[0]]), kb_name, hr_52, rs, c_code, mv_str, lv_type, lv_time]
-                    # check rings table to see if record already exist.
-                    sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (
-                        kb_name, day_dict[line[0]])
-                    result = inquire(sql)
-                    if len(result) == 0:
-                        sql = "INSERT INTO rings3 (rings_date, carrier_name, total, " \
-                              "rs, code, moves, leave_type,leave_time) " \
-                              "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
-                              (current_array[0], current_array[1], current_array[2], current_array[3], current_array[4],
-                               current_array[5], current_array[6], current_array[7])
-                        commit(sql)
-                    else:
-                        sql = "UPDATE rings3 SET total='%s',rs='%s' ,code='%s',moves='%s'," \
-                              "leave_type ='%s',leave_time = '%s'" \
-                              "WHERE rings_date = '%s' and carrier_name = '%s'" \
-                              % (
-                                  current_array[2], current_array[3], current_array[4], current_array[5],
-                                  current_array[6], current_array[7],
-                                  current_array[0], current_array[1])
-                        commit(sql)
+                    self.c_code = "none"
+            elif self.newest_carrier[2] in ("otdl", "ptf", "aux"):
+                if self.daily_protoarray[4] == "":
+                    self.c_code = "none"  # self.daily_protoarray[4] is the code from proto-array
+                else:
+                    self.c_code = self.daily_protoarray[4]  # can be sick or annual
+            else:
+                self.c_code = "none"
+            
+        def skim_get_routes(self):
+            self.routes = []  # create an array for self.routes
+            if self.newest_carrier[4] != "":
+                self.routes = self.newest_carrier[4].split("/")
 
+        def skim_detect_moves(self):  # find the moves if any
+            self.mv_triad = []  # triad is route number, start time off route, end time off route
+            route_holder = ""
+            if len(self.routes) > 0:  # if the route is in kb
+                pair = "closed"  # trigger opens when a move set needs to be closed
+                for m in self.daily_protoarray[5]:  # loop through all the rings
+                    mv_time = Convert(m[1]).zero_or_hundredths()  # assign move time variable and format
+                    if m[3] not in self.routes and pair == "closed":
+                        if m[3] == "0000" and m[2] in self.skippers:  # sometimes off route is not off route
+                            continue
+                        else:
+                            route_holder = m[3]  # hold route to put at end of triad
+                            self.mv_triad.append(mv_time)  # add start time to second place of triad
+                            pair = "open"
+                    if m[3] in self.routes and pair == "open":
+                        self.mv_triad.append(mv_time)  # add end time to third place of triad
+                        self.mv_triad.append(route_holder)
+                        pair = "closed"
+                if pair == "open":  # if open at end, then close it with the last ring
+                    # assign move time variable and format for the last move if pair == 'open'
+                    mv_time = Convert(self.daily_protoarray[5][len(self.daily_protoarray[5]) - 1][1]).zero_or_hundredths()
+                    self.mv_triad.append(mv_time)
+                    self.mv_triad.append(route_holder)
+            
+        def allow_zero_bottom(self):
+            if len(self.mv_triad) > 0:  # find and remove duplicate ET rings at end
+                # if the last 2 are the same
+                if self.mv_triad[int(len(self.mv_triad) - 3)] == self.mv_triad[int(len(self.mv_triad) - 2)]:
+                    self.mv_triad.pop()  # pop out the last triad
+                    self.mv_triad.pop()
+                    self.mv_triad.pop()
+        
+        def allow_zero_top(self):
+            if len(self.mv_triad) > 0:  # find and remove rings in the front
+                if self.mv_triad[0] == self.mv_triad[1]:
+                    self.mv_triad.pop(0)  # pop out the triad
+                    self.mv_triad.pop(0)
+                    self.mv_triad.pop(0)
+        
+        def skim_get_movestring(self):                
+            self.mv_str = ','.join(self.mv_triad)  # format array as string to fit in dbase
+            
+        def skim_get_hour52(self):  # get paid leave
+            # if hours worked > 0 or there is a code or a leave type
+            if float(self.daily_protoarray[2]) > 0 or self.c_code != "none" or self.daily_protoarray[6] != "":
+                hr_52 = self.daily_protoarray[2]  # assign 5200 hours variable
+                if RingTimeChecker(hr_52).check_for_zeros():  # adjust hr_52to version 4 record standards
+                    self.hr_52 = ""
+                else:
+                    self.hr_52 = Convert(hr_52).hundredths()
+                return True
+            return False
+        
+        def skim_returntostation(self):            
+            rs = self.daily_protoarray[3]  # assign return to station variable
+            if RingTimeChecker(rs).check_for_zeros():  # adjust rs to version 4 record standards
+                self.rs = ""
+            else:
+                self.rs = Convert(rs).hundredths()
+              
+        def skim_get_leavetime(self):
+            lv_time = float(self.daily_protoarray[7])  # assign leave time variable
+            self.lv_type = Convert(self.daily_protoarray[6]).none_not_empty()  # adjust lv type to version 4 standards
+            if RingTimeChecker(lv_time).check_for_zeros():  # adjust lv time to version 4 record standards
+                self.lv_time = ""
+            else:
+                self.lv_time = Convert(lv_time).hundredths()
+       
+        def skim_current_array(self):         
+            self.current_array = [str(self.day_dict[self.daily_protoarray[0]]), self.kb_name, self.hr_52, self.rs,
+                                  self.c_code, self.mv_str, self.lv_type, self.lv_time]
+            
+        def skim_input_update(self):    
+            # check rings table to see if record already exist.
+            sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (
+                self.kb_name, self.day_dict[self.daily_protoarray[0]])
+            result = inquire(sql)
+            if len(result) == 0:
+                sql = "INSERT INTO rings3 (rings_date, carrier_name, total, " \
+                      "rs, code, moves, leave_type,leave_time) " \
+                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
+                      (self.current_array[0], self.current_array[1], self.current_array[2], self.current_array[3],
+                       self.current_array[4],
+                       self.current_array[5], self.current_array[6], self.current_array[7])
+                commit(sql)
+            else:
+                sql = "UPDATE rings3 SET total='%s',rs='%s' ,code='%s',moves='%s'," \
+                      "leave_type ='%s',leave_time = '%s'" \
+                      "WHERE rings_date = '%s' and carrier_name = '%s'" \
+                      % (
+                          self.current_array[2], self.current_array[3], self.current_array[4], self.current_array[5],
+                          self.current_array[6], self.current_array[7],
+                          self.current_array[0], self.current_array[1])
+                commit(sql)
 
-def auto_daily_analysis(rings):
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    mv_codes = ("BT", "MV", "ET")
-    hr_52 = 0.0  # work hours
-    hr_55 = 0.0  # annual leave
-    hr_56 = 0.0  # sick leave
-    hr_58 = 0.0  # holiday leave
-    hr_62 = 0.0  # guaranteed time
-    hr_86 = 0.0  # other paid leave
-    rs = 0
-    code = ""
-    moves = []
-    leave_type = []
-    leave_time = []
-    final_leave_type = ""
-    final_leave_time = 0.0
-    dayofweek = None
-    if len(rings) > 0:
-        name = rings[0][4].zfill(8)  # Get NAME
-        for line in rings:
-            if line[18] in days:  # get 5200 or non 5200 times for TOTAL, code, leave_type and leave_time
-                dayofweek = line[18]
-                spt_20 = line[20].split(':')  # split to get code and hours
-                # get second and third digits of the of the split line 20 or spt_20
-                spt_20_mod = "".join([spt_20[0][1], spt_20[0][2]])
-                if spt_20_mod == "52":
-                    hr_52 = spt_20[1]  # get the total hours worked
-                if spt_20_mod == "55":
-                    hr_55 = spt_20[1]  # get the annual leave hours
-                if spt_20_mod == "56":
-                    hr_56 = spt_20[1]  # get the sick leave hours
-                if spt_20_mod == "58":
-                    hr_58 = spt_20[1]  # get the holiday leave hours
-                if spt_20_mod == "62":
-                    hr_62 = spt_20[1]  # get the guaranteed time hours
-                if spt_20_mod == "86":
-                    hr_86 = spt_20[1]  # get other leave hours
-                # calculate the leave type and time:
-                if float(hr_55) > 0 or float(hr_56) > 0 or float(hr_58) > 0 or float(hr_62) > 0 or float(hr_86) > 0:
-                    if float(hr_55) > 0:
-                        leave_type.append("annual")
-                        leave_time.append(hr_55)
-                    if float(hr_56) > 0:
-                        leave_type.append("sick")
-                        leave_time.append(hr_56)
-                    if float(hr_58) > 0:
-                        leave_type.append("holiday")
-                        leave_time.append(hr_58)
-                    if float(hr_62) > 0:
-                        leave_type.append("guaranteed")
-                        leave_time.append(hr_62)
-                    if float(hr_86) > 0:
-                        leave_type.append("other")
-                        leave_time.append(hr_86)
-                    if len(leave_type) > 1:
-                        final_leave_type = "combo"
-                        final_leave_time = float(hr_55) + float(hr_56) + float(hr_58) + float(hr_62) + float(hr_86)
-                    elif len(leave_type) == 1:
-                        final_leave_type = leave_type[0]
-                        final_leave_time = leave_time[0]
-                    else:
-                        final_leave_type = ""
-                        final_leave_time = 0.0
-                if float(hr_55) > 1:
-                    code = "annual"  # alter CODE if annual leave was used
-                if float(hr_56) > 1:
-                    code = "sick"  # alter code if sick leave was used
-                # clear out non-5200 times
-                hr_55 = 0.0  # annual leave
-                hr_56 = 0.0  # sick leave
-                hr_58 = 0.0  # holiday leave
-                hr_62 = 0.0  # guaranteed time
-                hr_86 = 0.0  # other paid leave
-            if line[19] == "MV" and line[23][:3] == "722":  # get the RETURN TO OFFICE time
-                rs = line[21]  # save the last occurrence.
-            if line[19] in mv_codes:  # get the MOVES
-                route_z = line[24].zfill(6)  # because some reports omit leading zeros
-                # reformat route to 5 digit format
-                route = route_z[1] + route_z[2] + route_z[3] + route_z[4] + route_z[5]
-                route = Handler(route).routes_adj()  # convert to 4 digits if route < 100
-                mv_data = [line[19], line[21], line[23][:3], route]  # MV, time off, time on, route
-                moves.append(mv_data)
-        # form the proto array
-        proto_array = [dayofweek, name, hr_52, rs, code, moves, final_leave_type, final_leave_time]
-        return proto_array  # send it back to auto weekly analysis()
+        def build_protoarray(self, rings):
+            self.daily_rings = rings
+            self.skim_daily_initialize()  # zero out all daily values for each iteration
+            if len(self.daily_rings) > 0:
+                self.skim_name()  # get the carrier id from the tacs data
+                for line in self.daily_rings:
+                    self.daily_line = line
+                    # get 5200 or non 5200 times for TOTAL, code, leave_type and leave_time
+                    if self.daily_line[18] in self.days:
+                        self.skim_dayofweek()  # get the day of the week from the tacs data line as self.day_dayofweek
+                        self.skim_get_hours()  # get hours as for the day as self.day_hr_52, etc
+                        if float(self.day_hr_55) > 0 or float(self.day_hr_56) > 0 or float(self.day_hr_58) > 0 or \
+                                float(self.day_hr_62) > 0 or float(self.day_hr_86) > 0:
+                            self.skim_daily_leavetime()  # fill day leave type and time variables
+                        self.skim_get_code()  # detects annual or sick leave for day_code variable
+                    # get the RETURN TO OFFICE time
+                    if self.daily_line[19] == "MV" and self.daily_line[23][:3] == "722":
+                        self.skim_get_returntostation()  # get return to station time and fill day_rs variable
+                    if self.daily_line[19] in self.mv_codes:  # get the MOVES
+                        self.skim_get_moves()  # build an array of moves for the day
+                proto_array = [self.day_dayofweek, self.day_name, self.day_hr_52, self.day_rs, self.day_code,
+                               self.day_moves, self.day_final_leave_type, self.day_final_leave_time]
+                return proto_array  # send it back to auto weekly analysis()
 
+        def skim_daily_initialize(self):  # initialize variables for build_protoarray()
+            self.day_hr_52 = 0.0  # work hours
+            self.day_hr_55 = 0.0  # annual leave
+            self.day_hr_56 = 0.0  # sick leave
+            self.day_hr_58 = 0.0  # holiday leave
+            self.day_hr_62 = 0.0  # guaranteed time
+            self.day_hr_86 = 0.0  # other paid leave
+            self.day_rs = 0
+            self.day_code = ""
+            self.day_moves = []
+            self.day_leave_type = []
+            self.day_leave_time = []
+            self.day_final_leave_type = ""
+            self.day_final_leave_time = 0.0
+            self.day_dayofweek = None
 
-def call_indexers(frame):
-    path = dir_filedialog()
-    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
-    if file_path == "":
-        return
-    elif file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
-        auto_indexer_1(frame, file_path)
-    else:
-        messagebox.showerror("Report Generator",
-                             "The file you have selected is not a .csv or .xls file. "
-                             "You must select a file with a .csv or .xls extension.",
-                             parent=frame)
+        def skim_name(self):  # get the carrier id from the tacs data
+            self.day_name = self.daily_rings[0][4].zfill(8)  # Get NAME
+
+        def skim_dayofweek(self):  # get the day of the week from the tacs data line
+            self.day_dayofweek = self.daily_line[18]
+
+        def skim_get_hours(self):
+            spt_20 = self.daily_line[20].split(':')  # split to get code and hours
+            # get second and third digits of the of the split line 20 or spt_20
+            spt_20_mod = "".join([spt_20[0][1], spt_20[0][2]])
+            if spt_20_mod == "52":
+                self.day_hr_52 = spt_20[1]  # get the total hours worked
+            if spt_20_mod == "55":
+                self.day_hr_55 = spt_20[1]  # get the annual leave hours
+            if spt_20_mod == "56":
+                self.day_hr_56 = spt_20[1]  # get the sick leave hours
+            if spt_20_mod == "58":
+                self.day_hr_58 = spt_20[1]  # get the holiday leave hours
+            if spt_20_mod == "62":
+                self.day_hr_62 = spt_20[1]  # get the guaranteed time hours
+            if spt_20_mod == "86":
+                self.day_hr_86 = spt_20[1]  # get other leave hours
+
+        def skim_daily_leavetime(self):  # fill day leave type and time variables
+            if float(self.day_hr_55) > 0:
+                self.day_leave_type.append("annual")
+                self.day_leave_time.append(self.day_hr_55)
+            if float(self.day_hr_56) > 0:
+                self.day_leave_type.append("sick")
+                self.day_leave_time.append(self.day_hr_56)
+            if float(self.day_hr_58) > 0:
+                self.day_leave_type.append("holiday")
+                self.day_leave_time.append(self.day_hr_58)
+            if float(self.day_hr_62) > 0:
+                self.day_leave_type.append("guaranteed")
+                self.day_leave_time.append(self.day_hr_62)
+            if float(self.day_hr_86) > 0:
+                self.day_leave_type.append("other")
+                self.day_leave_time.append(self.day_hr_86)
+            if len(self.day_leave_type) > 1:
+                self.day_final_leave_type = "combo"
+                self.day_final_leave_time = float(self.day_hr_55) + float(self.day_hr_56) + float(self.day_hr_58) + \
+                                            float(self.day_hr_62) + float(self.day_hr_86)
+            elif len(self.day_leave_type) == 1:
+                self.day_final_leave_type = self.day_leave_type[0]
+                self.day_final_leave_time = self.day_leave_time[0]
+            else:
+                self.day_final_leave_type = ""
+                self.day_final_leave_time = 0.0
+
+        def skim_get_code(self):  # detects annual or sick leave for day_code variable
+            if float(self.day_hr_55) > 1:
+                self.day_code = "annual"  # alter CODE if annual leave was used
+            if float(self.day_hr_56) > 1:
+                self.day_code = "sick"  # alter code if sick leave was used
+
+        def skim_get_returntostation(self):  # get return to station time and fill day_rs variable
+            self.day_rs = self.daily_line[21]  # save the last occurrence.
+
+        def skim_get_moves(self):  # build an array of moves for the day
+            route_z = self.daily_line[24].zfill(6)  # because some reports omit leading zeros
+            # reformat route to 5 digit format
+            route = route_z[1] + route_z[2] + route_z[3] + route_z[4] + route_z[5]  # build 5 digit route number
+            route = Handler(route).routes_adj()  # convert to 4 digits if route < 100
+            # MV code, time off, time on, route
+            mv_data = [self.daily_line[19], self.daily_line[21], self.daily_line[23][:3], route]
+            self.day_moves.append(mv_data)
 
 
 def save_all(frame):
@@ -9232,11 +9581,11 @@ def ee_skimmer(frame):
 
 def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
     year = sat_range.strftime("%Y")
-    pp_end = find_pp(int(year) + 1, "011")
+    pp_end = find_pp(int(year) + 1, "011")  # returns the starting date of the pp when given year and pay period
     if sat_range >= pp_end:
         year = int(year) + 1
         year = str(year)
-    firstday = find_pp(int(year), "011")
+    firstday = find_pp(int(year), "011")  # returns the starting date of the pp when given year and pay period
     pp_finder = {}
     for i in range(1, 27):
         # update the dictionary
@@ -9879,7 +10228,7 @@ class StartUp:
         self.win.create(None)
         self.new_station = StringVar(self.win.body)
         self.build()
-        self.win.fill(7,20)
+        self.win.fill(7, 20)
         self.buttons_frame()
         self.win.finish()
 
@@ -12451,7 +12800,7 @@ def apply(year, month, day, c_name, ls, ns, route, station, frame):
     if len(carrier) < 1:
         messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
         return
-    if apply_2(date, carrier, ls, ns, route, station, frame) == "error":
+    if not apply_2(date, carrier, ls, ns, route, station, frame):
         return
 
 
@@ -12465,7 +12814,7 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
                              "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
                              "commas or empty spaces",
                              parent=frame)
-        return "error"
+        return False
     for item in route_list:
         item = item.strip()
         if item != "":
@@ -12476,13 +12825,13 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
                                      'the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use '
                                      'commas or empty spaces',
                                      parent=frame)
-                return "error"
+                return False
         if item.isdigit() == FALSE and item != "":
             messagebox.showerror("Route number input error",
                                  "Route numbers must be numbers and can not contain "
                                  "letters",
                                  parent=frame)
-            return "error"
+            return False
     # find all matches for date and name
     route_input = Handler(route.get()).routes_adj()  # call routes adj to shorten routes that don't need 5 digits
     if route_input == "0000":  # do not enter route for unassigned regulars
@@ -12507,6 +12856,7 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
               " VALUES('%s','%s','%s','%s','%s','%s')" \
               % (date, carrier, ls.get(), ns.get(), route_input, station.get())
         commit(sql)
+    return True
 
 
 def name_change(name, c_name, frame):
@@ -13621,13 +13971,14 @@ class MainFrame:
                   foreground="red").grid(row=3, column=0, columnspan=8, sticky="w")
 
     def invran_not_set(self):  #investigation range is not set
+        # Button(self.main_frame, text="Automatic Data Entry", width=30,
+        #        command=lambda: call_indexers(self.win.topframe)).grid(row=0, column=1, pady=5)
         Button(self.main_frame, text="Automatic Data Entry", width=30,
-               command=lambda: call_indexers(self.win.topframe)).grid(row=0, column=1, pady=5)
+               command=lambda: AutoDataEntry().run(self.win.topframe)).grid(row=0, column=1, pady=5)
         Button(self.main_frame, text="Informal C", width=30,
                command=lambda: informalc(self.win.topframe)).grid(row=1, column=1, pady=5)
         Button(self.main_frame, text="Quit", width=30, command=lambda: projvar.root.destroy())\
             .grid(row=2, column=1, pady=5)
-        # Label(self.main_frame, text="", width=macadj(2, 13)).grid(row=3, column=0)  # spacer
         for i in range(25):
             Label(self.main_frame, text="").grid(row=4 + i, column=1)
 
@@ -13660,7 +14011,7 @@ class MainFrame:
             for rec in line:
                 if rec_count == 0:  # display the first row of carrier recs
                     Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
-                    Button(self.main_frame, text=rec[1], width=macadj(25,23), bg=color, anchor="w",
+                    Button(self.main_frame, text=rec[1], width=macadj(25, 23), bg=color, anchor="w",
                            command=lambda x=rec: EnterRings(x[1]).start(self.win.topframe)).grid(row=r, column=1)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
                            command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
@@ -13668,12 +14019,13 @@ class MainFrame:
                     ii += 1
                 else:  # display non first rows of carrier recs
                     dt = datetime.strptime(rec[0], "%Y-%m-%d %H:%M:%S")
-                    Button(self.main_frame, text=dt.strftime("%a"), width=macadj(25,23), bg=color, anchor="e")\
+                    Button(self.main_frame, text=dt.strftime("%a"), width=macadj(25, 23), bg=color, anchor="e")\
                         .grid(row=r, column=1)
                     Button(self.main_frame, text="", width=4, bg=color) \
                         .grid(row=r, column=5)
                 if len(rec) > 2:  # because "out of station" recs only have two items
-                    Button(self.main_frame, text=rec[2], width=macadj(3,4), bg=color, anchor="w").grid(row=r, column=2)  # list
+                    # list
+                    Button(self.main_frame, text=rec[2], width=macadj(3, 4), bg=color, anchor="w").grid(row=r, column=2)
                     day_off = projvar.ns_code[rec[3]].lower()
                     Button(self.main_frame, text=day_off, width=4, bg=color, anchor="w").grid(row=r, column=3)  # nsday
                     Button(self.main_frame, text=rec[4], width=25, bg=color, anchor="w")\
@@ -13698,6 +14050,7 @@ class MainFrame:
                                command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss))
         # basic_menu.add_command(label="Report Summary",
         # command=lambda: output_tab(self.win.topframe, self.carrier_list))
+
         basic_menu.add_command(label="Mandates Spreadsheet",
                                command=lambda r_rings="x": ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",
@@ -13706,10 +14059,10 @@ class MainFrame:
         if projvar.invran_weekly_span:  # if the investigation range is weekly
             ot_date = projvar.invran_date_week[6]   # pass the last day of the investigation range as datetime
         basic_menu.add_command(label="OT Equitability Spreadsheet",
-                               command=lambda: OTEquitSpreadsheet().
-                               create(self.win.topframe, ot_date, self.station.get()))
+                               command=lambda: OTEquitSpreadsheet().create(self.win.topframe,
+                                                                           ot_date, self.station.get()))
         listoptions = ("wal", "nl")  # ot distribution spreadsheet will show only work assignment and no list carriers
-        basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda:OTDistriSpreadsheet()
+        basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda: OTDistriSpreadsheet()
                                .create(self.win.topframe, projvar.invran_date_week[0], self.station.get(),
                                        "weekly", listoptions))
         basic_menu.add_separator()
@@ -13739,7 +14092,9 @@ class MainFrame:
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
-        automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(self.win.topframe))
+        # automated_menu.add_command(label="Automatic Data Entry", command=lambda: call_indexers(self.win.topframe))
+        automated_menu.add_command(label="Automatic Data Entry",
+                                   command=lambda: AutoDataEntry().run(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(self.win.topframe))
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
@@ -13793,7 +14148,7 @@ class MainFrame:
                                command=lambda: OpenText().open_docs(self.win.body, 'speedsheet_instructions.txt'))
         speed_menu.add_command(label="Speedsheet Archive", command=lambda: file_dialogue(dir_path('speedsheets')))
         speed_menu.add_command(label="Clear Archive",
-                                command= lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
+                                command=lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         # archive menu
         reportsarchive_menu = Menu(menubar, tearoff=0)
@@ -13880,7 +14235,7 @@ class MainFrame:
             Button(self.win.buttons, text="Multi Input",
                    command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss),
                    width=macadj(13, 13)).pack(side=LEFT)
-            Button(self.win.buttons, text="Auto Data Entry", command=lambda: call_indexers(self.win.topframe),
+            Button(self.win.buttons, text="Auto Data Entry", command=lambda: AutoDataEntry().run(self.win.topframe),
                    width=macadj(12, 12)).pack(side=LEFT)
             Button(self.win.buttons, text="Spreadsheet", width=macadj(13, 13),
                    command=lambda: ImpManSpreadsheet().create(self.win.topframe)).pack(side=LEFT)
@@ -13904,6 +14259,7 @@ if __name__ == "__main__":
     global skippers
     global current_tab
     global pb_flag
+    global ade_flag
     setup_plaformvar()   # set up platform variable
     setup_dirs_by_platformvar()  # create directories if they don't exist
     DataBase().setup()  # set up the database

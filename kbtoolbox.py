@@ -265,6 +265,73 @@ class CarrierList:
         return inquire(sql)  # call function to access database
 
 
+def gen_carrier_list():
+    sql = ""
+    # generate in range carrier list
+    if projvar.invran_weekly_span:  # select sql dependant on range
+        sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
+              " FROM carriers WHERE effective_date <= '%s' " \
+              "ORDER BY carrier_name, effective_date desc" % projvar.invran_date_week[6]
+    if not projvar.invran_weekly_span:   # if investigation range is weekly
+        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+              " FROM carriers WHERE effective_date <= '%s' " \
+              "ORDER BY carrier_name, effective_date desc" % projvar.invran_date
+    results = inquire(sql)  # call function to access database
+    carrier_list = []  # initialize arrays for data sorting
+    candidates = []
+    more_rows = []
+    pre_invest = []
+    for i in range(len(results)):  # take raw data and sort into appropriate arrays
+        candidates.append(results[i])  # put name into candidates array
+        jump = "no"  # triggers an analysis of the candidates array
+        if i != len(results) - 1:  # if the loop has not reached the end of the list
+            if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
+                jump = "yes"  # bypasses an analysis of the candidates array
+        if jump == "no":
+            # sort into records in investigation range and those prior
+            for record in candidates:
+                # if record falls in investigation range - add it to more rows array
+                if projvar.invran_weekly_span:  # if investigation range is weekly
+                    if str(projvar.invran_date_week[1]) <= record[0] <= str(projvar.invran_date_week[6]):
+                        more_rows.append(record)
+                    if record[0] <= str(projvar.invran_date_week[0]) and len(pre_invest) == 0:
+                        pre_invest.append(record)
+                if not projvar.invran_weekly_span:  # if investigation range is daily...
+                    # if date match and no pre_investigation
+                    if record[0] <= str(projvar.invran_date) and len(pre_invest) == 0:
+                        pre_invest.append(record)  # add rec to pre_invest array
+            # find carriers who start in the middle of the investigation range CATEGORY ONE
+            if len(more_rows) > 0 and len(pre_invest) == 0:
+                station_anchor = "no"
+                for each in more_rows:  # check if any records place the carrier in the selected station
+                    if each[5] == projvar.invran_station:
+                        station_anchor = "yes"  # if so, set the station anchor
+                if station_anchor == "yes":
+                    list(more_rows)
+                    for each in more_rows:
+                        x = list(each)  # convert the tuple to a list
+                        carrier_list.append(x)  # add it to the list
+            # find carriers with records before and during the investigation range CATEGORY TWO
+            if len(more_rows) > 0 and len(pre_invest) > 0:
+                station_anchor = "no"
+                for each in more_rows + pre_invest:
+                    if each[5] == projvar.invran_station:
+                        station_anchor = "yes"
+                if station_anchor == "yes":
+                    xx = list(pre_invest[0])
+                    carrier_list.append(xx)
+            # find carrier with records from only before investigation range.CATEGORY THREE
+            if len(more_rows) == 0 and len(pre_invest) == 1:
+                for each in pre_invest:
+                    if each[5] == projvar.invran_station:
+                        x = list(pre_invest[0])
+                        carrier_list.append(x)
+            del more_rows[:]
+            del pre_invest[:]
+            del candidates[:]
+    return carrier_list
+
+
 class NsDayDict:
     def __init__(self, date):
         self.date = date  # is a datetime object
@@ -437,6 +504,29 @@ def dir_path(dirr):  # create needed directories if they don't exist and return 
                 os.makedirs(('kb_sub\\' + dirr))
             path = 'kb_sub\\' + dirr + '\\'
     return path
+
+
+class BuildPath:
+    def __init__(self):
+        self.delimiter = ""
+        self.newpath = ""
+
+    def get_delimiter(self):
+        if sys.platform == "darwin":
+            self.delimiter = "/"
+        else:
+            self.delimiter = "\\"
+
+    def build(self, path_array):
+        """
+        Takes an array and of directories and a file and converts it into a path suitable for the operating system.
+        """
+        self.get_delimiter()
+        for i in range(len(path_array)):
+            self.newpath += path_array[i]
+            if i < len(path_array)-1:
+                self.newpath += self.delimiter
+        return self.newpath
 
 
 class SaturdayInRange:  # recieves a datetime object
