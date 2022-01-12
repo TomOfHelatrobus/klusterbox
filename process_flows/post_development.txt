@@ -9,23 +9,23 @@ ___  1. in the source code - klusterbox.py, change the variable for version and 
 date to reflect the current version number and release date. This is around line 35 under 
 the comment "version variables". 
 
-___  #. Review the About Klusterbox Screen to verify Contact Information. 
+___  1. Review the About Klusterbox Screen to verify Contact Information. 
 
-___  #. Review the About Klusterbox Screen to add any new modules to source code. 
+___  2. Review the About Klusterbox Screen to add any new modules to source code. 
 
-___  2. navigate to the klusterbox project folder and open readme.txt.
+___  3. navigate to the klusterbox project folder and open readme.txt.
 ___  	a. update the "most recent version" and "released" near the top of the page. 
 ___  	b. make any other changes to the readme.txt file that might be relevant.
 ___  	c. save the changes.
 
-___  3. navigate to and open history.txt 
+___  4. navigate to and open history.txt 
 ___  	a. update the history, add changes made for the lastest version. 
 ___  	b. save the changes.  
 
-___  4. Update the Pre Go Live checklist consistent with any new checks needed for new 
+___  5. Update the Pre Go Live checklist consistent with any new checks needed for new 
 functionality.
 
-___  5. Push changes to git repo. 
+___  6. Push changes to git repo. 
 
 
 **********************************  Mac Compatibility  ***********************************

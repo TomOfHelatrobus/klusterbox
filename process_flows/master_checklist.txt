@@ -4,31 +4,31 @@ MASTER CHECKLIST
 
 *********************************  Updates and Checks  ***********************************
 
- ____ . Run Post Development Checklist.
- ____ . Run Pre Go Live Checklist on IDE for Windows.
- ____ . Correct any errors and re push to git if any changes where made.
- ____ . Run Pre Go Live Checklist on IDE for Mac.
- ____ . Correct any errors and re push to git if any changes where made.
+ ____ 1. Run Post Development Checklist.
+ ____ 2. Run Pre Go Live Checklist on IDE for Windows.
+ ____ 3. Correct any errors and re push to git if any changes where made.
+ ____ 4. Run Pre Go Live Checklist on IDE for Mac.
+ ____ 5. Correct any errors and re push to git if any changes where made.
 
 
 ************************************  Pyinstaller  ***************************************
 
- ____ . Pull from git to Windows if changes were made.
- ____ . Run Pyinstaller Checklist for Windows 64 bit.
- ____ . Run Pyinstaller Checklist for Windows 64 bit: Generate exe for legacy.
- ____ . Run Pyinstaller Checklist for Windows 32 bit.
- ____ . Run Pyinstaller Checklist for Windows 32 bit: Generate exe for legacy.
- ____ . Run Pyinstaller Checklist for Mac.
+ ____ 1. Pull from git to Windows if changes were made.
+ ____ 2. Run Pyinstaller Checklist for Windows 64 bit.
+ ____ 3. Run Pyinstaller Checklist for Windows 64 bit: Generate exe for legacy.
+ ____ 4. Run Pyinstaller Checklist for Windows 32 bit.
+ ____ 5. Run Pyinstaller Checklist for Windows 32 bit: Generate exe for legacy.
+ ____ 6. Run Pyinstaller Checklist for Mac.
 
 ********************************  Create Distributions  **********************************
 
- ____ . Run nis_script_wizard_checklist for Windows distribution.
- ____ . Run create_dmg for the Mac Install.
+ ____ 1. Run nis_script_wizard_checklist for Windows distribution.
+ ____ 2. Run create_dmg for the Mac Install.
 
 ***************************************  Go Live  **************************************** 
 
- ____ . Run Pre Go Live Checklist on APP for Windows 64 bit. 
- ____ . Run Pre Go Live Checklist on APP for Windows 32 bit. 
- ____ . Run Pre Go Live Checklist on Windows Legacy.
- ____ . Run Pre Go Live Checklist on APP for Mac with DMG Installer.
- ____ . Run Pre Go Live Checklist on APP for Windows.
+ ____ 1. Run Pre Go Live Checklist on APP for Windows 64 bit. 
+ ____ 2. Run Pre Go Live Checklist on APP for Windows 32 bit. 
+ ____ 3. Run Pre Go Live Checklist on Windows Legacy.
+ ____ 4. Run Pre Go Live Checklist on APP for Mac with DMG Installer.
+ ____ 5. Run Pre Go Live Checklist on APP for Windows.

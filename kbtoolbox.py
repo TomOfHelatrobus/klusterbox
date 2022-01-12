@@ -178,6 +178,99 @@ def rear_window(wd):  # This closes the window created by front_window()
         projvar.root.destroy()
 
 
+def set_globals(s_year, s_mo, s_day, i_range, station, frame):
+    projvar.invran_weekly_span = i_range
+    if station == "undefined":
+        messagebox.showerror("Investigation station setting",
+                             'Please select a station.',
+                             parent=frame)
+        return
+    # error check for valid date
+    # date = ""  # reference before assignment
+    try:
+        date = datetime(int(s_year), int(s_mo), int(s_day))
+    except ValueError:
+        messagebox.showerror("Investigation date/range",
+                             'The date entered is not valid.',
+                             parent=frame)
+        return
+    projvar.invran_date = date
+    wkdy_name = date.strftime("%a")
+    while wkdy_name != "Sat":  # while date enter is not a saturday
+        date -= timedelta(days=1)  # walk back the date until it is a saturday
+        wkdy_name = date.strftime("%a")
+    sat_range = date  # sat range = sat or the sat most prior
+    projvar.pay_period = pp_by_date(sat_range)
+    projvar.invran_year = int(date.strftime("%Y"))  # format that sat to form the global
+    projvar.invran_month = int(date.strftime("%m"))
+    projvar.invran_day = int(date.strftime("%d"))
+    del projvar.invran_date_week[:]  # empty out the array for the global date variable
+    d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
+    # set the projvar.invran_date_week variable
+    projvar.invran_date_week.append(d)
+    for i in range(6):
+        d += timedelta(days=1)
+        projvar.invran_date_week.append(d)
+    # define color sequence tuple
+    pat = ("blue", "green", "brown", "red", "black", "yellow")
+    # calculate the n/s day of sat/first day of investigation range
+    end_date = sat_range + timedelta(days=-1)
+    cdate = datetime(2017, 1, 7)
+    x = 0
+    if sat_range > cdate:
+        while cdate < end_date:
+            if x > 0:
+                x -= 1
+                cdate += timedelta(days=7)
+            else:
+                x = 5
+                cdate += timedelta(days=7)
+    else:
+        # IN REVERSE
+        while cdate > sat_range:
+            if x < 5:
+                x += 1
+                cdate -= timedelta(days=7)
+            else:
+                x = 0
+                cdate -= timedelta(days=7)
+    # find ns day for each day in range
+    date = sat_range
+    projvar.ns_code = {}
+    for i in range(7):
+        if i == 0:
+            projvar.ns_code[pat[x]] = date.strftime("%a")
+            date += timedelta(days=1)
+        elif i == 1:
+            date += timedelta(days=1)
+            if x > 4:
+                x = 0
+            else:
+                x += 1
+        else:
+            projvar.ns_code[pat[x]] = date.strftime("%a")
+            date += timedelta(days=1)
+            if x > 4:
+                x = 0
+            else:
+                x += 1
+    projvar.ns_code["none"] = "  "
+    if not i_range:  # if investigation range is one day
+        projvar.invran_year = int(s_year)
+        projvar.invran_month = int(s_mo)
+        projvar.invran_day = int(s_day)
+        projvar.invran_day = int(s_day)
+    projvar.ns_code["sat"] = "Sat"
+    projvar.ns_code["mon"] = "Mon"
+    projvar.ns_code["tue"] = "Tue"
+    projvar.ns_code["wed"] = "Wed"
+    projvar.ns_code["thu"] = "Thu"
+    projvar.ns_code["fri"] = "Fri"
+    projvar.invran_station = station
+    # if frame != "None":
+    #     MainFrame().start(frame=frame)
+
+
 class CarrierRecSet:
     def __init__(self, carrier, start, end, station):
         self.carrier = carrier
@@ -504,6 +597,94 @@ def dir_path(dirr):  # create needed directories if they don't exist and return 
                 os.makedirs(('kb_sub\\' + dirr))
             path = 'kb_sub\\' + dirr + '\\'
     return path
+
+
+def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
+    year = sat_range.strftime("%Y")
+    pp_end = find_pp(int(year) + 1, "011")  # returns the starting date of the pp when given year and pay period
+    if sat_range >= pp_end:
+        year = int(year) + 1
+        year = str(year)
+    firstday = find_pp(int(year), "011")  # returns the starting date of the pp when given year and pay period
+    pp_finder = {}
+    for i in range(1, 27):
+        # update the dictionary
+        pp_finder[firstday] = str(i).zfill(2) + "1"
+        pp_finder[firstday + timedelta(days=7)] = str(i).zfill(2) + "2"
+        # increment the first day by two weeks
+        firstday += timedelta(days=14)
+    # in cases where there are 27 pay periods
+    if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
+        pp_finder[firstday] = "27" + "1"
+        pp_finder[firstday + timedelta(days=7)] = "27" + "2"
+    raw_pp = year.zfill(4) + pp_finder[sat_range]  # get the year/pp in a rough format
+    return raw_pp[:-3] + "-" + raw_pp[4] + raw_pp[5] + "-" + raw_pp[6]  # return formatted year/pp
+
+
+def find_pp(year, pp):  # returns the starting date of the pp when given year and pay period
+    firstday = datetime(1, 12, 22, 0, 0, 0)
+    while int(firstday.strftime("%Y")) != year - 1:
+        firstday += timedelta(weeks=52)
+        if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
+            firstday += timedelta(weeks=2)
+    pp_finder = {}
+    for i in range(1, 27):
+        # update the dictionary
+        pp_finder[str(i).zfill(2) + "1"] = firstday
+        pp_finder[str(i).zfill(2) + "2"] = firstday + timedelta(days=7)
+        # increment the first day by two weeks
+        firstday += timedelta(days=14)
+    # handle cases where there are 27 pay periods
+    if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
+        pp_finder["27" + "1"] = firstday
+        pp_finder["27" + "2"] = firstday + timedelta(days=7)
+    return pp_finder[pp]
+
+
+def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
+    days = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+    mv_codes = ("BT", "MV", "ET")
+    good_jobs = ("134", "844", "434")
+    results = []
+    carrier = []
+    id_bank = []
+    aux_list = []
+    for ident in to_addname:
+        id_bank.append(ident[0].zfill(8))
+        if ident[3] in ("auxiliary", "part time flex"):
+            aux_list.append(ident[0].zfill(8))  # make an array of auxiliary carrier emp ids
+    with open(file_path, newline="") as file:
+        a_file = csv.reader(file)
+        good_id = "no"
+        for line in a_file:
+            if len(line) > 4:
+                if good_id != line[4].zfill(8) and good_id != "no":  # if new carrier or employee
+                    if good_id in aux_list:
+                        day = "None"  # ignore auxiliary carriers
+                    else:
+                        day = ee_ns_detect(carrier)  # process regular carriers
+                    to_add = (good_id, day)
+                    results.append(to_add)
+                    del carrier[:]  # empty array
+                    good_id = "no"  # reset trigger
+                if line[18] == "Base" and line[19] in good_jobs and line[4].zfill(
+                        8) in id_bank:  # find first line of specific carrier
+                    good_id = line[4].zfill(8)  # set trigger to ident of carriers who are FT or aux carriers
+                    carrier.append(line)  # gather times and moves for anaylsis
+                if good_id == line[4].zfill(8) and line[18] != "Base":
+                    if line[18] in days:  # get the hours for each day
+                        carrier.append(line)  # gather times and moves for anaylsis
+                    if line[19] in mv_codes and line[32] != "(W)Ring Deleted From PC":
+                        carrier.append(line)  # gather times and moves for anaylsis
+        if good_id != "no":
+            if good_id in aux_list:
+                day = "None"  # ignore auxiliary carriers
+            else:
+                day = ee_ns_detect(carrier)  # process regular carriers
+            to_add = (good_id, day)
+            results.append(to_add)
+        del carrier[:]  # empty array
+        return results
 
 
 class BuildPath:

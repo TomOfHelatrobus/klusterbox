@@ -20,7 +20,8 @@ class CsvRepair:
 
     def run(self, file_path):
         self.file_path = file_path  # after testing uncomment this and put file path into arguments
-        self.get_newfilepath()
+        self.get_newfilepath()  # create a name for the path
+        self.destroy()  # if the file already exist. destroy it.
         self.get_file()
         self.test_write()
         return self.new_filepath
@@ -36,21 +37,21 @@ class CsvRepair:
         path_splice.append(newfilename)  # add the new file name to the end of the path
         self.new_filepath = BuildPath().build(path_splice)  # get the new file path
 
+    def get_file(self):  # read the csv file and assign to self.a_file attribute
+        self.a_file = csv.reader(open(self.file_path, newline=""))
+
     def build_csv(self, line):  # writes lines to the csv file
         csv.register_dialect('myDialect', lineterminator="\r")
         with open(self.new_filepath, 'a') as f:
             writer = csv.writer(f, dialect='myDialect')
             writer.writerow(line)
 
-    def get_file(self):  # read the csv file and assign to self.a_file attribute
-        self.a_file = csv.reader(open(self.file_path, newline=""))
-
     def csvrowcount(self):  # gets the number of rows from the csv file
         with open(self.file_path) as f:
             return sum(1 for _ in f)
 
     def test_write(self):
-        pb = ProgressBarDe(title="Repairing csv file", label="Building: ")  # create progressbar
+        pb = ProgressBarDe(title="Checking csv file", label="Reading and writing proxy file: ")  # create progressbar
         rowcount = self.csvrowcount()  # gets the number of rows from the csv file
         pb.max_count(rowcount)  # set length of progress bar
         pb.start_up()
@@ -100,14 +101,14 @@ class CsvRepair:
         """
         if line[18] == "Base":
             if line[4] not in self.baseid:
-                self.baseid.append(line[4])
+                self.baseid.append(line[4])  # add to list of carriers with a base line
                 return False
             return True
 
     def testforduptemp(self, line):
         if line[18] == "Temp":
             if line[4] not in self.tempid:
-                self.tempid.append(line[4])
+                self.tempid.append(line[4])  # add to list of carriers with a temp line
                 return False
             return True
 

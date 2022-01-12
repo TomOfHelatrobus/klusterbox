@@ -3,7 +3,7 @@ History:
 
 Klusterbox Version 1.0 introduced a new way to investigate improper mandating violations. Version 1.0 incorporated the core functionality of klusterbox. 
 
-Version 2.0 introduced the Auto Improper Mandate Finder, now called the Auto Data Entry. This feature reads a properly formatted employee everything report (the .csv file type) and will build a carrier list as well as input carrier clock rings with minimal input from a steward. The Auto Over Max Finder will also read a properly formatted employee everything report and generate a report showing violations of the 12/60 hour rule laid out in article 8 of the jcam. These features take task which once took hours and completes them in minutes. Version 2.3 introduced Informal C, a feature which helped users to track compliance for grievance settlements. 
+Version 2.0 introduced the Auto Improper Mandate Finder, later called the Auto Data Entry. This feature reads a properly formatted employee everything report (the .csv file type) and will build a carrier list as well as input carrier clock rings with minimal input from a steward. The Auto Over Max Finder will also read a properly formatted employee everything report and generate a report showing violations of the 12/60 hour rule laid out in article 8 of the jcam. These features take task which once took hours and completes them in minutes. Version 2.3 introduced Informal C, a feature which helped users to track compliance for grievance settlements. 
 
 Version 3.0 introduced the PDF converter which translates TACS Employee Everything Reports into a .csv format which can be read by Klusterbox. A PDF Splitter is also included for breaking Employee Everything Reports into manageable weekly sections.
  
@@ -26,4 +26,6 @@ Version 4.003 (08/17/21) OTDL Equitability Spreadsheet was added allowing users 
 Version 4.004 (09/02/2021) This is a hotfix for one formula on the overmax spreadsheet, the pdf converter which was crashing due to blank routes on temporary assignments and a revision to formulas on the OTDL Equitability Spreadsheet which were not working in Excel and Mac Numbers. 
 
 Version 4.005 (09/20/2021) The Overtime Distribution Spreadsheet was added. This tracks the overtime used for carriers. The user can select otdl, wal, no list, aux or ptf carriers. Also the a spreadsheet can be generated for a week or a quarter. This tool allows you to compare non-otdl carriers' overtime to each other as it is sometimes an issue that management gives more overtime to certain carriers who feel agrieved that they are being given an unfair share of the overtime. 
+
+Version 4.006 (01/09/2022) The kbcsv_repair module was added so that csv files could be fixed if they were not properly formated. Also the code for the Auto Data Entry was overhauled making it easier to read and edit. This will make the Auto Data Entry more reliable and stable. 
 

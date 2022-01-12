@@ -6,6 +6,10 @@ from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
+from kbcsv_reader import max_hr, ee_skimmer, wkly_avail
+from kbpdfhandling import pdf_converter
+# PDF Converter Libraries
+from PyPDF2 import PdfFileReader, PdfFileWriter
 # Standard Libraries
 from tkinter import *
 from tkinter import messagebox, filedialog, ttk
@@ -17,7 +21,6 @@ import shutil
 import csv
 import sys
 import subprocess
-from io import StringIO  # change from cStringIO to io for py 3x
 import time
 import webbrowser  # for hyper link at about_klusterbox()
 from threading import *  # run load workbook while progress bar runs
@@ -25,20 +28,9 @@ from threading import *  # run load workbook while progress bar runs
 from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
 from openpyxl import load_workbook
-from openpyxl import Workbook
-from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill
-# PDF Converter Libraries
-from pdfminer.pdfparser import PDFParser
-from pdfminer.pdfdocument import PDFDocument
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter, resolve1
-from pdfminer.converter import TextConverter
-from pdfminer.layout import LAParams
-from pdfminer.pdfpage import PDFPage
-# PDF Splitter Libraries
-from PyPDF2 import PdfFileReader, PdfFileWriter
 # version variables
 version = "4.006"
-release_date = "Undetermined"
+release_date = "Jan 9, 2022"  # format is Jan 1, 2022
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -208,11 +200,6 @@ class RefusalWin:  # create a window for refusals for otdl equitability
         for _ in range(3):
             self.row += 1
             Label(self.win.body, text="").grid(row=self.row)
-
-    def status_report(self, updates):
-        # msg = "{} Record{} Updated.".format(updates, Handler(updates).plurals())
-        msg = "hello there"
-        self.status_update.config(text="{}".format(msg))
 
     def buttons_frame(self):
         button = Button(self.win.buttons)
@@ -1388,9 +1375,12 @@ class SpeedSheetCheck:
         self.step = 2
 
     def check(self):
+        global try_absorber  # uses local variable in try statement to avoid error
         try:
             date_array = [1, 1, 1]
             self.set_ns_preference()
+            if date_array:
+                try_absorber = True
             if self.ns_rotate_mode is not None and self.set_all_inclusive():
                 self.set_sheet_facts()
                 self.set_dates()
@@ -1400,7 +1390,9 @@ class SpeedSheetCheck:
                 self.checking()
                 self.reporter()
                 date_array = Convert(self.start_date).datetime_separation()  # get the date to reset globals
-                set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, self.frame)
+                # set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, self.frame)
+                set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, "None")
+                MainFrame().start(frame=self.frame)
             else:
                 self.pb.delete()  # stop and destroy progress bar
                 self.showerror()
@@ -1908,9 +1900,9 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
 
     def add_recs(self):
         chg_these = []
-        list_place = []
-        ns_place = ""
-        route_place = ""
+        # list_place = []
+        # ns_place = ""
+        # route_place = ""
         if not self.parent.allowaddrecs:  # if all checks passed
             return
         if self.addlist != ["empty"]:
@@ -2363,12 +2355,12 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
 
     def add_recs(self):
         chg_these = []
-        hours_place = ""
-        rs_place = ""
-        code_place = ""
-        moves_place = ""
-        lv_type_place = ""
-        lv_time_place = ""
+        # hours_place = ""
+        # rs_place = ""
+        # code_place = None
+        # moves_place = ""
+        # lv_type_place = ""
+        # lv_time_place = ""
         if not self.allowaddrings:
             return
         # determine conditions where existing record is deleted
@@ -2565,7 +2557,7 @@ class GuiConfig:
 def database_rings_report(frame, station):
     #  generate a report summary of all clock rings for the station
     gross_dates = []  # captures all dates of rings for given station
-    master_dates = []  # a distinct collection of dates for given station
+    # master_dates = []  # a distinct collection of dates for given station
     unique_dates = []
     sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' ORDER BY carrier_name" \
           % station
@@ -2641,14 +2633,14 @@ def database_rings_report(frame, station):
                              parent=frame)
 
 
-def database_delete_carriers_apply(frame, station, vars):
+def database_delete_carriers_apply(frame, station, car_vars):
     if station.get() == "Select a station":
         station_string = "x"
     else:
         station_string = station.get()
 
     del_holder = []
-    for pair in vars:
+    for pair in car_vars:
         if pair[1].get():
             del_holder.append(pair[0])
     if len(del_holder) > 0:
@@ -2733,7 +2725,7 @@ def database_delete_carriers(frame, station):
     results_frame = Frame(wd[3])
     results_frame.grid(row=8, columnspan=4)
     i = 0
-    vars = []
+    car_vars = []
     if len(results) == 0 and station != "x":
         Label(results_frame, text="", anchor="w").grid(row=i, column=2, sticky="w")
         i += 1
@@ -2747,7 +2739,7 @@ def database_delete_carriers(frame, station):
         var = BooleanVar()
         chk = Checkbutton(results_frame, text=name[0], variable=var, anchor="w")
         chk.grid(row=i, column=0, sticky="w")
-        vars.append((name[0], var))
+        car_vars.append((name[0], var))
         Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
             .grid(row=i, column=1, sticky="w")
         Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
@@ -2758,7 +2750,7 @@ def database_delete_carriers(frame, station):
     button_apply = Button(wd[4])
     button_back = Button(wd[4])
     button_apply.config(text="Apply", width=15,
-                        command=lambda: database_delete_carriers_apply(wd[0], station_selection, vars))
+                        command=lambda: database_delete_carriers_apply(wd[0], station_selection, car_vars))
     button_back.config(text="Go Back", width=15, command=lambda: MainFrame().start(frame=wd[0]))
     if sys.platform == "win32":
         button_apply.config(anchor="w")
@@ -3672,1204 +3664,6 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
     rear_window(wd)
 
 
-def get_file_path(subject_path):  # Created for pdf splitter - gets a pdf file
-    path = dir_filedialog()
-    file_path = filedialog.askopenfilename(initialdir=path,
-                                           filetypes=[("PDF files", "*.pdf")], title="Select PDF")  # get the pdf file
-    subject_path.set(file_path)
-
-
-def get_new_path(new_path):  # Created for pdf splitter - creates/overwrites a pdf file
-    path = dir_filedialog()
-    save_filename = filedialog.asksaveasfilename(initialdir=path,
-                                                 filetypes=[("PDF files", "*.pdf")], title="Overwrite/Create PDF")
-    new_path.set(save_filename)
-
-
-# check for empty fields / return if there are any errors
-def pdf_splitter_apply(frame, subject_path, firstpage, lastpage, new_path):
-    if subject_path == "":
-        messagebox.showerror("Klusterbox PDF Splitter",
-                             "You must select a pdf file to split.",
-                             parent=frame)
-        return
-    if new_path == "":
-        messagebox.showerror("Klusterbox PDF Splitter",
-                             "You must designate a destination"
-                             " and a name for the df file you are creating.",
-                             parent=frame)
-        return
-    # if the last characters are not .pdf then add the extension
-    if new_path[-4:] != ".pdf":
-        new_path = new_path + ".pdf"
-    if firstpage > lastpage:
-        messagebox.showerror("Klusterbox PDF Splitter",
-                             "The First Page of the document can not be "
-                             "higher than the Last Page.",
-                             parent=frame)
-        return
-    try:
-        pdf = PdfFileReader(subject_path, "rb")
-        pdf_writer = PdfFileWriter()
-        for page in range(firstpage - 1, lastpage):
-            pdf_writer.addPage(pdf.getPage(page))
-        with open(new_path, 'wb') as out:
-            pdf_writer.write(out)
-        if messagebox.askokcancel("Klusterbox PDF Splitter",
-                                  "PDF file has been split sucessfully."
-                                  "Do you want to open the pdf file?",
-                                  parent=frame):
-            if sys.platform == "win32":
-                os.startfile(new_path)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", new_path])
-            if sys.platform == "darwin":
-                subprocess.call(["open", new_path])
-    except:
-        messagebox.showerror("Klusterbox PDF Splitter",
-                             "The PDF splitting has failed. \n"
-                             "It could be that that the pages set to be split don't exist \n"
-                             "or \n"
-                             "the pdf can't be split by this program due to formatting issues. \n"
-                             "For better results try www.sodapdf.com, google chrome or Adobe Acrobat "
-                             "Pro DC",
-                             parent=frame)
-
-
-def pdf_splitter(frame):  # PDF Splitter
-    wd = front_window(frame)
-    Label(wd[3], text="PDF Splitter", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=1, column=1, columnspan=4, sticky="w")
-    Label(wd[3], text="").grid(row=2)
-    Label(wd[3], text="Select pdf file you want to split:") \
-        .grid(row=3, column=1, columnspan=4, sticky="w")
-    subject_path = StringVar(wd[3])
-    Entry(wd[3], textvariable=subject_path, width=macadj(95, 50)).grid(row=4, column=1, columnspan=4)
-    Button(wd[3], text="Select", width="10", command=lambda: get_file_path(subject_path)) \
-        .grid(row=5, column=1, sticky="w")
-    Label(wd[3], text="").grid(row=6)
-    Label(wd[3], text="Select range of pages you want to use to create the new file:") \
-        .grid(row=7, column=1, columnspan=4, sticky="w")
-    Label(wd[3], text="First Page:  ").grid(row=8, column=1, sticky="e")
-    firstpage = IntVar(wd[3])
-    Entry(wd[3], textvariable=firstpage, width=8).grid(row=8, column=2, sticky="w")
-    firstpage.set(1)
-    Label(wd[3], text="Last Page:  ").grid(row=9, column=1, sticky="e")
-    lastpage = IntVar(wd[3])
-    Entry(wd[3], textvariable=lastpage, width=8).grid(row=9, column=2, sticky="w")
-    lastpage.set(1)
-    Label(wd[3], text="").grid(row=10)
-    Label(wd[3], text="Select pdf file you want to over write or a create a new file:") \
-        .grid(row=11, column=1, columnspan=4, sticky="w")
-    new_path = StringVar(wd[3])
-    Entry(wd[3], textvariable=new_path, width=macadj(95, 50)) \
-        .grid(row=12, column=1, columnspan=4, sticky="w")
-    Button(wd[3], text="Select", width="10", command=lambda: get_new_path(new_path)) \
-        .grid(row=13, column=1, sticky="w")
-    Label(wd[3], text="").grid(row=14)
-    Label(wd[3], text="If all fields are filled out, split the file.") \
-        .grid(row=15, column=1, columnspan=3, sticky="w")
-    Button(wd[3], text="Split PDF", width="10",
-           command=lambda: pdf_splitter_apply(
-               wd[0],
-               subject_path.get().strip(),
-               firstpage.get(),
-               lastpage.get(),
-               new_path.get().strip())) \
-        .grid(row=15, column=4, sticky="e")
-    button_back = Button(wd[4])
-    button_back.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
-    if sys.platform == "win32":
-        button_back.config(anchor="w")
-    button_back.pack(side=LEFT)
-    rear_window(wd)
-
-
-def pdf_converter_settings_apply(frame, error, raw, txt):
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (error.get(), "pdf_error_rpt")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (raw.get(), "pdf_raw_rpt")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (txt.get(), "pdf_text_reader")
-    commit(sql)
-    pdf_converter_settings(frame)
-
-
-def pdf_converter_settings(frame):
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
-    result = inquire(sql)
-    wd = front_window(frame)
-    Label(wd[3], text="PDF Converter Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=0, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=1, column=0)
-    Label(wd[3], text="Generate Reports for PDF Converter").grid(row=2, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=3, column=0)
-    Label(wd[3], text="Error Report", width=15, anchor="w").grid(row=4, column=0, sticky="w")
-    error_selection = StringVar(wd[3])
-    om_error = OptionMenu(wd[3], error_selection, "on", "off")  # option menu configuration below
-    om_error.grid(row=4, column=1)
-    error_selection.set(result[0][0])
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_raw_rpt"
-    result = inquire(sql)
-    Label(wd[3], text="Raw Output Report", width=15, anchor="w").grid(row=5, column=0, sticky="w")
-    raw_selection = StringVar(wd[3])
-    om_raw = OptionMenu(wd[3], raw_selection, "on", "off")  # option menu configuration below
-    om_raw.grid(row=5, column=1)
-    raw_selection.set(result[0][0])
-    Label(wd[3], text=" ").grid(row=6, column=0)
-    # allow user to read from a text file to bypass the pdfminer
-    Label(wd[3], text="Generate Reports from Text file").grid(row=7, sticky="w", columnspan=4)
-    Label(wd[3], text="     (where a text file of pdfminer output has been generated)") \
-        .grid(row=8, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=9, column=0)
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_text_reader"
-    result = inquire(sql)
-    Label(wd[3], text="Read from txt file", width=15, anchor="w").grid(row=10, column=0, sticky="w")
-    txt_selection = StringVar(wd[3])
-    om_txt = OptionMenu(wd[3], txt_selection, "on", "off")
-    om_txt.grid(row=10, column=1)  # option menu configuration below
-    txt_selection.set(result[0][0])
-    Label(wd[3], text=" ").grid(row=11, column=0)
-    if sys.platform == "darwin":  # option menu configuration
-        om_error.config(width=5)
-        om_raw.config(width=5)
-        om_txt.config(width=5)
-    else:
-        om_error.config(width=5, anchor="w")
-        om_raw.config(width=5, anchor="w")
-        om_txt.config(width=5, anchor="w")
-    Button(wd[3], text="set", width=10, command=lambda:
-    pdf_converter_settings_apply(wd[0], error_selection, raw_selection, txt_selection)) \
-        .grid(row=12, column=2)
-    button = Button(wd[4])
-    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
-    if sys.platform == "win32":
-        button.config(anchor="w")
-    button.pack(side=LEFT)
-    rear_window(wd)
-
-
-def pdf_converter_pagecount(filepath):  # gives a page count for pdf_to_text
-    file = open(filepath, 'rb')
-    parser = PDFParser(file)
-    document = PDFDocument(parser)
-    page_count = resolve1(document.catalog['Pages'])['Count']  # This will give you the count of pages
-    return page_count
-
-
-def pdf_to_text(frame, filepath):  # Called by pdf_converter() to read pdfs with pdfminer
-    codec = 'utf-8'
-    password = ""
-    maxpages = 0
-    caching = (True, True)
-    pagenos = set()
-    laparams = (
-        LAParams(
-            line_overlap=.1,  # best results
-            char_margin=2,
-            line_margin=.5,
-            word_margin=.5,
-            boxes_flow=0,
-            detect_vertical=True,
-            all_texts=True),
-        LAParams(
-            line_overlap=.5,  # default settings
-            char_margin=2,
-            line_margin=.5,
-            word_margin=.5,
-            boxes_flow=.5,
-            detect_vertical=False,
-            all_texts=False)
-    )
-    for i in range(2):
-        retstr = StringIO()
-        rsrcmgr = PDFResourceManager()
-        device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams[i])
-        interpreter = PDFPageInterpreter(rsrcmgr, device)
-        page_count = pdf_converter_pagecount(filepath)  # get page count
-        with open(filepath, 'rb') as filein:
-            # create progressbar
-            pb_root = Tk()  # create a window for the progress bar
-            pb_root.geometry("%dx%d+%d+%d" % (450, 75, 200, 300))
-            pb_root.title("Klusterbox PDF Converter - reading pdf")
-            titlebar_icon(pb_root)  # place icon in titlebar
-            Label(pb_root, text="This process takes several minutes. Please wait for results.") \
-                .grid(row=0, column=0, columnspan=2, sticky="w")
-            pb_label = Label(pb_root, text="Reading PDF: ")  # make label for progress bar
-            pb_label.grid(row=1, column=0, sticky="w")
-            pb = ttk.Progressbar(pb_root, length=350, mode="determinate")  # create progress bar
-            pb.grid(row=1, column=1, sticky="w")
-            pb_text = Label(pb_root, text="", anchor="w")
-            pb_text.grid(row=2, column=0, columnspan=2, sticky="w")
-            pb["maximum"] = page_count  # set length of progress bar
-            pb.start()
-            count = 0
-            for page in PDFPage.get_pages(filein, pagenos, maxpages=maxpages, password=password, caching=caching[i],
-                                          check_extractable=True):
-                interpreter.process_page(page)
-                pb["value"] = count  # increment progress bar
-                pb_text.config(text="Reading page: {}/{}".format(count, page_count))
-                pb_root.update()
-                count += 1
-            text = retstr.getvalue()
-            device.close()
-            retstr.close()
-        pb.stop()  # stop and destroy the progress bar
-        pb_label.destroy()  # destroy the label for the progress bar
-        pb.destroy()
-        pb_root.destroy()
-        # test the results
-        text = text.replace("", "")
-        page = text.split("")  # split the document into page
-        result = re.search("Restricted USPS T&A Information(.*)Employee Everything Report", page[0], re.DOTALL)
-        try:
-            station = result.group(1).strip()
-            break
-        except:
-            if i < 1:
-                result = messagebox.askokcancel("Klusterbox PDF Converter",
-                                                "PDF Conversion has failed and will not generate a file.  \n\n"
-                                                "We will try again.",
-                                                parent=frame)
-                if not result:
-                    return text
-            else:
-                messagebox.showerror("Klusterbox PDF Converter",
-                                     "PDF Conversion has failed and will not generate a file.  \n\n"
-                                     "You will either have to obtain the Employee Everything Report "
-                                     "in the csv format from management or manually enter in the "
-                                     "information",
-                                     parent=frame)
-
-    return text
-
-
-def pdf_converter_reorder_founddays(found_days):
-    new_order = []
-    correct_series = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    for cs in correct_series:
-        if cs in found_days:
-            new_order.append(cs)
-    return new_order
-
-
-def pdf_converter_path_generator(file_path, add_on, extension):  # generate csv file name and path
-    file_parts = file_path.split("/")  # split path into folders and file
-    file_name_xten = file_parts[len(file_parts) - 1]  # get the file name from the end of the path
-    file_name = file_name_xten[:-4]  # remove the file extension from the file name
-    file_name = file_name.replace("_raw_kbpc", "")
-    path = file_path[:-len(file_name_xten)]  # get the path back to the source folder
-    new_fname = file_name + add_on  # add suffix to to show converted pdf to csv
-    new_file_path = path + new_fname + extension  # new path with modified file name
-    return new_file_path
-
-
-def pdf_converter_short_name(file_path):
-    file_parts = file_path.split("/")  # split path into folders and file
-    file_name_xten = file_parts[len(file_parts) - 1]  # get the file name from the end of the path
-    return file_name_xten
-
-
-def pdf_converter(frame):
-    date_holder = []
-    # inquire as to if the pdf converter reports have been opted for by the user
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
-    result = inquire(sql)
-    gen_error_report = result[0][0]
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_raw_rpt"
-    result = inquire(sql)
-    gen_raw_report = result[0][0]
-    starttime = time.time()  # start the timer
-    # make it possible for user to select text file
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_text_reader"
-    result = inquire(sql)
-    allow_txt_reader = result[0][0]
-    if allow_txt_reader == "on":
-        preference = messagebox.askyesno("PDF Converter",
-                                         "Did you want to read from a text file of data output by pdfminer?",
-                                         parent=frame)
-    else:
-        preference = False
-    if not preference:  # user opts to read from pdf file
-        path = dir_filedialog()
-        file_path = filedialog.askopenfilename(initialdir=path,
-                                               filetypes=[("PDF files", "*.pdf")])  # get the pdf file
-        new_file_path = pdf_converter_path_generator(file_path, "_kbpc", ".csv")  # generate csv file name and path
-        short_file_name = pdf_converter_short_name(new_file_path)
-        # if the file path already exist - ask for confirmation
-        if os.path.exists(new_file_path):
-            if not messagebox.askokcancel("Possible File Name Discrepancy",
-                                          "There is already a file named {}. "
-                                          "If you proceed, the file will be overwritten. "
-                                          "Did you want to proceed?".format(short_file_name),
-                                          parent=frame):
-                return
-        # warn user that the process can take several minutes
-        if not messagebox.askokcancel("PDF Converter", "This process will take several minutes. "
-                                                       "Did you want to proceed?",
-                                      parent=frame):
-            return
-        else:
-            text = pdf_to_text(frame, file_path)  # read the pdf with pdfminer
-    else:  # user opts to read from text file
-        path = dir_filedialog()
-        file_path = filedialog.askopenfilename(initialdir=path,
-                                               filetypes=[("text files", "*.txt")])  # get the pdf file
-        new_file_path = pdf_converter_path_generator(file_path, "_kbpc", ".csv")  # generate csv file name and path
-        short_file_name = pdf_converter_short_name(new_file_path)
-        # if the file path already exist - ask for confirmation
-        if os.path.exists(new_file_path):
-            if not messagebox.askokcancel(
-                    "Possible File Name Discrepancy",
-                    "There is already a file named {}. If you proceed, the file will be overwritten. "
-                    "Did you want to proceed?".format(short_file_name),
-                    parent=frame):
-                return
-        gen_raw_report = "off"  # since you are reading a raw report, turn off the generator
-        with open(file_path, 'r') as file:  # read the txt file and put it in the text variable
-            text = file.read()
-    # put the raw output from the pdf conversion into a text file
-    if gen_raw_report == "on":
-        kbpc_raw_rpt_file_path = pdf_converter_path_generator \
-            (file_path, "_raw_kbpc", ".txt")  # generate csv file name and path
-        kbpc_raw_rpt = open(kbpc_raw_rpt_file_path, "w")
-        kbpc_raw_rpt.write("KLUSTERBOX PDF CONVERSION REPORT \n\n")
-        kbpc_raw_rpt.write("Raw output from pdf miner\n\n")
-        input = "subject file: {}\n\n".format(file_path)
-        kbpc_raw_rpt.write(input)
-        kbpc_raw_rpt.write(text)
-        kbpc_raw_rpt.close()
-    # create text document for data extracted from the raw pdfminer output
-    if gen_error_report == "on":
-        kbpc_rpt_file_path = pdf_converter_path_generator(file_path, "_kbpc", ".txt")  # generate csv file name and path
-        kbpc_rpt = open(kbpc_rpt_file_path, "w")
-        kbpc_rpt.write("KLUSTERBOX PDF CONVERSION REPORT \n\n")
-        kbpc_rpt.write("Data extracted from pdfminer output and error reports\n\n")
-        input = "subject file: {}\n\n".format(file_path)
-        kbpc_rpt.write(input)
-    # define csv writer parameters
-    csv.register_dialect('myDialect',
-                         delimiter=',',
-                         quoting=csv.QUOTE_NONE,
-                         skipinitialspace=True,
-                         lineterminator="\r"
-                         )
-    # create the csv file and write the first line
-    line = ["TAC500R3 - Employee Everything Report"]
-    with open(new_file_path, 'w') as writeFile:
-        writer = csv.writer(writeFile, dialect='myDialect')
-        writer.writerow(line)
-    # define csv writer parameters
-    csv.register_dialect('myDialect',
-                         delimiter=',',
-                         quoting=csv.QUOTE_ALL,
-                         skipinitialspace=True,
-                         lineterminator=",\r"
-                         )
-    line = ["YrPPWk", "Finance No", "Organization Name", "Sub-Unit", "Employee Id", "Last Name", "FI", "MI",
-            "Pay Loc/Fin Unit", "Var. EAS", "Borrowed", "Auto H/L", "Annual Lv Bal", "Sick Lv Bal", "LWOP Lv Bal",
-            "FMLA Hrs", "FMLA Used", "SLDC Used", "Job", "D/A", "LDC", "Oper/Lu", "RSC", "Lvl", "FLSA", "Route #",
-            "Loaned Fin #", "Effective Start", "Effective End", "Begin Tour", "End Tour", "Lunch Amt", "1261 Ind",
-            "Lunch Ind", "Daily Sched Ind", "Time Zone", "FTF", "OOS", "Day", ]
-    with open(new_file_path, 'a') as writeFile:
-        writer = csv.writer(writeFile, dialect='myDialect')
-        writer.writerow(line)
-    text = text.replace("", "")
-    page = text.split("")  # split the document into pages
-    # whole_line = []
-    page_num = 1  # initialize var to count pages
-    eid_count = 0  # initialize var to count underscore dash items
-    # underscore_slash = []  # arrays for building daily array
-    daily_underscoreslash = []
-    mv_holder = []
-    time_holder = []
-    timezone_holder = []
-    finance_holder = []
-    foundday_holder = []
-    daily_array = []
-    franklin_array = []
-    mv_desigs = ("BT", "MV", "ET", "OT", "OL", "IL", "DG")
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    saved_pp = ""  # hold the pp to identify if it changes
-    pp_days = []  # array of date/time objs for each day in the week
-    found_days = []  # array for holding days worked
-    base_time = []  # array for holding hours worked during the day
-    eid = ""  # hold the employee id
-    lastname = ""  # holds the last name of the employee
-    fi = ""
-    jobs = []  # holds the d/a code
-    routes = []  # holds the route
-    level = []  # hold the level (one or two normally)
-    base_temp = ("Base", "Temp")
-    eid_label = False
-    lookforname = False
-    lookforfi = False
-    lookforroute = False
-    lookfor2route = False
-    lookforlevel = False
-    lookfor2level = False
-    base_counter = 0
-    base_chg = 0
-    lookfortimes = False
-    unprocessedrings = ""
-    new_page = False
-    unprocessed_counter = 0
-    mcgrath_indicator = False
-    mcgrath_carryover = ""
-    rod_rpt = []  # error reports
-    frank_rpt = []
-    rose_rpt = []
-    robert_rpt = []
-    stevens_rpt = []
-    carroll_rpt = []
-    nguyen_rpt = []
-    salih_rpt = []
-    unruh_rpt = []
-    mcgrath_rpt = []
-    unresolved = []
-    basecounter_error = []
-    failed = []
-    daily_array_days = []  # build an array of formatted days with just month/ day
-    result = re.search('Restricted USPS T&A Information(.*?)Employee Everything Report', page[0], re.DOTALL)
-    try:
-        station = result.group(1).strip()
-    except:
-        messagebox.showerror("Klusterbox PDF Converter",
-                             "This file does not appear to be an Employee Everything Report. \n\n"
-                             "The PDF Converter will not generate a file",
-                             parent=frame)
-        os.remove(new_file_path)
-        if gen_error_report == "on":
-            kbpc_rpt.close()
-            os.remove(kbpc_rpt_file_path)
-        if gen_raw_report == "on":
-            os.remove(kbpc_raw_rpt_file_path)
-        return
-    # start the progress bar
-    pb_root = Tk()  # create a window for the progress bar
-    pb_root.geometry("%dx%d+%d+%d" % (450, 75, 200, 300))
-    pb_root.title("Klusterbox PDF Converter - translating pdf")
-    titlebar_icon(pb_root)  # place icon in titlebar
-    Label(pb_root, text="This process takes several minutes. Please wait for results.").pack(anchor="w", padx=20)
-    pb_label = Label(pb_root, text="Translating PDF: ")  # make label for progress bar
-    pb_label.pack(anchor="w", padx=20)
-    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-    pb.pack(anchor="w", padx=20)
-    pb["maximum"] = len(page) - 1  # set length of progress bar
-    pb.start()
-    pb_count = 0
-    for a in page:
-        if gen_error_report == "on":
-            kbpc_rpt.write(
-                "\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n")
-        if a[0:6] == "Report" or a[0:6] == "":
-            pass
-        else:
-            if gen_error_report == "on":
-                kbpc_rpt.write("Out of Sequence Problem!\n")
-            eid_count = 0
-        if gen_error_report == "on":
-            input = "Page: {}\n".format(page_num)
-            kbpc_rpt.write(input)
-        try:  # if the page has no station information, then break the loop.
-            result = re.search("Restricted USPS T&A Information(.*)Employee Everything Report", a, re.DOTALL)
-            station = result.group(1).strip()
-            station = station.split('\n')[0]
-            if len(station) == 0:
-                result = re.search("Employee Everything Report(.*)Weekly", a, re.DOTALL)
-                station = result.group(1).strip()
-                station = station.split('\n')[0]
-        except:
-            break
-        # get the pay period
-        try:
-            result = re.search("YrPPWk:\nSub-Unit:\n\n(.*)\n", a)
-            yyppwk = result.group(1)
-        except:
-            try:
-                result = re.search("YrPPWk:\n\n(.*)\n\nFin. #:", a)
-                yyppwk = result.group(1)
-            except:
-                try:
-                    result = re.findall(r'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9]', text)
-                    yyppwk = result[-1]
-                except:
-                    pass
-        if saved_pp != yyppwk:
-            exploded = yyppwk.split("-")  # break up the year/pp string from the ee rpt pdf
-            year = exploded[0]  # get the year
-            if gen_error_report == "on":
-                input = "Year: {}\n".format(year)
-                kbpc_rpt.write(input)
-            pp = exploded[1]  # get the pay period
-            if gen_error_report == "on":
-                input = "Pay Period: {}\n".format(pp)
-                kbpc_rpt.write(input)
-            pp_wk = exploded[2]  # get the week of the pay period
-            if gen_error_report == "on":
-                input = "Pay Period Week: {}\n".format(pp_wk)
-                kbpc_rpt.write(input)
-            pp = pp + pp_wk  # join the pay period and the week
-            first_date = find_pp(int(year), pp)  # get the first day of the pay period
-            if gen_error_report == "on":
-                input = "{}\n".format(str(first_date))
-                kbpc_rpt.write(input)
-            pp_days = []  # build an array of date/time objects for each day in the pay period
-            daily_array_days = []  # build an array of formatted days with just month/ day
-            for _ in range(7):
-                pp_days.append(first_date)
-                daily_array_days.append(first_date.strftime("%m/%d"))
-                first_date += timedelta(days=1)
-            if gen_error_report == "on":
-                input = "Days in Pay Period: {}\n".format(pp_days)
-                kbpc_rpt.write(input)
-            saved_pp = yyppwk  # hold the year/pp to check if it changes
-        page_num += 1
-        b = a.split("\n\n")
-        for c in b:
-            # find, categorize and record daily times
-            if lookfortimes:
-                if re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}$", c):
-                    to_add = [base_counter, c]
-                    base_time.append(to_add)
-                    base_chg = base_counter  # value to check for errors+
-                # solve for robertson basetime problem / Base followed by H/L
-                elif re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}\n0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}", c):
-                    if "\n" not in c:  # check that there are no multiple times in the line
-                        to_add = [base_counter, c]
-                        base_time.append(to_add)
-                        base_chg = base_counter  # value to check for errors
-                        robert_rpt.append(lastname)  # data for robertson baseline problem
-                    elif "\n" in c:  # if there are multiple times in the line
-                        split_base = c.split("\n")  # split the times by the line break
-                        for sb in split_base:  # add each time individually
-                            to_add = [base_counter, sb]  # combine the base counter with the time
-                            base_time.append(to_add)  # add that time to the array of base times
-                            base_chg = base_counter  # value to check for errors
-                else:
-                    base_counter += 1
-                    lookfortimes = False
-            if re.match(r"Base", c):
-                lookfortimes = True
-            # solve for stevens problem / H/L base times not being read
-            if len(finance_holder) == 0 and re.match(r"H/L\s", c):  # set trap to catch daily times
-                lookfortimes = True
-                stevens_rpt.append(lastname)
-            checker = False
-            one_mistake = False
-            underscore_slash = c.split("\n")
-            for us in underscore_slash:  # loop through items to detect matches
-                if re.match(r"[0-1][0-9]\/[0-9][0-9]", us) or us == "__/__":
-                    checker = True
-                else:
-                    one_mistake = True
-            if len(underscore_slash) > 1 and checker == True and one_mistake == False:
-                daily_underscoreslash.append(underscore_slash)
-            # underscore_slash = []
-            d = c.split("\n")
-            for e in d:
-                try:
-                    # build the daily array
-                    if re.match(r"[0-9]{6}$", e) and len(movecode_holder) != 0:  # get the route following the chain
-                        movecode_holder.append(e)
-                        route_holder = movecode_holder
-                        if unprocessedrings == "":
-                            daily_array.append(route_holder)
-                        else:
-                            unprocessed_counter += 1  # handle carroll problem
-                            carroll_rpt.append(lastname)  # append carroll report
-                    movecode_holder = []
-                    if len(finance_holder) != 0:  # get the move code following the chain
-                        if re.match(r"[0-9]{4}\-[0-9]{2}$", e):
-                            finance_holder.append(e)
-                            movecode_holder = finance_holder
-                        # solve for robertson problem / "H/L" is in move code
-                        if re.match(r"H/L", e):  # if the move code is a higher level assignment
-                            finance_holder.append(e)
-                            finance_holder.append("000000")  # insert zeros for route number
-                            if unprocessedrings == "":
-                                daily_array.append(
-                                    finance_holder)  # skip getting the route and create append daily array
-                            else:
-                                unprocessed_counter += 1  # handle carroll problem
-                                carroll_rpt.append(lastname)  # append carroll report
-                    finance_holder = []
-                    if len(timezone_holder) != 0:  # get the finance number following the chain
-                        timezone_holder.append(e)
-                        finance_holder = timezone_holder
-                    timezone_holder = []
-                    if re.match(r"[A-Z]{2}T", e) and len(time_holder) != 0:  # look for the time zone following chain
-                        time_holder.append(e)
-                        timezone_holder = time_holder
-                    # solve for salih problem / missing time zone in ...
-                    elif len(time_holder) != 0 and unprocessedrings != "":
-                        unprocessed_counter += 1  # unprocessed rings
-                        salih_rpt.append(lastname)
-                    time_holder = []
-                    # look for time following date/mv desig
-                    if re.match(r" [0-2][0-9]\.[0-9][0-9]$", e) and len(date_holder) != 0:
-                        date_holder.append(e)
-                        time_holder = date_holder
-                    # look for items in franklin array to solve for franklin problem
-                    if len(franklin_array) > 0 and re.match(r"[0-1][0-9]\/[0-3][0-9]$",
-                                                            e):  # if franklin array and date
-                        frank = franklin_array.pop(0)  # pop out the earliest mv desig
-                        mv_holder = [eid, frank]
-                    # solve for rodriguez problem / multiple consecutive mv desigs
-                    if len(franklin_array) > 0:
-                        if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                                  e) or e in mv_desigs:  # look for move desig
-                            franklin_array.append(e)
-                            rod_rpt.append(lastname)
-                    date_holder = []
-                    if re.match(r"[0-1][0-9]\/[0-3][0-9]$", e) and len(
-                            mv_holder) != 0:  # look for date following move desig
-                        mv_holder.append(e)
-                        date_holder = mv_holder
-                    # solve for franklin problem: two mv desigs appear consecutively
-                    if len(mv_holder) > 0:
-                        if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                                  e) or e in mv_desigs:  # look for move desig
-                            franklin_array.append(mv_holder[1])
-                            franklin_array.append(e)
-                            frank_rpt.append(lastname)
-                    mv_holder = []
-                    if len(franklin_array) == 0:
-                        if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                                  e) or e in mv_desigs:  # look for move desig
-                            mv_holder.append(eid)
-                            mv_holder.append(e)  # place in a holder and check the next line for a date
-                    # solve for rose problem: mv desig and date appearing on same line
-                    if re.match(r"0[0-9]{4}\s[0-2][0-9]\/[0-9][0-9]$", e):
-                        rose = e.split(" ")
-                        mv_holder.append(eid)  # add the emp id to the daily array
-                        mv_holder.append(rose[0])  # add the mv desig to the daily array
-                        mv_holder.append(rose[1])  # add the date to the mv desig array
-                        date_holder = mv_holder  # transfer array items to date holder
-                        rose_rpt.append(lastname)
-                    if e in days:  # find and record all days on the report
-                        if eid_label:
-                            found_days.append(e)
-                        if not eid_label:
-                            foundday_holder.append(e)
-                    if e == "Processed Clock Rings":
-                        eid_count = 0
-                    if e == "Employee ID":
-                        eid_label = True
-                        if gen_error_report == "on":
-                            if len(jobs) > 0:
-                                input = "Jobs: {}\n".format(jobs)
-                                kbpc_rpt.write(input)
-                            if len(routes) > 0:
-                                input = "Routes: {}\n".format(routes)
-                                kbpc_rpt.write(input)
-                            if len(level) > 0:
-                                input = "Levels: {}\n".format(level)
-                                kbpc_rpt.write(input)
-                            if len(base_time) > 0:
-                                kbpc_rpt.write("Base / Times:")
-                                for bt in base_time:
-                                    input = "{}\n".format(bt)
-                                    kbpc_rpt.write(input)
-                        if len(daily_underscoreslash) > 0:  # bind all underscore slash items in one array
-                            underscore_slash_result = sum(daily_underscoreslash, [])
-                        # write to csv file
-                        prime_info = [yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
-                                      '"{}"'.format("0000"), '"{}"'.format(eid), '"{}"'.format(lastname),
-                                      '"{}"'.format(fi[:1]),
-                                      '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"',
-                                      '"0"']
-                        count = 0
-                        for array in daily_array:
-                            array.append(underscore_slash_result[count])
-                            array.append(underscore_slash_result[count + 1])
-                            count += 2
-                        if base_chg + 1 != len(found_days):  # add to basecounter error array
-                            to_add = (lastname, base_chg, len(found_days))
-                            if len(found_days) > 0:
-                                basecounter_error.append(to_add)
-                        # set up array for each day in the week
-                        csv_sat = []
-                        csv_sun = []
-                        csv_mon = []
-                        csv_tue = []
-                        csv_wed = []
-                        csv_thr = []
-                        csv_fri = []
-                        csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
-                        # reorder the found days to ensure the correct order
-                        found_days = pdf_converter_reorder_founddays(found_days)
-                        # fix problem with miscounted base times
-                        high_array = []
-                        for bt in base_time:
-                            high_array.append(bt[0])
-                        if len(high_array) > 0:
-                            high_num = max(high_array)
-                            comp_array = []
-                            for i in range(high_num + 1):
-                                comp_array.append(i)
-                            del_array = []
-                            for num in comp_array:
-                                if num in high_array:
-                                    del_array.append(num)
-                            error_array = comp_array
-                            error_array = [x for x in error_array if x not in del_array]
-                            error_array.reverse()
-                            if len(error_array) > 0:
-                                for error_num in error_array:
-                                    for bt in base_time:
-                                        if bt[0] > error_num:
-                                            bt[0] = bt[0] - 1
-                        # load the multi array with array for each day
-                        if len(foundday_holder) > 0:
-                            # solve for nguyen problem / day of week occurs prior to "employee id" label
-                            found_days = found_days + foundday_holder
-                            ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
-                                            "Friday"]
-                            for day in days:  # re order days into correct order
-                                if day not in found_days:
-                                    ordered_days.remove(day)
-                            found_days = ordered_days
-                            # foundday_holder = []
-                            nguyen_rpt.append(lastname)
-                        if len(found_days) > 0:  # printe out found days
-                            # reorder the found days to ensure the correct order
-                            found_days = pdf_converter_reorder_founddays(found_days)
-                            if gen_error_report == "on":
-                                input = "Found days: {}\n".format(found_days)
-                                kbpc_rpt.write(input)
-                        if gen_error_report == "on":
-                            input = "proto emp id counter: {}\n".format(eid_count)
-                            kbpc_rpt.write(input)
-                        for i in range(7):
-                            for bt in base_time:
-                                if found_days[bt[0]] == days[i]:
-                                    csv_output[i].append(bt)
-                            for da in daily_array:
-                                if da[2] == pp_days[i].strftime("%m/%d"):
-                                    csv_output[i].append(da)
-                        for co in csv_output:  # for each time in the array, printe a line
-                            for array in co:
-                                if gen_error_report == "on":
-                                    input = "{}\n".format(array)
-                                    kbpc_rpt.write(input)
-                                # put the data into the csv file
-                                if len(array) == 2:  # if the line comes from base/time data
-                                    add_this = [found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
-                                    whole_line = prime_info + add_this
-                                    with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
-                                        writer = csv.writer(writeFile, dialect='myDialect')
-                                        writer.writerow(whole_line)
-                                if len(array) == 10:  # if the line comes from daily array
-                                    if array[9] != "__/__":
-                                        end_notes = "(W)Ring Deleted From PC"
-                                    else:
-                                        end_notes = ""
-                                    add_this = ["000-00", '"{}"'.format(array[1]),
-                                                '"{}"'.format(
-                                                    pp_days[daily_array_days.index(array[2])].strftime(
-                                                        "%d-%b-%y").upper()),
-                                                '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]),
-                                                '"{}"'.format(array[6]),
-                                                '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
-                                                '"{}"'.format(end_notes)]
-                                    whole_line = prime_info + add_this
-                                    with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
-                                        writer = csv.writer(writeFile, dialect='myDialect')
-                                        writer.writerow(whole_line)
-                        # define csv writer parameters
-                        csv.register_dialect('myDialect',
-                                             delimiter=',',
-                                             quotechar="'",
-                                             skipinitialspace=True,
-                                             lineterminator=",\r"
-                                             )
-                        if len(jobs) > 0:
-                            for i in range(len(jobs)):
-                                base_line = [base_temp[i], '"{}"'.format(jobs[i].replace("-", "").strip()),
-                                             '"0000"', '"7220-10"',
-                                             '"Q0"', '"{}"'.format(level[i]), '"N"', '"{}"'.format(routes[i]), '""',
-                                             '"0000000"',
-                                             '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
-                                whole_line = prime_info + base_line
-                                with open(new_file_path, 'a') as writeFile:
-                                    writer = csv.writer(writeFile, dialect='myDialect')
-                                    writer.writerow(whole_line)
-                        found_days = []  # initialized arrays
-                        lookfortimes = False
-                        base_time = []
-                        eid = ""
-                        base_chg = 0
-                        base_counter = 0
-                        daily_array = []
-                        daily_underscoreslash = []
-                        unprocessed_counter = 0
-                        jobs = []
-                        level = []
-                        if gen_error_report == "on":
-                            input = "{}\n".format(e)
-                            kbpc_rpt.write(input)
-                        eid_count = 0
-                    if lookforfi:  # look for first initial
-                        if re.fullmatch("[A-Z]\s[A-Z]", e) or re.fullmatch("([A-Z])", e):
-                            if gen_error_report == "on":
-                                input = "FI: {}\n".format(e)
-                                kbpc_rpt.write(input)
-                            fi = e
-                            lookforfi = False
-                    if lookforname:  # look for the name
-                        if re.fullmatch(r"([A-Z]+)", e) \
-                                or re.fullmatch(r"([A-Z]+.[A-Z]+)", e) \
-                                or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+)", e) \
-                                or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
-                                or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
-                            lastname = e.replace("'", " ")
-                            if gen_error_report == "on":
-                                input = "Name: {}\n".format(e)
-                                kbpc_rpt.write(input)
-                            lookforname = False
-                            lookforfi = True
-                    if re.match(r"\s[0-9]{2}\-[0-9]$", e):  # find the job or d/a code - there might be two
-                        jobs.append(e)
-                    if lookfor2route:  # look for temp route
-                        if re.match(r"[0-9]{6}$", e):
-                            routes.append(e)  # add route to routes array
-                        lookfor2route = False
-                    if lookforroute:  # look for main route
-                        if re.match(r"[0-9]{6}$", e):  #
-                            routes.append(e)  # add route to routes array
-                            lookfor2route = True
-                        lookforroute = False
-                    if e == "Route #":  # set trap to catch route # on the next line
-                        lookforroute = True
-                    if lookfor2level:  # intercept the second level
-                        if re.match(r"[0-9]{2}$", e):
-                            level.append(e)
-                        lookfor2level = False
-                    if lookforlevel:  # intercept the level
-                        if re.match(r"[0-9]{2}$", e):
-                            level.append(e)
-                            lookfor2level = True  # set trap to catch the second level next line
-                        lookforlevel = False
-                    if e == "Lvl":  # set trap to catch Lvl on the next line
-                        lookforlevel = True
-                    if eid != "" and new_page == False:
-                        if re.match(r"[0-9]{8}", e):  # find the underscore dash string
-                            eid_count += 1
-                        if re.match(r"xxx\-xx\-[0-9]{4}", e):
-                            eid_count += 1
-                        if re.match(r"XXX\-XX\-[0-9]{4}", e):
-                            eid_count += 1
-                        if e == "___-___-____":
-                            eid_count += 1
-                        # solve for rose problem: time object is fused to emp id object - just increment the eid counter
-                        if re.match(r"\s[0-9]{2}\.[0-9]{10}", e) \
-                                or re.match(r"__.__[0-9]{8}", e) \
-                                or re.match(r"__._____-___-____", e):
-                            eid_count += 1
-                            rose_rpt.append(lastname)
-                    # solve for carroll problem/ unprocessed rings do not have underscore slash counterparts
-                    if e == "Un-Processed Rings":  # after unprocessed rings label, add no new rings to daily array
-                        unprocessedrings = eid
-                    if re.match(r"[0-9]{8}", e):  # find the emp id / it is the first 8 digit number on the page
-                        if eid_count == 0:
-                            eid = e
-                            if gen_error_report == "on":
-                                input = "Employee ID: {}\n".format(e)
-                                kbpc_rpt.write(input)
-                            lookforname = True
-                            if eid != unprocessedrings:  # set unprocessedrings and new_page variables
-                                unprocessedrings = ""
-                                new_page = False
-                            else:
-                                new_page = True
-                                eid_count += 1  # increment the eid counter to stop new eid from being set
-                                if gen_error_report == "on": kbpc_rpt.write("NEW PAGE!!!\n")
-                except:
-                    failed.append(lastname)
-                    input = "READING FAILURE: {}\n".format(e)
-                    kbpc_rpt.write(input)
-        if gen_error_report == "on":  # write to error report
-            input = "Station: {}\n".format(station)
-            kbpc_rpt.write(input)
-            input = "Pay Period: {}\n".format(yyppwk)
-            kbpc_rpt.write(input)  # show the pay period
-            if len(jobs) > 0:
-                input = "Jobs: {}\n".format(jobs)
-                kbpc_rpt.write(input)
-            if len(routes) > 0:
-                input = "Routes: {}\n".format(routes)
-                kbpc_rpt.write(input)
-            if len(level) > 0:
-                input = "Levels: {}\n".format(level)
-                kbpc_rpt.write(input)
-        # define csv writer parameters
-        csv.register_dialect('myDialect',
-                             delimiter=',',
-                             quotechar="'",
-                             skipinitialspace=True,
-                             lineterminator=",\r"
-                             )
-        # write to csv file
-        prime_info = [yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
-                      '"{}"'.format("0000"), '"{}"'.format(eid), '"{}"'.format(lastname), '"{}"'.format(fi[:1]),
-                      '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"', '"0"']
-        if len(jobs) > 0:
-            # if the route count is less than the jobs count, fill the route count
-            routes = PdfConverterFix(routes).route_filler(len(jobs))
-            for i in range(len(jobs)):
-                base_line = [base_temp[i], '"{}"'.format(jobs[i].replace("-", "").strip()), '"0000"', '"7220-10"',
-                             '"Q0"', '"{}"'.format(level[i]), '"N"', '"{}"'.format(routes[i]), '""', '"0000000"',
-                             '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
-                whole_line = prime_info + base_line
-                with open(new_file_path, 'a') as writeFile:
-                    writer = csv.writer(writeFile, dialect='myDialect')
-                    writer.writerow(whole_line)
-        if len(foundday_holder) > 0:
-            # solve for nguyen problem / day of week occurs prior to "employee id" label
-            found_days = found_days + foundday_holder
-            ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-            for day in days:  # re order days into correct order
-                if day not in found_days:
-                    ordered_days.remove(day)
-            found_days = ordered_days
-            # foundday_holder = []
-            nguyen_rpt.append(lastname)
-        if len(found_days) > 0:  # printe out found days
-            # reorder the found days to ensure the correct order
-            found_days = pdf_converter_reorder_founddays(found_days)
-            if gen_error_report == "on":
-                input = "Found days: {}\n".format(found_days)
-                kbpc_rpt.write(input)
-        if gen_error_report == "on":
-            input = "proto emp id counter: {}\n".format(eid_count)
-            kbpc_rpt.write(input)
-        if len(daily_underscoreslash) > 0:  # bind all underscore slash items in one array
-            underscore_slash_result = sum(daily_underscoreslash, [])
-        if mcgrath_indicator and len(underscore_slash_result) > 0:  # solve for mcgrath indicator
-            mcgrath_carryover.append(underscore_slash_result[0])  # add underscore slash to carryover
-            mcgrath_indicator = False  # reset the indicator
-            if gen_error_report == "on":
-                input = "MCGRATH CARRYOVER: {}\n".format(mcgrath_carryover)
-                kbpc_rpt.write(input)  # printe out a notice.
-            del underscore_slash_result[0]  # delete the ophan underscore slash
-        count = 0
-        for array in daily_array:
-            array.append(underscore_slash_result[count])
-            try:
-                array.append(underscore_slash_result[count + 1])
-            except:  # solve for the mcgrath problem
-                mcgrath_carryover = array
-                mcgrath_indicator = True
-                mcgrath_rpt.append(lastname)
-                if gen_error_report == "on":
-                    kbpc_rpt.write("MCGRATH ERROR DETECTED!!!\n")
-            # if mcgrath_indicator == False:
-            count += 2
-        if mcgrath_carryover in daily_array:  # if there is a carryover, remove the daily array item from the list
-            daily_array.remove(mcgrath_carryover)
-        if not mcgrath_indicator and mcgrath_carryover != "":  # if there is a carryover to be added
-            daily_array.insert(0, mcgrath_carryover)  # put the carryover at the front of the daily array
-            mcgrath_carryover = ""  # reset the carryover
-            eid_count += 1  # increment the emp id counter
-        # set up array for each day in the week
-        csv_sat = []
-        csv_sun = []
-        csv_mon = []
-        csv_tue = []
-        csv_wed = []
-        csv_thr = []
-        csv_fri = []
-        csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
-        # reorder the found days to ensure the correct order
-        found_days = pdf_converter_reorder_founddays(found_days)
-        # fix problem with miscounted base times
-        high_array = []
-        for bt in base_time:
-            high_array.append(bt[0])
-        if len(high_array) > 0:
-            high_num = max(high_array)
-            comp_array = []
-            for i in range(high_num + 1):
-                comp_array.append(i)
-            del_array = []
-            for num in comp_array:
-                if num in high_array:
-                    del_array.append(num)
-            error_array = comp_array
-            error_array = [x for x in error_array if x not in del_array]
-            error_array.reverse()
-            if len(error_array) > 0:
-                for error_num in error_array:
-                    for bt in base_time:
-                        if bt[0] > error_num:
-                            bt[0] = bt[0] - 1
-        # load the multi array with array for each day
-        for i in range(7):
-            for bt in base_time:
-                if found_days[bt[0]] == days[i]:
-                    csv_output[i].append(bt)
-            for da in daily_array:
-                if da[2] == pp_days[i].strftime("%m/%d"):
-                    csv_output[i].append(da)
-        for co in csv_output:  # for each time in the array, printe a line
-            for array in co:
-                if gen_error_report == "on":
-                    input = "{}\n".format(str(array))
-                    kbpc_rpt.write(input)
-                # put the data into the csv file
-                if len(array) == 2:  # if the line comes from base/time data
-                    add_this = [found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
-                    whole_line = prime_info + add_this
-                    with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
-                        writer = csv.writer(writeFile, dialect='myDialect')
-                        writer.writerow(whole_line)
-                if len(array) == 10:  # if the line comes from daily array
-                    if array[9] != "__/__":
-                        end_notes = "(W)Ring Deleted From PC"
-                    else:
-                        end_notes = ""
-                    add_this = ["000-00", '"{}"'.format(array[1]),
-                                '"{}"'.format(pp_days[daily_array_days.index(array[2])].strftime("%d-%b-%y").upper()),
-                                '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]), '"{}"'.format(array[6]),
-                                '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
-                                '"{}"'.format(end_notes)]
-                    whole_line = prime_info + add_this
-                    with open(new_file_path, 'a') as writeFile:  # add the line to the csv file
-                        writer = csv.writer(writeFile, dialect='myDialect')
-                        writer.writerow(whole_line)
-        # Handle Carroll problems
-        if not mcgrath_indicator:
-            if eid_count == 1:  # handle widows
-                eid_count = 0
-                if gen_error_report == "on":
-                    input = "WIDOW HANDLING: Carroll Mod emp id counter: {}\n".format(eid_count)
-                    kbpc_rpt.write(input)
-            elif eid_count % 2 != 0:  # handle eid counts where there has been a cut off
-                eid_count += 1
-                if gen_error_report == "on":
-                    input = "CUT OFF CONTROL: Carroll Mod emp id counter: {}\n".format(eid_count)
-                    kbpc_rpt.write(input)
-        else:
-            eid_count -= 1
-        eid_count = eid_count - (unprocessed_counter * 2)
-
-        if unprocessed_counter > 0:
-            if gen_error_report == "on":
-                input = "Unprocessed Rings: {}\n".format(unprocessed_counter)
-                kbpc_rpt.write(input)
-            if len(daily_array) == eid_count / 2:
-                pass
-            # Solve for Unruh error / when a underscore dash is missing after unprocessed rings
-            elif len(daily_array) == max((eid_count + 2) / 2, 0):
-                if gen_error_report == "on":
-                    input = "Unruh Mod emp id counter: {}\n".format(eid_count + 2)
-                    kbpc_rpt.write(input)
-                    kbpc_rpt.write("UNRUH PROBLEM DETECTED!!!")
-                unruh_rpt.append(lastname)
-            else:
-                if gen_error_report == "on":
-                    kbpc_rpt.write(
-                        "FRANKLIN ERROR DETECTED!!! ALERT! (Unprocessed counter)!\n")
-                unresolved.append(lastname)
-        else:
-            if len(daily_array) != max(eid_count / 2, 0):
-                if gen_error_report == "on":
-                    kbpc_rpt.write("FRANKLIN ERROR DETECTED!!! ALERT! ALERT!\n")
-                unresolved.append(lastname)
-        if base_chg + 1 != len(found_days):  # add to basecounter error array
-            to_add = (lastname, base_chg, len(found_days))
-            if len(found_days) > 0:
-                basecounter_error.append(to_add)
-        if gen_error_report == "on":
-            input = "daily array lenght: {}\n".format(len(daily_array))
-            kbpc_rpt.write(input)
-        # initialize arrays
-        found_days = []
-        foundday_holder = []
-        base_time = []
-        eid = ""
-        eid_label = False
-        # perez_switch = False
-        base_counter = 0
-        base_chg = 0
-        daily_array = []
-        daily_underscoreslash = []
-        unprocessed_counter = 0
-        jobs = []
-        routes = []
-        level = []
-        franklin_array = []
-        if gen_error_report == "on":
-            input = "emp id counter: {}\n".format(max(eid_count, 0))
-            kbpc_rpt.write(input)
-        pb["value"] = pb_count  # increment progress bar
-        pb_root.update()
-        pb_count += 1
-    # end loop
-    endtime = time.time()
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    pb_root.destroy()
-    if gen_error_report == "on":
-        kbpc_rpt.write("Potential Problem Reports _________________________________________________\n")
-        input = "runtime: {} seconds\n".format(round(endtime - starttime, 4))
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Franklin Problems: Consecutive MV Desigs \n")
-        input = "\t>>> {}\n".format(frank_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Rodriguez Problem: This is the Franklin Problem X 4. \n")
-        input = "\t>>> {}\n".format(rod_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Rose Problem: The MV Desig and date are on the same line.\n")
-        input = "\t>>> {}\n".format(rose_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Robertson Baseline Problem: The base count is jumping when H/L basetimes "
-                       "are put into the basetime array.\n")
-        input = "\t>>> {}\n".format(robert_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Stevens Problem: Basetimes begining with H/L do not show up and are "
-                       "not entered into the basetime array.\n")
-        input = "\t>>> {}\n".format(stevens_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Carroll Problem: Unprocessed rings at the end of the page do not contain __/__ or times.'n")
-        input = ">>> {}\n".format(carroll_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Nguyen Problem: Found day appears above the Emp ID.\n")
-        input = "\t>>> {}\n".format(nguyen_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("Unruh Problem: Underscore dash cut off in unprecessed rings.\n")
-        input = "\t>>> {}\n".format(unruh_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write(
-            "Salih Problem: Unprocessed rings are missing a timezone, so that unprocessed rings counter is not"
-            " incremented.\n")
-        input = "\t>>> {}\n".format(salih_rpt)
-        kbpc_rpt.write(input)
-        kbpc_rpt.write("McGrath Problem: \n")
-        input = " \t>>> {}\n".format(mcgrath_rpt)
-        kbpc_rpt.write(input)
-        input = "Unresolved: {}\n".format(unresolved)
-        kbpc_rpt.write(input)
-        input = "Base Counter Error: {}\n".format(basecounter_error)
-        kbpc_rpt.write(input)
-    if len(failed) > 0:  # create messagebox to show any errors
-        failed_daily = ""
-        for f in failed:
-            failed_daily = failed_daily + " \n " + f
-        messagebox.showerror("Klusterbox PDF Converter",
-                             "Errors have occured for the following carriers {}."
-                             .format(failed_daily),
-                             parent=frame)
-    # create messagebox for completion
-    messagebox.showinfo("Klusterbox PDF Converter",
-                        "The PDF Convertion is complete. "
-                        "The file name is {}. ".format(short_file_name),
-                        parent=frame)
-
-
 def informalc_grvchange(frame, passed_result, old_num, new_num):
     l_passed_result = [list(x) for x in passed_result]  # chg tuple of tuples to list of lists
     if messagebox.askokcancel("Grievance Number Change",
@@ -5107,6 +3901,7 @@ def informalc_check_grv(frame, grv_no, incident_start, incident_end, date_signed
 
 
 def informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats_number, description):
+    global try_absorber  # uses local variable in try statement to avoid error
     dates = [incident_start, incident_end, date_signed]
     date_ids = ("starting incident date", "ending incident date", "date signed")
     i = 0
@@ -5145,6 +3940,8 @@ def informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats
         try:
             date = datetime(int(d[2]), int(d[0]), int(d[1]))
             valid_date = True
+            if date:
+                try_absorber = True
         except ValueError:
             valid_date = False
         if not valid_date:
@@ -5230,6 +4027,7 @@ def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed
 
 
 def informalc_gen_clist(start, end, station):
+    rec = None
     end += timedelta(weeks=52)
     sql = "SELECT * FROM carriers WHERE effective_date<='%s'and station='%s' " \
           "ORDER BY carrier_name, effective_date DESC" % (end, station)
@@ -5271,6 +4069,7 @@ def informalc_addnames(grv_no, c_list, listbox):
 def informalc_root(passed_result, grv_no):
     start = None
     end = None
+    station = None
     global informalc_newroot  # initialize the global
     new_root = Tk()
     informalc_newroot = new_root  # set the global
@@ -5370,7 +4169,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
-        if hours and isfloat(hours) == False:
+        if hours and not isfloat(hours):
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Hours must be a number."
                                  .format(name, str(i + 1)),
@@ -5438,7 +4237,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()  # destroy the progress bar
             return
-        if amount and isfloat(amount) == False:
+        if amount and not isfloat(amount):
             messagebox.showerror("Data Input Error",
                                  "Input error for {} in row {}. Amounts can only be expressed as "
                                  "numbers. No special characters, such as $ are allowed.".format(name, str(i + 1)),
@@ -5494,25 +4293,25 @@ def informalc_addaward2(frame, passed_result, grv_no):
         Label(wd[3], text="Amount", fg="grey", padx=10).grid(row=3, column=3, sticky="w")
         i = 0
         r = 4
-        for re in result:
+        for res in result:
             var_id.append(StringVar(wd[0]))  # add to arrays
             var_name.append(StringVar(wd[0]))
             var_hours.append(StringVar(wd[0]))
             var_rate.append(StringVar(wd[0]))
             var_amount.append(StringVar(wd[0]))
-            Label(wd[3], text=re[2], anchor="w", width=16).grid(row=r, column=0, sticky="w",
+            Label(wd[3], text=res[2], anchor="w", width=16).grid(row=r, column=0, sticky="w",
                                                                 padx=10)  # display name widget
             Entry(wd[3], textvariable=var_hours[i], width=8).grid(row=r, column=1, padx=10)  # display hours widget
             Entry(wd[3], textvariable=var_rate[i], width=8).grid(row=r, column=2, padx=10)  # display rate widget
             Entry(wd[3], textvariable=var_amount[i], width=8).grid(row=r, column=3, padx=10)  # display amount widget
             Button(wd[3], text="delete",
-                   command=lambda id=re[1]: informalc_deletename(wd[0], passed_result, grv_no, id)) \
+                   command=lambda ident=res[1]: informalc_deletename(wd[0], passed_result, grv_no, ident)) \
                 .grid(row=r, column=4, padx=10)  # display the delete button
-            var_id[i].set(re[1])  # set the textvariables
-            var_name[i].set(re[2])
-            var_hours[i].set(re[3])
-            var_rate[i].set(re[4])
-            var_amount[i].set(re[5])
+            var_id[i].set(res[1])  # set the textvariables
+            var_name[i].set(res[2])
+            var_hours[i].set(res[3])
+            var_rate[i].set(res[4])
+            var_amount[i].set(res[5])
             r += 1
             i += 1
     Button(wd[4], text="Go Back", width=15, command=lambda: informalc_call_grvlist_result(wd[0], passed_result)) \
@@ -6007,11 +4806,12 @@ def informalc_grvlist_result(frame, result):
     rear_window(wd)
 
 
-def informalc_date_checker(frame, date, type):
+def informalc_date_checker(frame, date, typee):
+    global try_absorber  # uses local variable in try statement to avoid error
     d = date.get().split("/")
     if len(d) != 3:
         messagebox.showerror("Invalid Data Entry",
-                             "The date for the {} is not properly formatted.".format(type),
+                             "The date for the {} is not properly formatted.".format(typee),
                              parent=frame)
         return "fail"
     for num in d:
@@ -6042,6 +4842,8 @@ def informalc_date_checker(frame, date, type):
     try:
         date = datetime(int(d[2]), int(d[0]), int(d[1]))
         valid_date = True
+        if date:
+            try_absorber = True
     except ValueError:
         valid_date = False
     if not valid_date:
@@ -6840,379 +5642,187 @@ def informalc(frame):
     rear_window(wd)
 
 
-def wkly_avail(frame):  # creates a spreadsheet which shows weekly otdl availability
-    path = dir_filedialog()
-    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
-    if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
-        pass
+def pdf_converter_settings_apply(frame, error, raw, txt):
+    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (error.get(), "pdf_error_rpt")
+    commit(sql)
+    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (raw.get(), "pdf_raw_rpt")
+    commit(sql)
+    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (txt.get(), "pdf_text_reader")
+    commit(sql)
+    pdf_converter_settings(frame)
+
+
+def pdf_converter_settings(frame):
+    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
+    result = inquire(sql)
+    wd = front_window(frame)
+    Label(wd[3], text="PDF Converter Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
+        .grid(row=0, sticky="w", columnspan=4)
+    Label(wd[3], text=" ").grid(row=1, column=0)
+    Label(wd[3], text="Generate Reports for PDF Converter").grid(row=2, sticky="w", columnspan=4)
+    Label(wd[3], text=" ").grid(row=3, column=0)
+    Label(wd[3], text="Error Report", width=15, anchor="w").grid(row=4, column=0, sticky="w")
+    error_selection = StringVar(wd[3])
+    om_error = OptionMenu(wd[3], error_selection, "on", "off")  # option menu configuration below
+    om_error.grid(row=4, column=1)
+    error_selection.set(result[0][0])
+    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_raw_rpt"
+    result = inquire(sql)
+    Label(wd[3], text="Raw Output Report", width=15, anchor="w").grid(row=5, column=0, sticky="w")
+    raw_selection = StringVar(wd[3])
+    om_raw = OptionMenu(wd[3], raw_selection, "on", "off")  # option menu configuration below
+    om_raw.grid(row=5, column=1)
+    raw_selection.set(result[0][0])
+    Label(wd[3], text=" ").grid(row=6, column=0)
+    # allow user to read from a text file to bypass the pdfminer
+    Label(wd[3], text="Generate Reports from Text file").grid(row=7, sticky="w", columnspan=4)
+    Label(wd[3], text="     (where a text file of pdfminer output has been generated)") \
+        .grid(row=8, sticky="w", columnspan=4)
+    Label(wd[3], text=" ").grid(row=9, column=0)
+    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_text_reader"
+    result = inquire(sql)
+    Label(wd[3], text="Read from txt file", width=15, anchor="w").grid(row=10, column=0, sticky="w")
+    txt_selection = StringVar(wd[3])
+    om_txt = OptionMenu(wd[3], txt_selection, "on", "off")
+    om_txt.grid(row=10, column=1)  # option menu configuration below
+    txt_selection.set(result[0][0])
+    Label(wd[3], text=" ").grid(row=11, column=0)
+    if sys.platform == "darwin":  # option menu configuration
+        om_error.config(width=5)
+        om_raw.config(width=5)
+        om_txt.config(width=5)
     else:
-        messagebox.showerror("Report Generator",
-                             "The file you have selected is not a .csv or .xls file.\n"
-                             "You must select a file with a .csv or .xls extension.",
-                             parent=frame)
-        return
-    with open(file_path, newline="") as file:
-        a_file = csv.reader(file)
-        cc = 0
-        for line in a_file:
-            if cc == 0 and line[0][:8] != "TAC500R3":
-                messagebox.showwarning("File Selection Error",
-                                       "The selected file does not appear to be an "
-                                       "Employee Everything report.",
-                                       parent=frame)
-                return
-            if cc == 3:
-                tacs_pp = line[0]  # find the pay period
-                tacs_station = line[2]  # find the station
-                break
-            cc += 1
-        cc = 0
-        range_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        for line in a_file:  # find the range
-            if line[18] in range_days:
-                range_days.remove(line[18])
-            if cc == 150: break  # survey 150 lines before breaking to anaylize results.
-            cc += 1
-        if len(range_days) > 5:
-            messagebox.showwarning("File Selection Error",
-                                   "Employee Everything Reports that cover only one day /n"
-                                   "are not supported in version {} of Klusterbox.".format(version),
-                                   parent=frame)
+        om_error.config(width=5, anchor="w")
+        om_raw.config(width=5, anchor="w")
+        om_txt.config(width=5, anchor="w")
+    Button(wd[3], text="set", width=10, command=lambda:
+    pdf_converter_settings_apply(wd[0], error_selection, raw_selection, txt_selection)) \
+        .grid(row=12, column=2)
+    button = Button(wd[4])
+    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+    if sys.platform == "win32":
+        button.config(anchor="w")
+    button.pack(side=LEFT)
+    rear_window(wd)
+
+
+class PdfSplitter:
+    def __init__(self):
+        self.subject_path = None
+        self.frame = None
+        self.win = None
+        self.new_path = None
+        self.firstpage = None
+        self.lastpage = None
+
+    def get_file_path(self):  # Created for pdf splitter - gets a pdf file
+        path = dir_filedialog()  # get the pdf file
+        file_path = filedialog.askopenfilename(initialdir=path,
+                                               filetypes=[("PDF files", "*.pdf")], title="Select PDF")
+        self.subject_path.set(file_path)
+
+    def get_new_path(self):  # Created for pdf splitter - creates/overwrites a pdf file
+        path = dir_filedialog()
+        save_filename = filedialog.asksaveasfilename(initialdir=path,
+                                                     filetypes=[("PDF files", "*.pdf")], title="Overwrite/Create PDF")
+        self.new_path.set(save_filename)
+
+    # check for empty fields / return if there are any errors
+    def pdf_splitter_apply(self):
+        subject_path = self.subject_path.get().strip()
+        firstpage = self.firstpage.get()
+        lastpage = self.lastpage.get()
+        new_path = self.new_path.get().strip()
+
+        if subject_path == "":
+            messagebox.showerror("Klusterbox PDF Splitter",
+                                 "You must select a pdf file to split.",
+                                 parent=self.win.topframe)
             return
-        else:
-            t_range = True
-    year = int(tacs_pp[:-3])  # set the globals
-    pp = tacs_pp[-3:]
-    t_date = find_pp(year, pp)  # returns the starting date of the pp when given year and pay period
-    s_year = t_date.strftime("%Y")
-    s_mo = t_date.strftime("%m")
-    s_day = t_date.strftime("%d")
-    sql = "SELECT kb_station FROM station_index WHERE tacs_station = '%s'" % tacs_station
-    station = inquire(sql)  # check to see if station has match in station index
-    if not station:
-        messagebox.showwarning("Error",
-                               "This station has not been matched with Auto Data Entry.",
-                               parent=frame)
-        return
-    set_globals(s_year, s_mo, s_day, t_range, station[0][0], "None")  # set the investigation range
-    # get the otdl list from the carriers table
-    sql = "SELECT carrier_name FROM carriers WHERE effective_date <= '%s' and station = '%s' and list_status = '%s'" \
-          "ORDER BY carrier_name, effective_date desc" % (projvar.invran_date_week[6], projvar.invran_station, 'otdl')
-    results = inquire(sql)  # call function to access database
-    unique_carriers = []  # create non repeating list of otdl carriers
-    for name in results:
-        if name[0] not in unique_carriers:
-            unique_carriers.append(name[0])
-    wkly_list = []  # initialize arrays for data sorting
-    otdl_list = []  # pull info from ee for these carriers
-    on_list = "no"
-    station_anchor = "no"
-    for name in unique_carriers:
-        ot_wkly = []
-        sql = "SELECT emp_id FROM name_index WHERE kb_name='%s'" % name
-        results = inquire(sql)
-        if results:  # record emp id to otdl carrier info
-            ot_wkly.append(results[0][0])
-        else:  # mark otdl carriers who don't have emp id available
-            ot_wkly.append("no index")
-        sql = "SELECT effective_date,list_status,station FROM carriers " \
-              "WHERE carrier_name='%s' and effective_date<='%s'" \
-              "ORDER BY effective_date desc" % (name, projvar.invran_date_week[6])
-        results = inquire(sql)
-        ot_wkly.append(name)
-        for date in projvar.invran_date_week:  # loop for each day of the week
-            for rec in results:  # loop for each record starting from the latest
-                if rec[2] == projvar.invran_station:  # if there is a station match
-                    station_anchor = "yes"  # mark the carrier as attached to station
-                if datetime.strptime(rec[0],
-                                     '%Y-%m-%d %H:%M:%S') <= date:  # if the rec is at or earlier than investigation.
-                    if rec[1] == "otdl":  # note whether otdl or not.
-                        ot_wkly.append("otdl")
-                        on_list = "yes"
-                    else:
-                        ot_wkly.append("")
-                    break  # stop. we only want the first
-        if on_list == "yes" and station_anchor == "yes":
-            wkly_list.append(ot_wkly)  # fill in array with carrier and otdl data
-            otdl_list.append(ot_wkly[0])  # add to list of carriers who will be researched
-        on_list = "no"  # reset
-        station_anchor = "no"  # reset
-    not_indexed = []
-    for name in wkly_list:  # check to see if there are any otdl carriers who do not have a rec in name index
-        if name[0] == "no index":
-            not_indexed.append(name[1])  # add any names who do not into an array
-    if len(not_indexed) != 0:  # message box info that some otdl do not have a record in the name index
-        messagebox.showwarning("Missing Data",
-                               "There are {} name/s which have not been matched with their employee id."
-                               " Please exit and run the Auto Data Entry Feature to ensure that all carriers have "
-                               " employee ids entered into Klusterbox.".format(len(not_indexed)),
-                               parent=frame)
-    if len(otdl_list) == 0:
-        messagebox.showwarning("Empty OTDL",
-                               "Klusterbox has no records of any otdl carriers for {} station "
-                               "for the week of {}. This could mean that: \n1. The carrier list is empty. Run the "
-                               "Automatic Data Entry Feature, selecting the Employee Everything Report you used here "
-                               " to remedy this. You do not have to enter the rings data at the final step "
-                               " \n2. The Name Index which matches the carrier name to the employee id "
-                               "empty. As in #1, run the Automatic Data Entry Feature to fix this.\n3. "
-                               "The carrier list has no otdl carriers "
-                               "designated. Use the Multi Input Feature to designate otdl carriers. \n"
-                               "This Weekly Availability Report can not be generated without a list of otdl carriers. "
-                               "Build the carrier list/otdl before re-running Weekly Availability."
-                               .format(projvar.invran_station, projvar.invran_date_week[0].strftime("%b %d, %Y")),
-                               parent=frame)
-        MainFrame().start(frame=frame)
-    else:  # if there is an otdl then build array holding hours for each day
-        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-        extra_hour_codes = ("49", "52", "55", "56", "57", "58", "59", "60")
-        running_total = 0
-        with open(file_path, newline="") as file:
-            a_file = csv.reader(file)
-            cc = 0
-            all_otdl = []
-            good_id = "no"
-            day_over = "empty"
-            long_day = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-            sat = 0
-            sun = 0
-            mon = 0
-            tue = 0
-            wed = 0
-            thr = 0
-            fri = 0
-            day_run = [sat, sun, mon, tue, wed, thr, fri]
-            for line in a_file:
-                if cc != 0 and line[4].zfill(8) in otdl_list:  # if the emp_id matches ones we are looking for
-                    if line[18] == "Base" and good_id != "no":
-                        sql = "SELECT kb_name FROM name_index WHERE emp_id='%s'" % good_id
-                        result = inquire(sql)  # get the kb name with the emp id
-                        all_day_run = []
-                        for i in range(7):
-                            all_day_run.append(day_run[i])
-                        to_add = ([result[0][0]] + all_day_run + [day_over])
-                        all_otdl.append(to_add)
-                        for i in range(len(long_day)):
-                            day_run[i] = 0  # empty each day in day run
-                        day_over = "empty"  # reset
-                        running_total = 0  # reset
-                    # find first line of specific carrier
-                    if line[18] == "Base" and line[19] in ("844", "134", "434"):
-                        good_id = line[4].zfill(8)  # remember id of carriers who are FT or aux carriers
-                    if good_id == line[4].zfill(8) and line[18] != "Base":
-                        if line[18] in days:  # get the hours for each day
-                            spt_20 = line[20].split(':')  # split to get code and hours
-                            hr_type = spt_20[0][1] + spt_20[0][2]  # parse hour code to 2 digits
-                            if hr_type in extra_hour_codes:  # if hr_type in hr_codes:
-                                running_total += float(spt_20[1])
-                                i = 0
-                                for ld in long_day:
-                                    if ld == line[18]:
-                                        day_run[i] += float(spt_20[1])
-                                    i += 1
-                            if day_over == "empty" and running_total > 60:
-                                day_over = line[18]
-                cc += 1
-        # add to the all_otdl for the final carrier after the last line of the file is read
-        if good_id != "no":
-            sql = "SELECT kb_name FROM name_index WHERE emp_id='%s'" % good_id
-            result = inquire(sql)  # get the kb name with the emp id
-            all_day_run = []  # gets the total hours for each day
-            for i in range(7):
-                all_day_run.append(day_run[i])
-            to_add = ([result[0][0]] + all_day_run + [day_over])  # add name, daily totals, day over
-            all_otdl.append(to_add)
-        all_otdl.sort(key=itemgetter(0))  # sort the all otdl array by carrier name
-        # define spreadsheet cell formats
-        bd = Side(style='thin', color="80808080")  # defines borders
-        ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=14))
-        date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=10))
-        date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=10),
-                                    alignment=Alignment(horizontal='right'))
-        col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=10),
-                                alignment=Alignment(horizontal='center'))
-        col_name = NamedStyle(name="col_name", font=Font(bold=True, name='Arial', size=10),
-                              alignment=Alignment(horizontal='left'))
-        col_mod = NamedStyle(name="col_mod", font=Font(bold=True, name='Arial', size=10),
-                             alignment=Alignment(horizontal='center'),
-                             fill=PatternFill(fgColor='FFFFE0', fill_type='solid'),
-                             border=Border(left=bd, top=bd, right=bd, bottom=bd))
-        input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=10),
-                                border=Border(left=bd, top=bd, right=bd, bottom=bd))
-        input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=10),
-                             border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                             alignment=Alignment(horizontal='right'))
-        calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=10),
-                           border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                           fill=PatternFill(fgColor='FFFFE0', fill_type='solid'),
-                           alignment=Alignment(horizontal='right'))
-        wb = Workbook()  # define the workbook
-        wkly_total = wb.active  # create first worksheet
-        wkly_total.title = "over_60"  # title first worksheet
-        cell = wkly_total.cell(row=1, column=1)
-        cell.value = "Weekly Availability Summary"
-        cell.style = ws_header
-        wkly_total.merge_cells('A1:E1')
-        wkly_total['A3'] = "Date:  "  # create date/ pay period/ station header
-        wkly_total['A3'].style = date_dov_title
-        range_of_dates = format(projvar.invran_date_week[0], "%A  %m/%d/%y") + " - " + \
-                         format(projvar.invran_date_week[6], "%A  %m/%d/%y")
-        wkly_total['B3'] = range_of_dates
-        wkly_total['B3'].style = date_dov
-        wkly_total.merge_cells('B3:H3')
-        date = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
-        projvar.pay_period = pp_by_date(date)
-        wkly_total['E4'] = "Pay Period:  "
-        wkly_total['E4'].style = date_dov_title
-        wkly_total.merge_cells('E4:F4')
-        wkly_total['G4'] = projvar.pay_period
-        wkly_total['G4'].style = date_dov
-        wkly_total.merge_cells('G4:H4')
-        wkly_total['A4'] = "Station:  "
-        wkly_total['A4'].style = date_dov_title
-        wkly_total['B4'] = projvar.invran_station
-        wkly_total['B4'].style = date_dov
-        wkly_total.merge_cells('B4:D4')
-        oi = 6
-        # column headers - first row
-        wkly_total["A" + str(oi)] = "carrier name"  # carrier name
-        wkly_total["B" + str(oi)] = "sat"
-        wkly_total["C" + str(oi)] = "sun"
-        wkly_total["D" + str(oi)] = "mon"
-        wkly_total["E" + str(oi)] = "tue"
-        wkly_total["F" + str(oi)] = "wed"
-        wkly_total["G" + str(oi)] = "thr"
-        wkly_total["H" + str(oi)] = "fri"
-        wkly_total["I" + str(oi)] = "day over"  # the day of the violation
-        # column headers - second row
-        wkly_total["B" + str(oi + 1)] = "cumulative totals"
-        wkly_total.merge_cells('B7:H7')
-        wkly_total["I" + str(oi + 1)] = "to 60"  # the day of the violation
-        # format headers
-        wkly_total["A" + str(oi)].style = col_name
-        wkly_total["B" + str(oi)].style = col_header
-        wkly_total["C" + str(oi)].style = col_header
-        wkly_total["D" + str(oi)].style = col_header
-        wkly_total["E" + str(oi)].style = col_header
-        wkly_total["F" + str(oi)].style = col_header
-        wkly_total["G" + str(oi)].style = col_header
-        wkly_total["H" + str(oi)].style = col_header
-        wkly_total["I" + str(oi)].style = col_header
-        wkly_total["B" + str(oi + 1)].style = col_mod
-        wkly_total["I" + str(oi + 1)].style = col_mod
-        # column widths
-        wkly_total.column_dimensions["A"].width = 18
-        wkly_total.column_dimensions["B"].width = 7
-        wkly_total.column_dimensions["C"].width = 7
-        wkly_total.column_dimensions["D"].width = 7
-        wkly_total.column_dimensions["E"].width = 7
-        wkly_total.column_dimensions["F"].width = 7
-        wkly_total.column_dimensions["G"].width = 7
-        wkly_total.column_dimensions["H"].width = 7
-        wkly_total.column_dimensions["I"].width = 10
-        oi += 2
-        for otdl in all_otdl:
-            # first of two rows
-            wkly_total["A" + str(oi)] = otdl[0]  # carrier name
-            wkly_total["B" + str(oi)] = otdl[1]
-            wkly_total["C" + str(oi)] = otdl[2]
-            wkly_total["D" + str(oi)] = otdl[3]
-            wkly_total["E" + str(oi)] = otdl[4]
-            wkly_total["F" + str(oi)] = otdl[5]
-            wkly_total["G" + str(oi)] = otdl[6]
-            wkly_total["H" + str(oi)] = otdl[7]
-            if otdl[8] == "empty":  # handle "empty" violation days
-                violation_day = ""
-            else:
-                violation_day = otdl[8]
-            wkly_total["I" + str(oi)] = violation_day  # the day of the violation
-            # format each cell with style
-            wkly_total["A" + str(oi)].style = input_name
-            wkly_total["B" + str(oi)].style = input_s
-            wkly_total["C" + str(oi)].style = input_s
-            wkly_total["D" + str(oi)].style = input_s
-            wkly_total["E" + str(oi)].style = input_s
-            wkly_total["F" + str(oi)].style = input_s
-            wkly_total["G" + str(oi)].style = input_s
-            wkly_total["H" + str(oi)].style = input_s
-            wkly_total["I" + str(oi)].style = input_s
-            # set number format for each cell
-            wkly_total["B" + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["C" + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["D" + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["E" + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["F" + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["G" + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["H" + str(oi)].number_format = "#,###.00;[RED]-#,###.00"
-            # second of two rows - incluces running totals
-            formula = "=%s!B%s" % ('over_60', str(oi))
-            wkly_total["B" + str(oi + 1)] = formula
-            formula = "=SUM(%s!C%s+%s!B%s)" % ('over_60', str(oi), 'over_60', str(oi + 1))
-            wkly_total["C" + str(oi + 1)] = formula
-            formula = "=SUM(%s!D%s+%s!C%s)" % ('over_60', str(oi), 'over_60', str(oi + 1))
-            wkly_total["D" + str(oi + 1)] = formula
-            formula = "=SUM(%s!E%s+%s!D%s)" % ('over_60', str(oi), 'over_60', str(oi + 1))
-            wkly_total["E" + str(oi + 1)] = formula
-            formula = "=SUM(%s!F%s+%s!E%s)" % ('over_60', str(oi), 'over_60', str(oi + 1))
-            wkly_total["F" + str(oi + 1)] = formula
-            formula = "=SUM(%s!G%s+%s!F%s)" % ('over_60', str(oi), 'over_60', str(oi + 1))
-            wkly_total["G" + str(oi + 1)] = formula
-            formula = "=SUM(%s!H%s+%s!G%s)" % ('over_60', str(oi), 'over_60', str(oi + 1))
-            wkly_total["H" + str(oi + 1)] = formula
-            formula = "=MAX(60-%s!H%s,0)" % ('over_60', str(oi + 1))
-            wkly_total["I" + str(oi + 1)] = formula
-            # format each cell of the second row
-            wkly_total["B" + str(oi + 1)].style = calcs
-            wkly_total["C" + str(oi + 1)].style = calcs
-            wkly_total["D" + str(oi + 1)].style = calcs
-            wkly_total["E" + str(oi + 1)].style = calcs
-            wkly_total["F" + str(oi + 1)].style = calcs
-            wkly_total["G" + str(oi + 1)].style = calcs
-            wkly_total["H" + str(oi + 1)].style = calcs
-            wkly_total["I" + str(oi + 1)].style = calcs
-            # set number format for each cell
-            wkly_total["B" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["C" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["D" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["E" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["F" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["G" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["H" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            wkly_total["I" + str(oi + 1)].number_format = "#,###.00;[RED]-#,###.00"
-            oi += 2
-        if len(not_indexed) > 0:
-            wkly_total["A" + str(oi)] = "Carriers not included (not in name index):"
-            wkly_total.merge_cells('A' + str(oi) + ':D' + str(oi))
-            oi += 1
-            for name in not_indexed:
-                wkly_total['A' + str(oi)] = name
-                wkly_total.merge_cells('A' + str(oi) + ':D' + str(oi))
-                oi += 1
-        # name the excel file
-        xl_filename = "kb_wa" + str(format(projvar.invran_date_week[0], "_%y_%m_%d")) + ".xlsx"
-        ok = messagebox.askokcancel("Spreadsheet generator",
-                                    "Do you want to generate a spreadsheet?",
-                                    parent=frame)
-        if ok:
-            try:
-                wb.save(dir_path('weekly_availability') + xl_filename)
-                messagebox.showinfo("Spreadsheet generator",
-                                    "Your spreadsheet was successfully generated. \n"
-                                    "File is named: {}".format(xl_filename),
-                                    parent=frame)
+        if new_path == "":
+            messagebox.showerror("Klusterbox PDF Splitter",
+                                 "You must designate a destination"
+                                 " and a name for the df file you are creating.",
+                                 parent=self.win.topframe)
+            return
+        # if the last characters are not .pdf then add the extension
+        if new_path[-4:] != ".pdf":
+            new_path = new_path + ".pdf"
+        if firstpage > lastpage:
+            messagebox.showerror("Klusterbox PDF Splitter",
+                                 "The First Page of the document can not be "
+                                 "higher than the Last Page.",
+                                 parent=self.win.topframe)
+            return
+        try:
+            pdf = PdfFileReader(subject_path, True)
+            pdf_writer = PdfFileWriter()
+            for page in range(firstpage - 1, lastpage):
+                pdf_writer.addPage(pdf.getPage(page))
+            with open(new_path, 'wb') as out:
+                pdf_writer.write(out)
+            if messagebox.askokcancel("Klusterbox PDF Splitter",
+                                      "PDF file has been split sucessfully."
+                                      "Do you want to open the pdf file?",
+                                      parent=self.win.topframe):
                 if sys.platform == "win32":
-                    os.startfile(dir_path('weekly_availability') + xl_filename)
+                    os.startfile(new_path)
                 if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/weekly_availability/' + xl_filename])
+                    subprocess.call(["xdg-open", new_path])
                 if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('weekly_availability') + xl_filename])
-            except PermissionError:
-                messagebox.showerror("Spreadsheet generator",
-                                     "The spreadsheet was not generated. \n"
-                                     "Suggestion: "
-                                     "Make sure that identically named spreadsheets are closed "
-                                     "(the file can't be overwritten while open).",
-                                     parent=frame)
-        MainFrame().start(frame=frame)
+                    subprocess.call(["open", new_path])
+        except PermissionError:
+            messagebox.showerror("Klusterbox PDF Splitter",
+                                 "The PDF splitting has failed. \n"
+                                 "It could be that that the pages set to be split don't exist \n"
+                                 "or \n"
+                                 "the pdf can't be split by this program due to formatting issues. \n"
+                                 "For better results try www.sodapdf.com, google chrome or Adobe Acrobat "
+                                 "Pro DC",
+                                 parent=self.win.topframe)
+
+    def run(self, frame):  # PDF Splitter
+        self.win = MakeWindow()
+        self.win.create(frame)
+        Label(self.win.body, text="PDF Splitter", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=1, column=1, columnspan=4, sticky="w")
+        Label(self.win.body, text="").grid(row=2)
+        Label(self.win.body, text="Select pdf file you want to split:") \
+            .grid(row=3, column=1, columnspan=4, sticky="w")
+        self.subject_path = StringVar(self.win.body)
+        Entry(self.win.body, textvariable=self.subject_path, width=macadj(95, 50)).grid(row=4, column=1, columnspan=4)
+        Button(self.win.body, text="Select", width="10", command=lambda: self.get_file_path()) \
+            .grid(row=5, column=1, sticky="w")
+        Label(self.win.body, text="").grid(row=6)
+        Label(self.win.body, text="Select range of pages you want to use to create the new file:") \
+            .grid(row=7, column=1, columnspan=4, sticky="w")
+        Label(self.win.body, text="First Page:  ").grid(row=8, column=1, sticky="e")
+        self.firstpage = IntVar(self.win.body)
+        Entry(self.win.body, textvariable=self.firstpage, width=8).grid(row=8, column=2, sticky="w")
+        self.firstpage.set(1)
+        Label(self.win.body, text="Last Page:  ").grid(row=9, column=1, sticky="e")
+        self.lastpage = IntVar(self.win.body)
+        Entry(self.win.body, textvariable=self.lastpage, width=8).grid(row=9, column=2, sticky="w")
+        self.lastpage.set(1)
+        Label(self.win.body, text="").grid(row=10)
+        Label(self.win.body, text="Select pdf file you want to over write or a create a new file:") \
+            .grid(row=11, column=1, columnspan=4, sticky="w")
+        self.new_path = StringVar(self.win.body)
+        Entry(self.win.body, textvariable=self.new_path, width=macadj(95, 50)) \
+            .grid(row=12, column=1, columnspan=4, sticky="w")
+        Button(self.win.body, text="Select", width="10", command=lambda: self.get_new_path()) \
+            .grid(row=13, column=1, sticky="w")
+        Label(self.win.body, text="").grid(row=14)
+        Label(self.win.body, text="If all fields are filled out, split the file.") \
+            .grid(row=15, column=1, columnspan=3, sticky="w")
+        Button(self.win.body, text="Split PDF", width="10",
+               command=lambda: self.pdf_splitter_apply()).grid(row=15, column=4, sticky="e")
+        button_back = Button(self.win.buttons)
+        button_back.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button_back.config(anchor="w")
+        button_back.pack(side=LEFT)
+        self.win.finish()
 
 
 def station_rec_del(frame, tacs, kb):
@@ -7293,9 +5903,10 @@ def station_index_mgmt(frame):
             Button(frame[f], text=record[1], width=macadj(30, 25), anchor="w").grid(row=0, column=1)
             to_add = Button(frame[f], text="rename", width=6)
             rename_button.append(to_add)
-            rename_button[f]['command'] = lambda frame=frame[f], tacs=record[0], kb=record[1], newname=si_newname[f], \
-                                                 button=rename_button[f]: station_index_rename\
-                (wd[0], frame, tacs, kb, newname, button, all_stations)
+            rename_button[f]['command'] =\
+                lambda passframe=frame[f], tacs=record[0], kb=record[1], newname=si_newname[f],\
+                       rbutton = rename_button[f]: station_index_rename(wd[0], passframe, tacs, kb,
+                                                                      newname, rbutton, all_stations)
             rename_button[f].grid(row=0, column=2)
             delete_button = Button(frame[f], text="delete", width=6,
                                    command=lambda tacs=record[0], kb=record[1]: station_rec_del(wd[0], tacs, kb))
@@ -7358,52 +5969,6 @@ def name_index_screen():
     wd[0].update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     mainloop()
-
-
-def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
-    days = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    mv_codes = ("BT", "MV", "ET")
-    good_jobs = ("134", "844", "434")
-    results = []
-    carrier = []
-    id_bank = []
-    aux_list = []
-    for id in to_addname:
-        id_bank.append(id[0].zfill(8))
-        if id[3] in ("auxiliary", "part time flex"):
-            aux_list.append(id[0].zfill(8))  # make an array of auxiliary carrier emp ids
-    with open(file_path, newline="") as file:
-        a_file = csv.reader(file)
-        good_id = "no"
-        for line in a_file:
-            if len(line) > 4:
-                if good_id != line[4].zfill(8) and good_id != "no":  # if new carrier or employee
-                    if good_id in aux_list:
-                        day = "None"  # ignore auxiliary carriers
-                    else:
-                        day = ee_ns_detect(carrier)  # process regular carriers
-                    to_add = (good_id, day)
-                    results.append(to_add)
-                    del carrier[:]  # empty array
-                    good_id = "no"  # reset trigger
-                if line[18] == "Base" and line[19] in good_jobs and line[4].zfill(
-                        8) in id_bank:  # find first line of specific carrier
-                    good_id = line[4].zfill(8)  # set trigger to id of carriers who are FT or aux carriers
-                    carrier.append(line)  # gather times and moves for anaylsis
-                if good_id == line[4].zfill(8) and line[18] != "Base":
-                    if line[18] in days:  # get the hours for each day
-                        carrier.append(line)  # gather times and moves for anaylsis
-                    if line[19] in mv_codes and line[32] != "(W)Ring Deleted From PC":
-                        carrier.append(line)  # gather times and moves for anaylsis
-        if good_id != "no":
-            if good_id in aux_list:
-                day = "None"  # ignore auxiliary carriers
-            else:
-                day = ee_ns_detect(carrier)  # process regular carriers
-            to_add = (good_id, day)
-            results.append(to_add)
-        del carrier[:]  # empty array
-        return results
 
 
 class AutoDataEntry:
@@ -7499,7 +6064,8 @@ class AutoDataEntry:
             results = inquire(sql)
             carriers = []
             for item in results:
-                if item not in carriers: carriers.append(item)
+                if item not in carriers:
+                    carriers.append(item)
             # create progressbar
             pb = ProgressBarDe(title="Database Maintenance", label="Updating Changes: ")
             pb.max_count(len(kb_name))
@@ -7541,7 +6107,8 @@ class AutoDataEntry:
             for line in self.parent.a_file:  # find the range
                 if line[18] in range_days:
                     range_days.remove(line[18])
-                if cc == 150: break  # survey 150 lines before breaking to anaylize results.
+                if cc == 150:
+                    break  # survey 150 lines before breaking to anaylize results.
                 cc += 1
             if len(range_days) > 5:
                 self.parent.t_range = False  # set the range
@@ -8506,8 +7073,8 @@ class AutoDataEntry:
 
         def ai5_ns_dict(self):  # create dictionary for ns day data
             results = gen_ns_dict(self.parent.file_path, self.parent.check_these)  # returns id and name
-            for id in results:  # loop to fill dictionary with ns day info
-                self.ns_dict[id[0]] = id[1]
+            for ids in results:  # loop to fill dictionary with ns day info
+                self.ns_dict[ids[0]] = id[1]
                 
         def ai5_nameindex_dict(self):  # generate dictionary for emp id to kb_name
             sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
@@ -9020,7 +7587,8 @@ class AutoDataEntry:
             and sends it to the skim weekly for further breakdown by day
             """
             self.parent.get_file()  # read the csv file
-            row_count = sum(1 for row in self.parent.a_file)  # get number of rows in csv file
+            # row_count = sum(1 for row in self.parent.a_file)  # get number of rows in csv file
+            row_count = sum(1 for _ in self.parent.a_file)  # get number of rows in csv file
             self.parent.get_file()  # read the csv file
             pb = ProgressBarDe(title="Entering Carrier Rings", label="Updating Rings: ", text="Stand by...")
             pb.max_count(int(row_count))
@@ -9171,7 +7739,8 @@ class AutoDataEntry:
         def skim_detect_nsday(self):
             # find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code
             if self.newest_carrier[2] in ("nl", "wal", "otdl"):
-                if self.day_dict[self.daily_protoarray[0]].strftime("%a") == projvar.ns_code[self.newest_carrier[3]] and \
+                if self.day_dict[self.daily_protoarray[0]].strftime("%a") == \
+                        projvar.ns_code[self.newest_carrier[3]] and \
                         float(self.daily_protoarray[2]) > 0:
                     self.c_code = "ns day"
                 else:
@@ -9209,7 +7778,8 @@ class AutoDataEntry:
                         pair = "closed"
                 if pair == "open":  # if open at end, then close it with the last ring
                     # assign move time variable and format for the last move if pair == 'open'
-                    mv_time = Convert(self.daily_protoarray[5][len(self.daily_protoarray[5]) - 1][1]).zero_or_hundredths()
+                    mv_time = \
+                        Convert(self.daily_protoarray[5][len(self.daily_protoarray[5]) - 1][1]).zero_or_hundredths()
                     self.mv_triad.append(mv_time)
                     self.mv_triad.append(route_holder)
             
@@ -9401,588 +7971,6 @@ def save_all(frame):
                         parent=frame)
 
 
-def find_move_sets(moves):
-    mv_sets = []
-    pair = "closed"
-    for line in moves:
-        if line[3] == "off" and pair == "closed":
-            mv_sets.append(line[1])
-            pair = "open"
-        if pair == "open":
-            if line[3] == "":
-                mv_sets.append(line[1])
-                pair = "closed"
-
-
-def ee_ns_detect(array):  # finds the ns day from ee reports
-    days = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    ns_candidates = ["Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    for d in days:
-        hr_52 = 0  # straight hours
-        hr_53 = 0  # overtime hours
-        hr_43 = 0  # penalty hours
-        for line in array:
-            if line[18] in ns_candidates:
-                ns_candidates.remove(line[18])
-            if line[18] == d:
-                spt_20 = line[20].split(':')  # split to get code and hours
-                if spt_20[0] == "05200":
-                    hr_52 = spt_20[1]
-                if spt_20[0] == "05300":
-                    hr_53 = spt_20[1]
-                if spt_20[0] == "04300":
-                    hr_43 = spt_20[1]
-        if float(hr_52) != 0:
-            sum = float(hr_53) + float(hr_43)
-            if float(hr_52) == round(sum, 2):
-                return d
-    if len(ns_candidates) == 1:
-        return ns_candidates[0]
-
-
-def ee_analysis(array, report):
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    hr_codes = ("52", "55", "56", "59", "60")
-    code_dict = {"52": "total ", "55": "annual", "56": "sick  ", "59": "lwop  ", "60": "lwop  "}
-    mv_codes = ("BT", "MV", "ET")
-    moves_array = []
-    for line in array:
-        if line[19] and line[19] not in mv_codes and len(moves_array) > 0:
-            find_move_sets(moves_array)  # call function to analyse moves
-            del moves_array[:]
-        # find first line of specific carrier
-        if line[18] == "Base" and line[19] == "844" \
-                or line[18] == "Base" and line[19] == "134" \
-                or line[18] == "Base" and line[19] == "434":
-            if line[19] == "844":
-                list = "aux"
-                route = ""
-                ns_day = ""
-            elif line[19] == "434":
-                list = "ptf"
-                route = ""
-                ns_day = ""
-            else:
-                list = "FT"
-                ns_day = ee_ns_detect(array)  # call function to find the ns day
-                if line[23].zfill(2) == "01":
-                    route = line[25].zfill(6)
-                    route = route[1] + route[2] + route[4] + route[5]
-                    route = Handler(route).routes_adj()
-                if line[23].zfill(2) == "02":
-                    route = "floater"
-            report.write("================================================\n")
-            report.write(line[5].lower() + ", " + line[6].lower() + "\n")  # write name
-            report.write(list + "\n")
-            if list == "FT":
-                report.write("route:" + route + "\n")
-                if ns_day is None:
-                    report.write("Klusterbox failed to detect ns day!")
-                else:
-                    report.write("ns day:" + ns_day + "\n")
-            # report.write("================================================\n")
-        if line[18] in days:
-            spt_20 = line[20].split(':')  # split to get code and hours
-            hr_type = spt_20[0][1] + spt_20[0][2]  # parse hour code to 2 digits
-            if hr_type in hr_codes:  # compare to array of hour codes
-                report.write("------------------------------------------------\n")
-                if line[18] == ns_day:  # if the day is the ns day...
-                    report.write("{}{}{}{}\n".format(line[18].ljust(12, " "), code_dict[hr_type].ljust(10, " "),
-                                                     "{0:.2f}".format(float(spt_20[1])).ljust(6, " "),
-                                                     "ns day".rjust(17, " ")))
-                else:  # if the day is NOT the ns day...
-                    report.write("{}{}{}\n".format(line[18].ljust(12, " "), code_dict[hr_type].ljust(10, " "),
-                                                   "{0:.2f}".format(float(spt_20[1])).ljust(6, " ")))
-                # report.write("------------------------------------------------\n")
-        if line[19] in mv_codes and line[32] != "(W)Ring Deleted From PC":  # printe rings
-            r_route = line[24].zfill(6)
-            r_route = r_route[1] + r_route[2] + r_route[4] + r_route[5]  # reformat route to 4 digit format
-            if route != r_route and list == "FT" and route != "floater" and r_route != "0000":
-                off_route = "off"  # marker for off route work
-            else:
-                off_route = ""  # no marker for off route work
-            # make array and call function to makes moves sets
-            mv_data = (line[19], float(line[21]), move_translator(line[23][:-4]), off_route)
-            moves_array.append(mv_data)
-            report.write(
-                "\t{}{}{}{}{}\n".format(line[19].ljust(2, " "), "{00:.2f}".format(float(line[21])).rjust(8, " "),
-                                        move_translator(line[23][:-4]).rjust(12, " "), r_route.rjust(6, " "),
-                                        off_route.rjust(6, " ")))
-    if len(moves_array) > 0:
-        # call function to analyse moves
-        find_move_sets(moves_array)
-        del moves_array[:]
-
-
-def ee_skimmer(frame):
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    mv_codes = ("BT", "MV", "ET")
-    carrier = []
-    path = dir_filedialog()
-    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
-    if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
-        with open(file_path, newline="") as file:
-            a_file = csv.reader(file)
-            cc = 0
-            good_id = "no"
-            for line in a_file:
-                if cc == 0:
-                    if line[0][:8] != "TAC500R3":
-                        messagebox.showwarning("File Selection Error",
-                                               "The selected file does not appear to be an "
-                                               "Employee Everything report.",
-                                               parent=frame)
-                        return
-                if cc == 2:
-                    pp = line[0]  # find the pay period
-                    filename = "ee_reader" + "_" + pp + ".txt"
-                    try:
-                        report = open(dir_path('ee_reader') + filename, "w")
-                    except (PermissionError, FileNotFoundError):
-                        messagebox.showwarning("Report Generator",
-                                               "The Employee Everything Report Reader "
-                                               "was not generated.",
-                                               parent=frame)
-                        return
-                    report.write("\nEmployee Everything Report Reader\n")
-                    report.write(
-                        "pay period: " + pp[:-3] + " " + pp[4] + pp[5] + "-" + pp[6] + "\n\n")  # printe pay period
-                if cc != 0:
-                    if good_id != line[4] and good_id != "no":  # if new carrier or employee
-                        ee_analysis(carrier, report)  # trigger analysis
-                        del carrier[:]  # empty array
-                        good_id = "no"  # reset trigger
-                    # find first line of specific carrier
-                    if line[18] == "Base" and line[19] in ("844", "134", "434"):
-                        good_id = line[4]  # set trigger to id of carriers who are FT or aux carriers
-                        carrier.append(line)  # gather times and moves for anaylsis
-                    if good_id == line[4] and line[18] != "Base":
-                        if line[18] in days:  # get the hours for each day
-                            carrier.append(line)  # gather times and moves for anaylsis
-                        if line[19] in mv_codes and line[32] != "(W)Ring Deleted From PC":
-                            carrier.append(line)  # gather times and moves for anaylsis
-                cc += 1
-            ee_analysis(carrier, report)  # when loop ends, run final analysis
-            del carrier[:]  # empty array
-            report.close()
-            if sys.platform == "win32":
-                os.startfile(dir_path('ee_reader') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/ee_reader/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('ee_reader') + filename])
-    else:
-        messagebox.showerror("Report Generator",
-                             "The file you have selected is not a .csv or .xls file.\n"
-                             "You must select a file with a .csv or .xls extension.",
-                             parent=frame)
-        return
-
-
-def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
-    year = sat_range.strftime("%Y")
-    pp_end = find_pp(int(year) + 1, "011")  # returns the starting date of the pp when given year and pay period
-    if sat_range >= pp_end:
-        year = int(year) + 1
-        year = str(year)
-    firstday = find_pp(int(year), "011")  # returns the starting date of the pp when given year and pay period
-    pp_finder = {}
-    for i in range(1, 27):
-        # update the dictionary
-        pp_finder[firstday] = str(i).zfill(2) + "1"
-        pp_finder[firstday + timedelta(days=7)] = str(i).zfill(2) + "2"
-        # increment the first day by two weeks
-        firstday += timedelta(days=14)
-    # in cases where there are 27 pay periods
-    if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
-        pp_finder[firstday] = "27" + "1"
-        pp_finder[firstday + timedelta(days=7)] = "27" + "2"
-    raw_pp = year.zfill(4) + pp_finder[sat_range]  # get the year/pp in a rough format
-    return raw_pp[:-3] + "-" + raw_pp[4] + raw_pp[5] + "-" + raw_pp[6]  # return formatted year/pp
-
-
-def find_pp(year, pp):  # returns the starting date of the pp when given year and pay period
-    firstday = datetime(1, 12, 22, 0, 0, 0)
-    while int(firstday.strftime("%Y")) != year - 1:
-        firstday += timedelta(weeks=52)
-        if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
-            firstday += timedelta(weeks=2)
-    pp_finder = {}
-    for i in range(1, 27):
-        # update the dictionary
-        pp_finder[str(i).zfill(2) + "1"] = firstday
-        pp_finder[str(i).zfill(2) + "2"] = firstday + timedelta(days=7)
-        # increment the first day by two weeks
-        firstday += timedelta(days=14)
-    # handle cases where there are 27 pay periods
-    if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
-        pp_finder["27" + "1"] = firstday
-        pp_finder["27" + "2"] = firstday + timedelta(days=7)
-    return pp_finder[pp]
-
-
-def move_translator(num):  # makes 721, 722 codes readable.
-    move_xlr = {"721": "to office", "722": "to street", "354": "standby", "622": "to travel", "613": "steward"}
-    if num in move_xlr:  # if the code is in the dictionary...
-        return move_xlr[num]  # translate it
-    else:  # if the code is not in the dictionary...
-        return num  # just return the code
-
-
-def max_hr(frame):  # generates a report for 12/60 hour violations
-    path = dir_filedialog()
-    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
-    day_xlr = {"Saturday": "sat", "Sunday": "sun", "Monday": "mon", "Tuesday": "tue", "Wednesday": "wed",
-               "Thursday": "thr", "Friday": "fri"}
-    leave_xlr = {"49": "owcp   ", "55": "annual ", "56": "sick   ", "58": "holiday", "59": "lwop   ", "60": "lwop   "}
-    maxhour = []
-    max_aux_day = []
-    max_ft_day = []
-    extra_hours = []
-    all_extra = []
-    adjustment = []
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    day_hours = []
-    if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
-        with open(file_path, newline="") as file:
-            a_file = csv.reader(file)
-            cc = 0
-            good_id = "no"
-            for line in a_file:
-                if cc == 0:
-                    if line[0][:8] != "TAC500R3":
-                        messagebox.showwarning("File Selection Error",
-                                               "The selected file does not appear to be an "
-                                               "Employee Everything report.",
-                                               parent=frame)
-                        return
-                if cc == 2:  # on the second line
-                    pp = line[0]  # find the pay period
-                    pp = pp.strip()  # strip whitespace out of pay period information
-                if cc != 0:  # on all but the first line
-                    if line[18] == "Base" and good_id and len(day_hours) > 0:
-                        # find fri hours for friday adjustment
-                        fri_hrs = 0
-                        for t in day_hours:  # get the friday hours
-                            if t[3] == "Friday":
-                                fri_hrs += float(t[2])
-                        # find thu hours for thursday adjustment
-                        thu_hrs = 0
-                        for t in day_hours:  # find the thursday hours
-                            if t[3] == "Thursday":
-                                thu_hrs += float(t[2])
-                        # find wed hours for wednesday adjustment
-                        wed_hrs = 0
-                        for t in day_hours:  # find the wednesday hours
-                            if t[3] == "Wednesday":
-                                wed_hrs += float(t[2])
-                        # find the weekly total by adding daily totals
-                        wkly_total = 0
-                        for t in day_hours:
-                            wkly_total += float(t[2])
-                        if wkly_total > 60:
-                            add_maxhr = (day_hours[0][0].lower(), day_hours[0][1].lower(), wkly_total)
-                            maxhour.append(add_maxhr)
-                            for item in extra_hours:  # get any extra hours codes for non-5200 hours list
-                                all_extra.append(item)
-                            # find the all adjustments
-                            if ft:
-                                # find friday adjustment
-                                fri_post_60 = float(wkly_total - 60)
-                                if fri_hrs > 12:
-                                    fri_over = fri_hrs - 12
-                                    if fri_over < fri_post_60:
-                                        fri_adj = fri_over
-                                    else:
-                                        fri_adj = fri_post_60
-                                    add_adjustment = ("fri", day_hours[0][0].lower(), day_hours[0][1].lower(), fri_adj)
-                                    adjustment.append(add_adjustment)
-                                # find the thursday adjustment
-                                thu_post_60 = float(wkly_total - 60) - fri_hrs
-                                if thu_hrs > 12 and thu_post_60 > 0:
-                                    thu_over = thu_hrs - 12
-                                    if thu_over < thu_post_60:
-                                        thu_adj = thu_over
-                                    else:
-                                        thu_adj = thu_post_60
-                                    add_adjustment = ("thu", day_hours[0][0].lower(), day_hours[0][1].lower(), thu_adj)
-                                    adjustment.append(add_adjustment)
-                                # find the wednesday adjustment
-                                wed_post_60 = float(wkly_total - 60) - fri_hrs - thu_hrs
-                                if wed_hrs > 12 and wed_post_60 > 0:
-                                    wed_over = wed_hrs - 12
-                                    if wed_over < wed_post_60:
-                                        wed_adj = wed_over
-                                    else:
-                                        wed_adj = wed_post_60
-                                    add_adjustment = (
-                                        "wed", day_hours[0][0].lower(), day_hours[0][1].lower(), wed_adj)
-                                    adjustment.append(add_adjustment)
-                        del day_hours[:]
-                        del extra_hours[:]
-                    # find first line of specific carrier
-                    if line[18] == "Base" and line[19] in ("844", "134", "434"):
-                        good_id = line[4]  # remember id of carriers who are FT or aux carriers
-                        if line[19] in ("844", "434"):
-                            ft = False
-                        else:
-                            ft = True
-                    if good_id == line[4] and line[18] != "Base":
-                        if line[18] in days:  # get the hours for each day
-                            spt_20 = line[20].split(':')  # split to get code and hours
-                            hr_type = spt_20[0][1] + spt_20[0][2]  # parse hour code to 2 digits
-                            # if hr_type in hr_codes:  # compare to array of hour codes
-                            if hr_type == "52":  # compare to array of hour codes
-                                if float(spt_20[1]) > 11.5 and not ft:
-                                    add_max_aux = (line[5].lower(), line[6].lower(), line[18], spt_20[1])
-                                    max_aux_day.append(add_max_aux)
-                                if float(spt_20[1]) > 12 and ft:
-                                    add_max_ft = (line[5].lower(), line[6].lower(), line[18], spt_20[1])
-                                    max_ft_day.append(add_max_ft)
-                                if ft:  # increment daily totals to find weekly total
-                                    add_day_hours = (line[5].lower(), line[6].lower(), spt_20[1], line[18])
-                                    day_hours.append(add_day_hours)
-                            extra_hour_codes = ("49", "55", "56", "58")  # paid leave types only , (lwop "59", "60")
-                            if hr_type in extra_hour_codes and ft:  # if there is holiday pay
-                                add_day_hours = (line[5].lower(), line[6].lower(), spt_20[1], line[18])
-                                day_hours.append(add_day_hours)
-                                add_extra_hours = (line[5].lower(), line[6].lower(), line[18], hr_type, spt_20[1])
-                                extra_hours.append(add_extra_hours)  # track non 5200 hours
-                cc += 1
-    elif file_path == "":
-        return
-    else:
-        messagebox.showerror("Report Generator",
-                             "The file you have selected is not a .csv or .xls file.\n"
-                             "You must select a file with a .csv or .xls extension.",
-                             parent=frame)
-        return
-    # find the weekly total by adding daily totals for last carrier
-    if len(day_hours) > 0:
-        wkly_total = 0
-        for t in day_hours:
-            wkly_total += float(t[2])
-        if wkly_total > 60:
-            add_maxhr = (day_hours[0][0].lower(), day_hours[0][1].lower(), wkly_total)
-            maxhour.append(add_maxhr)
-            for item in extra_hours:  # get any extra hours codes for non-5200 hours list
-                all_extra.append(item)
-        del day_hours[:]
-        del extra_hours[:]
-
-    if len(maxhour) == 0 and len(max_ft_day) == 0 and len(max_aux_day) == 0:
-        messagebox.showwarning("Report Generator",
-                               "No violations were found. "
-                               "The report was not generated.",
-                               parent=frame)
-        return
-    weekly_max = []  # array hold each carrier's hours for the week
-    daily_max = []  # array hold each carrier's sum of maximum daily hours for the week
-    if len(maxhour) > 0 or len(max_ft_day) > 0 or len(max_aux_day) > 0:
-        pp_str = pp[:-3] + "_" + pp[4] + pp[5] + "_" + pp[6]
-        filename = "max" + "_" + pp_str + ".txt"
-        report = open(dir_path('over_max') + filename, "w")
-        report.write("12 and 60 Hour Violations Report\n\n")
-        report.write("pay period: " + pp[:-3] + " " + pp[4] + pp[5] + "-" + pp[6] + "\n")  # printe pay period
-        pp_date = find_pp(int(pp[:-3]), pp[-3:])  # send year and pp to get the date
-        pp_date_end = pp_date + timedelta(days=6)  # add six days to get the last part of the range
-        report.write(
-            "week of: " + pp_date.strftime("%x") + " - " + pp_date_end.strftime("%x") + "\n")  # printe date
-        report.write("\n60 hour violations \n\n")
-        report.write("name                              total   over\n")
-        report.write("-----------------------------------------------\n")
-        if len(maxhour) == 0:
-            report.write("no violations" + "\n")
-        else:
-            diff_total = 0
-            maxhour.sort(key=itemgetter(0))
-            for item in maxhour:
-                tabs = 30 - (len(item[0]))
-                period = "."
-                period = period + (tabs * ".")
-                diff = float(item[2]) - 60
-                diff_total = diff_total + diff
-                report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2]))
-                             + "   " + "{0:.2f}".format(float(diff)).rjust(5, " ") + "\n")
-                wmax_add = (item[0], item[1], diff)
-                weekly_max.append(wmax_add)  # catch totals of violations for the week
-            report.write("\n" + "                                   total:  " + "{0:.2f}".format(float(diff_total))
-                         + "\n")
-        all_extra.sort(key=itemgetter(0))
-        report.write("\nNon 5200 codes contributing to 60 hour violations  \n\n")
-        report.write("day   name                            hr type   hours\n")
-        report.write("-----------------------------------------------------\n")
-        if len(all_extra) == 0:
-            report.write("no contributions" + "\n")
-        for i in range(len(all_extra)):
-            tabs = 28 - (len(all_extra[i][0]))
-            period = "."
-            period = period + (tabs * ".")
-            report.write(day_xlr[all_extra[i][2]] + "   " + all_extra[i][0] + ", " + all_extra[i][1] + period +
-                         leave_xlr[all_extra[i][3]] + "  " + "{0:.2f}".format(float(all_extra[i][4])).rjust(5, " ")
-                         + "\n")
-        report.write("\n\n12 hour full time carrier violations \n\n")
-        report.write("day   name                        total   over   sum\n")
-        report.write("-----------------------------------------------------\n")
-        if len(max_ft_day) == 0:
-            report.write("no violations" + "\n")
-        diff_sum = 0
-        sum_total = 0
-        max_ft_day.sort(key=itemgetter(0))
-        for i in range(len(max_ft_day)):
-            jump = "no"  # triggers an analysis of the candidates array
-            diff = float(max_ft_day[i][3]) - 12
-            diff_sum = diff_sum + diff
-            if i != len(max_ft_day) - 1:  # if the loop has not reached the end of the list
-                # if the name current and next name are the same
-                if max_ft_day[i][0] == max_ft_day[i + 1][0] and max_ft_day[i][1] == max_ft_day[i + 1][1]:
-                    jump = "yes"  # bypasses an analysis of the candidates array
-                    tabs = 24 - (len(max_ft_day[i][0]))
-                    period = "."
-                    period = period + (tabs * ".")
-                    report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] +
-                                 period + "{0:.2f}".format(
-                        float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) + "\n")
-            if jump == "no":
-                tabs = 24 - (len(max_ft_day[i][0]))
-                period = "."
-                period = period + (tabs * ".")
-                report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] + period
-                             + "{0:.2f}".format(float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) +
-                             "   " + "{0:.2f}".format(float(diff_sum)) + "\n")
-                dmax_add = (max_ft_day[i][0], max_ft_day[i][1], diff_sum)
-                daily_max.append(dmax_add)  # catch sum of daily violations for the week
-                sum_total = sum_total + diff_sum
-                diff_sum = 0
-        report.write("\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total))
-                     + "\n")
-        report.write("\n11.50 hour auxiliary carrier violations \n\n")
-        report.write("day   name                        total   over   sum\n")
-        report.write("-----------------------------------------------------\n")
-        if len(max_aux_day) == 0:
-            report.write("no violations" + "\n")
-        diff_sum = 0
-        sum_total = 0
-        max_aux_day.sort(key=itemgetter(0))
-        for i in range(len(max_aux_day)):
-            jump = "no"  # triggers an analysis of the candidates array
-            diff = float(max_aux_day[i][3]) - 11.5
-            diff_sum = diff_sum + diff
-            if i != len(max_aux_day) - 1:  # if the loop has not reached the end of the list
-                # if the current and next name are the same
-                if max_aux_day[i][0] == max_aux_day[i + 1][0] and max_aux_day[i][1] == max_aux_day[i + 1][1]:
-                    jump = "yes"  # bypasses an analysis of the candidates array
-                    tabs = 24 - (len(max_aux_day[i][0]))
-                    period = "."
-                    period = period + (tabs * ".")
-                    report.write(day_xlr[max_aux_day[i][2]] + "   " + max_aux_day[i][0] + ", "
-                                 + max_aux_day[i][1] + period + "{0:.2f}".format(float(max_aux_day[i][3]))
-                                 + "   " + "{0:.2f}".format(float(diff)) + "\n")
-            if jump == "no":
-                tabs = 24 - (len(max_aux_day[i][0]))
-                period = "."
-                period = period + (tabs * ".")
-                report.write(day_xlr[max_aux_day[i][2]] + "   " + max_aux_day[i][0] + ", "
-                             + max_aux_day[i][1] + period + "{0:.2f}".format(float(max_aux_day[i][3]))
-                             + "   " + "{0:.2f}".format(float(diff)) + "   " + "{0:.2f}".format(float(diff_sum))
-                             + "\n")
-                dmax_add = (max_aux_day[i][0], max_aux_day[i][1], diff_sum)
-                daily_max.append(dmax_add)  # catch sum of daily violations for the week
-                sum_total = sum_total + diff_sum
-                diff_sum = 0
-        report.write(
-            "\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total)) + "\n")
-        weekly_and_daily = []
-        d_max_remove = []
-        w_max_remove = []
-        # find the write the adjustments
-        # get the adjustment
-        adjustment.sort(key=itemgetter(1))
-        adj_sum = 0
-        adj_total = []
-        report.write("\nPost 60 Hour Adjustments \n\n")
-        report.write("day   name                   daily adj    total\n")
-        report.write("-----------------------------------------------\n")
-        if len(adjustment) == 0:
-            report.write("no adjustments" + "\n")
-        for i in range(len(adjustment)):
-            jump = "no"  # triggers an analysis of the adjustment array
-            adj_sum = adj_sum + adjustment[i][3]
-            if i != len(adjustment) - 1:  # if the loop has not reached the end of the list
-                # if the current and next name are the same
-                if adjustment[i][1] == adjustment[i + 1][1] and adjustment[i][2] == adjustment[i + 1][2]:
-                    jump = "yes"  # bypasses an analysis of the candidates array
-                    tabs = 24 - (len(adjustment[i][1]))
-                    period = "."
-                    period = period + (tabs * ".")
-                    report.write(adjustment[i][0] + "   " + adjustment[i][1] + ", "
-                                 + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3])) + "\n")
-            if jump == "no":
-                tabs = 24 - (len(adjustment[i][1]))
-                period = "."
-                period = period + (tabs * ".")
-                report.write(adjustment[i][0] + "   " + adjustment[i][1] + ", "
-                             + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3]))
-                             + "     " + "{0:.2f}".format(float(adj_sum))
-                             + "\n")
-                adj_add = [adjustment[i][1], adjustment[i][2], adj_sum]
-                adj_sum = 0
-                adj_total.append(adj_add)  # catch sum of adjustments for the week
-        for w_max in weekly_max:  # find the total violation
-            for d_max in daily_max:
-                if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # look for names with both weekly and daily violations
-                    wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
-                    to_add = [w_max[0], w_max[1], wk_dy_sum]
-                    weekly_and_daily.append(to_add)
-                    d_max_remove.append(d_max)
-                    w_max_remove.append(w_max)
-        weekly_max = [x for x in weekly_max if x not in w_max_remove]
-        daily_max = [x for x in daily_max if x not in d_max_remove]
-        d_max_remove = []
-        w_max_remove = []
-        for d_max in daily_max:
-            for w_max in weekly_max:
-                if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # if the names match
-                    wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
-                    to_add = [w_max[0], w_max[1], wk_dy_sum]
-                    weekly_and_daily.append(to_add)
-                    d_max_remove.append(d_max)
-                    w_max_remove.append(w_max)
-        weekly_max = [x for x in weekly_max if x not in w_max_remove]  # remove
-        daily_max = [x for x in daily_max if x not in d_max_remove]
-        joint_max = (weekly_max + daily_max + weekly_and_daily)  # add all arrays to get the final array
-        joint_max.sort(key=itemgetter(0, 1))
-        for j in joint_max:  # cycle through the totals and adjustments
-            for a in adj_total:
-                if j[0] + j[1] == a[0] + a[1]:  # if the names match
-                    j[2] = j[2] - a[2]  # subtract the adjustment from the total
-        report.write("\n\nTotal of the two violations (with adjustments)\n\n")
-        report.write("name                              total\n")
-        report.write("---------------------------------------\n")
-        if len(joint_max) == 0: report.write("no violations" + "\n")
-        great_total = 0
-        for item in joint_max:
-            tabs = 30 - (len(item[0]))
-            period = "."
-            period = period + (tabs * ".")
-            great_total = great_total + item[2]
-            report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2])).rjust(5, ".") + "\n")
-        report.write(
-            "\n" + "                           total:  " + "{0:.2f}".format(float(great_total)) + "\n")
-        report.close()
-        try:
-            if sys.platform == "win32":
-                os.startfile(dir_path('over_max') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/over_max/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('over_max') + filename])
-        except PermissionError:
-            messagebox.showerror("Report Generator",
-                                 "The report was not generated.",
-                                 parent=frame)
-
-
 def file_dialogue(folder):  # opens file folders to access generated reports
     if not os.path.isdir(folder):
         os.makedirs(folder)
@@ -10167,6 +8155,7 @@ class AboutKlusterbox:
                       "kbspreadsheets.py",
                       "kbspeedsheets.py",
                       "kbequitability.py",
+                      "kbcsv_repair.py"
                       )
         for i in range(len(sourcecode)):
             Button(self.win.body, text="read", width=macadj(7, 7),
@@ -10439,6 +8428,7 @@ def data_entry_permit_zero(frame, top, bottom):
 
 
 def auto_data_entry_settings(frame):
+    i = None
     wd = front_window(frame)  # F,S,C,FF,buttons
     r = 0
     Label(wd[3], text="Auto Data Entry Settings", font=macadj("bold", "Helvetica 18")) \
@@ -10955,7 +8945,7 @@ class SpreadsheetConfig:
         self.report_counter = 0
 
 
-def apply_tolerance(frame, tolerance, type):
+def apply_tolerance(frame, tolerance, tolerance_type):
     if not isfloat(tolerance):
         text = "You must enter a number."
         messagebox.showerror("Tolerance value entry error", text, parent=frame)
@@ -10982,12 +8972,13 @@ def apply_tolerance(frame, tolerance, type):
             if len(number[0]) > 2:
                 text = "Value cannot exceed two decimal places."
                 messagebox.showerror("Tolerance value entry error", text, parent=frame)
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (tolerance, type)
+    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (tolerance, tolerance_type)
     commit(sql)
     tolerances(frame)
 
 
 def tolerance_presets(frame, order):
+    num = None
     if order == "default":
         num = ".25"
     if order == "zero":
@@ -11636,7 +9627,7 @@ def output_tab(frame, list_carrier):
         s = Scrollbar(tabs, command=c[t].yview)  # define and bind the scrollbar with the canvas
         c[t].config(yscrollcommand=s.set, scrollregion=(0, 0, 100, 5000))  # bind the canvas with the scrollbar
         #   Enable mousewheel
-        c[t].bind("<Map>", lambda event, t=t: tab_selected(t))
+        c[t].bind("<Map>", lambda event, tb=t: tab_selected(tb))
         if sys.platform == "win32":
             c[current_tab].bind_all('<MouseWheel>',
                                     lambda event: c[current_tab].yview_scroll
@@ -11709,12 +9700,14 @@ def output_tab(frame, list_carrier):
                             ot = float(time5200)  # cal > ot
                         else:  # if carrier did not work ns day
                             ot = max(float(time5200) - float(8), 0)  # calculate overtime
-                            if ot <= float(ot_own_rt): ot = 0  # adjust sum for tolerance
+                            if ot <= float(ot_own_rt):
+                                ot = 0  # adjust sum for tolerance
                             for mt in move_totals:  # cal off route work.
                                 off_route += float(mt)
                         ot_total += ot
                         ot_off_route = min(off_route, ot)  # calculate the ot off route
-                        if ot_off_route <= float(ot_tol): ot_off_route = 0  # adjust sum for tolerance
+                        if ot_off_route <= float(ot_tol):
+                            ot_off_route = 0  # adjust sum for tolerance
                         ot_off_total += ot_off_route
                         move_count = (int(len(s_moves) / 3))  # find the number of sets of moves
                         # output to the gui
@@ -11851,7 +9844,8 @@ def output_tab(frame, list_carrier):
                                 off_route += float(mt)
                         ot_total += ot
                         ot_off_route = min(off_route, ot)  # calculate the ot off route
-                        if ot_off_route <= float(ot_tol): ot_off_route = 0  # adjust sum for tolerance
+                        if ot_off_route <= float(ot_tol):
+                            ot_off_route = 0  # adjust sum for tolerance
                         ot_off_total += ot_off_route
                         move_count = (int(len(s_moves) / 3))  # find the number of sets of moves
                         # output to the gui
@@ -11969,7 +9963,8 @@ def output_tab(frame, list_carrier):
                             aval_10 = 0.00
                         else:
                             aval_10 = max(10 - float(each[2]), 0)
-                        if aval_10 <= float(av_tol): aval_10 = 0  # adjust sum for tolerance
+                        if aval_10 <= float(av_tol):
+                            aval_10 = 0  # adjust sum for tolerance
                         aval_10_total += aval_10  # add to availability total
                         # find 12 hour availability pending code status
                         if each[4] == "light" or each[4] == "sch chg" or each[4] == "excused":
@@ -11982,7 +9977,8 @@ def output_tab(frame, list_carrier):
                             aval_12 = 0.00
                         else:
                             aval_12 = max(12 - float(each[2]), 0)
-                        if aval_12 <= float(av_tol): aval_12 = 0  # adjust sum for tolerance
+                        if aval_12 <= float(av_tol):
+                            aval_12 = 0  # adjust sum for tolerance
                         aval_12_total += aval_12  # add to availability total
                         # output to the gui
                         Label(f, text=each[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
@@ -12064,7 +10060,8 @@ def output_tab(frame, list_carrier):
                             aval_10 = 0.00
                         else:
                             aval_10 = max(10 - float(each[2]), 0)
-                        if aval_10 <= float(av_tol): aval_10 = 0  # adjust sum for tolerance
+                        if aval_10 <= float(av_tol):
+                            aval_10 = 0  # adjust sum for tolerance
                         aval_10_total += aval_10  # add to availability total
                         # find 11.5 hour availability pending code status
                         if each[4] == "light" or each[4] == "sch chg" or each[4] == "excused":
@@ -12077,7 +10074,8 @@ def output_tab(frame, list_carrier):
                             aval_115 = 0.00
                         else:
                             aval_115 = max(12 - float(each[2]), 0)
-                        if aval_115 <= float(av_tol): aval_115 = 0  # adjust sum for tolerance
+                        if aval_115 <= float(av_tol):
+                            aval_115 = 0  # adjust sum for tolerance
                         aval_115_total += aval_115  # add to availability total
                         # output to the gui
                         Label(f, text=each[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
@@ -12262,12 +10260,12 @@ class EnterRings:
         self.ot_rings_limiter = int(results[0][0])
 
     def build_page(self):
-        now_total = None
-        now_rs = None
-        now_code = None
-        now_moves = None
-        now_lv_type = None
-        now_lv_time = None
+        # now_total = None
+        # now_rs = None
+        # now_code = None
+        # now_moves = None
+        # now_lv_type = None
+        # now_lv_time = None
         day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
         frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
         color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
@@ -12467,7 +10465,7 @@ class EnterRings:
     def buttons_frame(self):
         Button(self.win.buttons, text="Submit", width=10, anchor="w",
                command=lambda: self.apply_rings(True)).pack(side=LEFT)
-        Button(self.win.buttons, text= "Apply", width=10, anchor="w",
+        Button(self.win.buttons, text="Apply", width=10, anchor="w",
                command=lambda: self.apply_rings(False)).pack(side=LEFT)
         Button(self.win.buttons, text="Go Back", width=10, anchor="w",
                command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
@@ -12584,7 +10582,7 @@ class EnterRings:
             return True  # mission accomplished
         first_move = None
         second_move = None
-        route = None
+        # route = None
         days = (self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm)
         cc = 0  # increments one for each day
         for d in days:  # check for bad inputs in moves
@@ -13655,99 +11653,6 @@ def reset(frame):  # reset initial value of globals
         MainFrame().start(frame=frame)
 
 
-def set_globals(s_year, s_mo, s_day, i_range, station, frame):
-    projvar.invran_weekly_span = i_range
-    if station == "undefined":
-        messagebox.showerror("Investigation station setting",
-                             'Please select a station.',
-                             parent=frame)
-        return
-    # error check for valid date
-    date = ""  # reference before assignment
-    try:
-        date = datetime(int(s_year), int(s_mo), int(s_day))
-    except ValueError:
-        messagebox.showerror("Investigation date/range",
-                             'The date entered is not valid.',
-                             parent=frame)
-        return
-    projvar.invran_date = date
-    wkdy_name = date.strftime("%a")
-    while wkdy_name != "Sat":  # while date enter is not a saturday
-        date -= timedelta(days=1)  # walk back the date until it is a saturday
-        wkdy_name = date.strftime("%a")
-    sat_range = date  # sat range = sat or the sat most prior
-    projvar.pay_period = pp_by_date(sat_range)
-    projvar.invran_year = int(date.strftime("%Y"))  # format that sat to form the global
-    projvar.invran_month = int(date.strftime("%m"))
-    projvar.invran_day = int(date.strftime("%d"))
-    del projvar.invran_date_week[:]  # empty out the array for the global date variable
-    d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
-    # set the projvar.invran_date_week variable
-    projvar.invran_date_week.append(d)
-    for i in range(6):
-        d += timedelta(days=1)
-        projvar.invran_date_week.append(d)
-    # define color sequence tuple
-    pat = ("blue", "green", "brown", "red", "black", "yellow")
-    # calculate the n/s day of sat/first day of investigation range
-    end_date = sat_range + timedelta(days=-1)
-    cdate = datetime(2017, 1, 7)
-    x = 0
-    if sat_range > cdate:
-        while cdate < end_date:
-            if x > 0:
-                x -= 1
-                cdate += timedelta(days=7)
-            else:
-                x = 5
-                cdate += timedelta(days=7)
-    else:
-        # IN REVERSE
-        while cdate > sat_range:
-            if x < 5:
-                x += 1
-                cdate -= timedelta(days=7)
-            else:
-                x = 0
-                cdate -= timedelta(days=7)
-    # find ns day for each day in range
-    date = sat_range
-    projvar.ns_code = {}
-    for i in range(7):
-        if i == 0:
-            projvar.ns_code[pat[x]] = date.strftime("%a")
-            date += timedelta(days=1)
-        elif i == 1:
-            date += timedelta(days=1)
-            if x > 4:
-                x = 0
-            else:
-                x += 1
-        else:
-            projvar.ns_code[pat[x]] = date.strftime("%a")
-            date += timedelta(days=1)
-            if x > 4:
-                x = 0
-            else:
-                x += 1
-    projvar.ns_code["none"] = "  "
-    if not i_range:  # if investigation range is one day
-        projvar.invran_year = int(s_year)
-        projvar.invran_month = int(s_mo)
-        projvar.invran_day = int(s_day)
-        projvar.invran_day = int(s_day)
-    projvar.ns_code["sat"] = "Sat"
-    projvar.ns_code["mon"] = "Mon"
-    projvar.ns_code["tue"] = "Tue"
-    projvar.ns_code["wed"] = "Wed"
-    projvar.ns_code["thu"] = "Thu"
-    projvar.ns_code["fri"] = "Fri"
-    projvar.invran_station = station
-    if frame != "None":
-        MainFrame().start(frame=frame)
-
-
 class MainFrame:
     def __init__(self):
         self.win = None
@@ -13906,12 +11811,28 @@ class MainFrame:
         om.config(width=macadj(40, 34))
         om.grid(row=2, column=1, columnspan=5, sticky=W)
         # set and reset buttons for investigation range
-        Button(self.invest_frame, text="Set", width=macadj(8, 9), bg=macadj("green", "SystemButtonFace"),
-               fg=macadj("white", "green"), command=lambda: set_globals(self.start_year.get(),
-               self.start_month.get(), self.start_day.get(), self.i_range.get(), self.station.get(),
-               self.win.topframe)).grid(row=2, column=6)
+        # Button(self.invest_frame, text="Set", width=macadj(8, 9), bg=macadj("green", "SystemButtonFace"),
+        #        fg=macadj("white", "green"), command=lambda: set_globals(self.start_year.get(),
+        #        self.start_month.get(), self.start_day.get(), self.i_range.get(), self.station.get(),
+        #        self.win.topframe)).grid(row=2, column=6)
+        Button(self.invest_frame, text="Set", width=macadj(8, 9),
+               bg=macadj("green", "SystemButtonFace"), fg=macadj("white", "green"),
+               command=lambda: self.make_globals(self.start_year.get(), self.start_month.get(),
+                                                     self.start_day.get(), self.i_range.get(), self.station.get(),
+                                                     self.win.topframe))\
+            .grid(row=2, column=6)
         Button(self.invest_frame, text="Reset", width=macadj(8, 9), bg=macadj("red", "SystemButtonFace"),
                fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=7)
+
+    def make_globals(self, year, month, day, i_range, station, frame):
+        set_globals(year, month, day, i_range, station, frame)
+        self.__init__()  # re initialize the class
+        self.start(frame)  # start again
+
+    def call_wkly_avail(self, frame):
+        if wkly_avail(frame):  # call the spreadsheet maker
+            self.__init__()  # if True is returned then re initialize the class
+            self.start(frame)  # start again
 
     def call_globals(self):
         msg_rear = "\n Dates must be formatted as \"mm/dd/yyyy\".\n" \
@@ -13951,7 +11872,8 @@ class MainFrame:
         invest_range = True
         if self.invran.get() == "day":
             invest_range = False
-        set_globals(breakdown.year, breakdown.month, breakdown.day, invest_range, self.station.get(), self.win.topframe)
+        self.make_globals(breakdown.year, breakdown.month, breakdown.day, invest_range, self.station.get(),
+                              self.win.topframe)
 
     def investigation_status(self):  # provide message on status of investigation range
         # Investigation date SET/NOT SET notification
@@ -13970,7 +11892,7 @@ class MainFrame:
                   .format(f_date, end_f_date, projvar.pay_period),
                   foreground="red").grid(row=3, column=0, columnspan=8, sticky="w")
 
-    def invran_not_set(self):  #investigation range is not set
+    def invran_not_set(self):  # investigation range is not set
         # Button(self.main_frame, text="Automatic Data Entry", width=30,
         #        command=lambda: call_indexers(self.win.topframe)).grid(row=0, column=1, pady=5)
         Button(self.main_frame, text="Automatic Data Entry", width=30,
@@ -14075,7 +11997,7 @@ class MainFrame:
         basic_menu.add_command(label="About Klusterbox", command=lambda: AboutKlusterbox().start(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="View Out of Station",
-                               command=lambda: set_globals(self.start_year.get(), self.start_month.get(),
+                               command=lambda: self.make_globals(self.start_year.get(), self.start_month.get(),
                                                            self.start_day.get(), self.i_range.get(),
                                                            "out of station", self.win.topframe))
         basic_menu.add_separator()
@@ -14098,10 +12020,10 @@ class MainFrame:
         automated_menu.add_separator()
         automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(self.win.topframe))
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
-        automated_menu.add_command(label="Weekly Availability", command=lambda: wkly_avail(self.win.topframe))
+        automated_menu.add_command(label="Weekly Availability", command=lambda: self.call_wkly_avail(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(self.win.topframe))
-        automated_menu.add_command(label="PDF Splitter", command=lambda: pdf_splitter(self.win.topframe))
+        automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
         menubar.add_cascade(label="Readers", menu=automated_menu)
         # reports menu
         reports_menu = Menu(menubar, tearoff=0)
@@ -14259,7 +12181,7 @@ if __name__ == "__main__":
     global skippers
     global current_tab
     global pb_flag
-    global ade_flag
+    global try_absorber  # uses local variable in try statement to avoid error
     setup_plaformvar()   # set up platform variable
     setup_dirs_by_platformvar()  # create directories if they don't exist
     DataBase().setup()  # set up the database
