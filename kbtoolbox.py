@@ -4,6 +4,7 @@ import projvar
 import os
 import sys
 import sqlite3
+import csv
 from datetime import datetime, timedelta
 
 
@@ -186,7 +187,6 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
                              parent=frame)
         return
     # error check for valid date
-    # date = ""  # reference before assignment
     try:
         date = datetime(int(s_year), int(s_mo), int(s_day))
     except ValueError:
@@ -267,8 +267,6 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
     projvar.ns_code["thu"] = "Thu"
     projvar.ns_code["fri"] = "Fri"
     projvar.invran_station = station
-    # if frame != "None":
-    #     MainFrame().start(frame=frame)
 
 
 class CarrierRecSet:
@@ -685,6 +683,32 @@ def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
             results.append(to_add)
         del carrier[:]  # empty array
         return results
+
+
+def ee_ns_detect(array):  # finds the ns day from ee reports
+    days = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+    ns_candidates = ["Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    for d in days:
+        hr_52 = 0  # straight hours
+        hr_53 = 0  # overtime hours
+        hr_43 = 0  # penalty hours
+        for line in array:
+            if line[18] in ns_candidates:
+                ns_candidates.remove(line[18])
+            if line[18] == d:
+                spt_20 = line[20].split(':')  # split to get code and hours
+                if spt_20[0] == "05200":
+                    hr_52 = spt_20[1]
+                if spt_20[0] == "05300":
+                    hr_53 = spt_20[1]
+                if spt_20[0] == "04300":
+                    hr_43 = spt_20[1]
+        if float(hr_52) != 0:
+            summ = float(hr_53) + float(hr_43)
+            if float(hr_52) == round(summ, 2):
+                return d
+    if len(ns_candidates) == 1:
+        return ns_candidates[0]
 
 
 class BuildPath:

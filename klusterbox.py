@@ -6,7 +6,7 @@ from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
-from kbcsv_reader import max_hr, ee_skimmer, wkly_avail
+from kbcsv_reader import max_hr, ee_skimmer  #, wkly_avail
 from kbpdfhandling import pdf_converter
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
@@ -6980,8 +6980,6 @@ class AutoDataEntry:
             else:
                 frame = self.win.topframe  # prevent the object from being obliterated by rerunning __init__
                 self.__init__(self.parent)  # re initialize the child class
-                # self.re_init(self.parent)  # re initialize the child class
-                # self.run(self.win.topframe)
                 self.run(frame)
 
         def ai4_date(self):  # get the effective date
@@ -7074,7 +7072,7 @@ class AutoDataEntry:
         def ai5_ns_dict(self):  # create dictionary for ns day data
             results = gen_ns_dict(self.parent.file_path, self.parent.check_these)  # returns id and name
             for ids in results:  # loop to fill dictionary with ns day info
-                self.ns_dict[ids[0]] = id[1]
+                self.ns_dict[ids[0]] = ids[1]
                 
         def ai5_nameindex_dict(self):  # generate dictionary for emp id to kb_name
             sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
@@ -7491,8 +7489,6 @@ class AutoDataEntry:
         def __init__(self, parent):
             self.parent = parent
             self.frame = None
-            self.allow_zero_top = None
-            self.allow_zero_bottom = None
             self.skippers = None
             self.days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             self.mv_codes = ("BT", "MV", "ET")
@@ -7535,7 +7531,7 @@ class AutoDataEntry:
         def run(self, frame):
             self.frame = frame
             self.skim_configs()  # get configuration settings
-            carrier_list_cleaning_for_auto_skimmer(self.frame)
+            carrier_list_cleaning_for_auto_skimmer(self.frame, msgbox=False)
             self.skim_day_dict()  # make a dictionary for each day in the week
             if not self.skim_check_csv():  # checks for employee everything report
                 self.parent.go_back(self.frame)  # quit and return to main screen
@@ -7552,12 +7548,6 @@ class AutoDataEntry:
                     self.parent.go_back(self.frame)  # quit and return to main screen
 
         def skim_configs(self):  # get configuration settings
-            sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_top"
-            result = inquire(sql)
-            self.allow_zero_top = result[0][0]
-            sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_bottom"
-            result = inquire(sql)
-            self.allow_zero_bottom = result[0][0]
             sql = "SELECT code FROM skippers"  # get skippers data from dbase
             results = inquire(sql)
             self.skippers = []  # fill the array for skippers
@@ -7632,17 +7622,14 @@ class AutoDataEntry:
                 result = self.skim_check_nameindex()  # get the carriers employee id number
                 if result:  # if there is an employee id number in the name index, then continue
                     if self.skim_check_carriers(result):  # get the kb name which correlates to the emp id
-                        self.skim_detect_nsday()  # find the ns day for the carrier
+                        # self.skim_detect_nsday()  # find if the day is an ns day
                         self.skim_get_routes()  # create an array of the carrier's routes for self.routes
                         for i in range(len(self.weekly_protoarray)):  # loop for each day of carrier information
                             self.daily_protoarray = self.weekly_protoarray[i]
                             """ should be dealing with input rings and not protoarray as input rings is a storage 
                             array for the daily protoarrays"""
+                            self.skim_detect_nsday()  # find if the day is an ns day
                             self.skim_detect_moves()  # find the moves if any
-                            if not self.allow_zero_bottom:
-                                self.allow_zero_bottom()
-                            if not self.allow_zero_top:
-                                self.allow_zero_top()
                             self.skim_get_movestring()
                             if self.skim_get_hour52():
                                 self.skim_returntostation()
@@ -7738,14 +7725,25 @@ class AutoDataEntry:
                 
         def skim_detect_nsday(self):
             # find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code
-            if self.newest_carrier[2] in ("nl", "wal", "otdl"):
+            if self.newest_carrier[2] in ("nl", "wal"):  # if the current day matches the ns day
                 if self.day_dict[self.daily_protoarray[0]].strftime("%a") == \
                         projvar.ns_code[self.newest_carrier[3]] and \
                         float(self.daily_protoarray[2]) > 0:
-                    self.c_code = "ns day"
+                    self.c_code = "ns day"  # enter the code
                 else:
-                    self.c_code = "none"
-            elif self.newest_carrier[2] in ("otdl", "ptf", "aux"):
+                    self.c_code = "none"  # enter the code
+            elif self.newest_carrier[2] == "otdl":  # if the current day matches the ns day
+                if self.day_dict[self.daily_protoarray[0]].strftime("%a") == \
+                        projvar.ns_code[self.newest_carrier[3]] and \
+                        float(self.daily_protoarray[2]) > 0:
+                    self.c_code = "ns day"  # enter the code
+                else:
+                    if self.daily_protoarray[4] == "":
+                        self.c_code = "none"  # self.daily_protoarray[4] is the code from proto-array
+                    else:
+                        self.c_code = self.daily_protoarray[4]  # can be sick or annual
+                pass
+            elif self.newest_carrier[2] in ("ptf", "aux"):
                 if self.daily_protoarray[4] == "":
                     self.c_code = "none"  # self.daily_protoarray[4] is the code from proto-array
                 else:
@@ -7782,21 +7780,6 @@ class AutoDataEntry:
                         Convert(self.daily_protoarray[5][len(self.daily_protoarray[5]) - 1][1]).zero_or_hundredths()
                     self.mv_triad.append(mv_time)
                     self.mv_triad.append(route_holder)
-            
-        def allow_zero_bottom(self):
-            if len(self.mv_triad) > 0:  # find and remove duplicate ET rings at end
-                # if the last 2 are the same
-                if self.mv_triad[int(len(self.mv_triad) - 3)] == self.mv_triad[int(len(self.mv_triad) - 2)]:
-                    self.mv_triad.pop()  # pop out the last triad
-                    self.mv_triad.pop()
-                    self.mv_triad.pop()
-        
-        def allow_zero_top(self):
-            if len(self.mv_triad) > 0:  # find and remove rings in the front
-                if self.mv_triad[0] == self.mv_triad[1]:
-                    self.mv_triad.pop(0)  # pop out the triad
-                    self.mv_triad.pop(0)
-                    self.mv_triad.pop(0)
         
         def skim_get_movestring(self):                
             self.mv_str = ','.join(self.mv_triad)  # format array as string to fit in dbase
@@ -8262,7 +8245,7 @@ class StartUp:
         MainFrame().start(frame=self.win.topframe)  # load new frame
 
 
-def carrier_list_cleaning_for_auto_skimmer(frame):  # cleans the database of duplicate records
+def carrier_list_cleaning_for_auto_skimmer(frame, msgbox=True):  # cleans the database of duplicate records
     sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
     results = inquire(sql)
     duplicates = []
@@ -8296,9 +8279,10 @@ def carrier_list_cleaning_for_auto_skimmer(frame):  # cleans the database of dup
         pb_label.destroy()  # destroy the label for the progress bar
         pb.destroy()
         pb_root.destroy()
-        messagebox.showinfo("Database Maintenance",
-                            "All redundancies have been eliminated from the carrier list.",
-                            parent=frame)
+        if msgbox:
+            messagebox.showinfo("Database Maintenance",
+                                "All redundancies have been eliminated from the carrier list.",
+                                parent=frame)
     del duplicates[:]
 
 
@@ -8417,126 +8401,85 @@ def apply_auto_ns_structure(frame, ns_structure):
                         parent=frame)
 
 
-def data_entry_permit_zero(frame, top, bottom):
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (top.get(), "allow_zero_top")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (bottom.get(), "allow_zero_bottom")
-    commit(sql)
-    messagebox.showinfo("Settings Updated",
-                        "Auto Data Entry settings have been updated.",
-                        parent=frame)
-
-
 def auto_data_entry_settings(frame):
     i = None
-    wd = front_window(frame)  # F,S,C,FF,buttons
+    win = MakeWindow()
+    win.create(frame)
+    # wd = front_window(frame)  # F,S,C,FF,buttons
     r = 0
-    Label(wd[3], text="Auto Data Entry Settings", font=macadj("bold", "Helvetica 18")) \
+    Label(win.body, text="Auto Data Entry Settings", font=macadj("bold", "Helvetica 18")) \
         .grid(row=r, column=0, sticky="w", columnspan=4)
     r += 1
-    Label(wd[3], text="").grid(row=r, column=1)
+    Label(win.body, text="").grid(row=r, column=1)
     r += 1
-    Label(wd[3], text="NS Day Structure Preference", font=macadj("bold", "Helvetica 18")) \
+    Label(win.body, text="NS Day Structure Preference", font=macadj("bold", "Helvetica 18")) \
         .grid(row=r, column=0, columnspan=4, sticky="w")
     r += 1
-    ns_structure = StringVar(wd[3])
+    ns_structure = StringVar(win.body)
     sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
     result = inquire(sql)
-    Radiobutton(wd[3], text="rotation", variable=ns_structure, value="rotation") \
+    Radiobutton(win.body, text="rotation", variable=ns_structure, value="rotation") \
         .grid(row=r, column=1, sticky="e")
-    Radiobutton(wd[3], text="fixed", variable=ns_structure, value="fixed") \
+    Radiobutton(win.body, text="fixed", variable=ns_structure, value="fixed") \
         .grid(row=r, column=2, sticky="w")
     ns_structure.set(result[0][0])
     r += 1
-    Button(wd[3], text="Set", width=5, command=lambda: apply_auto_ns_structure(wd[0], ns_structure)) \
+    Button(win.body, text="Set", width=5, command=lambda: apply_auto_ns_structure(win.topframe, ns_structure)) \
         .grid(row=r, column=3)
     r += 1
-    Label(wd[3], text="List of TACS MODS Codes", font=macadj("bold", "Helvetica 18")) \
+    Label(win.body, text="List of TACS MODS Codes", font=macadj("bold", "Helvetica 18")) \
         .grid(row=r, column=0, columnspan=4, sticky="w")
     r += 1
-    Label(wd[3], text="(to exclude from Auto Data Entry moves).") \
+    Label(win.body, text="(to exclude from Auto Data Entry moves).") \
         .grid(row=r, column=0, columnspan=4, sticky="w")
     r += 1
-    Label(wd[3], text="code", fg="grey", anchor="w") \
+    Label(win.body, text="code", fg="grey", anchor="w") \
         .grid(row=r, column=0)
-    Label(wd[3], text="description", fg="grey", anchor="w") \
+    Label(win.body, text="description", fg="grey", anchor="w") \
         .grid(row=r, column=1, columnspan=2)
     sql = "SELECT * FROM skippers"
     results = inquire(sql)
     r += 1
     if len(results) > 0:
         for i in range(len(results)):
-            Button(wd[3], text=results[i][0], anchor="w", width=5) \
+            Button(win.body, text=results[i][0], anchor="w", width=5) \
                 .grid(row=i + r, column=0)  # display code
-            Button(wd[3], text=results[i][1], anchor="w", width=30) \
+            Button(win.body, text=results[i][1], anchor="w", width=30) \
                 .grid(row=i + r, column=1, columnspan=2)  # display description
-            Button(wd[3], text="delete", command=lambda x=i: data_mods_codes_delete(wd[0], results[x])) \
+            Button(win.body, text="delete", command=lambda x=i: data_mods_codes_delete(win.topframe, results[x])) \
                 .grid(row=i + r, column=3)
     else:
-        Label(wd[3], text="No Exceptions Listed.", anchor="w") \
+        Label(win.body, text="No Exceptions Listed.", anchor="w") \
             .grid(row=r, column=0, sticky="w", columnspan=3)
         i = 1
     r = r + i
     r += 1
-    Label(wd[3], text="").grid(row=r, column=2)
+    Label(win.body, text="").grid(row=r, column=2)
     r += 1
-    Label(wd[3], text="Add New Code", font=macadj("bold", "Helvetica 18")) \
+    Label(win.body, text="Add New Code", font=macadj("bold", "Helvetica 18")) \
         .grid(row=r, column=0, columnspan=3, sticky="w")  # add new code labels
     r += 1
-    new_code = StringVar(wd[3])
-    new_descp = StringVar(wd[3])
-    Label(wd[3], text="code", fg="grey", anchor="w").grid(row=r, column=0)
-    Label(wd[3], text="description", fg="grey", anchor="w").grid(row=r, column=1, columnspan=2)
+    new_code = StringVar(win.body)
+    new_descp = StringVar(win.body)
+    Label(win.body, text="code", fg="grey", anchor="w").grid(row=r, column=0)
+    Label(win.body, text="description", fg="grey", anchor="w").grid(row=r, column=1, columnspan=2)
     r += 1
-    Entry(wd[3], textvariable=new_code, width=6).grid(row=r, column=0)  # add new code
-    Entry(wd[3], textvariable=new_descp, width=35).grid(row=r, column=1, columnspan=2)
-    Button(wd[3], text="Add", width=5, command=lambda: data_mods_codes_add(wd[0], new_code, new_descp)) \
+    Entry(win.body, textvariable=new_code, width=6).grid(row=r, column=0)  # add new code
+    Entry(win.body, textvariable=new_descp, width=35).grid(row=r, column=1, columnspan=2)
+    Button(win.body, text="Add", width=5, command=lambda: data_mods_codes_add(win.topframe, new_code, new_descp)) \
         .grid(row=r, column=3)
     r += 1
-    Label(wd[3], text="").grid(row=r, column=0)
+    Label(win.body, text="").grid(row=r, column=0)
     r += 1
-    Label(wd[3], text="Restore Defaults").grid(row=r, column=1, columnspan=2, sticky="e")
-    Button(wd[3], text="Set", width=5, command=lambda: data_mods_codes_default(wd[0])).grid(row=r, column=3)
+    Label(win.body, text="Restore Defaults").grid(row=r, column=1, columnspan=2, sticky="e")
+    Button(win.body, text="Set", width=5, command=lambda: data_mods_codes_default(win.topframe)).grid(row=r, column=3)
     r += 1
-    Label(wd[3], text="").grid(row=r, column=0)
+    Label(win.body, text="").grid(row=r, column=0)
     r += 1
-    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_top"
-    result_top = inquire(sql)
-    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "allow_zero_bottom"
-    result_bottom = inquire(sql)
-    Label(wd[3], text="Permit Zero Sums", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=r, column=0, columnspan=2, sticky="w")
-    text = "Selecting 'allow' will permit entries into moves where the MOVE OFF and MOVE ON " \
-           "times are the same. While these entries do not add to the total for Overtime Worked " \
-           "Off route, they might indicate something that would merit further investigation. " \
-           "You can always delete them manually. Selecting 'don't allow' will hide these entries." \
-           "\n'Top' refers to the start of the workday and 'Bottom' refers to the end of the workday."
-    Button(wd[3], text="info", width=5,
-           command=lambda: messagebox.showinfo("For Your Information",
-                                               text,
-                                               parent=wd[0])) \
-        .grid(row=r, column=3)
-    zero_top = BooleanVar(wd[3])
-    zero_bottom = BooleanVar(wd[3])
-    r += 1
-    Label(wd[3], text="Allow Zero Sums on the Top").grid(row=r, column=0, sticky="w", columnspan=3)
-    r += 1
-    Radiobutton(wd[3], text="allow", variable=zero_top, value=True).grid(row=r, column=1, sticky="e")
-    Radiobutton(wd[3], text="don't allow", variable=zero_top, value=False).grid(row=r, column=2, sticky="w")
-    zero_top.set(result_top[0][0])
-    r += 1
-    Label(wd[3], text="Allow Zero Sum On Bottom").grid(row=r, column=0, sticky="w", columnspan=3)
-    r += 1
-    Radiobutton(wd[3], text="allow", variable=zero_bottom, value=True).grid(row=r, column=1, sticky="e")
-    Radiobutton(wd[3], text="don't allow", variable=zero_bottom, value=False).grid(row=r, column=2, sticky="w")
-    zero_bottom.set(result_bottom[0][0])
-    r += 1
-    Button(wd[3], text="Set", width=5, command=lambda: data_entry_permit_zero(wd[0], zero_top, zero_bottom)) \
-        .grid(row=r, column=0, columnspan=4, sticky="e")
-
-    Button(wd[4], text="Go Back", width=20, command=lambda: (MainFrame().start(frame=wd[0]))) \
+    Button(win.buttons, text="Go Back", width=20, command=lambda: (MainFrame().start(frame=win.topframe))) \
         .grid(row=0, column=0, sticky="w")
-    rear_window(wd)
+    win.finish()
+    # rear_window(wd)
 
 
 class SpreadsheetConfig:
@@ -12020,7 +11963,8 @@ class MainFrame:
         automated_menu.add_separator()
         automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(self.win.topframe))
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
-        automated_menu.add_command(label="Weekly Availability", command=lambda: self.call_wkly_avail(self.win.topframe))
+        # automated_menu.add_command(label="Weekly Availability",
+        # command=lambda: self.call_wkly_avail(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(self.win.topframe))
         automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
@@ -12176,8 +12120,6 @@ if __name__ == "__main__":
     global poe_add_amount
     global informalc_poe_gadd
     global informalc_poe_lbox
-    global allow_zero_top
-    global allow_zero_bottom
     global skippers
     global current_tab
     global pb_flag

@@ -85,8 +85,8 @@ class DataBase:
             (4, "min_ss_wal", 25),
             (5, "min_ss_otdl", 25),
             (6, "min_ss_aux", 25),
-            (7, "allow_zero_top", "False"),
-            (8, "allow_zero_bottom", "True"),
+            (7, "allow_zero_top", "False"),  # obsolete
+            (8, "allow_zero_bottom", "True"),  # obsolete
             (9, "pdf_error_rpt", "off"),
             (10, "pdf_raw_rpt", "off"),
             (11, "pdf_text_reader", "off"),
