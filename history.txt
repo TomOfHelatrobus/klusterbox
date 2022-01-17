@@ -28,4 +28,3 @@ Version 4.004 (09/02/2021) This is a hotfix for one formula on the overmax sprea
 Version 4.005 (09/20/2021) The Overtime Distribution Spreadsheet was added. This tracks the overtime used for carriers. The user can select otdl, wal, no list, aux or ptf carriers. Also the a spreadsheet can be generated for a week or a quarter. This tool allows you to compare non-otdl carriers' overtime to each other as it is sometimes an issue that management gives more overtime to certain carriers who feel agrieved that they are being given an unfair share of the overtime. 
 
 Version 4.006 (01/09/2022) The kbcsv_repair module was added so that csv files could be fixed if they were not properly formated. Also the code for the Auto Data Entry was overhauled making it easier to read and edit. This will make the Auto Data Entry more reliable and stable. 
-

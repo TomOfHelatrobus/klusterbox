@@ -6,7 +6,7 @@ from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
-from kbcsv_reader import max_hr, ee_skimmer  #, wkly_avail
+from kbcsv_reader import max_hr, ee_skimmer
 from kbpdfhandling import pdf_converter
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
@@ -30,7 +30,7 @@ from PIL import ImageTk, Image  # Pillow Library
 from openpyxl import load_workbook
 # version variables
 version = "4.006"
-release_date = "Jan 9, 2022"  # format is Jan 1, 2022
+release_date = "Jan 18, 2022"  # format is Jan 1, 2022
 """
  _   _ _                             _
 | |/ /| |              _            | |
@@ -8138,7 +8138,9 @@ class AboutKlusterbox:
                       "kbspreadsheets.py",
                       "kbspeedsheets.py",
                       "kbequitability.py",
-                      "kbcsv_repair.py"
+                      "kbcsv_repair.py",
+                      "kbpdfhandling.py",
+                      "kbcsv_reader.py"
                       )
         for i in range(len(sourcecode)):
             Button(self.win.body, text="read", width=macadj(7, 7),
