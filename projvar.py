@@ -1,11 +1,12 @@
 """
+a klusterbox module: Project Variables
 holds all project variables for the klusterbox project
 call "import projvar" in any file using these variables
 to call:   x = projvar.invran_year
 to set:    projvar.invran_year = x
 """
 
-root = None
+root = None  # tkinter root
 invran_year = None  # the year of the investigation range
 invran_month = None  # the month of the investigation range
 invran_day = None  # the day of the investigation range

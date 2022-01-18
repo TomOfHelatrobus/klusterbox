@@ -1,7 +1,11 @@
+"""
+a klusterbox module: Klusterbox Checking and Repair for Employee Everything Reports in CSV format
+this module contains code for the csv repair file which reads a csv employee everything report, then writes a new file
+skipping blank lines or arrays no values.
+"""
 from kbtoolbox import *
 import csv
 import os
-from tkinter import filedialog
 
 
 class CsvRepair:
@@ -19,6 +23,7 @@ class CsvRepair:
         self.tempid = []  # an array of employee ids where Temp line has been read
 
     def run(self, file_path):
+        """ this runs the classes when called. """
         self.file_path = file_path  # after testing uncomment this and put file path into arguments
         self.get_newfilepath()  # create a name for the path
         self.destroy()  # if the file already exist. destroy it.
@@ -27,6 +32,7 @@ class CsvRepair:
         return self.new_filepath
 
     def get_newfilepath(self):
+        """ this creates a new file path """
         path_splice = self.file_path.split("/")  # split the file path into an array
         filename = path_splice.pop()  # remove the old filename from the end of the file path
         newfilename = ""
@@ -37,20 +43,24 @@ class CsvRepair:
         path_splice.append(newfilename)  # add the new file name to the end of the path
         self.new_filepath = BuildPath().build(path_splice)  # get the new file path
 
-    def get_file(self):  # read the csv file and assign to self.a_file attribute
+    def get_file(self):
+        """ read the csv file and assign to self.a_file attribute """
         self.a_file = csv.reader(open(self.file_path, newline=""))
 
-    def build_csv(self, line):  # writes lines to the csv file
+    def build_csv(self, line):
+        """ writes lines to the csv file """
         csv.register_dialect('myDialect', lineterminator="\r")
         with open(self.new_filepath, 'a') as f:
             writer = csv.writer(f, dialect='myDialect')
             writer.writerow(line)
 
-    def csvrowcount(self):  # gets the number of rows from the csv file
+    def csvrowcount(self):
+        """ gets the number of rows from the csv file """
         with open(self.file_path) as f:
             return sum(1 for _ in f)
 
     def test_write(self):
+        """ this checks the old csv and writing appropiate lines and skipping blank lines."""
         pb = ProgressBarDe(title="Checking csv file", label="Reading and writing proxy file: ")  # create progressbar
         rowcount = self.csvrowcount()  # gets the number of rows from the csv file
         pb.max_count(rowcount)  # set length of progress bar
@@ -112,6 +122,7 @@ class CsvRepair:
                 return False
             return True
 
-    def destroy(self):  # remove the new file when it is no longer needed
+    def destroy(self):
+        """ remove the new file when it is no longer needed """
         if os.path.isfile(self.new_filepath):
             os.remove(self.new_filepath)

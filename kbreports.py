@@ -1,3 +1,9 @@
+"""
+a klusterbox module: Klusterbox Reports Generator
+this module generates text files which provide the user with information, such as the routes of all carriers in the
+investigation range, or their ns days, etc. The Messenger class gives the location of the program and also provides the user information in the form of
+    message boxes.
+"""
 import projvar
 from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path
 from tkinter import messagebox, simpledialog
@@ -259,11 +265,14 @@ class Reports:
             subprocess.call(["open", dir_path('report') + filename])
 
     def pay_period_guide(self):
+        """
+        creates a txt file which is saved in the archive which list out the pay periods for a year.
+        """
         i = 0
         year = simpledialog.askinteger("Pay Period Guide", "Enter the year you want generated.", parent=self.frame,
                                        minvalue=2, maxvalue=9999)
         if year is not None:
-            firstday = datetime(1, 12, 22, 0, 0, 0)
+            firstday = datetime(1, 12, 22)
             while int(firstday.strftime("%Y")) != year - 1:
                 firstday += timedelta(weeks=52)
                 if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
@@ -309,6 +318,10 @@ class Reports:
 
 
 class Messenger:
+    """
+    The Messenger class gives the location of the program and also provides the user information in the form of
+    message boxes.
+    """
     def __init__(self, frame):
         self.frame = frame
 

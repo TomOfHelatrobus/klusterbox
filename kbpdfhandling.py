@@ -1,3 +1,9 @@
+"""
+a klusterbox module: Klusterbox Converter for Employee Everything Reports from PDF to CSV format
+this module contains the pdf converter which reads employee everything reports in the pdf format and converts them
+into csv formatted employee everything reports which can be read by the automatic data entry, auto overmax finder and
+the employee everything reader.
+"""
 from kbtoolbox import *
 # Standard Libraries
 from tkinter import *
@@ -386,7 +392,7 @@ def pdf_converter(frame):
             if gen_error_report == "on":
                 datainput = "Pay Period Week: {}\n".format(pp_wk)
                 kbpc_rpt.write(datainput)
-            pp = pp + pp_wk  # join the pay period and the week
+            pp += pp_wk  # join the pay period and the week
             first_date = find_pp(int(year), pp)  # get the first day of the pay period
             if gen_error_report == "on":
                 datainput = "{}\n".format(str(first_date))
@@ -596,11 +602,11 @@ def pdf_converter(frame):
                                 for error_num in error_array:
                                     for bt in base_time:
                                         if bt[0] > error_num:
-                                            bt[0] = bt[0] - 1
+                                            bt[0] -= 1
                         # load the multi array with array for each day
                         if len(foundday_holder) > 0:
                             # solve for nguyen problem / day of week occurs prior to "employee id" label
-                            found_days = found_days + foundday_holder
+                            found_days += foundday_holder
                             ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
                                             "Friday"]
                             for day in days:  # re order days into correct order
@@ -804,7 +810,7 @@ def pdf_converter(frame):
                     writer.writerow(whole_line)
         if len(foundday_holder) > 0:
             # solve for nguyen problem / day of week occurs prior to "employee id" label
-            found_days = found_days + foundday_holder
+            found_days += foundday_holder
             ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
             for day in days:  # re order days into correct order
                 if day not in found_days:
@@ -880,7 +886,7 @@ def pdf_converter(frame):
                 for error_num in error_array:
                     for bt in base_time:
                         if bt[0] > error_num:
-                            bt[0] = bt[0] - 1
+                            bt[0] -= 1
         # load the multi array with array for each day
         for i in range(7):
             for bt in base_time:
@@ -929,7 +935,7 @@ def pdf_converter(frame):
                     kbpc_rpt.write(datainput)
         else:
             eid_count -= 1
-        eid_count = eid_count - (unprocessed_counter * 2)
+        eid_count -= unprocessed_counter * 2
 
         if unprocessed_counter > 0:
             if gen_error_report == "on":

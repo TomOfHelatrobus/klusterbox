@@ -1,5 +1,10 @@
+"""
+a klusterbox module: Klusterbox Database and Platform Variable Setup
+This module contains classes and functions to set up the klusterbox database named mandates.sqlite which is located
+either in the hidden .klusterbox folder in documents or in th kb_sub folder.
+"""
 import projvar
-from kbtoolbox import titlebar_icon, inquire, commit, ProgressBarDe
+from kbtoolbox import inquire, commit, ProgressBarDe
 import os
 
 
@@ -9,7 +14,7 @@ class DataBase:
         self.pbar = None
 
     def setup(self):
-        self.pbar = ProgressBarDe(title="Klusterbox", label="Building Database", text="Starting Up")
+        self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
         self.pbar.max_count(53)
         self.pbar.start_up()
         self.globals()
@@ -177,7 +182,7 @@ class DataBase:
 
 
 def setup_plaformvar():
-    # set up platform variable
+    """ set up platform variable """
     projvar.platform = "py"  # initialize projvar.platform variable
     split_home = os.getcwd().split("\\")
     if os.path.isdir('Applications/klusterbox.app') and os.getcwd() == "/":  # if it is a mac app

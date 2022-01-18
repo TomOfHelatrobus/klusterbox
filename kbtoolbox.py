@@ -1,3 +1,8 @@
+"""
+a klusterbox module: The Klusterbox Toolbox
+This module is an collection of useful classes, methods and functions used widely thoughout the klusterbox library.
+It is called by all klusterbox modules in whole or in part with the exeption of projvar.py.
+"""
 from tkinter import Tk, ttk, Frame, Scrollbar, Canvas, BOTH, LEFT, BOTTOM, RIGHT, NW, Label, mainloop, \
     messagebox, TclError, PhotoImage
 import projvar
@@ -9,7 +14,9 @@ from datetime import datetime, timedelta
 
 
 def inquire(sql):
-    # query the database
+    """
+    query the database
+    """
     if projvar.platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
     elif projvar.platform == "winapp":
@@ -31,8 +38,8 @@ def inquire(sql):
     db.close()
 
 
-# write to the database
 def commit(sql):
+    """write to the database"""
     if projvar.platform == "macapp":
         path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
     elif projvar.platform == "winapp":
@@ -53,7 +60,8 @@ def commit(sql):
                              "\n Attempted Query: {}".format(sql))
 
 
-def titlebar_icon(root):  # place icon in titlebar
+def titlebar_icon(root):
+    """ place icon in titlebar"""
     if sys.platform == "win32" and projvar.platform == "py":
         try:
             root.iconbitmap(r'kb_sub/kb_images/kb_icon2.ico')
@@ -84,12 +92,14 @@ def titlebar_icon(root):  # place icon in titlebar
             pass
 
 
-def dt_converter(string):  # converts a string of a datetime to an actual datetime
+def dt_converter(string):
+    """converts a string of a datetime to an actual datetime"""
     dt = datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
     return dt
 
 
-def macadj(win, mac):  # switch between variables depending on platform
+def macadj(win, mac):
+    """ switch between variables depending on platform """
     if sys.platform == "darwin":
         arg = mac
     else:
@@ -98,6 +108,9 @@ def macadj(win, mac):  # switch between variables depending on platform
 
 
 class MakeWindow:
+    """
+    creates a window with a scrollbar and a frame for buttons on the bottom
+    """
     def __init__(self):
         self.topframe = Frame(projvar.root)
         self.s = Scrollbar(self.topframe)
@@ -106,6 +119,7 @@ class MakeWindow:
         self.buttons = Canvas(self.topframe)  # button bar
 
     def create(self, frame):
+        """ call this method to build the window. If a frame is passed, it will be destroyed """
         if frame is not None:
             frame.destroy()  # close out the previous frame
         self.topframe.pack(fill=BOTH, side=LEFT)
@@ -127,7 +141,8 @@ class MakeWindow:
             self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
         self.c.create_window((0, 0), window=self.body, anchor=NW)
 
-    def finish(self):  # This closes the window created by front_window()
+    def finish(self):
+        """ This closes the window created by front_window() """
         projvar.root.update()
         self.c.config(scrollregion=self.c.bbox("all"))
         try:
@@ -141,7 +156,8 @@ class MakeWindow:
         Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
-def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
+def front_window(frame):
+    """ Sets up a tkinter page with buttons on the bottom"""
     if frame != "none":
         frame.destroy()  # close out the previous frame
     f = Frame(projvar.root)  # create new frame
@@ -170,7 +186,8 @@ def front_window(frame):  # Sets up a tkinter page with buttons on the bottom
     # page contents - then call rear_window(wd)
 
 
-def rear_window(wd):  # This closes the window created by front_window()
+def rear_window(wd):
+    """ This closes the window created by front_window() """
     projvar.root.update()
     wd[2].config(scrollregion=wd[2].bbox("all"))
     try:
@@ -270,6 +287,7 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
 
 
 class CarrierRecSet:
+    """ Sets up a tkinter page with buttons on the bottom """
     def __init__(self, carrier, start, end, station):
         self.carrier = carrier
         self.start = start
@@ -280,7 +298,8 @@ class CarrierRecSet:
         else:
             self.range = "week"
 
-    def get(self):  # returns carrier records for one day or a week
+    def get(self):
+        """ Sets up a tkinter page with buttons on the bottom """
         if self.range == "day":
             sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
                   "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
@@ -332,12 +351,14 @@ class CarrierRecSet:
 
 
 class CarrierList:
+    """ get a weekly or daily carrier list """
     def __init__(self, start, end, station):
         self.start = start
         self.end = end
         self.station = station
 
-    def get(self):  # get a weekly or daily carrier list
+    def get(self):
+        """ get a weekly or daily carrier list """
         c_list = []
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' AND effective_date <= '%s' " \
               "ORDER BY carrier_name, effective_date desc" \
@@ -349,7 +370,8 @@ class CarrierList:
                 c_list.append(rec_set)
         return c_list
 
-    def get_distinct(self):  # get a list of distinct carrier names
+    def get_distinct(self):
+        """ get a list of distinct carrier names """
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' AND effective_date <= '%s' " \
               "ORDER BY carrier_name, effective_date desc" \
               % (self.station, self.end)
@@ -357,8 +379,8 @@ class CarrierList:
 
 
 def gen_carrier_list():
+    """ generate in range carrier list """
     sql = ""
-    # generate in range carrier list
     if projvar.invran_weekly_span:  # select sql dependant on range
         sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
               " FROM carriers WHERE effective_date <= '%s' " \
@@ -424,6 +446,9 @@ def gen_carrier_list():
 
 
 class NsDayDict:
+    """
+    creates a dictionary of ns days
+    """
     def __init__(self, date):
         self.date = date  # is a datetime object
         self.pat = ("blue", "green", "brown", "red", "black", "yellow")  # define color sequence tuple
@@ -619,8 +644,11 @@ def pp_by_date(sat_range):  # returns a formatted pay period when given the star
     return raw_pp[:-3] + "-" + raw_pp[4] + raw_pp[5] + "-" + raw_pp[6]  # return formatted year/pp
 
 
-def find_pp(year, pp):  # returns the starting date of the pp when given year and pay period
-    firstday = datetime(1, 12, 22, 0, 0, 0)
+def find_pp(year, pp):
+    """
+    returns the starting date of the pp when given year and pay period
+    """
+    firstday = datetime(1, 12, 22)
     while int(firstday.strftime("%Y")) != year - 1:
         firstday += timedelta(weeks=52)
         if int(firstday.strftime("%m")) <= 12 and int(firstday.strftime("%d")) <= 12:
@@ -1489,14 +1517,14 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
             if i == 1:
                 date_str = ""
             else:
-                date_str = date_str + dt_converter(rec[0]).strftime('%a').lower()
+                date_str += dt_converter(rec[0]).strftime('%a').lower()
             list_str = list_str + rec[2]
             if i != len(self.recset):
                 if i == 1:
                     date_str = ""
                 else:
-                    date_str = date_str + ","
-                list_str = list_str + ","
+                    date_str += ","
+                list_str += ","
             i += 1
         ns = ns_dic[self.nsday]  # ns day is given with speedsheet notation for nsdays
         return date_str, self.carrier, list_str, ns, self.route, self.station
@@ -1509,14 +1537,14 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
             if i == 1:
                 date_str = ""
             else:
-                date_str = date_str + dt_converter(rec[0]).strftime('%a').lower()
+                date_str += dt_converter(rec[0]).strftime('%a').lower()
             list_str = list_str + rec[2]
             if i != len(self.recset):
                 if i == 1:
                     date_str = ""
                 else:
-                    date_str = date_str + ","
-                list_str = list_str + ","
+                    date_str += ","
+                list_str += ","
             i += 1
         return date_str, self.carrier, list_str, self.nsday, self.route, self.station
 

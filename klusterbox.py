@@ -1,3 +1,22 @@
+"""
+ _   _ _                             _
+| |/ /| |              _            | |
+| | / | | _   _  ___ _| |_ ___  _ _ | |_   __  _  __
+|  (  | || | | |/ __/_   _| __|| /_/|   \ /  \\ \/ /
+| | \ | |\ \_| |\__ \ | | | _| | |  | () | () |)  (
+|_|\_\|_| \____|/___/ |_| |___||_|  |___/ \__//_/\_\
+
+Klusterbox
+Copyright 2019 Thomas Weeks
+
+Caution: To ensure proper operation of Legacy Klusterbox outside Program Files (Windows) or Applications (mac OS),
+make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.
+
+For the newest version of Klusterbox, visit www.klusterbox.com/download.
+Visit https://github.com/TomOfHelatrobus/klusterbox for the most recent source code.
+
+This version of Klusterbox is being released under the GNU General Public License version 3.
+"""
 # custom modules
 from kbreports import Reports, Messenger
 from kbtoolbox import *
@@ -31,28 +50,10 @@ from openpyxl import load_workbook
 # version variables
 version = "4.006"
 release_date = "Jan 18, 2022"  # format is Jan 1, 2022
-"""
- _   _ _                             _
-| |/ /| |              _            | |
-| | / | | _   _  ___ _| |_ ___  _ _ | |_   __  _  __
-|  (  | || | | |/ __/_   _| __|| /_/|   \ /  \\ \/ /
-| | \ | |\ \_| |\__ \ | | | _| | |  | () | () |)  (
-|_|\_\|_| \____|/___/ |_| |___||_|  |___/ \__//_/\_\
-
-Klusterbox
-Copyright 2019 Thomas Weeks
-
-Caution: To ensure proper operation of Legacy Klusterbox outside Program Files (Windows) or Applications (mac OS),
-make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.
-
-For the newest version of Klusterbox, visit www.klusterbox.com/download.
-Visit https://github.com/TomOfHelatrobus/klusterbox for the most recent source code.
-
-This version of Klusterbox is being released under the GNU General Public License version 3.
-"""
 
 
-class ProgressBarIn:  # Indeterminate Progress Bar
+class ProgressBarIn:
+    """ Indeterminate Progress Bar """
     def __init__(self, title="", label="", text=""):
         self.title = title
         self.label = label
@@ -81,7 +82,8 @@ class ProgressBarIn:  # Indeterminate Progress Bar
         self.pb_root.destroy()
 
 
-class RefusalWin:  # create a window for refusals for otdl equitability
+class RefusalWin:
+    """ create a window for refusals for otdl equitability """
     def __init__(self):
         self.frame = None
         self.win = None
@@ -499,6 +501,9 @@ class OtDistribution:
         if not self.check_quarterinvran():
             return
         self.re_create(self.win.topframe)
+
+    def error_msg(self, text):
+        messagebox.showerror("OTDL Preferences", text, parent=self.win.topframe)
 
     def check_quarterinvran(self):
         if not isint(self.quartinvran_year.get()):
@@ -1360,12 +1365,12 @@ class SpeedSheetCheck:
         self.report = open(dir_path('report') + self.filename, "w")  # open the report
         self.station = ""
         self.i_range = True  # investigation range is one week unless changed
-        self.start_date = datetime(1, 1, 1, 0, 0, 0)
-        self.end_date = datetime(1, 1, 1, 0, 0, 0)
+        self.start_date = datetime(1, 1, 1)
+        self.end_date = datetime(1, 1, 1)
         self.name = ""
         self.allowaddrecs = True
         self.name_mentioned = False
-        self.pb = ProgressBarDe(title="Klusterbox", label="SpeedSheet Checking", text="Stand by...")
+        self.pb = ProgressBarDe(label="SpeedSheet Checking")
         self.sheets = []
         self.sheet_count = 0
         self.sheet_rowcount = []
@@ -2761,8 +2766,8 @@ def database_delete_carriers(frame, station):
 
 
 def database_delete_records(masterframe, frame, time_range, date, end_date, table, stations):
-    db_date = datetime(1, 1, 1, 0, 0)
-    db_end_date = datetime(1, 1, 1, 0, 0)
+    db_date = datetime(1, 1, 1)
+    db_end_date = datetime(1, 1, 1)
     table_array = []
     if time_range.get() != "all":
         if informalc_date_checker(frame, date, "date") == "fail":
@@ -4363,11 +4368,11 @@ def informalc_rptgrvsum(frame, result):
                 if rec[4]:
                     amt = float(rec[4])
                 if hour and rate:
-                    awardxhour = awardxhour + (hour * rate)
+                    awardxhour += hour * rate
                 if amt:
-                    awardxamt = awardxamt + amt
+                    awardxamt += amt
             space = " "
-            space = space + (num_space * " ")
+            space += num_space * " "
             if i > 99:
                 report.write(str(i) + "\n" + "    Grievance Number:   " + sett[0] + "\n")
             else:
@@ -4469,12 +4474,12 @@ def informalc_bycarriers(frame, result):
                 rate = "---"
             if r[1] and r[2]:
                 adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
-                total_adj = total_adj + (float(r[1]) * float(r[2]))
+                total_adj += float(r[1]) * float(r[2])
             else:
                 adj = "---"
             if r[3]:
                 amt = "{0:.2f}".format(float(r[3]))
-                total_amt = total_amt + float(r[3])
+                total_amt += float(r[3])
             else:
                 amt = "---"
             if r[5] is None or r[5] == "unknown":
@@ -4544,12 +4549,12 @@ def informalc_apply_bycarrier(frame, result, names, cursor):
             rate = "---"
         if r[1] and r[2]:
             adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
-            total_adj = total_adj + (float(r[1]) * float(r[2]))
+            total_adj += float(r[1]) * float(r[2])
         else:
             adj = "---"
         if r[3]:
             amt = "{0:.2f}".format(float(r[3]))
-            total_amt = total_amt + float(r[3])
+            total_amt += float(r[3])
         else:
             amt = "---"
         if r[5] is None or r[5] == "unknown":
@@ -4650,9 +4655,9 @@ def informalc_rptbygrv(frame, grv_info):
         if rec[4]:
             amt = float(rec[4])
         if hour and rate:
-            awardxhour = awardxhour + (hour * rate)
+            awardxhour += hour * rate
         if amt:
-            awardxamt = awardxamt + amt
+            awardxamt += amt
         if rec[2]:
             hours = "{0:.2f}".format(float(rec[2]))
         else:
@@ -4718,9 +4723,9 @@ def informalc_grvlist_setsum(result):
                 if rec[4]:
                     amt = float(rec[4])
                 if hour and rate:
-                    awardxhour = awardxhour + (hour * rate)
+                    awardxhour += hour * rate
                 if amt:
-                    awardxamt = awardxamt + amt
+                    awardxamt += amt
             sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
             s_gats = sett[5].split(" ")
             if sett[8] is None or sett[8] == "unknown":
@@ -5288,7 +5293,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
                     or poe_add_amount[i].get().strip() != "":
                 pp = poe_add_pay_periods[i].get().zfill(2)
                 one = "1"
-                pp = pp + one  # format pp so it can fit in find_pp()
+                pp += one  # format pp so it can fit in find_pp()
                 dt = find_pp(int(year), pp)  # returns the starting date of the pp when given year and pay period
                 dt += timedelta(days=20)
                 paydays.append(dt)
@@ -5523,9 +5528,9 @@ def informalc_por_all(frame, afterdate, beforedate, station, backdate):
                 if result[6]:
                     amt = float(result[6])
                 if hour and rate:
-                    payxadj = payxadj + (hour * rate)
+                    payxadj += hour * rate
                 if amt:
-                    payxamt = payxamt + amt
+                    payxamt += amt
                 pp = result[0] + "-" + result[1].zfill(2)
                 payday = dt_converter(result[2]).strftime("%b %d, %Y")
                 if result[4]:
@@ -5747,7 +5752,7 @@ class PdfSplitter:
             return
         # if the last characters are not .pdf then add the extension
         if new_path[-4:] != ".pdf":
-            new_path = new_path + ".pdf"
+            new_path += ".pdf"
         if firstpage > lastpage:
             messagebox.showerror("Klusterbox PDF Splitter",
                                  "The First Page of the document can not be "
@@ -5755,7 +5760,7 @@ class PdfSplitter:
                                  parent=self.win.topframe)
             return
         try:
-            pdf = PdfFileReader(subject_path, True)
+            pdf = PdfFileReader(subject_path)
             pdf_writer = PdfFileWriter()
             for page in range(firstpage - 1, lastpage):
                 pdf_writer.addPage(pdf.getPage(page))
@@ -5904,8 +5909,8 @@ def station_index_mgmt(frame):
             to_add = Button(frame[f], text="rename", width=6)
             rename_button.append(to_add)
             rename_button[f]['command'] =\
-                lambda passframe=frame[f], tacs=record[0], kb=record[1], newname=si_newname[f],\
-                       rbutton = rename_button[f]: station_index_rename(wd[0], passframe, tacs, kb,
+                lambda passframe=frame[f], tacs=record[0], kb=record[1], newname=si_newname[f], \
+                        rbutton = rename_button[f]: station_index_rename(wd[0], passframe, tacs, kb,
                                                                       newname, rbutton, all_stations)
             rename_button[f].grid(row=0, column=2)
             delete_button = Button(frame[f], text="delete", width=6,
@@ -6516,7 +6521,7 @@ class AutoDataEntry:
                         Label(self.win.body, text=str(len(self.possible_names)) + " name")\
                             .grid(row=cc, column=4, sticky="w")
                     elif len(self.possible_names) > 1:
-                        Label(self.win.body, text=str(len(possible_names)) + " names")\
+                        Label(self.win.body, text=str(len(self.possible_names)) + " names")\
                             .grid(row=cc, column=4, sticky="w")
                     else:  # display indicator for possible matches
                         Label(self.win.body, text="no match", fg="grey").grid(row=cc, column=4, sticky="w")
@@ -7580,7 +7585,7 @@ class AutoDataEntry:
             # row_count = sum(1 for row in self.parent.a_file)  # get number of rows in csv file
             row_count = sum(1 for _ in self.parent.a_file)  # get number of rows in csv file
             self.parent.get_file()  # read the csv file
-            pb = ProgressBarDe(title="Entering Carrier Rings", label="Updating Rings: ", text="Stand by...")
+            pb = ProgressBarDe(title="Entering Carrier Rings", label="Updating Rings: ")
             pb.max_count(int(row_count))
             pb.start_up()
             i = 0
@@ -8454,7 +8459,7 @@ def auto_data_entry_settings(frame):
         Label(win.body, text="No Exceptions Listed.", anchor="w") \
             .grid(row=r, column=0, sticky="w", columnspan=3)
         i = 1
-    r = r + i
+    r += i
     r += 1
     Label(win.body, text="").grid(row=r, column=2)
     r += 1
@@ -8734,7 +8739,7 @@ class SpreadsheetConfig:
         if sys.platform == "darwin":
             dashcount = 55
         for i in range(dashcount):
-            dashes = dashes + "_"
+            dashes += "_"
         Label(self.win.body, text=dashes, pady=5).grid(row=row, columnspan=4, sticky="w")
         row += 1
         Label(self.win.body, text="Restore Defaults").grid(row=row, column=0, ipady=5, sticky="w")
@@ -8997,7 +9002,7 @@ def tolerances(frame):
     if sys.platform == "darwin":
         dashcount = 47
     for _ in range(dashcount):
-        dashes = dashes + "_"
+        dashes += "_"
     Label(ff, text=dashes, pady=5).grid(row=5, columnspan=4, sticky="w")
     Label(ff, text="Recommended settings").grid(row=6, column=0, ipady=5, sticky="w")
     Button(ff, width=5, text="set", command=lambda: tolerance_presets(f, "default")) \
@@ -9633,7 +9638,7 @@ def output_tab(frame, list_carrier):
                         cc = 0
                         for i in range(int(len(s_moves) / 3)):
                             total = float(s_moves[cc + 1]) - float(s_moves[cc])  # calc off time off route
-                            cc = cc + 3
+                            cc += 3
                             move_totals.append(total)
                         off_route = 0.0
                         if str(each[2]) != "":  # in case the 5200 time is blank
@@ -9773,7 +9778,7 @@ def output_tab(frame, list_carrier):
                         cc = 0
                         for i in range(int(len(s_moves) / 3)):
                             total = float(s_moves[cc + 1]) - float(s_moves[cc])  # calc off time off route
-                            cc = cc + 3
+                            cc += 3
                             move_totals.append(total)
                         off_route = 0.0
                         if str(each[2]) != "":  # in case the 5200 time is blank
@@ -11774,11 +11779,6 @@ class MainFrame:
         self.__init__()  # re initialize the class
         self.start(frame)  # start again
 
-    def call_wkly_avail(self, frame):
-        if wkly_avail(frame):  # call the spreadsheet maker
-            self.__init__()  # if True is returned then re initialize the class
-            self.start(frame)  # start again
-
     def call_globals(self):
         msg_rear = "\n Dates must be formatted as \"mm/dd/yyyy\".\n" \
                    "Month must be expressed as number between 1 and 12.\n" \
@@ -11965,8 +11965,6 @@ class MainFrame:
         automated_menu.add_separator()
         automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(self.win.topframe))
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
-        # automated_menu.add_command(label="Weekly Availability",
-        # command=lambda: self.call_wkly_avail(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(self.win.topframe))
         automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))

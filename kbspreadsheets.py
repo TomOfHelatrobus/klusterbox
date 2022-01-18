@@ -1,3 +1,7 @@
+"""
+a klusterbox module: Klusterbox Improper Mandates and 12 and 60 Hour Violations Spreadsheets Generator.
+klusterbox classes for spreadsheets: the improper mandate worksheet and the 12 and 60 hour violations spreadsheets
+"""
 import projvar  # custom libraries
 from kbtoolbox import inquire, CarrierList, dir_path, isfloat, Convert, Rings, ProgressBarDe
 # standard libraries
@@ -13,6 +17,9 @@ from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFi
 
 
 class ImpManSpreadsheet:
+    """
+    This generates the famous klusterbox spreadsheets breaking down availability and off route mandates.
+    """
     def __init__(self):
         self.frame = None  # the frame of parent
         self.pb = None  # progress bar object
@@ -884,6 +891,10 @@ class ImpManSpreadsheet:
 
 
 class OvermaxSpreadsheet:
+    """
+    This generates the 12 and 60 hour violations worksheet. This spreadsheeet is a klusterbox original and is the
+    most comprehensive spreadsheet of its kind.
+    """
     def __init__(self):
         self.frame = None
         self.carrier_list = []
@@ -929,6 +940,7 @@ class OvermaxSpreadsheet:
         self.save_open()
 
     def ask_ok(self):
+        """ continue if user selects ok. """
         if messagebox.askokcancel("Spreadsheet generator",
                                   "Do you want to generate a spreadsheet?",
                                   parent=self.frame):
@@ -1581,7 +1593,7 @@ class OvermaxSpreadsheet:
                     lv = 0.0
                 else:
                     lv = float(item[7])
-                total = total + t
+                total += t
                 grandtotal = grandtotal + t + lv
             carrier_array[2] = total  # append total weekly hours worked to carrier array
             if grandtotal > 60 or daily_violation:  # only append violation recset, if there has been a violation

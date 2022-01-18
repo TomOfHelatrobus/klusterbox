@@ -1,5 +1,9 @@
+"""
+a klusterbox module: The Klusterbox Equitability and Distribution Spreadsheet Generators
+This file contains libraries for OT Equitability and OT Distribution classes. These are used to detect unequitable
+distribution of overtime and mandates among non list carriers.
+"""
 # custom modules
-import projvar
 from kbtoolbox import *
 from tkinter import messagebox
 import os
@@ -162,6 +166,7 @@ class OTEquitSpreadsheet:
         self.save_open()  # save and open the spreadsheet
 
     def ask_ok(self):
+        """ continue the process if user presses ok. """
         if messagebox.askokcancel("Spreadsheet generator",
                                   "Do you want to generate a spreadsheet?",
                                   parent=self.frame):
@@ -1133,7 +1138,7 @@ class OTDistriSpreadsheet:
             if recs[i][2] != status:  # check for any list statuses that differ from the first
                 add_plus = True
         if add_plus:  # add a "+" if there is more than one list status
-            status = status + " +"
+            status += " +"
         return status
 
     def get_carier_overview(self):  # build a list of carrier's name, status and makeups

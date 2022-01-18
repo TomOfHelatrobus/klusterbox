@@ -1,5 +1,9 @@
+"""
+a klusterbox module: Klusterbox Speedsheets Generator, Verifications and Input
+klusterbox classes for the generation, checking and input of speedsheets.
+"""
 import projvar  # custom libraries
-from kbtoolbox import inquire, CarrierList, dir_path, isfloat, Convert, CarrierRecFilter, Rings, SpeedSettings, \
+from kbtoolbox import inquire, CarrierList, dir_path, CarrierRecFilter, Rings, SpeedSettings, \
     ProgressBarDe
 # standard libraries
 from tkinter import messagebox
