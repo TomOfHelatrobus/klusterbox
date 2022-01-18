@@ -47,7 +47,9 @@ ____ 11. In Wizard finished dialog, don't make any changes and click "Finish"
 
 ____ 12. Once back in the NIS Edit, the script should appear. Press the "Save" button. 
 
-____ 13. In the "Save As" dialog, save the file in the project folder 
+____ 13. In the "Save As" dialog, save the file in the project folder. Replace the file if there is a file name with the same name:
+	____ a. kb_nsis_script.nsi (for 64 bit)
+	____ b. kb_nsis_script_32bit.nsi (for 32 bit)
 
 ____ 14. You can now close NIS Edit, open NSIS and load the script. 
 

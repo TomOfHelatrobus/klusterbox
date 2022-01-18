@@ -17,7 +17,10 @@ ___ ___ ___  1. (in explorer/finder) make sure the kb_install folder is inside t
 		___ ___ ___  5. kbreports.py
 		___ ___ ___  6. kbspreadsheets.py
 		___ ___ ___  7. kbspeedsheets.py
-		___ ___ ___  7. kbequitability.py
+		___ ___ ___  8. kbequitability.py
+		___ ___ ___  9. kbpdfhandling.py
+		___ ___ ___  10. kbcsv_reader.py
+		___ ___ ___  11. kbcsv_repair.py
 		
 ___ ___ ___  3. (in terminal/ powershell) navigate to the klusterbox folder.
 
@@ -72,6 +75,9 @@ ___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_su
 	___ ___  13. kbspreadsheets.py
 	___ ___  14. kbspeedsheets.py
 	___ ___  15. kbequitability.py
+	___ ___  16. kbpdfhandling.py
+	___ ___  17. kbcsv_reader.py
+	___ ___  18. kbcsv_repair.py
 
 	
 	
@@ -120,6 +126,9 @@ ___ ___  4. (in explorer) enter into the dist folder and copy the klusterbox.exe
 	___ ___  h. kbreports.py
 	___ ___  i. kbspreadsheets.py
 	___ ___  j. kbspeedsheets.py
+	___ ___  l. kbpdfhandling.py
+	___ ___  m. kbcsv_reader.py
+	___ ___  n. kbcsv_repair.py	
 
 ___ ___  7.(in explorer)  you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
@@ -180,7 +189,7 @@ ___ ___  7. Make sure NSIS and NISedit is installed on your computer.
 
 ___ ___  8. Open NIS edit. 
 
-if you need to create a NSIS script:
+if you need to create a NSIS script (if you have added libraries, documents or images):
 
 	___ ___  1. Run the "nsi_script_wizard_checklist"
 
@@ -206,7 +215,7 @@ ___ ___  13. Close the "Make NSISW" and exit the NSIS program.
 
 ___ ___  14. (in explorer) navigate to the klusterbox program file to find the Setup.exe file.
 
-___ ___  15. (in explorer) select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
+___ ___  15. (in explorer) select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'Setup_klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
 
 ___ ___  16. This is ready for distribution. 
 
