@@ -1,12 +1,5 @@
 """
- _   _ _                             _
-| |/ /| |              _            | |
-| | / | | _   _  ___ _| |_ ___  _ _ | |_   __  _  __
-|  (  | || | | |/ __/_   _| __|| /_/|   \ /  \\ \/ /
-| | \ | |\ \_| |\__ \ | | | _| | |  | () | () |)  (
-|_|\_\|_| \____|/___/ |_| |___||_|  |___/ \__//_/\_\
-
-Klusterbox
+Klusterbox: The main module
 Copyright 2019 Thomas Weeks
 
 Caution: To ensure proper operation of Legacy Klusterbox outside Program Files (Windows) or Applications (mac OS),
@@ -64,6 +57,7 @@ class ProgressBarIn:
         self.pb_text = Label(self.pb_root, text=self.text, anchor="w")
 
     def start_up(self):
+        """ starts up the progress bar. """
         titlebar_icon(self.pb_root)  # place icon in titlebar
         self.pb_root.title(self.title)
         self.pb_label.grid(row=0, column=0, sticky="w")
@@ -75,6 +69,7 @@ class ProgressBarIn:
             time.sleep(.01)
 
     def stop(self):
+        """ stops and destroys the progress bar. """
         self.pb.stop()  # stop and destroy the progress bar
         self.pb_text.destroy()
         self.pb_label.destroy()  # destroy the label for the progress bar
