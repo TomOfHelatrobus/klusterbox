@@ -11,7 +11,7 @@ ___  4. in disk utility, go to file on the menu bar. Select "File > New Image > 
 
 ___  5. In the prompt, enter the following. 
 
-	___  a. Save As: setup_klusterbox_v<version number>_mac # don't include brackets
+	___  a. Save As: Setup_klusterbox_v<version number>_mac # don't include brackets
 	___  b. Where: Desktop
 	___  c. Name: klusterbox_install
 	___  d. Size: 50MB
@@ -47,15 +47,15 @@ ___  14. close terminal
 
 ___  15. close view options window.
 
-___  16. drag and drop klusterbox.app from the desktop into the klusterbox install window.
+___  16. drag and drop klusterbox.app from the desktop into the klusterbox install window. Drag to the left side of the arrow.
 
-___  17. open finder and navigate to Macintosh HD
+___  17. open finder and navigate to Macintosh HD. From anywhere you can press command, up arrow until you get to MacBook Pro directory. 
 
 ___  18. right click on Applications. select 'make alias'
 
 ___  19. the alias will appear in a desktop folder and on the desktop. 
 
-___  20. drag and drop the Applications alias into the klusterbox_install. 
+___  20. drag and drop the Applications alias into the klusterbox_install. Drag to the right side of the arrow. 
 
 ___  21. on the desktop, move the Applications alias to Trash
 

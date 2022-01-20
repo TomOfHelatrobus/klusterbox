@@ -155,6 +155,9 @@ ___ ___  #. (in explorer) make sure the following files are in the kb_install fo
 	___ ___  f. kbspreadsheets.py
 	___ ___  g. kbspeedsheets.py
 	___ ___  g. kbequitability.py
+	___ ___  g. kbcsv_reader.py
+	___ ___  g. kbcsv_repair.py
+	___ ___  g. kbpdfhandler.py
 	___ ___  g. klusterwin.spec
 
 	leave the kb_sub folder alone if it is in there.
