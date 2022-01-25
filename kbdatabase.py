@@ -9,11 +9,13 @@ import os
 
 
 class DataBase:
+    """ checks the database for missing tables, columns and values. Enters the same if they are missing. """
     def __init__(self):
         self.pbar_counter = 0
         self.pbar = None
 
     def setup(self):
+        """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
         self.pbar.max_count(53)
         self.pbar.start_up()
@@ -29,6 +31,7 @@ class DataBase:
         self.pbar.stop()
 
     def globals(self):
+        """ defines the project variable for investigation range date week """
         self.pbar_counter += 1
         self.pbar.move_count(self.pbar_counter)
         self.pbar.change_text("Setting up: Global Variables ")
@@ -43,7 +46,8 @@ class DataBase:
             'CREATE table IF NOT EXISTS carriers (effective_date date, carrier_name varchar, list_status varchar, '
             'ns_day varchar, route_s varchar, station varchar)',
             'CREATE table IF NOT EXISTS rings3 (rings_date date, carrier_name varchar, total varchar, rs varchar, '
-            'code varchar, moves varchar, leave_type varchar, leave_time varchar, refusals varchar)',
+            'code varchar, moves varchar, leave_type varchar, leave_time varchar, refusals varchar, bt varchar, '
+            'et varchar)',
             'CREATE table IF NOT EXISTS name_index (tacs_name varchar, kb_name varchar, emp_id varchar)',
             'CREATE table IF NOT EXISTS station_index (tacs_station varchar, kb_station varchar, finance_num varchar)',
             'CREATE table IF NOT EXISTS skippers (code varchar primary key, description varchar)',
@@ -75,6 +79,7 @@ class DataBase:
             commit(tables_sql[i])
 
     def stations(self):
+        """ checks for columns in station table and creates out of station value if it doesn't exist. """
         self.pbar_counter += 1
         self.pbar.move_count(self.pbar_counter)
         self.pbar.change_text("Setting up: Tables - Station > add out of station")
@@ -82,6 +87,7 @@ class DataBase:
         commit(sql)
 
     def tolerances(self):
+        """ checks the tolerances table and inputs values if they do not exist. """
         tolerance_array = (
             (0, "ot_own_rt", 0),
             (1, "ot_tol", 0),
@@ -111,7 +117,8 @@ class DataBase:
             (25, "min_ot_equit", 19),
             (26, "ot_calc_pref", "off_route"),
             (27, "min_ot_dist", 25),
-            (28, "ot_calc_pref_dist", "off_route")
+            (28, "ot_calc_pref_dist", "off_route"),
+            (29, "tourrings", 0)
         )
         for tol in tolerance_array:
             self.pbar_counter += 1
@@ -122,20 +129,32 @@ class DataBase:
             commit(sql)
 
     def rings(self):
+        """ sets up the rings table """
         self.pbar_counter += 1
         self.pbar.move_count(self.pbar_counter)
         self.pbar.change_text("Setting up: Tables - Rings > leave time/type")
-        # modify table for legacy version which did not have leave type and leave time columns of rings3 table.
+        # modify table for legacy version which did not have leave type and leave time columns of
+        # table.
         sql = 'PRAGMA table_info(rings3)'  # get table info. returns an array of columns.
         result = inquire(sql)
-        if len(result) == 6:  # if there are not enough columns add the leave type, time and refusals columns
+        if len(result) < 7:  # if there are not enough columns, add the leave type column
             sql = 'ALTER table rings3 ADD COLUMN leave_type varchar'
             commit(sql)
+        if len(result) < 8:  # if there are not enough columns, add the leave time column
             sql = 'ALTER table rings3 ADD COLUMN leave_time varchar'
+            commit(sql)
+        if len(result) < 9:  # if there are not enough columns, add the refusals column
+            sql = 'ALTER table rings3 ADD COLUMN refusals varchar'
+            commit(sql)
+        if len(result) < 10:  # if there are not enough columns, add the bt column
+            sql = 'ALTER table rings3 ADD COLUMN bt varchar'
+            commit(sql)
+        if len(result) < 11:  # if there are not enough columns, add the et column
+            sql = 'ALTER table rings3 ADD COLUMN et varchar'
             commit(sql)
 
     def skippers(self):
-        # put records in the skippers table
+        """ put records in the skippers table """
         skip_these = (("354", "stand by"), ("613", "stewards time"), ("743", "route maintenance"))
         for rec in skip_these:
             self.pbar_counter += 1
@@ -145,6 +164,7 @@ class DataBase:
             commit(sql)
 
     def ns_config(self):
+        """ sets rotating non scheduled days if not set """
         ns_sql = (
             ("yellow", "gold", "yellow"),
             ("blue", "navy", "blue"),
@@ -161,7 +181,8 @@ class DataBase:
                   % (ns[0], ns[1], ns[2])
             commit(sql)
 
-    def mousewheel(self):  # initialize mousewheel - mouse wheel scroll direction
+    def mousewheel(self):
+        """ initialize mousewheel - mouse wheel scroll direction """
         self.pbar_counter += 1
         self.pbar.move_count(self.pbar_counter)
         self.pbar.change_text("Setting up: Mousewheel")
@@ -170,6 +191,7 @@ class DataBase:
         projvar.mousewheel = int(results[0][0])
 
     def list_of_stations(self):
+        """ sets up the list of stations project variable. """
         self.pbar_counter += 1
         self.pbar.move_count(self.pbar_counter)
         self.pbar.change_text("Setting up: List of Stations")
@@ -199,7 +221,7 @@ def setup_plaformvar():
 
 
 def setup_dirs_by_platformvar():
-    # create directories if they don't exist
+    """ create directories if they don't exist """
     if projvar.platform == "macapp":
         if not os.path.isdir(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')):
             os.makedirs(os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents'))

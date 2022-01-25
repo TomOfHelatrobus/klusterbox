@@ -18,7 +18,7 @@ ___ ___ ___  6. using the ftp server, drag and drop the newest klusterbox versio
 
 ____ ___ __  7. on the client side, navigate up and out of the kb_install folder. The klusterbox.py source code should be visible. Skip if you have uploaded the Setup_klusterbox.exe.
 
-___ ___ ___  8. using ftp drag and drop the klusterbox.py source code into the downloads folder on the server side. 
+___ ___ ___  8. using ftp drag and drop all source code py files into the downloads folder on the server side. 
 
 ___ ___ ___  9. on the server side navigate out of the downloads folder and into the www folder. The download.html file should be visible.
 

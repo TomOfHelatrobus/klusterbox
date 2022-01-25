@@ -150,7 +150,8 @@ class MakeWindow:
         except KeyboardInterrupt:
             projvar.root.destroy()
 
-    def fill(self, last, count):  # fill bottom of screen to for scrolling.
+    def fill(self, last, count):
+        """ fill bottom of screen to for scrolling. """
         for i in range(count):
             Label(self.body, text="").grid(row=last + i)
         Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
@@ -197,6 +198,7 @@ def rear_window(wd):
 
 
 def set_globals(s_year, s_mo, s_day, i_range, station, frame):
+    """ checks and sets globals """
     projvar.invran_weekly_span = i_range
     if station == "undefined":
         messagebox.showerror("Investigation station setting",
@@ -453,7 +455,8 @@ class NsDayDict:
         self.date = date  # is a datetime object
         self.pat = ("blue", "green", "brown", "red", "black", "yellow")  # define color sequence tuple
 
-    def get_sat_range(self):  # calculate the n/s day of sat/first day of investigation range
+    def get_sat_range(self):
+        """ calculate the n/s day of sat/first day of investigation range """
         sat_range = self.date  # saturday range, first day of the investigation range
         wkdy_name = self.date.strftime("%a")
         while wkdy_name != "Sat":  # while date enter is not a saturday
@@ -461,7 +464,8 @@ class NsDayDict:
             wkdy_name = sat_range.strftime("%a")
         return sat_range
 
-    def get(self):  # Dictionary of NS days
+    def get(self):
+        """ Dictionary of NS days"""
         sat_range = self.get_sat_range()  # calculate the n/s day of sat/first day of investigation range
         end_date = sat_range + timedelta(days=-1)
         cdate = datetime(2017, 1, 7)  #
@@ -512,7 +516,8 @@ class NsDayDict:
         ns_xlate["fri"] = "Fri"
         return ns_xlate
 
-    def ssn_ns(self, rotation):  # SpreadSheet Notation NS Day dictionary
+    def ssn_ns(self, rotation):
+        """ SpreadSheet Notation NS Day dictionary """
         ssn_ns_code = {}
         # rotation is boolean -
         dic = self.get()
@@ -538,7 +543,8 @@ class NsDayDict:
             ssn_ns_code["fri"] = "Fri"
         return ssn_ns_code
 
-    def get_rev(self, rotation):  # Dictionary NS days - keys/values reversed
+    def get_rev(self, rotation):
+        """ Dictionary NS days - keys/values reversed """
         dic = self.get()
         rev_rotate_dic = {}
         rev_fixed_dic = {}
@@ -553,7 +559,8 @@ class NsDayDict:
             return rev_fixed_dic
 
     @staticmethod
-    def custom_config():  # shows custom ns day configurations for  printout / reports
+    def custom_config():
+        """ shows custom ns day configurations for  printout / reports """
         sql = "SELECT * FROM ns_configuration"
         ns_results = inquire(sql)
         custom_ns_dict = {}  # build dictionary for ns days
@@ -566,7 +573,8 @@ class NsDayDict:
         return custom_ns_dict
 
     @staticmethod
-    def get_custom_nsday():  # get ns day color configurations from dbase and make dictionary
+    def get_custom_nsday():
+        """ get ns day color configurations from dbase and make dictionary """
         sql = "SELECT * FROM ns_configuration"
         ns_results = inquire(sql)
         ns_dict = {}  # build dictionary for ns days
@@ -579,7 +587,8 @@ class NsDayDict:
         return ns_dict
 
     @staticmethod
-    def gen_rev_ns_dict():  # creates full day/color ns day dictionary
+    def gen_rev_ns_dict():
+        """ creates full day/color ns day dictionary """
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         color_pat = ("blue", "green", "brown", "red", "black", "yellow")
         code_ns = {}
@@ -591,7 +600,8 @@ class NsDayDict:
         return code_ns
 
 
-def dir_path(dirr):  # create needed directories if they don't exist and return the appropriate path
+def dir_path(dirr):
+    """ create needed directories if they don't exist and return the appropriate path """
     path = ""
     if sys.platform == "darwin":
         if projvar.platform == "macapp":
@@ -622,7 +632,8 @@ def dir_path(dirr):  # create needed directories if they don't exist and return 
     return path
 
 
-def pp_by_date(sat_range):  # returns a formatted pay period when given the starting date
+def pp_by_date(sat_range):
+    """ returns a formatted pay period when given the starting date """
     year = sat_range.strftime("%Y")
     pp_end = find_pp(int(year) + 1, "011")  # returns the starting date of the pp when given year and pay period
     if sat_range >= pp_end:
@@ -667,7 +678,8 @@ def find_pp(year, pp):
     return pp_finder[pp]
 
 
-def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
+def gen_ns_dict(file_path, to_addname):
+    """ creates a dictionary of ns days """
     days = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     mv_codes = ("BT", "MV", "ET")
     good_jobs = ("134", "844", "434")
@@ -713,7 +725,8 @@ def gen_ns_dict(file_path, to_addname):  # creates a dictionary of ns days
         return results
 
 
-def ee_ns_detect(array):  # finds the ns day from ee reports
+def ee_ns_detect(array):
+    """ finds the ns day from ee reports """
     days = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     ns_candidates = ["Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     for d in days:
@@ -740,11 +753,15 @@ def ee_ns_detect(array):  # finds the ns day from ee reports
 
 
 class BuildPath:
+    """
+    class used to build strings to be used as paths.
+    """
     def __init__(self):
         self.delimiter = ""
         self.newpath = ""
 
     def get_delimiter(self):
+        """ returns / for mac and \\ for windows"""
         if sys.platform == "darwin":
             self.delimiter = "/"
         else:
@@ -762,11 +779,13 @@ class BuildPath:
         return self.newpath
 
 
-class SaturdayInRange:  # recieves a datetime object
+class SaturdayInRange:
+    """ recieves a datetime object """
     def __init__(self, dt):
         self.dt = dt
 
-    def get(self):  # returns the sat range
+    def get(self):
+        """ returns the sat range """
         wkdy_name = self.dt.strftime("%a")
         while wkdy_name != "Sat":  # while date enter is not a saturday
             self.dt -= timedelta(days=1)  # walk back the date until it is a saturday
@@ -774,52 +793,64 @@ class SaturdayInRange:  # recieves a datetime object
         return self.dt
 
 
-class ReportName:  # returns a file name which is stamped with the datetime
+class ReportName:
+    """ returns a file name which is stamped with the datetime """
     def __init__(self, filename):
         self.filename = filename
 
     def create(self):
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+        """ create a file name """
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return self.filename + "_" + stamp + ".txt"
 
 
 class Convert:
+    """
+    takes a passed argument and converts it into a different format.
+    """
     def __init__(self, data):
         self.data = data
 
-    def datetime_separation(self):  # converts a datetime object into an array with year, month and day
+    def datetime_separation(self):
+        """ converts a datetime object into an array with year, month and day """
         year = self.data.strftime("%Y")
         month = self.data.strftime("%m")
         day = self.data.strftime("%d")
         date = [year, month, day]
         return date
 
-    def str_to_bool(self):  # change a string into a boolean variable type
+    def str_to_bool(self):
+        """ change a string into a boolean variable type """
         if self.data == 'True':
             return True
         return False
 
-    def bool_to_onoff(self):  # takes a boolean and returns on for true, off for false
+    def bool_to_onoff(self):
+        """ takes a boolean and returns on for true, off for false """
         if int(self.data):
             return "on"
         return "off"
 
-    def strbool_to_onoff(self):  # take a boolean in the form of a string and returns "on" or "off"
+    def strbool_to_onoff(self):
+        """ take a boolean in the form of a string and returns "on" or "off" """
         if self.data == "True":
             return "on"
         return "off"
 
     def onoff_to_bool(self):
+        """ take on/off and return boolean """
         if self.data == "on":
             return True
         return False
 
-    def backslashdate_to_datetime(self):  # convert a date with backslashes into a datetime
+    def backslashdate_to_datetime(self):
+        """ convert a date with backslashes into a datetime """
         date = self.data.split("/")
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
         return dt_converter(string)
 
-    def array_to_string(self):  # make an array into a string (with commas)
+    def array_to_string(self):
+        """ make an array into a string (with commas) """
         string = ""
         for i in range(len(self.data)):
             string += self.data[i]
@@ -827,7 +858,8 @@ class Convert:
                 string += ","
         return string
 
-    def string_to_array(self):  # make string into array, remove whitespace
+    def string_to_array(self):
+        """ make string into array, remove whitespace """
         new_array = []
         array = self.data.split(",")
         for a in array:
@@ -835,8 +867,8 @@ class Convert:
             new_array.append(a)
         return new_array
 
-    # takes day (eg "mon","wed") and converts to datetime. needs saturday in range
     def day_to_datetime_str(self, sat_range):
+        """ takes day (eg "mon","wed") and converts to datetime. needs saturday in range """
         if self.data == sat_range.strftime("%a").lower():  # saturday
             return str(sat_range)
         sat_range += timedelta(days=1)
@@ -858,11 +890,13 @@ class Convert:
         if self.data == sat_range.strftime("%a").lower():  # friday
             return str(sat_range)
 
-    def dt_converter(self):  # converts a string of a datetime to an actual datetime
+    def dt_converter(self):
+        """ converts a string of a datetime to an actual datetime """
         dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
         return dt
 
-    def empty_not_zero(self):  # returns an empty string for any value equal to zero
+    def empty_not_zero(self):
+        """ returns an empty string for any value equal to zero """
         if self.data == "0":
             return ""
         if self.data == "0.0":
@@ -870,6 +904,7 @@ class Convert:
         return self.data
 
     def empty_not_zerofloat(self):
+        """ returns an empty string for a zero int or float"""
         if self.data == 0.0:
             return ""
         if self.data == 0:
@@ -877,6 +912,7 @@ class Convert:
         return self.data
 
     def str_to_floatoremptystr(self):
+        """ reuturns empty string for zero, asterisk for asterisk, float for a float or return arg.  """
         if self.data == "*":
             return "*"
         if self.data == "":
@@ -889,21 +925,25 @@ class Convert:
             return float(self.data)
         return self.data
 
-    def none_not_empty(self):  # returns none instead of empty string for option menus
+    def none_not_empty(self):
+        """ returns none instead of empty string for option menus """
         if self.data == "":
             return "none"
         return self.data
 
-    def empty_not_none(self):  # returns empty string instead of "none" for spreadsheets
+    def empty_not_none(self):
+        """ returns empty string instead of "none" for spreadsheets """
         if self.data == "none":
             return ""
         return self.data
 
-    def hundredths(self):  # returns a number (as a string) into a number with 2 decimal places
+    def hundredths(self):
+        """ returns a number (as a string) into a number with 2 decimal places """
         number = float(self.data)  # convert the number to a float
         return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
 
     def zero_or_hundredths(self):
+        """ returns number strings for numbers """
         try:
             if float(self.data) == 0:
                 number = 0.00  # convert the number to a float
@@ -916,6 +956,7 @@ class Convert:
             return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
 
     def empty_or_hunredths(self):
+        """ returns empty string for zero or converts the number to a float. """
         if self.data.strip() in ("0", "0.0", "0.00", ".0", ".00", ".", ""):
             return ""
         else:
@@ -923,16 +964,21 @@ class Convert:
             return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
 
     def zero_not_empty(self):
+        """ returns 0 for an empty string"""
         if self.data == "":
             return 0
         return self.data
 
 
 class Handler:
+    """
+    class is a collection on methods to handle miscellaneous formatting issues.
+    """
     def __init__(self, data):
         self.data = data
 
     def nonetype(self):
+        """ returns an empty string for None or else a string with no whitespace. """
         if self.data is None:
             return str("")
         else:
@@ -941,34 +987,40 @@ class Handler:
             return self.data
 
     def ns_nonetype(self):
+        """ returns two empty spaces for None or returns the argument."""
         if self.data is None:
             return str("  ")
         else:
             return self.data
 
     def nsblank2none(self):
+        """ returns none for an empty string or returns the argument. """
         if self.data.strip() == "":
             return str("none")
         else:
             return self.data
 
-    def plurals(self):  # put an "s" on the end of words to make them plural
+    def plurals(self):
+        """ put an "s" on the end of words to make them plural """
         if self.data == 1:
             return ""
         else:
             return "s"
 
     def format_str_as_int(self):
+        """ returns a string as a number string """
         num = int(self.data)
         return str(num)
 
     def str_to_int_or_str(self):
+        """ returns an integer is the data is numeric, else returns the argument. """
         if self.data.isnumeric():
             return int(self.data)
         else:
             return self.data
 
     def str_to_float_or_str(self):
+        """ returns a float if possible, else returns the argument. """
         try:
             self.data = float(self.data)
             return self.data
@@ -976,7 +1028,8 @@ class Handler:
             return self.data
 
     @staticmethod
-    def route_adj(route):  # convert five digit route numbers to four when the route number > 99
+    def route_adj(route):
+        """ convert five digit route numbers to four when the route number > 99 """
         if len(route) == 5:  # when the route number is five digits
             if route[2] == "0":  # and the third digit is a zero
                 return route[0] + route[1] + route[3] + route[4]  # rewrite the string, deleting the third digit
@@ -985,7 +1038,8 @@ class Handler:
         if len(route) == 4:
             return route  # if the route number is 4 digits, return it without change
 
-    def routes_adj(self):  # only allow five digit route numbers in chains where route number > 99
+    def routes_adj(self):
+        """ only allow five digit route numbers in chains where route number > 99 """
         if self.data.strip() == "":
             return ""  # return empty strings with an empty string
         routes = self.data.split("/")  # convert andy chains into an array
@@ -997,6 +1051,7 @@ class Handler:
 
 
 def isfloat(value):
+    """ returns True if arg is a float """
     try:
         float(value)
         return True
@@ -1004,7 +1059,8 @@ def isfloat(value):
         return False
 
 
-def isint(value):  # checks if the argument is an integer
+def isint(value):
+    """ checks if the argument is an integer"""
     try:
         int(value)
         return True
@@ -1012,7 +1068,8 @@ def isint(value):  # checks if the argument is an integer
         return False
 
 
-def dir_path_check(dirr):  # return appropriate path depending on platorm
+def dir_path_check(dirr):
+    """ return appropriate path depending on platorm """
     path = ""
     if sys.platform == "darwin":
         if projvar.platform == "macapp":
@@ -1028,7 +1085,7 @@ def dir_path_check(dirr):  # return appropriate path depending on platorm
 
 
 def dir_filedialog():
-    # determine where the file dialog opens
+    """ determine where the file dialog opens """
     if sys.platform == "darwin":
         path = os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents')
     elif sys.platform == "win32":
@@ -1039,10 +1096,12 @@ def dir_filedialog():
 
 
 class Quarter:
+    """ class to find the quarter based on the month """
     def __init__(self, data):
         self.data = data
 
-    def find(self):  # pass month in (as number) as argument - quarter is returned
+    def find(self):
+        """ pass month in (as number) as argument - quarter is returned """
         if int(self.data) in (1, 2, 3):
             return 1
         if int(self.data) in (4, 5, 6):
@@ -1054,16 +1113,21 @@ class Quarter:
 
 
 class Rings:
+    """
+    class for getting daily or weekly ring records for a carrier.
+    """
     def __init__(self, name, date):
         self.name = name
         self.date = date  # provide any date in investigation range
         self.ring_recs = []  # put all results in an array
 
     def get(self, day):
+        """ get the ring records from the rings3 table for the day"""
         sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (self.name, day)
         return inquire(sql)
 
     def get_for_day(self):
+        """ gets the rings record for the day. """
         ring = self.get(self.date)
         if not ring:  # if the results are empty
             self.ring_recs.append(ring)  # return empty list
@@ -1072,6 +1136,7 @@ class Rings:
         return self.ring_recs
 
     def get_for_week(self):
+        """ get the rings record for the week. """
         sat_range = SaturdayInRange(self.date).get()
         for i in range(7):
             ring = self.get(sat_range)
@@ -1084,27 +1149,34 @@ class Rings:
 
 
 class Moves:
+    """
+    class for checking Moves.
+    """
     def __init__(self):
         self.moves = None
         self.timeoff = 0
 
     def checkempty(self):
+        """ returns False is self.moves is empty. """
         if not self.moves:  # fail if self moves is empty
             return False
         return True
 
     def checklenght(self):
-        if len(self.moves) % 3 == 0:  # fail if number of elements are not a multiple of 3
+        """ fail if number of elements are not a multiple of 3 """
+        if len(self.moves) % 3 == 0:
             return True
         return False
 
     def checksforzero(self):
-        if self.timeoff <= 0:  # return empty string if result is 0
+        """ return empty string if result is 0 """
+        if self.timeoff <= 0:
             return ""
         self.timeoff = round(self.timeoff, 2)  # round the time off route to 2 decimal places
         return str(self.timeoff)
 
-    def timeoffroute(self, moves):  # gives the time off route given a moves set
+    def timeoffroute(self, moves):
+        """ gives the time off route given a moves set """
         self.moves = moves
         if not self.checkempty():  # check if len(moves) is multiple of 3 and not 0.
             return ""
@@ -1118,6 +1190,9 @@ class Moves:
 
 
 class Overtime:
+    """
+    class the checks overtime rings
+    """
     def __init__(self):
         self.total = None  # total hours worked or daily 5200 time
         self.timeoff = None  # this is the ot off route calcuated from the moves in Moves() class
@@ -1125,11 +1200,13 @@ class Overtime:
         self.overtime = None
 
     def check_empty_total(self):
+        """ returns False if the argument is empty. """
         if not self.total:
             return False
         return True
 
     def check_total(self):
+        """ returns True for overtime hours """
         if self.code != "ns day":
             if float(self.total) <= 8.00:
                 return False
@@ -1139,18 +1216,21 @@ class Overtime:
         return True
 
     def checks(self):
+        """ returns False for empty strings or if there is overtime """
         if not self.check_empty_total():
             return False
         if not self.check_total():
             return False
         return True
 
-    def check_empty_timeoff(self):  # if there was no time worked off route, return False
+    def check_empty_timeoff(self):
+        """ if there was no time worked off route, return False """
         if not self.timeoff:
             return False
         return True
 
     def straight_overtime(self, total, code):
+        """ calculates any hours over 8 or all hours on ns day. """
         self.total = total
         self.code = code
         if not self.checks():
@@ -1161,6 +1241,7 @@ class Overtime:
         return self.total  # if it is the ns day, the overtime is all hours worked that day.
 
     def proper_overtime(self, total, timeoff, code):
+        """ calculates only overtime off route. """
         self.total = total
         self.timeoff = timeoff
         self.code = code
@@ -1176,6 +1257,7 @@ class Overtime:
 
 
 class SpeedSettings:
+    """ gets speedsheet settings from tolerances table. """
     def __init__(self):
         sql = "SELECT tolerance FROM tolerances"
         results = inquire(sql)  # get spreadsheet settings from database
@@ -1187,10 +1269,14 @@ class SpeedSettings:
 
 
 class NameChecker:
+    """
+    class for checking name strings.
+    """
     def __init__(self, name):
         self.name = name.lower()
 
-    def check_characters(self):  # checks if characters in name are in approved tuple
+    def check_characters(self):
+        """ checks if characters in name are in approved tuple """
         for char in self.name:
             if char in ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
                         "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "-", "'", ".", ","):
@@ -1199,46 +1285,47 @@ class NameChecker:
                 return False
         return True
 
-    def check_length(self):  # checks that the name is not too long
+    def check_length(self):
+        """ checks that the name is not too long """
         if len(self.name) < 29:
             return True
         else:
             return False
 
-    def check_comma(self):  # checks if there is a comma in the name
+    def check_comma(self):
+        """ checks if there is a comma in the name """
         s_name = self.name.split(",")
         if len(s_name) == 2:
             return True
         else:
             return False
 
-    def check_initial(self):  # checks if theres is an initial in the variable
+    def check_initial(self):
+        """ checks if theres is an initial in the variable """
         s_name = self.name.split(",")
         if len(s_name) > 1:
             if len(s_name[1].strip()) == 1:
                 return True
         else:
             return False
-    """
-        def add_comma_spacing(self):  # make sure there is a space between the comma and the first initial
-        s_name = self.name.split(",")
-        if s_name[1][0] != " ":
-            return s_name[0] + ", " + s_name[1]
-        return self.name
-    """
 
 
 class RouteChecker:
+    """
+    class for checking the route strings
+    """
     def __init__(self, route):
         self.route = route
         self.routearray = self.route.split("/")
 
     def is_empty(self):
+        """ returns True for empty strings"""
         if self.route == "":
             return True
         return False
 
-    def check_numeric(self):  # is the route numeric?
+    def check_numeric(self):
+        """ is the route numeric? """
         if self.route == "":
             return True
         for r in self.routearray:
@@ -1246,7 +1333,8 @@ class RouteChecker:
                 return False
         return True
 
-    def check_array(self):  # are there 1 or 5 items in the route string
+    def check_array(self):
+        """ are there 1 or 5 items in the route string """
         if len(self.routearray) == 1:
             return True
         elif len(self.routearray) == 5:
@@ -1254,7 +1342,8 @@ class RouteChecker:
         else:
             return False
 
-    def check_length(self):  # are the routes 4 or 5 digits long
+    def check_length(self):
+        """ are the routes 4 or 5 digits long """
         if self.route == "":
             return True
         for r in self.routearray:
@@ -1262,12 +1351,14 @@ class RouteChecker:
                 return False
         return True
 
-    def only_one(self):  # returns False if there is more than one route given
+    def only_one(self):
+        """ returns False if there is more than one route given """
         if len(self.routearray) > 1:
             return False
         return True
 
-    def only_numbers(self):  # returns True if variable is empty string or contains only numbers
+    def only_numbers(self):
+        """ returns True if variable is empty string or contains only numbers """
         if self.route == "":
             return True
         try:
@@ -1275,7 +1366,8 @@ class RouteChecker:
         except ValueError:
             return False
 
-    def check_all(self):  # do all checks, return False if any fail.
+    def check_all(self):
+        """ do all checks, return False if any fail. """
         if not self.check_numeric():
             return False
         if not self.check_array():
@@ -1286,17 +1378,22 @@ class RouteChecker:
 
 
 class RingTimeChecker:
+    """
+    class for checking clock ring stings
+    """
     def __init__(self, ring):
         self.ring = ring
 
-    def make_float(self):  # converts self.ring to a floatType or returns False
+    def make_float(self):
+        """ converts self.ring to a floatType or returns False """
         try:
             self.ring = float(self.ring)
             return self.ring
         except ValueError:
             return False
 
-    def check_for_zeros(self):  # returns True if zero or empty
+    def check_for_zeros(self):
+        """ returns True if zero or empty """
         try:
             if float(self.ring) == 0:
                 return True
@@ -1306,45 +1403,56 @@ class RingTimeChecker:
             return True
         return False
 
-    def check_numeric(self):  # is the ring numeric?
+    def check_numeric(self):
+        """ is the ring numeric? """
         try:
             float(self.ring)
             return True
         except ValueError:
             return False
 
-    def over_24(self):  # is the time greater than 24 hours
+    def over_24(self):
+        """ is the time greater than 24 hours """
         if float(self.ring) > 24:
             return False
         return True
 
-    def over_8(self):  # is the time greater than 8 hours
+    def over_8(self):
+        """ is the time greater than 8 hours """
         if float(self.ring) > 8:
             return False
         return True
 
-    def over_5000(self):  # if the time is greater than 5000 hours - upper limit on make ups for OT Equitability
+    def over_5000(self):
+        """ if the time is greater than 5000 hours - upper limit on make ups for OT Equitability """
         if float(self.ring) > 5000:
             return False
         return True
 
-    def less_than_zero(self):  # disappear here
+    def less_than_zero(self):
+        """ disappear here """
         if float(self.ring) < 0:
             return False
         return True
 
-    def count_decimals_place(self):  # limit time to two decimal places
+    def count_decimals_place(self):
+        """ limit time to two decimal places """
         return round(float(self.ring), 2) == float(self.ring)  # returns False if self.ring has > two decimal places
 
 
 class MovesChecker:
+    """
+    class for checking move strings
+    """
     def __init__(self, moves):
         self.moves = moves
 
-    def length(self):  # return False if not a multiple of three
+    def length(self):
+        """ return False if not a multiple of three """
         return len(self.moves) % 3 == 0
 
-    def check_for_zeros(self):  # returns True if zero or empty
+    def check_for_zeros(self):
+        """ returns True if zero or empty """
         if self.moves == "":
             return True
         try:
@@ -1354,64 +1462,80 @@ class MovesChecker:
             pass
         return False
 
-    def compare(self, second):  # return False if first move is greater than second move
+    def compare(self, second):
+        """ return False if first move is greater than second move """
         if float(self.moves) > float(second):
             return False
         return True
 
 
 class MinrowsChecker:
+    """
+    class for checking minimum rows
+    """
     def __init__(self, data):
         self.data = data
 
-    def is_empty(self):  # is the data an empty string?
+    def is_empty(self):
+        """ is the data an empty string? """
         if self.data == "":
             return True
         return False
 
-    def is_numeric(self):  # is the data a number?
+    def is_numeric(self):
+        """ is the data a number? """
         try:
             self.data = float(self.data)
             return True
         except ValueError:
             return False
 
-    def no_decimals(self):  # does the data have no decimal places?
+    def no_decimals(self):
+        """ does the data have no decimal places? """
         if "." in self.data:
             return False
         return True
 
-    def not_negative(self):  # is the data not a negative?
+    def not_negative(self):
+        """ is the data not a negative? """
         if "-" in self.data:
             return False
         return True
 
     def not_zero(self):
+        """ return False if the arg is zero """
         if float(self.data) == 0:
             return False
         return True
 
-    def within_limit(self, limit):  # is the data not exceed a given limit?
+    def within_limit(self, limit):
+        """ is the data not exceed a given limit? """
         if int(self.data) <= limit:
             return True
         return False
 
 
 class RefusalTypeChecker:
+    """
+    class for checking Refusal Types
+    """
     def __init__(self, data):
         self.data = data
 
     def is_empty(self):
+        """ returns True is the data is empty """
         if not self.data:
             return True
         return False
 
     def is_one(self):
+        """ returns True if the data is less than one"""
         if len(self.data) > 1:
             return False
         return True
 
     def is_letter(self):
+        """ returns True if the data is a letter. """
         if not self.data.isalpha():
             return False
         return True
@@ -1432,44 +1556,52 @@ class BackSlashDateChecker:
         self.year = ""
 
     def count_backslashes(self):
+        """ returns False if there are not 2 backslashes. """
         if self.data.count("/") != 2:
             return False
         return True
 
-    def breaker(self):  # this will fully create the instance of the object
+    def breaker(self):
+        """ this will fully create the instance of the object """
         self.breakdown = self.data.split("/")
         self.month = self.breakdown[0]
         self.day = self.breakdown[1]
         self.year = self.breakdown[2]
 
-    def check_numeric(self):  # check each element in the date to ensure they are numeric
+    def check_numeric(self):
+        """ check each element in the date to ensure they are numeric """
         for date_element in self.breakdown:
             if not isint(date_element):
                 return False
         return True
 
-    def check_minimums(self):  # check each element in the date to ensure they are greater than zero
+    def check_minimums(self):
+        """ check each element in the date to ensure they are greater than zero """
         for date_element in self.breakdown:
             if int(date_element) <= 0:
                 return False
         return True
 
     def check_month(self):
+        """ returns False if the month is greater than 12. """
         if int(self.month) > 12:
             return False
         return True
 
     def check_day(self):
+        """ return False if the day is greater than 31. """
         if int(self.day) > 31:
             return False
         return True
 
     def check_year(self):
+        """ returns False if the year does not have 4 digits. """
         if len(self.year) != 4:
             return False
         return True
 
     def valid_date(self):
+        """ returns False if the date is not a valid date. """
         try:
             datetime(int(self.year), int(self.month), int(self.day))
             return True
@@ -1477,7 +1609,10 @@ class BackSlashDateChecker:
             return False
 
 
-class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
+class CarrierRecFilter:
+    """
+    class that accepts carrier records from CarrierList().get()
+    """
     def __init__(self, recset, startdate):
         self.recset = []  # initialize vars as empty for new carriers
         self.startdate = ""
@@ -1499,7 +1634,8 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
                 self.route = lastrec[4]
                 self.station = lastrec[5]
 
-    def filter_nonlist_recs(self):  # filters out any records were the list status hasn't changed.
+    def filter_nonlist_recs(self):
+        """ filters out any records were the list status hasn't changed. """
         filtered_set = []
         last_rec = ["xxx", "xxx", "xxx", "xxx", "xxx", "xxx"]
         for r in reversed(self.recset):
@@ -1508,7 +1644,8 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
                 filtered_set.insert(0, r)  # add to the front of the list
         return filtered_set
 
-    def condense_recs(self, ns_rotate_mode):  # condense multiple recs into format used by speedsheets
+    def condense_recs(self, ns_rotate_mode):
+        """ condense multiple recs into format used by speedsheets """
         ns_dic = NsDayDict(self.startdate).ssn_ns(ns_rotate_mode)  # get speedsheet notation for nsdays
         date_str = ""
         list_str = ""
@@ -1529,7 +1666,8 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
         ns = ns_dic[self.nsday]  # ns day is given with speedsheet notation for nsdays
         return date_str, self.carrier, list_str, ns, self.route, self.station
 
-    def condense_recs_ns(self):  # condense multiple recs into format used by speedsheets
+    def condense_recs_ns(self):
+        """ condense multiple recs into format used by speedsheets """
         date_str = ""
         list_str = ""
         i = 1
@@ -1548,7 +1686,8 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
             i += 1
         return date_str, self.carrier, list_str, self.nsday, self.route, self.station
 
-    def detect_outofstation(self, station):  # returns a rec with only the date and name
+    def detect_outofstation(self, station):
+        """ returns a rec with only the date and name """
         record_set = []
         if Convert(self.date).dt_converter() > self.startdate:
             to_add = [self.startdate, self.carrier]  # out of station records only have one item
@@ -1563,22 +1702,26 @@ class CarrierRecFilter:  # accepts carrier records from CarrierList().get()
 
 
 class PdfConverterFix:
+    """
+    pass the array of routes as data to the class,
+    pass the count (an integer) to the method.
+    method will add "000000" to the array until its length matches the count.
+    """
     def __init__(self, data):
         self.data = data
 
-    """
-    pass the array of routes as data to the class, 
-    pass the count (an integer) to the method. 
-    method will add "000000" to the array until its length matches the count.
-    """
     def route_filler(self, count):
+        """ add 000000 until the lenght matches the count. """
         if len(self.data) < count:
             while len(self.data) < count:
                 self.data.append("000000")
         return self.data
 
 
-class ProgressBarDe:  # determinate Progress Bar
+class ProgressBarDe:
+    """
+    class creates a determinate Progress Bar
+    """
     def __init__(self, title="Klusterbox", label="working", text="Stand by..."):
         self.title = title
         self.label = label
@@ -1588,33 +1731,39 @@ class ProgressBarDe:  # determinate Progress Bar
         self.pb = ttk.Progressbar(self.pb_root, length=400, mode="determinate")  # create progress bar
         self.pb_text = Label(self.pb_root, text=self.text, anchor="w")
 
-    def delete(self):  # self destruct the progress bar object for keyerror exceptions
+    def delete(self):
+        """ self destruct the progress bar object for keyerror exceptions """
         self.pb_root.update_idletasks()
         self.pb_root.update()
         self.pb_root.destroy()
         del self.pb_root
 
-    def max_count(self, maxx):  # set length of progress bar
+    def max_count(self, maxx):
+        """ set length of progress bar """
         self.pb["maximum"] = maxx
 
     def start_up(self):
+        """ this method is called to start the progress bar. """
         titlebar_icon(self.pb_root)  # place icon in titlebar
         self.pb_root.title(self.title)
         self.pb_label.grid(row=0, column=0, sticky="w")
         self.pb.grid(row=1, column=0, sticky="w")
         self.pb_text.grid(row=2, column=0, sticky="w")
 
-    def move_count(self, count):  # changes the count of the progress bar
+    def move_count(self, count):
+        """ changes the count of the progress bar """
         self.pb['value'] = count
         self.pb_root.update()
 
-    def change_text(self, text):  # changes the text of the progress bar
+    def change_text(self, text):
+        """ changes the text of the progress bar """
         self.pb_text.config(text="{}".format(text))
         self.pb_root.update()
         # projvar.root.update()
 
     def stop(self):
-        self.pb.stop()  # stop and destroy the progress bar
+        """ stop and destroy the progress bar """
+        self.pb.stop()
         self.pb_text.destroy()
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()

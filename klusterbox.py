@@ -114,11 +114,13 @@ class RefusalWin:
         self.win.finish()
 
     def get_refset(self):
+        """ get refusals from database """
         sql = "SELECT * FROM refusals WHERE refusal_date between '%s' and '%s' and carrier_name = '%s' " \
               "ORDER BY refusal_date" % (self.startdate, self.enddate, self.carrier_name)
         self.refset = inquire(sql)
 
     def setup_vars_and_stringvars(self):
+        """ set up the string vars """
         i = 0
         date = self.startdate  # this will be the first date
         while date != self.enddate + timedelta(days=1):  # for each date in the quarter
@@ -140,7 +142,8 @@ class RefusalWin:
             date += timedelta(days=1)
             i += 1  # increment the counter
 
-    def start_column(self):  # returns the column position of the startdate
+    def start_column(self):
+        """ returns the column position of the startdate """
         days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         i = 0
         for day in days:  # loop through tuple of days
@@ -149,6 +152,7 @@ class RefusalWin:
             i += 3  # increment the counter
 
     def build_header(self):
+        """ build the screen header """
         Label(self.win.body, text="Refusals: {}".format(self.carrier_name),
               font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=self.row, column=0, sticky="w", columnspan=27)
@@ -225,7 +229,7 @@ class RefusalWin:
         self.status_update.pack(side=LEFT)
 
     def apply(self, home):
-        # loop through all stringvars and check for errors
+        """ loop through all stringvars and check for errors """
         for i in range(len(self.type_vars)):
             if not self.checktypes(i):  # check the refusal indicator
                 return  # return if there is an error
@@ -291,28 +295,32 @@ class RefusalWin:
             return False
         return True
 
-    def match_type(self, i):  # check if the newly inputed type matchs the type in the database
+    def match_type(self, i):
+        """ check if the newly inputed type matchs the type in the database """
         type_var = self.type_vars[i].get().strip()  # the newly inputed type
         onrec = self.onrec_type[i]  # the type on record in the database
         if type_var == onrec:
             return True
         return False
 
-    def match_time(self, i):  # check if the newly inputed time matchs the time in the database
+    def match_time(self, i):
+        """ check if the newly inputed time matchs the time in the database """
         time_var = self.time_vars[i].get().strip()  # the newly inputed time
         onrec = self.onrec_time[i]  # the time on record in the database
         if time_var == onrec:
             return True
         return False
 
-    def insert(self, i):  # insert a new record into the dbase
+    def insert(self, i):
+        """ # insert a new record into the dbase """
         type_var = self.type_vars[i].get().strip()
         time_var = Convert(self.time_vars[i].get().strip()).hundredths()
         sql = "INSERT INTO Refusals (refusal_date, carrier_name, refusal_type, refusal_time) " \
               "VALUES('%s', '%s', '%s', '%s')" % (self.ref_dates[i], self.carrier_name, type_var, time_var)
         commit(sql)
 
-    def update(self, i):  # update an existing record in the dbase
+    def update(self, i):
+        """ update an existing record in the dbase """
         type_var = self.type_vars[i].get().strip()
         time_var = Convert(self.time_vars[i].get().strip()).hundredths()
         # "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_num.get().lower(), old_num)
@@ -320,7 +328,8 @@ class RefusalWin:
               "and carrier_name = '%s'" % (type_var, time_var, self.ref_dates[i], self.carrier_name)
         commit(sql)
 
-    def delete(self, i):  # delete the record from the dbase
+    def delete(self, i):
+        """ delete the record from the dbase """
         sql = "DELETE FROM Refusals WHERE refusal_date = '%s' and carrier_name = '%s'" \
               % (self.ref_dates[i], self.carrier_name)
         commit(sql)
@@ -2447,25 +2456,35 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
 
 
 class GuiConfig:
+    """
+    This class sets up the GUI Configuration screen used for setting mouse wheel orientation, investigation range
+    display mode, overtime rings limiter, and tour rings display.
+    """
     def __init__(self, frame):
         self.frame = frame
-        self.win = MakeWindow()
-        self.wheel_selection = StringVar(self.win.body)
-        self.invran_mode = StringVar(self.win.body)
-        self.ot_rings_limiter = StringVar(self.win.body)
-        self.status_update = Label(self.win.buttons, text="", fg="red")
-        self.rings_limiter = None
-        self.invran_result = None
+        self.win = None
+        self.wheel_selection = None  # stringvar
+        self.invran_mode = None  # stringvar
+        self.ot_rings_limiter = None  # stringvar
+        self.tourrings_var = None  # stringvar
+        self.tourrings = None  # True to show BT/ET rings, False to hide
+        self.rings_limiter = None  # ot rings limiter status from tolerance table
+        self.invran_result = None  # investigation range mode from tolerance table
         self.row = 0
+        self.status_update = None  # a label widget for status report
 
     def create(self):
+        """ this is a master method for calling other methods in the class in sequence. """
         self.get_settings()
+        self.get_window_object()
+        self.get_stringvars()
         self.build()
         self.button_frame()
         self.win.fill(self.row + 1, 25)
         self.win.finish()
 
     def get_settings(self):
+        """ get records from the database and define variables. """
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
         results = inquire(sql)
         projvar.mousewheel = int(results[0][0])
@@ -2476,9 +2495,25 @@ class GuiConfig:
         results = inquire(sql)
         rings_limiter = results[0][0]
         self.rings_limiter = Convert(rings_limiter).bool_to_onoff()  # convert the bool to on or off
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "tourrings"
+        results = inquire(sql)
+        tourrings = results[0][0]
+        self.tourrings = Convert(tourrings).bool_to_onoff()  # convert the bool to on or off
+
+    def get_window_object(self):
+        """ create the window object and define self.win """
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+
+    def get_stringvars(self):
+        """ create the stringvars """
+        self.wheel_selection = StringVar(self.win.body)
+        self.invran_mode = StringVar(self.win.body)
+        self.ot_rings_limiter = StringVar(self.win.body)
+        self.tourrings_var = StringVar(self.win.body)
 
     def build(self):
-        self.win.create(self.frame)
+        """ build the screens """
         Label(self.win.body, text="GUI Configuration", font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=self.row, sticky="w", columnspan=4)
         self.row += 1
@@ -2508,6 +2543,7 @@ class GuiConfig:
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
+
         # overtime rings limiter
         Label(self.win.body, text="Overtime Rings Limiter:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_rings = OptionMenu(self.win.body, self.ot_rings_limiter, "on", "off")  # option menu configuration below
@@ -2516,16 +2552,31 @@ class GuiConfig:
         self.ot_rings_limiter.set(self.rings_limiter)
         Button(self.win.body, text="set", width=7,
                command=lambda: self.apply_rings_limiter()).grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
 
-    def button_frame(self):  # Display buttons and status update message
+        # tourrings - show bt et rings
+        Label(self.win.body, text="Show BT/ET Rings:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_tourrings = OptionMenu(self.win.body, self.tourrings_var, "on", "off")  # option menu configuration below
+        om_tourrings.config(width=7)
+        om_tourrings.grid(row=self.row, column=1)
+        self.tourrings_var.set(self.tourrings)
+        Button(self.win.body, text="set", width=7,
+               command=lambda: self.apply_tourrings()).grid(row=self.row, column=2)
+
+    def button_frame(self):
+        """ Display buttons and status update message """
         button = Button(self.win.buttons)
         button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
 
     def apply_rings_limiter(self):
+        """ apply the ot rings limiter """
         if self.ot_rings_limiter.get() == "on":
             rings_limiter = int(1)
         else:
@@ -2536,12 +2587,14 @@ class GuiConfig:
         self.status_update.config(text="{}".format(msg))
 
     def apply_invran_mode(self):
+        """ apply investigation range mode. """
         sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (self.invran_mode.get(), "invran_mode")
         commit(sql)
         msg = "Investigation Range mode updated: {}".format(self.invran_mode.get())
         self.status_update.config(text="{}".format(msg))
 
     def apply_mousewheel(self):
+        """ apply mouse wheel configuration """
         if self.wheel_selection.get() == "natural":
             wheel_multiple = int(1)
             projvar.mousewheel = int(1)  # sets the project variable
@@ -2553,9 +2606,20 @@ class GuiConfig:
         msg = "Mousescroll direction updated: {}".format(self.wheel_selection.get())
         self.status_update.config(text="{}".format(msg))
 
+    def apply_tourrings(self):
+        """ apply tour rings """
+        if self.tourrings_var.get() == "on":  # convert tourrings to boolean values
+            tourrings = int(1)
+        else:
+            tourrings = int(0)
+        sql = "UPDATE tolerances SET tolerance='%s' WHERE category='%s'" % (tourrings, "tourrings")
+        commit(sql)
+        msg = "Show BT/ET rings updated: {}".format(self.tourrings_var.get())
+        self.status_update.config(text="{}".format(msg))
+
 
 def database_rings_report(frame, station):
-    #  generate a report summary of all clock rings for the station
+    """ generate a report summary of all clock rings for the station """
     gross_dates = []  # captures all dates of rings for given station
     # master_dates = []  # a distinct collection of dates for given station
     unique_dates = []
@@ -10074,6 +10138,9 @@ def output_tab(frame, list_carrier):
 
 
 class EnterRings:
+    """
+    A Screen for entering in carrier clock rings
+    """
     def __init__(self, carrier):
         self.frame = None
         self.origin_frame = None  # defunct
@@ -10085,8 +10152,10 @@ class EnterRings:
         self.daily_carrecs = []  # get the carrier record for each day
         self.daily_ringrecs = []  # get the rings record for each day
         self.totals = []  # arrays holding stringvars
-        self.rss = []
+        self.begintour = []
         self.moves = []
+        self.rss = []
+        self.endtour = []
         self.codes = []
         self.lvtypes = []
         self.lvtimes = []
@@ -10100,6 +10169,7 @@ class EnterRings:
         self.fri_mm = []
         self.move_string = ""
         self.ot_rings_limiter = None
+        self.tourrings = None  # True if user wants to display the BT (begin tour) and ET (end tour)
         self.chg_these = []
         self.addrings = []
         if projvar.invran_weekly_span:
@@ -10112,16 +10182,18 @@ class EnterRings:
         self.day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 
     def start(self, frame):
+        """ a master method for running the other methods in proper sequence """
         self.frame = frame
         self.win = MakeWindow()
         self.win.create(self.frame)
-        self.re_initialize()
+        self.re_initialize()  # initialize all variables
         self.get_carrecs()
         self.get_ringrecs()
         self.get_dates()
         self.get_daily_carrecs()
         self.get_daily_ringrecs()
         self.get_rings_limiter()
+        self.get_tourrings()
         self.build_page()
         self.write_report()
         self.buttons_frame()
@@ -10129,14 +10201,17 @@ class EnterRings:
         self.win.finish()
 
     def re_initialize(self):
+        """ a method for re initializing all variables after Apply is pressed or when first started. """
         self.carrecs = []  # get the carrier rec set
         self.ringrecs = []  # get the rings for the week
         self.dates = []  # get a datetime object for each day in the investigation range
         self.daily_carrecs = []  # get the carrier record for each day
         self.daily_ringrecs = []  # get the rings record for each day
         self.totals = []  # arrays holding stringvars
-        self.rss = []
+        self.begintour = []
         self.moves = []
+        self.rss = []
+        self.endtour = []
         self.codes = []
         self.lvtypes = []
         self.lvtimes = []
@@ -10155,34 +10230,39 @@ class EnterRings:
             for i in range(7):
                 self.addrings.append([])
 
-    def get_carrecs(self):  # get the carrier's carrier rec set
-        if projvar.invran_weekly_span:
+    def get_carrecs(self):
+        """ get the carrier's carrier rec set """
+        if projvar.invran_weekly_span:  # get the records for the full service week
             self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date_week[0], projvar.invran_date_week[6],
                                          projvar.invran_station).get()
-        else:
+        else:  # get the records for the day
             self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date, projvar.invran_date,
                                          projvar.invran_station).get()
 
-    def get_ringrecs(self):  # get the ring recs for the invran
-        if projvar.invran_weekly_span:
+    def get_ringrecs(self):
+        """ get the ring recs for the invran """
+        if projvar.invran_weekly_span:  # get the records for the full service week
             self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_week()
-        else:
+        else:  # get the records for the day
             self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_day()
 
-    def get_dates(self):  # get a datetime object for each day in the investigation range
+    def get_dates(self):
+        """ get a datetime object for each day in the investigation range """
         if projvar.invran_weekly_span:
             self.dates = projvar.invran_date_week
         else:
             self.dates = [projvar.invran_date, ]
 
-    def get_daily_carrecs(self):  # make a list of carrecs for each day
+    def get_daily_carrecs(self):
+        """ make a list of carrier records for each day """
         for d in self.dates:
             for rec in self.carrecs:
-                if rec[0] <= str(d):
-                    self.daily_carrecs.append(rec)
+                if rec[0] <= str(d):  # if the dates match
+                    self.daily_carrecs.append(rec)  # append the record
                     break
 
-    def get_daily_ringrecs(self):  # make list of ringrecs for each day, insert empty rec if there is no rec
+    def get_daily_ringrecs(self):
+        """ make list of ringrecs for each day, insert empty rec if there is no rec """
         match = False
         for d in self.dates:  # for each day in self.dates
             for rr in self.ringrecs:
@@ -10191,7 +10271,7 @@ class EnterRings:
                         self.daily_ringrecs.append(list(rr))  # creates the daily_ringrecs array
                         match = True
             if not match:  # if there is no match
-                add_this = [d, self.carrier, "", "", "none", "", "none", ""]  # insert an empty record
+                add_this = [d, self.carrier, "", "", "none", "", "none", "", "", "", ""]  # insert an empty record
                 self.daily_ringrecs.append(add_this)  # creates the daily_ringrecs array
             match = False
         # convert the time item from string to datetime object
@@ -10200,17 +10280,30 @@ class EnterRings:
                 self.daily_ringrecs[i][0] = Convert(self.daily_ringrecs[i][0]).dt_converter()
 
     def get_rings_limiter(self):
+        """ get the status of rings limiter which limits the widgets in the screen """
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
         results = inquire(sql)
         self.ot_rings_limiter = int(results[0][0])
 
+    def get_tourrings(self):
+        """ get tourrings from database which allow user to show BT (begin tour) and ET (end tour) """
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "tourrings"
+        results = inquire(sql)
+        self.tourrings = int(results[0][0])
+
+    def get_widgetlist(self, i):
+        """ returns a list with moves and/or tourrings or an empty list. """
+        widgetlist = []
+        if self.tourrings:
+            widgetlist.append("tourrings")
+        if self.daily_carrecs[i][2] in ("otdl",) and not self.ot_rings_limiter:
+            widgetlist.append("moves")
+        if self.daily_carrecs[i][2] in ("nl", "wal"):
+            widgetlist.append("moves")
+        return widgetlist
+
     def build_page(self):
-        # now_total = None
-        # now_rs = None
-        # now_code = None
-        # now_moves = None
-        # now_lv_type = None
-        # now_lv_time = None
+        """ builds the screen """
         day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
         frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
         color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
@@ -10242,7 +10335,9 @@ class EnterRings:
         for i in range(i_range):
             # for ring in self.daily_ringrecs:  # assign the values for each rings attribute
             now_total = Convert(self.daily_ringrecs[i][2]).empty_not_zero()
+            now_bt = Convert(self.daily_ringrecs[i][9]).empty_not_zero()
             now_rs = Convert(self.daily_ringrecs[i][3]).empty_not_zero()
+            now_et = Convert(self.daily_ringrecs[i][10]).empty_not_zero()
             now_code = Convert(self.daily_ringrecs[i][4]).none_not_empty()
             self.now_moves = self.daily_ringrecs[i][5]
             now_lv_type = Convert(self.daily_ringrecs[i][6]).none_not_empty()
@@ -10258,39 +10353,74 @@ class EnterRings:
                 Label(frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
             grid_i += 1
-            column = 6  # if the ot rings limiter is off/false - column = 6
-            if self.daily_carrecs[i][2] in ("aux", "ptf"):  # don't show moves for aux or ptf carriers
-                column = 3
-            elif self.daily_carrecs[i][2] in ("otdl", ):  # show moves for otdl unless ot rings limiter is on
-                if self.ot_rings_limiter:  # if ot rings limiter is on/true - colummn = 3
-                    column = 3
+            widgetlist = self.get_widgetlist(i)  # returns a list with moves and/or tourrings or an empty list.
+            colcount = 0
             if self.daily_carrecs[i][5] == projvar.invran_station:
-                Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=0)  # Display all labels
-                Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=1)
-                if column == 6:  # don't show moves for aux, ptf and (maybe) otdl
-                    Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=2)
-                    Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=3)
-                    Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=4)
-                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=column)
-                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=column+1)
-                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=column+2)
-                grid_i += 1
+                Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=colcount)  # Display 5200 label
+                colcount += 1
+                if "tourrings" in widgetlist:
+                    Label(frame[i], text="BT", fg=color[7]).grid(row=grid_i, column=colcount)
+                    colcount += 1
+                if "moves" in widgetlist:
+                    Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=colcount)  # Display MV off
+                    Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=colcount+1)  # Display MV on
+                    Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=colcount+2)  # Display Route
+                    colcount += 4
+                Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=colcount)  # Display RS label
+                colcount += 1
+                if "tourrings" in widgetlist:
+                    Label(frame[i], text="ET", fg=color[7]).grid(row=grid_i, column=colcount)  # Display ET label
+                    colcount += 1
+                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=colcount)  # Display code label
+                colcount += 1
+                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=colcount)  # Display LV type label
+                colcount += 1
+                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=colcount)  # Display LV time label
+
+                grid_i += 1  # increment the grid to add a line
+                colcount = 0  # reset the column counter to zero
+
                 # Display the entry widgets
                 # 5200 time
                 self.totals.append(StringVar(frame[i]))  # append stringvar to totals array
                 total_widget[i] = Entry(frame[i], width=macadj(8, 4), textvariable=self.totals[i])
-                total_widget[i].grid(row=grid_i, column=0)
+                total_widget[i].grid(row=grid_i, column=colcount)
                 self.totals[i].set(now_total)  # set the starting value for total
+                colcount += 1
+
+                # BT - begin tour
+                if "tourrings" in widgetlist:
+                    self.begintour.append(StringVar(frame[i]))  # append stringvar to bt array
+                    Entry(frame[i], width=macadj(8, 4), textvariable=self.begintour[i])\
+                        .grid(row=grid_i, column=colcount)
+                    self.begintour[i].set(now_bt)  # set the starting value for BT
+                    colcount += 1
+
+                # Moves
+                if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
+                    self.new_entry(frame[i], day[i], colcount)  # MOVES on, off and route entry widgets
+                    original_colcount = colcount
+                    colcount += 3
+                    Button(frame[i], text="more moves",
+                           command=lambda x=i: self.new_entry(frame[x], day[x], original_colcount)) \
+                        .grid(row=grid_i, column=colcount)
+                    colcount += 1
+                self.now_moves = ""  # zero out self.now_moves so more moves button works properly
+
                 # Return to Station (rs)
                 self.rss.append(StringVar(frame[i]))  # RS entry widget
-                Entry(frame[i], width=macadj(8, 4), textvariable=self.rss[i]).grid(row=grid_i, column=1)
+                Entry(frame[i], width=macadj(8, 4), textvariable=self.rss[i]).grid(row=grid_i, column=colcount)
                 self.rss[i].set(now_rs)  # set the starting value for RS
-                # Moves
-                if column == 6:  # don't show moves for aux, ptf and (maybe) otdl
-                    self.new_entry(frame[i], day[i])  # MOVES on, off and route entry widgets
-                    Button(frame[i], text="more moves", command=lambda x=i: self.new_entry(frame[x], day[x])) \
-                        .grid(row=grid_i, column=5)
-                self.now_moves = ""  # zero out self.now_moves so more moves button works properly
+                colcount += 1  # increment the column
+
+                # ET - end tour
+                if "tourrings" in widgetlist:
+                    self.endtour.append(StringVar(frame[i]))  # append stringvar to bt array
+                    Entry(frame[i], width=macadj(8, 4), textvariable=self.endtour[i]) \
+                        .grid(row=grid_i, column=colcount)
+                    self.endtour[i].set(now_et)  # set the starting value for ET
+                    colcount += 1
+
                 # Codes/Notes
                 self.codes.append(StringVar(frame[i]))  # code entry widget
                 if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
@@ -10301,18 +10431,21 @@ class EnterRings:
                     option_menu[i] = OptionMenu(frame[i], self.codes[i], *aux_codes)
                 self.codes[i].set(now_code)
                 option_menu[i].configure(width=macadj(7, 6))
-                option_menu[i].grid(row=grid_i, column=column)  # code widget
+                option_menu[i].grid(row=grid_i, column=colcount)  # code widget
+                colcount += 1  # increment the column
                 # Leave Type
                 self.lvtypes.append(StringVar(frame[i]))  # leave type entry widget
                 lv_option_menu[i] = OptionMenu(frame[i], self.lvtypes[i], *lv_options)
                 lv_option_menu[i].configure(width=macadj(7, 6))
-                lv_option_menu[i].grid(row=grid_i, column=column+1)  # leave type widget
+                lv_option_menu[i].grid(row=grid_i, column=colcount)  # leave type widget
+                colcount += 1  # increment the column
                 # Leave Time
                 self.lvtimes.append(StringVar(frame[i]))  # leave time entry widget
                 self.lvtypes[i].set(now_lv_type)  # set the starting value for leave type
                 self.lvtimes[i].set(now_lv_time)  # set the starting value for leave type
                 Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
-                    .grid(row=grid_i, column=column+2)  # leave time widget
+                    .grid(row=grid_i, column=colcount)  # leave time widget
+                colcount += 1  # increment the column
             else:
                 self.totals.append(StringVar(frame[i]))  # 5200 entry widget
                 self.rss.append(StringVar(frame[i]))  # RS entry
@@ -10328,7 +10461,8 @@ class EnterRings:
         Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
 
     @staticmethod
-    def triad_row_finder(index):  # finds the row of the moves entry widget or button
+    def triad_row_finder(index):
+        """ finds the row of the moves entry widget or button """
         if index % 3 == 0:
             return int(index / 3)
         elif (index - 1) % 3 == 0:
@@ -10337,7 +10471,8 @@ class EnterRings:
             return int((index - 2) / 3)
 
     @staticmethod
-    def triad_col_finder(index):  # finds the column of the moves widget
+    def triad_col_finder(index):
+        """ finds the column of the moves widget """
         if index % 3 == 0:  # first column
             return int(0)
         elif (index - 1) % 3 == 0:  # second column
@@ -10345,7 +10480,8 @@ class EnterRings:
         elif (index - 2) % 3 == 0:  # third column
             return int(2)
 
-    def new_entry(self, frame, day):  # creates new entry fields for "more move functionality"
+    def new_entry(self, frame, day, colcount):
+        """ creates new entry fields for 'more move functionality' """
         mm = []
         if day == "sat":
             mm = self.sat_mm  # find the day in question and use the correlating  array
@@ -10366,15 +10502,15 @@ class EnterRings:
             mm.append(StringVar(frame))  # create first entry field for new entries
             Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
                 .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + 2)  # route
+                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # route
             mm.append(StringVar(frame))  # create second entry field for new entries
             Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
                 .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + 2)  # move off
+                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # move off
             mm.append(StringVar(frame))  # create second entry field for new entries
             Entry(frame, width=macadj(8, 5), textvariable=mm[len(mm) - 1]) \
                 .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + 2)  # move on
+                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # move on
         else:  # if there are moves which need to be set
             moves = self.now_moves.split(",")  # turn now_moves into an array
             iterations = len(moves)  # get the number of items in moves array
@@ -10387,9 +10523,10 @@ class EnterRings:
                     ml = 4  # on mac, the rings widget lenght is 4
                 # build the widget
                 Entry(frame, width=macadj(8, ml), textvariable=mm[i]) \
-                    .grid(row=self.triad_row_finder(i) + 2, column=self.triad_col_finder(i) + 2)
+                    .grid(row=self.triad_row_finder(i) + 2, column=self.triad_col_finder(i) + colcount)
 
-    def write_report(self):  # build the report to appear on bottom of screen
+    def write_report(self):
+        """ build the report to appear on bottom of screen """
         if not self.status_update:
             return
         if self.delete_report + self.update_report + self.insert_report == 0:
@@ -10408,6 +10545,7 @@ class EnterRings:
         self.status_update = status_update
 
     def buttons_frame(self):
+        """ build the buttons for the bottom of the screen """
         Button(self.win.buttons, text="Submit", width=10, anchor="w",
                command=lambda: self.apply_rings(True)).pack(side=LEFT)
         Button(self.win.buttons, text="Apply", width=10, anchor="w",
@@ -10417,12 +10555,14 @@ class EnterRings:
         Label(self.win.buttons, text="{}".format(self.status_update), fg="red").pack(side=LEFT)
 
     def zero_report_vars(self):
+        """ initializes the report variables. """
         self.status_update = "No records changed."
         self.delete_report = 0
         self.update_report = 0
         self.insert_report = 0
 
     def apply_rings(self, go_home):
+        """ execute when apply or submit is pressed """
         self.empty_addrings()
         self.add_date()
         if not self.check_5200():
@@ -10441,16 +10581,19 @@ class EnterRings:
         else:  # if False, then rebuild the Enter Rings screen
             self.start(self.win.topframe)
 
-    def empty_addrings(self):  # empty out addring arrays
+    def empty_addrings(self):
+        """ empty out addring arrays """
         for i in range(len(self.addrings)):
             self.addrings[i] = []
 
-    def add_date(self):  # start the addrings array
+    def add_date(self):
+        """ start the addrings array """
         for i in range(len(self.dates)):  # loop for each day in the investigation
             self.addrings[i].append(self.dates[i])  # add the date
             self.addrings[i].append(self.carrier)  # add the carrier name
 
     def check_5200(self):
+        """ a check for the 5200 time """
         for i in range(len(self.totals)):
             total = self.totals[i].get().strip()
             if RingTimeChecker(total).check_for_zeros():
@@ -10477,6 +10620,7 @@ class EnterRings:
         return True
 
     def check_rs(self):
+        """ a check for return to station time """
         for i in range(len(self.rss)):
             rs = str(self.rss[i].get()).strip()
             if RingTimeChecker(rs).check_for_zeros():
@@ -10503,10 +10647,12 @@ class EnterRings:
         return True
 
     def add_codes(self):
+        """ adds the code to the an array of values to be entered into the database """
         for i in range(len(self.codes)):
             self.addrings[i].append(self.codes[i].get())
 
-    def bypass_moves(self):  # keep existing moves if otdl rings limiter is on/True
+    def bypass_moves(self):
+        """ keep existing moves if otdl rings limiter is on/True """
         if projvar.invran_weekly_span:  # if investigation range is weekly
             i_range = 7  # investigation range is seven days
         else:
@@ -10516,12 +10662,14 @@ class EnterRings:
             self.addrings[i].append(moves)  # add that record to addrings array
 
     def move_string_constructor(self, first, second, third):
+        """ builds the moves triad - move off, move on and route - into the form entered into the database """
         if self.move_string and first and second:
             self.move_string += ","
         if first and second:
             self.move_string += first + "," + second + "," + third
 
     def check_moves(self):
+        """ checks the moves for errors """
         if self.ot_rings_limiter:  # if the otdl rings limiter is on/True
             self.bypass_moves()  # bypass all checks and put preexisting moves into addrings
             return True  # mission accomplished
@@ -10597,10 +10745,12 @@ class EnterRings:
         return True
 
     def add_leavetype(self):
+        """ adds the leave type into an array to be entered into the database. """
         for i in range(len(self.lvtypes)):
             self.addrings[i].append(self.lvtypes[i].get())
 
     def check_leave(self):
+        """ checks then adds the leave time into an array to be entered into the database. """
         for i in range(len(self.lvtimes)):
             lvtime = str(self.lvtimes[i].get()).strip()
             if RingTimeChecker(lvtime).check_for_zeros():
@@ -10628,7 +10778,8 @@ class EnterRings:
             self.addrings[i].append(lvtime)  # if all checks pass, add to addrings
         return True
 
-    def addrecs(self):  # add records to database
+    def addrecs(self):
+        """ add records to database """
         sql = ""
         for i in range(len(self.dates)):
             empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", ""]
@@ -10662,6 +10813,7 @@ class EnterRings:
 
 
 def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, frame):
+    """ executes when the carrier information is updated. """
     if year.get() > 9999:
         messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
@@ -10712,6 +10864,7 @@ def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, 
 
 
 def delete_carrier(name):
+    """ executes when a carrier is deleted. """
     sql = "DELETE FROM carriers WHERE rowid = '%s'" % name[6]
     commit(sql)
     sql = "SELECT carrier_name FROM carriers WHERE carrier_name = '%s'" % name[1]
@@ -10723,6 +10876,7 @@ def delete_carrier(name):
 
 
 def apply(year, month, day, c_name, ls, ns, route, station, frame):
+    """ executes to enter carrier information into the database """
     if year.get() > 9999:
         messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
         return
@@ -10803,6 +10957,7 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
 
 
 def name_change(name, c_name, frame):
+    """ executes to change the name of a carrier after checks """
     c_name = c_name.get().strip().lower()
     if messagebox.askokcancel("Name Change",
                               "This will change the name {} to {} in all records. "
@@ -10839,6 +10994,7 @@ def name_change(name, c_name, frame):
 
 
 def purge_carrier(frame, carrier):
+    """ executes to delete all carrier records along with rings and name index from the database. """
     if not messagebox.askokcancel("Delete Carrier",
                                   "This will delete the carrier and all records associated with "
                                   "this carrier, including rings and name index.\n\n"
@@ -10857,6 +11013,7 @@ def purge_carrier(frame, carrier):
 
 
 def update_carrier(a):
+    """ builds a screen used to update carrier records """
     sql = "SELECT * FROM ns_configuration"
     ns_results = inquire(sql)
     ns_dict = {}  # build dictionary for ns days
@@ -11049,6 +11206,7 @@ def update_carrier(a):
 
 
 def edit_carrier(e_name):
+    """ builds a screen for editing carrier information """
     sql = "SELECT effective_date, carrier_name, list_status, ns_day,route_s, station, rowid" \
           " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % e_name
     results = inquire(sql)
@@ -11299,6 +11457,7 @@ def edit_carrier(e_name):
 
 
 def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, frame):
+    """ executes to check then enter in new carrier information into the database. """
     if year.get() > 9999 or year.get() < 1000:
         messagebox.showerror("Year Input Error", "Year must be between 1000 and 9999", parent=frame)
         return
@@ -11397,7 +11556,8 @@ def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_sta
     MainFrame().start(frame=frame)
 
 
-def input_carriers(frame):  # window for inputting new carriers
+def input_carriers(frame):
+    """ window for inputting new carriers """
     # get ns day color configurations
     sql = "SELECT * FROM ns_configuration"
     ns_results = inquire(sql)
@@ -11585,7 +11745,8 @@ def input_carriers(frame):  # window for inputting new carriers
     c.config(scrollregion=c.bbox("all"))
 
 
-def reset(frame):  # reset initial value of globals
+def reset(frame):
+    """ reset initial value of globals """
     projvar.invran_year = None
     projvar.invran_month = None
     projvar.invran_day = None
@@ -11599,6 +11760,9 @@ def reset(frame):  # reset initial value of globals
 
 
 class MainFrame:
+    """
+    This is the main screen where the carrier list and all pull down menus are displayed.
+    """
     def __init__(self):
         self.win = None
         self.invest_frame = None
@@ -11616,7 +11780,8 @@ class MainFrame:
         self.stations_minus_outofstation = []  # list of stations
         self.invran_result = None
 
-    def start(self, frame=None):  # master method for controlling methods in class
+    def start(self, frame=None):
+        """ master method for controlling methods in class """
         self.win = MakeWindow()
         self.win.create(frame)  # create the window
         self.invest_frame = Frame(self.win.body)
@@ -11646,13 +11811,15 @@ class MainFrame:
         self.win.finish()  # close the window
 
     def set_dates(self):
+        """ gets the start and end dates """
         self.start_date = projvar.invran_date
         self.end_date = projvar.invran_date
         if projvar.invran_weekly_span:
             self.start_date = projvar.invran_date_week[0]
             self.end_date = projvar.invran_date_week[6]
 
-    def make_stringvars(self):  # create stringvars
+    def make_stringvars(self):
+        """ create stringvars """
         self.start_year = StringVar(self.win.body)
         self.start_month = StringVar(self.win.body)
         self.start_day = StringVar(self.win.body)
@@ -11661,11 +11828,13 @@ class MainFrame:
         self.invran = StringVar(self.win.body)
         self.station = StringVar(self.invest_frame)
 
-    def get_carrierlist(self):  # call CarrierList to get Carrier Rec Set
+    def get_carrierlist(self):
+        """ call CarrierList to get Carrier Rec Set """
         # get carrier list
         self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
-    def set_investigation_vars(self):  # set the stringvars for the investigation range
+    def set_investigation_vars(self):
+        """ set the stringvars for the investigation range """
         now = datetime.now()
         self.start_month.set(now.month)  # default setting is now
         self.start_day.set(now.day)
@@ -11694,7 +11863,8 @@ class MainFrame:
             self.i_range.set(True)
             self.invran.set("week")
 
-    def get_stations_list(self):  # get a list of stations for station optionmenu
+    def get_stations_list(self):
+        """ get a list of stations for station optionmenu """
         self.stations_minus_outofstation = projvar.list_of_stations[:]
         self.stations_minus_outofstation.remove("out of station")
         if len(self.stations_minus_outofstation) == 0:
@@ -11706,6 +11876,7 @@ class MainFrame:
         self.invran_result = results[0][0]
 
     def investigation_range_simple(self):
+        """ executes if the investigation range is configured to simple in gui configution """
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=0, column=0, columnspan=2, sticky=W)
         if self.invran_result != "no labels":  # create a label row
             Label(self.invest_frame, text="Date: ", fg="grey").grid(row=1, column=0, sticky=W)
@@ -11727,7 +11898,8 @@ class MainFrame:
         Button(self.invest_frame, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
                fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=4, padx=2)
 
-    def investigation_range(self):  # configure widgets for setting investigation range
+    def investigation_range(self):
+        """ configure widgets for setting investigation range """
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=0, columnspan=2)
         om_month = OptionMenu(self.invest_frame, self.start_month, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
         om_month.config(width=2)
@@ -11756,10 +11928,6 @@ class MainFrame:
         om.config(width=macadj(40, 34))
         om.grid(row=2, column=1, columnspan=5, sticky=W)
         # set and reset buttons for investigation range
-        # Button(self.invest_frame, text="Set", width=macadj(8, 9), bg=macadj("green", "SystemButtonFace"),
-        #        fg=macadj("white", "green"), command=lambda: set_globals(self.start_year.get(),
-        #        self.start_month.get(), self.start_day.get(), self.i_range.get(), self.station.get(),
-        #        self.win.topframe)).grid(row=2, column=6)
         Button(self.invest_frame, text="Set", width=macadj(8, 9),
                bg=macadj("green", "SystemButtonFace"), fg=macadj("white", "green"),
                command=lambda: self.make_globals(self.start_year.get(), self.start_month.get(),
@@ -11770,11 +11938,13 @@ class MainFrame:
                fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=7)
 
     def make_globals(self, year, month, day, i_range, station, frame):
+        """ sets the globals and then restarts the class. """
         set_globals(year, month, day, i_range, station, frame)
         self.__init__()  # re initialize the class
         self.start(frame)  # start again
 
     def call_globals(self):
+        """ breaks down the date and checks each segment before setting the globals to reflect investigation range. """
         msg_rear = "\n Dates must be formatted as \"mm/dd/yyyy\".\n" \
                    "Month must be expressed as number between 1 and 12.\n" \
                    "Day must be expressed as a number between 1 and 31.\n" \
@@ -11815,7 +11985,8 @@ class MainFrame:
         self.make_globals(breakdown.year, breakdown.month, breakdown.day, invest_range, self.station.get(),
                               self.win.topframe)
 
-    def investigation_status(self):  # provide message on status of investigation range
+    def investigation_status(self):
+        """ provide message on status of investigation range """
         # Investigation date SET/NOT SET notification
         if projvar.invran_weekly_span is None:
             Label(self.invest_frame, text="----> Investigation date/range not set", foreground="red") \
@@ -11832,7 +12003,8 @@ class MainFrame:
                   .format(f_date, end_f_date, projvar.pay_period),
                   foreground="red").grid(row=3, column=0, columnspan=8, sticky="w")
 
-    def invran_not_set(self):  # investigation range is not set
+    def invran_not_set(self):
+        """ executes if investigation range is not set"""
         # Button(self.main_frame, text="Automatic Data Entry", width=30,
         #        command=lambda: call_indexers(self.win.topframe)).grid(row=0, column=1, pady=5)
         Button(self.main_frame, text="Automatic Data Entry", width=30,
@@ -11852,7 +12024,8 @@ class MainFrame:
         Label(self.main_frame, text="Build the carrier list with the New Carrier feature\nor by running "
                                     "the Automatic Data Entry Feature.").grid(row=3, column=0)
 
-    def show_carrierlist(self):  # investigation range is set and carrier list is not empty
+    def show_carrierlist(self):
+        """ investigation range is set and carrier list is not empty """
         Label(self.main_frame, text="Name (click for Rings)", fg="grey").grid(row=0, column=1, sticky="w")
         Label(self.main_frame, text="List", fg="grey").grid(row=0, column=2, sticky="w")
         Label(self.main_frame, text="N/S", fg="grey").grid(row=0, column=3, sticky="w")
@@ -11901,7 +12074,8 @@ class MainFrame:
             i += 1
             r += 1
 
-    def pulldown_menu(self):  # create a pulldown menu, and add it to the menu bar
+    def pulldown_menu(self):
+        """ create a pulldown menu, and add it to the menu bar """
         menubar = Menu(self.win.topframe)
         # file menu
         basic_menu = Menu(menubar, tearoff=0)
@@ -11910,9 +12084,6 @@ class MainFrame:
         basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(self.win.topframe))
         basic_menu.add_command(label="Multiple Input", 
                                command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss))
-        # basic_menu.add_command(label="Report Summary",
-        # command=lambda: output_tab(self.win.topframe, self.carrier_list))
-
         basic_menu.add_command(label="Mandates Spreadsheet",
                                command=lambda r_rings="x": ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",
@@ -12089,7 +12260,8 @@ class MainFrame:
         menubar.add_cascade(label="Management", menu=management_menu)
         projvar.root.config(menu=menubar)
         
-    def bottom_of_frame(self):  # configure buttons on the bottom of the frame
+    def bottom_of_frame(self):
+        """ configure buttons on the bottom of the frame """
         if projvar.invran_day is not None:
             Button(self.win.buttons, text="New Carrier", command=lambda: input_carriers(self.win.topframe),
                    width=macadj(13, 13)).pack(side=LEFT)
@@ -12106,8 +12278,8 @@ class MainFrame:
 
 
 if __name__ == "__main__":
-    # declare all global variables
-    global informalc_newroot
+    """ this is where the program starts """
+    global informalc_newroot  # declare all global variables
     global informalc_addframe
     global poe_add_pay_periods
     global poe_add_hours
