@@ -10302,6 +10302,13 @@ class EnterRings:
             widgetlist.append("moves")
         return widgetlist
 
+    @staticmethod
+    def get_ww(widgetlist):
+        """ get the widget of widgets in windows """
+        if len(widgetlist)>1:  # if there is more than one thing in the widgetlist
+            return 6  # shorten the widget
+        return 8
+
     def build_page(self):
         """ builds the screen """
         day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
@@ -10354,6 +10361,7 @@ class EnterRings:
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
             grid_i += 1
             widgetlist = self.get_widgetlist(i)  # returns a list with moves and/or tourrings or an empty list.
+            ww = self.get_ww(widgetlist)
             colcount = 0
             if self.daily_carrecs[i][5] == projvar.invran_station:
                 Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=colcount)  # Display 5200 label
@@ -10383,7 +10391,7 @@ class EnterRings:
                 # Display the entry widgets
                 # 5200 time
                 self.totals.append(StringVar(frame[i]))  # append stringvar to totals array
-                total_widget[i] = Entry(frame[i], width=macadj(8, 4), textvariable=self.totals[i])
+                total_widget[i] = Entry(frame[i], width=macadj(ww, 4), textvariable=self.totals[i])
                 total_widget[i].grid(row=grid_i, column=colcount)
                 self.totals[i].set(now_total)  # set the starting value for total
                 colcount += 1
@@ -10391,32 +10399,32 @@ class EnterRings:
                 # BT - begin tour
                 if "tourrings" in widgetlist:
                     self.begintour.append(StringVar(frame[i]))  # append stringvar to bt array
-                    Entry(frame[i], width=macadj(8, 4), textvariable=self.begintour[i])\
+                    Entry(frame[i], width=macadj(ww, 4), textvariable=self.begintour[i])\
                         .grid(row=grid_i, column=colcount)
                     self.begintour[i].set(now_bt)  # set the starting value for BT
                     colcount += 1
 
                 # Moves
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
-                    self.new_entry(frame[i], day[i], colcount)  # MOVES on, off and route entry widgets
+                    self.new_entry(frame[i], day[i], colcount, ww)  # MOVES on, off and route entry widgets
                     original_colcount = colcount
                     colcount += 3
                     Button(frame[i], text="more moves",
-                           command=lambda x=i: self.new_entry(frame[x], day[x], original_colcount)) \
+                           command=lambda x=i: self.new_entry(frame[x], day[x], original_colcount, ww)) \
                         .grid(row=grid_i, column=colcount)
                     colcount += 1
                 self.now_moves = ""  # zero out self.now_moves so more moves button works properly
 
                 # Return to Station (rs)
                 self.rss.append(StringVar(frame[i]))  # RS entry widget
-                Entry(frame[i], width=macadj(8, 4), textvariable=self.rss[i]).grid(row=grid_i, column=colcount)
+                Entry(frame[i], width=macadj(ww, 4), textvariable=self.rss[i]).grid(row=grid_i, column=colcount)
                 self.rss[i].set(now_rs)  # set the starting value for RS
                 colcount += 1  # increment the column
 
                 # ET - end tour
                 if "tourrings" in widgetlist:
                     self.endtour.append(StringVar(frame[i]))  # append stringvar to bt array
-                    Entry(frame[i], width=macadj(8, 4), textvariable=self.endtour[i]) \
+                    Entry(frame[i], width=macadj(ww, 4), textvariable=self.endtour[i]) \
                         .grid(row=grid_i, column=colcount)
                     self.endtour[i].set(now_et)  # set the starting value for ET
                     colcount += 1
@@ -10443,7 +10451,7 @@ class EnterRings:
                 self.lvtimes.append(StringVar(frame[i]))  # leave time entry widget
                 self.lvtypes[i].set(now_lv_type)  # set the starting value for leave type
                 self.lvtimes[i].set(now_lv_time)  # set the starting value for leave type
-                Entry(frame[i], width=macadj(8, 4), textvariable=self.lvtimes[i]) \
+                Entry(frame[i], width=macadj(ww, 4), textvariable=self.lvtimes[i]) \
                     .grid(row=grid_i, column=colcount)  # leave time widget
                 colcount += 1  # increment the column
             else:
@@ -10480,7 +10488,7 @@ class EnterRings:
         elif (index - 2) % 3 == 0:  # third column
             return int(2)
 
-    def new_entry(self, frame, day, colcount):
+    def new_entry(self, frame, day, colcount, ww):
         """ creates new entry fields for 'more move functionality' """
         mm = []
         if day == "sat":
@@ -10500,15 +10508,15 @@ class EnterRings:
         # what to do depending on the moves
         if self.now_moves == "":  # if there are no moves sent to the function
             mm.append(StringVar(frame))  # create first entry field for new entries
-            Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
+            Entry(frame, width=macadj(ww, 4), textvariable=mm[len(mm) - 1]) \
                 .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
                       column=self.triad_col_finder(len(mm) - 1) + colcount)  # route
             mm.append(StringVar(frame))  # create second entry field for new entries
-            Entry(frame, width=macadj(8, 4), textvariable=mm[len(mm) - 1]) \
+            Entry(frame, width=macadj(ww, 4), textvariable=mm[len(mm) - 1]) \
                 .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
                       column=self.triad_col_finder(len(mm) - 1) + colcount)  # move off
             mm.append(StringVar(frame))  # create second entry field for new entries
-            Entry(frame, width=macadj(8, 5), textvariable=mm[len(mm) - 1]) \
+            Entry(frame, width=macadj(ww, 5), textvariable=mm[len(mm) - 1]) \
                 .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
                       column=self.triad_col_finder(len(mm) - 1) + colcount)  # move on
         else:  # if there are moves which need to be set
@@ -10522,7 +10530,7 @@ class EnterRings:
                 else:
                     ml = 4  # on mac, the rings widget lenght is 4
                 # build the widget
-                Entry(frame, width=macadj(8, ml), textvariable=mm[i]) \
+                Entry(frame, width=macadj(ww, ml), textvariable=mm[i]) \
                     .grid(row=self.triad_row_finder(i) + 2, column=self.triad_col_finder(i) + colcount)
 
     def write_report(self):
