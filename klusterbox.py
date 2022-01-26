@@ -10152,13 +10152,14 @@ class EnterRings:
         self.daily_carrecs = []  # get the carrier record for each day
         self.daily_ringrecs = []  # get the rings record for each day
         self.totals = []  # arrays holding stringvars
-        self.begintour = []
         self.moves = []
         self.rss = []
-        self.endtour = []
         self.codes = []
         self.lvtypes = []
         self.lvtimes = []
+        self.refusals = []
+        self.begintour = []
+        self.endtour = []
         self.now_moves = ""  # default values of the stringvars
         self.sat_mm = []  # holds daily stringvars for moves
         self.sun_mm = []
@@ -10208,13 +10209,14 @@ class EnterRings:
         self.daily_carrecs = []  # get the carrier record for each day
         self.daily_ringrecs = []  # get the rings record for each day
         self.totals = []  # arrays holding stringvars
-        self.begintour = []
         self.moves = []
-        self.rss = []
-        self.endtour = []
+        self.rss = [] 
         self.codes = []
         self.lvtypes = []
         self.lvtimes = []
+        self.refusals = []
+        self.begintour = []
+        self.endtour = []
         self.now_moves = ""  # default values of the stringvars
         self.sat_mm = []  # holds daily stringvars for moves
         self.sun_mm = []
@@ -10344,7 +10346,7 @@ class EnterRings:
             now_total = Convert(self.daily_ringrecs[i][2]).empty_not_zero()
             now_bt = Convert(self.daily_ringrecs[i][9]).empty_not_zero()
             now_rs = Convert(self.daily_ringrecs[i][3]).empty_not_zero()
-            now_et = Convert(self.daily_ringrecs[i][10]).empty_not_zero()
+            now_et = Convert(self.daily_ringrecs[i][10]).auto_not_zero()
             now_code = Convert(self.daily_ringrecs[i][4]).none_not_empty()
             self.now_moves = self.daily_ringrecs[i][5]
             now_lv_type = Convert(self.daily_ringrecs[i][6]).none_not_empty()
@@ -10387,7 +10389,6 @@ class EnterRings:
 
                 grid_i += 1  # increment the grid to add a line
                 colcount = 0  # reset the column counter to zero
-
                 # Display the entry widgets
                 # 5200 time
                 self.totals.append(StringVar(frame[i]))  # append stringvar to totals array
@@ -10395,7 +10396,6 @@ class EnterRings:
                 total_widget[i].grid(row=grid_i, column=colcount)
                 self.totals[i].set(now_total)  # set the starting value for total
                 colcount += 1
-
                 # BT - begin tour
                 if "tourrings" in widgetlist:
                     self.begintour.append(StringVar(frame[i]))  # append stringvar to bt array
@@ -10403,7 +10403,6 @@ class EnterRings:
                         .grid(row=grid_i, column=colcount)
                     self.begintour[i].set(now_bt)  # set the starting value for BT
                     colcount += 1
-
                 # Moves
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
                     self.new_entry(frame[i], day[i], colcount, ww)  # MOVES on, off and route entry widgets
@@ -10414,13 +10413,11 @@ class EnterRings:
                         .grid(row=grid_i, column=colcount)
                     colcount += 1
                 self.now_moves = ""  # zero out self.now_moves so more moves button works properly
-
                 # Return to Station (rs)
                 self.rss.append(StringVar(frame[i]))  # RS entry widget
                 Entry(frame[i], width=macadj(ww, 4), textvariable=self.rss[i]).grid(row=grid_i, column=colcount)
                 self.rss[i].set(now_rs)  # set the starting value for RS
-                colcount += 1  # increment the column
-
+                colcount += 1
                 # ET - end tour
                 if "tourrings" in widgetlist:
                     self.endtour.append(StringVar(frame[i]))  # append stringvar to bt array
@@ -10428,7 +10425,6 @@ class EnterRings:
                         .grid(row=grid_i, column=colcount)
                     self.endtour[i].set(now_et)  # set the starting value for ET
                     colcount += 1
-
                 # Codes/Notes
                 self.codes.append(StringVar(frame[i]))  # code entry widget
                 if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
@@ -10454,6 +10450,8 @@ class EnterRings:
                 Entry(frame[i], width=macadj(ww, 4), textvariable=self.lvtimes[i]) \
                     .grid(row=grid_i, column=colcount)  # leave time widget
                 colcount += 1  # increment the column
+                # Refusals
+                self.refusals.append("")  # refusals column is not used.
             else:
                 self.totals.append(StringVar(frame[i]))  # 5200 entry widget
                 self.rss.append(StringVar(frame[i]))  # RS entry
@@ -10582,6 +10580,11 @@ class EnterRings:
             return  # abort if there is an error
         self.add_leavetype()
         if not self.check_leave():
+            return  # abort if there is an error
+        self.add_refusals()
+        if not self.check_bt():
+            return  # abort if there is an error
+        if not self.check_et():
             return  # abort if there is an error
         self.addrecs()  # insert rings into the database
         if go_home:  # if True, then exit screen to main screen
@@ -10786,11 +10789,89 @@ class EnterRings:
             self.addrings[i].append(lvtime)  # if all checks pass, add to addrings
         return True
 
+    def add_refusals(self):
+        """ adds the refusals into an array to be entered into the database. """
+        for i in range(len(self.refusals)):
+            self.addrings[i].append(self.refusals[i])
+    
+    def check_bt(self):
+        """ a check for begin tour time """
+        for i in range(len(self.begintour)):
+            bt = str(self.begintour[i].get()).strip()
+            if RingTimeChecker(bt).check_for_zeros():
+                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
+                continue  # skip other checks
+            if not RingTimeChecker(bt).check_numeric():
+                text = "You must enter a numeric value in BT for {}.".format(self.day[i])
+                messagebox.showerror("BT Error", text, parent=self.win.topframe)
+                return False
+            if not RingTimeChecker(bt).over_24():
+                text = "Values greater than 24 are not accepted in BT for {}.".format(self.day[i])
+                messagebox.showerror("BT Error", text, parent=self.win.topframe)
+                return False
+            if not RingTimeChecker(bt).less_than_zero():
+                text = "Values less than or equal to 0 are not accepted in BT for {}.".format(self.day[i])
+                messagebox.showerror("BT Error", text, parent=self.win.topframe)
+                return False
+            if not RingTimeChecker(bt).count_decimals_place():
+                text = "Values with more than 2 decimal places are not accepted in BT for {}.".format(self.day[i])
+                messagebox.showerror("BT Error", text, parent=self.win.topframe)
+                return False
+            bt = Convert(bt).hundredths()  # format it as a number with 2 decimal places
+            self.addrings[i].append(bt)  # if all checks pass, add to addrings
+        return True
+    
+    def check_et(self):
+        """ a check for end tour time """
+        for i in range(len(self.endtour)):
+            et = str(self.endtour[i].get()).strip()
+            if et == "" or et == "auto":
+                total = self.totals[i].get().strip()
+                bt = str(self.begintour[i].get()).strip()
+                autotime = ""
+                if total and bt:
+                    autotime = self.auto_endtour(total, bt)
+                self.addrings[i].append(autotime)  # if variable is zero or empty, add an empty string to addrings
+                continue  # skip other checks
+            if RingTimeChecker(et).check_for_zeros():
+                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
+                continue  # skip other checks
+            if not RingTimeChecker(et).check_numeric():
+                text = "You must enter a numeric value in ET for {}.".format(self.day[i])
+                messagebox.showerror("ET Error", text, parent=self.win.topframe)
+                return False
+            if not RingTimeChecker(et).over_24():
+                text = "Values greater than 24 are not accepted in ET for {}.".format(self.day[i])
+                messagebox.showerror("ET Error", text, parent=self.win.topframe)
+                return False
+            if not RingTimeChecker(et).less_than_zero():
+                text = "Values less than or equal to 0 are not accepted in ET for {}.".format(self.day[i])
+                messagebox.showerror("ET Error", text, parent=self.win.topframe)
+                return False
+            if not RingTimeChecker(et).count_decimals_place():
+                text = "Values with more than 2 decimal places are not accepted in ET for {}.".format(self.day[i])
+                messagebox.showerror("ET Error", text, parent=self.win.topframe)
+                return False
+            et = Convert(et).hundredths()  # format it as a number with 2 decimal places
+            self.addrings[i].append(et)  # if all checks pass, add to addrings
+        return True
+
+    @staticmethod
+    def auto_endtour(total, bt):
+        """ add 50 clicks to the begin tour an 5200 time """
+        if float(total) >= 6:
+            auto_et = float(bt) + float(total) + .50
+        else:
+            auto_et = float(bt) + float(total)
+        if auto_et >= 24:
+            auto_et -= 24
+        return "{:.2f}".format(auto_et)
+
     def addrecs(self):
         """ add records to database """
         sql = ""
         for i in range(len(self.dates)):
-            empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", ""]
+            empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", "", "", ""]
             if self.addrings[i] == self.daily_ringrecs[i]:
                 sql = ""  # if new and old are a match, take no action
             elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call" \
@@ -10803,18 +10884,21 @@ class EnterRings:
                 self.delete_report += 1
             elif self.daily_ringrecs[i] != empty_rec and self.addrings[i] != empty_rec:
                 # if a record exist but is different from the new record
-                sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type = '%s'," \
-                      "leave_time = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" \
+                sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type ='%s'," \
+                      "leave_time='%s', refusals='%s', bt='%s', et='%s' WHERE rings_date='%s' and carrier_name='%s'" \
                       % (self.addrings[i][2], self.addrings[i][3], self.addrings[i][4],
                          self.addrings[i][5], self.addrings[i][6], self.addrings[i][7],
+                         self.addrings[i][8], self.addrings[i][9], self.addrings[i][10],
                          self.dates[i], self.carrier)
                 self.update_report += 1
             elif self.daily_ringrecs[i] == empty_rec and self.addrings[i] != empty_rec:
                 # if a record doesn't exist and the new record is not empty
-                sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time )" \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s') " \
+                sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time, " \
+                      "refusals, bt, et )" \
+                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s') " \
                       % (self.dates[i], self.carrier, self.addrings[i][2], self.addrings[i][3],
-                         self.addrings[i][4], self.addrings[i][5], self.addrings[i][6], self.addrings[i][7])
+                         self.addrings[i][4], self.addrings[i][5], self.addrings[i][6], self.addrings[i][7],
+                         self.addrings[i][8], self.addrings[i][9], self.addrings[i][10])
                 self.insert_report += 1
             if sql:
                 commit(sql)

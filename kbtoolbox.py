@@ -903,6 +903,12 @@ class Convert:
             return ""
         return self.data
 
+    def auto_not_zero(self):
+        """ returns an empty string for any value equal to zero """
+        if self.data in ("0", "0.0", ".0", ".00", ""):
+            return "auto"
+        return self.data
+
     def empty_not_zerofloat(self):
         """ returns an empty string for a zero int or float"""
         if self.data == 0.0:
