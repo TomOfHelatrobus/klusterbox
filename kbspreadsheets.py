@@ -78,7 +78,8 @@ class ImpManSpreadsheet:
         self.last_row = 0  # stores the last row for each list, re initialized at end of list
         self.subtotal_loc_holder = []  # stores the cell location of a subtotal for total mandates/ availability
 
-    def create(self, frame):  # master method for calling all methods in class
+    def create(self, frame):
+        """ master method for calling all methods in class """
         self.frame = frame
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
@@ -103,6 +104,7 @@ class ImpManSpreadsheet:
         self.save_open()
 
     def ask_ok(self):
+        """ ends process if user cancels """
         if messagebox.askokcancel("Spreadsheet generator",
                                   "Do you want to generate a spreadsheet?",
                                   parent=self.frame):
@@ -110,6 +112,7 @@ class ImpManSpreadsheet:
         return False
 
     def get_dates(self):
+        """ get the dates from the project variables """
         self.startdate = projvar.invran_date  # set daily investigation range as default - get start date
         self.enddate = projvar.invran_date  # get end date
         self.dates = [projvar.invran_date, ]  # create an array of days - only one day if daily investigation range
@@ -122,13 +125,16 @@ class ImpManSpreadsheet:
                 self.dates.append(date)
                 date += timedelta(days=1)
 
-    def get_pb_max_count(self):  # set length of progress bar
+    def get_pb_max_count(self):
+        """ set length of progress bar """
         self.pb.max_count((len(self.dates)*4)+3)  # once for each list in each day, plus reference, summary and saving
 
-    def get_carrierlist(self):  # get record sets for all carriers
+    def get_carrierlist(self):
+        """ get record sets for all carriers """
         self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
 
-    def get_carrier_breakdown(self):  # breakdown carrier list into no list, wal, otdl, aux
+    def get_carrier_breakdown(self):
+        """ breakdown carrier list into no list, wal, otdl, aux """
         timely_rec = []
         for day in self.dates:
             nl_array = []
@@ -150,7 +156,8 @@ class ImpManSpreadsheet:
             daily_breakdown = [nl_array, wal_array, otdl_array, aux_array]
             self.carrier_breakdown.append(daily_breakdown)
 
-    def get_tolerances(self):  # get spreadsheet tolerances, row minimums and page break prefs from tolerance table
+    def get_tolerances(self):
+        """ get spreadsheet tolerances, row minimums and page break prefs from tolerance table """
         sql = "SELECT tolerance FROM tolerances"
         result = inquire(sql)
         self.tol_ot_ownroute = float(result[0][0])  # overtime on own route tolerance
@@ -164,7 +171,8 @@ class ImpManSpreadsheet:
         self.pb_wal_otdl = Convert(result[22][0]).str_to_bool()  # page break between work assignment and otdl
         self.pb_otdl_aux = Convert(result[23][0]).str_to_bool()  # page break between otdl and auxiliary
 
-    def get_styles(self):  # Named styles for workbook
+    def get_styles(self):
+        """ Named styles for workbook """
         bd = Side(style='thin', color="80808080")  # defines borders
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
         self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
@@ -184,6 +192,7 @@ class ImpManSpreadsheet:
                                 alignment=Alignment(horizontal='right'))
 
     def build_workbook(self):
+        """ build the workbook object """
         day_finder = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
         day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
         i = 0
@@ -207,6 +216,7 @@ class ImpManSpreadsheet:
         self.reference = self.wb.create_sheet("reference")
 
     def set_dimensions(self):
+        """ set the dimensions of the workbook """
         for i in range(len(self.dates)):
             self.ws_list[i].oddFooter.center.text = "&A"
             self.ws_list[i].column_dimensions["A"].width = 20
@@ -235,6 +245,7 @@ class ImpManSpreadsheet:
         self.reference.column_dimensions["E"].width = 50
 
     def build_refs(self):
+        """ build the references page. This shows tolerances and defines labels. """
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building Reference Page")
@@ -321,6 +332,7 @@ class ImpManSpreadsheet:
         self.reference['E31'] = "Total availability to 12 hours"
         
     def build_ws_loop(self):
+        """ this loops once for each list. """
         self.i = 0
         for day in self.dates:
             self.day = day
@@ -328,7 +340,8 @@ class ImpManSpreadsheet:
             self.list_loop()  # loops four times. once for each list.
             self.i += 1
 
-    def build_ws_headers(self):  # worksheet headers
+    def build_ws_headers(self):
+        """ worksheet headers """
         cell = self.ws_list[self.i].cell(row=1, column=1)
         cell.value = "Improper Mandate Worksheet"
         cell.style = self.ws_header
@@ -356,13 +369,15 @@ class ImpManSpreadsheet:
         cell.style = self.date_dov
         self.ws_list[self.i].merge_cells('B4:D4')
 
-    def increment_progbar(self):  # move the progress bar, update with info on what is being done
+    def increment_progbar(self):
+        """ move the progress bar, update with info on what is being done """
         lst = ("No List", "Work Assignment", "Overtime Desired", "Auxiliary")
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building day {}: list: {}".format(self.day.strftime("%A"), lst[self.lsi]))
 
-    def list_loop(self):  # loops four times. once for each list.
+    def list_loop(self):
+        """ loops four times. once for each list. """
         self.lsi = 0  # iterations of the list loop method
         self.row = 6
         for _ in self.ot_list:  # loops for nl, wal, otdl and aux
@@ -375,7 +390,8 @@ class ImpManSpreadsheet:
             self.increment_progbar()
             self.lsi += 1
 
-    def list_and_column_headers(self):  # builds headers for list and column
+    def list_and_column_headers(self):
+        """ builds headers for list and column """
         cell = self.ws_list[self.i].cell(row=self.row, column=1)
         cell.value = self.ot_list[self.lsi]  # "No List Carriers",
         cell.style = self.list_header
@@ -400,7 +416,8 @@ class ImpManSpreadsheet:
         else:
             self.column_header_ot()  # column headers specific for otdl or aux
 
-    def column_header_non(self):  # column headers specific for non otdl
+    def column_header_non(self):
+        """ column headers specific for non otdl """
         cell = self.ws_list[self.i].cell(row=self.row, column=5)
         cell.value = "MV off"
         cell.style = self.col_header
@@ -424,7 +441,8 @@ class ImpManSpreadsheet:
         cell.style = self.col_header
         self.row += 1
 
-    def column_header_ot(self):  # column headers specific for otdl or aux
+    def column_header_ot(self):
+        """ column headers specific for otdl or aux """
         cell = self.ws_list[self.i].cell(row=self.row - 1, column=5)
         cell.value = "Availability to:"
         cell.style = self.col_header
@@ -439,7 +457,8 @@ class ImpManSpreadsheet:
         cell.style = self.col_header
         self.row += 1
 
-    def carrierlist_mod(self):  # add empty carrier records to carrier list until quantity matches minrows preference
+    def carrierlist_mod(self):
+        """ add empty carrier records to carrier list until quantity matches minrows preference """
         self.mod_carrierlist = self.carrier_breakdown[self.i][self.lsi]
         if self.pref[self.lsi] in ("nl",):  # if "no list"
             minrows = self.min_ss_nl
@@ -453,10 +472,12 @@ class ImpManSpreadsheet:
             add_this = ('', '', '', '', '', '')
             self.mod_carrierlist.append(add_this)  # append empty recs to carrier list
 
-    def get_first_row(self):  # record the number of the first row for totals formulas in footers
+    def get_first_row(self):
+        """ record the number of the first row for totals formulas in footers """
         self.first_row = self.row
 
     def carrierloop(self):
+        """ loop for each carrier """
         for carrier in self.mod_carrierlist:
             self.get_last_row()  # record the number of the last row for total formulas in footers
             self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
@@ -470,15 +491,18 @@ class ImpManSpreadsheet:
                 self.display_formulas_ot()  # display formulas for otdl/aux
             self.increment_rows()
 
-    def get_last_row(self):  # record the number of the last row for totals formulas in footers
+    def get_last_row(self):
+        """ record the number of the last row for totals formulas in footers """
         self.last_row = self.row
 
-    def increment_rows(self):  # increment the rows counter
+    def increment_rows(self):
+        """ increment the rows counter """
         self.row += 1
         self.row += self.move_i  # add 1 plus any the added rows from multiple moves
         self.move_i = 0  # reset the row incrementor for multiple move functionality
 
-    def get_rings(self):  # get individual carrier rings for the day
+    def get_rings(self):
+        """ get individual carrier rings for the day """
         self.rings = Rings(self.carrier, self.dates[self.i]).get_for_day()  # assign as self.rings
         self.totalhours = ""  # set default as an empty string
         self.rs = ""
@@ -494,7 +518,8 @@ class ImpManSpreadsheet:
             self.lvtype = self.rings[0][6]
             self.lvtime = self.rings[0][7]
 
-    def display_recs(self):  # put the carrier and the first part of rings into the spreadsheet
+    def display_recs(self):
+        """ put the carrier and the first part of rings into the spreadsheet """
         cell = self.ws_list[self.i].cell(row=self.row, column=1)  # name
         cell.value = self.carrier
         cell.style = self.input_name
@@ -510,7 +535,8 @@ class ImpManSpreadsheet:
         cell.style = self.input_s
         cell.number_format = "#,###.00;[RED]-#,###.00"
 
-    def get_movesarray(self):  # builds sets of moves for each triad
+    def get_movesarray(self):
+        """ builds sets of moves for each triad """
         multiple_sets = False  # is there more than one triad?
         self.movesarray = []  # re initialized - a list of tuples of move sets
         moves_array = []  # initialized - the moves string converted into an array
@@ -553,6 +579,7 @@ class ImpManSpreadsheet:
                 i += 1  # increment i
 
     def display_moves(self):
+        """ fill the mv off, mv on and route columns. """
         for move_set in self.movesarray:
             for move_cell in range(4):
                 move = move_set[move_cell]
@@ -570,6 +597,7 @@ class ImpManSpreadsheet:
         self.move_i -= 1  # correction
 
     def display_formulas_non(self):
+        """ fill the formulas columns for non list carriers. """
         ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
                   % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                      self.day_of_week[self.i], str(self.row))
@@ -599,6 +627,7 @@ class ImpManSpreadsheet:
             column_i += 1
 
     def display_formulas_ot(self):
+        """ fill the formula carrier for otdl carriers. """
         max_hrs = 12  # maximum hours for otdl carriers
         if self.pref[self.lsi] == "aux":  # alter formula by list preference
             max_hrs = 11.5  # maximux hours for auxiliary carriers
@@ -630,6 +659,7 @@ class ImpManSpreadsheet:
             column_i += 1
 
     def build_footer(self):
+        """ call the footer depending on the list. """
         if self.pref[self.lsi] == "nl":
             self.nl_footer()
         elif self.pref[self.lsi] == "wal":
@@ -640,6 +670,7 @@ class ImpManSpreadsheet:
             self.aux_footer()
             
     def nl_footer(self):
+        """ build the non list footer. """
         self.row += 1
         cell = self.ws_list[self.i].cell(row=self.row, column=8)  # totals for no list overtime
         cell.value = "Total NL Overtime"
@@ -664,6 +695,7 @@ class ImpManSpreadsheet:
         self.row += 1
 
     def wal_footer(self):
+        """ build the work assignment list footer. """
         self.row += 1
         cell = self.ws_list[self.i].cell(row=self.row, column=10)
         cell.value = "Total WAL Mandates"
@@ -690,6 +722,7 @@ class ImpManSpreadsheet:
         self.row += 1
 
     def otdl_footer(self):
+        """ build the ot desired list footer. """
         self.row += 1
         cell = self.ws_list[self.i].cell(row=self.row, column=4)  # header
         cell.value = "Total OTDL Availability"
@@ -708,6 +741,7 @@ class ImpManSpreadsheet:
         self.row += 1
 
     def aux_footer(self):
+        """ build the auxiliary list footer. """
         self.row += 1
         cell = self.ws_list[self.i].cell(row=self.row, column=4)
         cell.value = "Total AUX Availability"
@@ -746,7 +780,8 @@ class ImpManSpreadsheet:
         self.subtotal_loc_holder = []  # empty out the subtotal location holder for future use with otdl/aux
         self.row += 1
 
-    def pagebreak(self):  # create a page break if consistant with user preferences
+    def pagebreak(self):
+        """ create a page break if consistant with user preferences """
         if self.pref[self.lsi] == "nl" and not self.pb_nl_wal:
             self.row += 1
             return
@@ -765,7 +800,8 @@ class ImpManSpreadsheet:
             self.ws_list[self.i].row_breaks.append(Break(id=self.row))  # effective for windows
         self.row += 1
 
-    def build_summary_header(self):  # summary headers
+    def build_summary_header(self):
+        """ summary headers """
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building day Summary...")
@@ -786,6 +822,7 @@ class ImpManSpreadsheet:
         # reference page has no header
         
     def build_summary(self):
+        """ build the summary page. """
         self.summary['A1'] = "Improper Mandate Worksheet"
         self.summary['A1'].style = self.ws_header
         self.summary.merge_cells('A1:E1')
@@ -860,7 +897,8 @@ class ImpManSpreadsheet:
             self.summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
             row += 2
         
-    def save_open(self):  # name the excel file
+    def save_open(self):
+        """ name and open the excel file """
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving...")
@@ -920,7 +958,8 @@ class OvermaxSpreadsheet:
         self.instruct_text = None  # style
         self.violation_recsets = []  # carrier info, daily hours, leavetypes and leavetimes
 
-    def create(self, frame):  # master method for calling methods
+    def create(self, frame):
+        """ master method for calling methods"""
         self.frame = frame
         if not self.ask_ok():
             return
@@ -948,6 +987,7 @@ class OvermaxSpreadsheet:
         return False
 
     def get_dates(self):
+        """ get the dates of the investigation range from the project variables. """
         date = projvar.invran_date_week[0]
         self.startdate = projvar.invran_date_week[0]
         self.enddate = projvar.invran_date_week[6]
@@ -956,21 +996,25 @@ class OvermaxSpreadsheet:
             date += timedelta(days=1)
 
     def get_carrierlist(self):
+        """ call the carrierlist class from kbtoolbox module to get the carrier list """
         carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
         for carrier in carrierlist:
             self.carrier_list.append(carrier[0])  # add the first record for each carrier in rec set
 
     def get_rings(self):
+        """ get clock rings from the rings table """
         sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
               % (projvar.invran_date_week[0], projvar.invran_date_week[6])
         self.rings = inquire(sql)
 
-    def get_minrows(self):  # get minimum rows
+    def get_minrows(self):
+        """ get minimum rows """
         sql = "SELECT tolerance FROM tolerances"
         result = inquire(sql)
         self.min_rows = int(result[14][0])
 
-    def get_styles(self):  # Named styles for workbook
+    def get_styles(self):
+        """ Named styles for workbook """
         bd = Side(style='thin', color="80808080")  # defines borders
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
         self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
@@ -1003,6 +1047,7 @@ class OvermaxSpreadsheet:
                                    alignment=Alignment(horizontal='left', vertical='top'))
 
     def build_workbook(self):
+        """ creates the workbook object """
         self.wb = Workbook()  # define the workbook
         self.violations = self.wb.active  # create first worksheet
         self.violations.title = "violations"  # title first worksheet
@@ -1012,7 +1057,8 @@ class OvermaxSpreadsheet:
         self.instructions = self.wb.create_sheet("instructions")
 
     def set_dimensions(self):
-        for x in range(2, 8):
+        """ adjust the height and width on the violations/ instructions page """
+        for x in range(2, 10):
             self.violations.row_dimensions[x].height = 10  # adjust all row height
         sheets = (self.violations, self.instructions)
         for sheet in sheets:
@@ -1043,7 +1089,7 @@ class OvermaxSpreadsheet:
             sheet.column_dimensions["X"].width = 5
 
     def build_summary(self):
-        # summary worksheet - format cells
+        """ summary worksheet - format cells """
         self.summary.merge_cells('A1:R1')
         self.summary['A1'] = "12 and 60 Hour Violations Summary"
         self.summary['A1'].style = self.ws_header
@@ -1071,7 +1117,7 @@ class OvermaxSpreadsheet:
         self.summary['B6'].style = self.col_center_header
 
     def build_violations(self):
-        # self.violations worksheet - format cells
+        """ self.violations worksheet - format cells """
         self.violations.merge_cells('A1:R1')
         self.violations['A1'] = "12 and 60 Hour Violations Worksheet"
         self.violations['A1'].style = self.ws_header
@@ -1091,61 +1137,61 @@ class OvermaxSpreadsheet:
         self.violations.merge_cells('B4:J4')  # blank field for station
         self.violations['B4'] = projvar.invran_station
         self.violations['B4'].style = self.date_dov
-        self.violations.merge_cells('D6:Q6')
-        self.violations['D6'] = "Daily Paid Leave times with type"
-        self.violations['D6'].style = self.col_center_header
         self.violations.merge_cells('D7:Q7')
-        self.violations['D7'] = "Daily 5200 times"
+        self.violations['D7'] = "Daily Paid Leave times with type"
         self.violations['D7'].style = self.col_center_header
-        self.violations['A8'] = "name"
-        self.violations['A8'].style = self.col_header
-        self.violations['B8'] = "list"
-        self.violations['B8'].style = self.col_header
-        self.violations.merge_cells('C5:C8')
-        self.violations['C5'] = "Weekly\n5200"
-        self.violations['C5'].style = self.vert_header
-        self.violations.merge_cells('D8:E8')
-        self.violations['D8'] = "sat"
+        self.violations.merge_cells('D8:Q8')
+        self.violations['D8'] = "Daily 5200 times"
         self.violations['D8'].style = self.col_center_header
-        self.violations.merge_cells('F8:G8')
-        self.violations['F8'] = "sun"
-        self.violations['F8'].style = self.col_center_header
-        self.violations.merge_cells('H8:I8')
-        self.violations['H8'] = "mon"
-        self.violations['H8'].style = self.col_center_header
-        self.violations.merge_cells('J8:K8')
-        self.violations['J8'] = "tue"
-        self.violations['J8'].style = self.col_center_header
-        self.violations.merge_cells('L8:M8')
-        self.violations['L8'] = "wed"
-        self.violations['L8'].style = self.col_center_header
-        self.violations.merge_cells('N8:O8')
-        self.violations['N8'] = "thr"
-        self.violations['N8'].style = self.col_center_header
-        self.violations.merge_cells('P8:Q8')
-        self.violations['P8'] = "fri"
-        self.violations['P8'].style = self.col_center_header
-        self.violations.merge_cells('S4:S8')
-        self.violations['S4'] = " Weekly\nViolation"
-        self.violations['S4'].style = self.vert_header
-        self.violations.merge_cells('T4:T8')
-        self.violations['T4'] = "Daily\nViolation"
-        self.violations['T4'].style = self.vert_header
-        self.violations.merge_cells('U4:U8')
-        self.violations['U4'] = "Wed Adj"
-        self.violations['U4'].style = self.vert_header
-        self.violations.merge_cells('V4:V8')
-        self.violations['V4'] = "Thr Adj"
-        self.violations['V4'].style = self.vert_header
-        self.violations.merge_cells('W4:W8')
-        self.violations['W4'] = "Fri Adj"
-        self.violations['W4'].style = self.vert_header
-        self.violations.merge_cells('X4:X8')
-        self.violations['X4'] = "Total\nViolation"
-        self.violations['X4'].style = self.vert_header
+        self.violations['A9'] = "name"
+        self.violations['A9'].style = self.col_header
+        self.violations['B9'] = "list"
+        self.violations['B9'].style = self.col_header
+        self.violations.merge_cells('C6:C9')
+        self.violations['C6'] = "Weekly\n5200"
+        self.violations['C6'].style = self.vert_header
+        self.violations.merge_cells('D9:E9')
+        self.violations['D9'] = "sat"
+        self.violations['D9'].style = self.col_center_header
+        self.violations.merge_cells('F9:G9')
+        self.violations['F9'] = "sun"
+        self.violations['F9'].style = self.col_center_header
+        self.violations.merge_cells('H9:I9')
+        self.violations['H9'] = "mon"
+        self.violations['H9'].style = self.col_center_header
+        self.violations.merge_cells('J9:K9')
+        self.violations['J9'] = "tue"
+        self.violations['J9'].style = self.col_center_header
+        self.violations.merge_cells('L9:M9')
+        self.violations['L9'] = "wed"
+        self.violations['L9'].style = self.col_center_header
+        self.violations.merge_cells('N9:O9')
+        self.violations['N9'] = "thr"
+        self.violations['N9'].style = self.col_center_header
+        self.violations.merge_cells('P9:Q9')
+        self.violations['P9'] = "fri"
+        self.violations['P9'].style = self.col_center_header
+        self.violations.merge_cells('S5:S9')
+        self.violations['S5'] = " Weekly\nViolation"
+        self.violations['S5'].style = self.vert_header
+        self.violations.merge_cells('T5:T9')
+        self.violations['T5'] = "Daily\nViolation"
+        self.violations['T5'].style = self.vert_header
+        self.violations.merge_cells('U5:U9')
+        self.violations['U5'] = "Wed Adj"
+        self.violations['U5'].style = self.vert_header
+        self.violations.merge_cells('V5:V9')
+        self.violations['V5'] = "Thr Adj"
+        self.violations['V5'].style = self.vert_header
+        self.violations.merge_cells('W5:W9')
+        self.violations['W5'] = "Fri Adj"
+        self.violations['W5'].style = self.vert_header
+        self.violations.merge_cells('X5:X9')
+        self.violations['X5'] = "Total\nViolation"
+        self.violations['X5'].style = self.vert_header
 
     def build_instructions(self):
-        # format the instructions cells
+        """ format the instructions cells """
         self.instructions.merge_cells('A1:R1')
         self.instructions['A1'] = "12 and 60 Hour Violations Instructions"
         self.instructions['A1'].style = self.ws_header
@@ -1609,8 +1655,9 @@ class OvermaxSpreadsheet:
             self.violation_recsets.append(violation_recset)  # append these empty recs into the violations rec sets
 
     def show_violations(self):
+        """ generates the rows of the violations worksheet. """
         summary_i = 7
-        i = 9
+        i = 10
         for line in self.violation_recsets:
             carrier_name = line[0][0]
             carrier_list = line[0][1]
@@ -1837,8 +1884,21 @@ class OvermaxSpreadsheet:
             self.summary.row_dimensions[summary_i].height = 10  # adjust all row height
             i += 2
             summary_i += 1
+        i += 1
+        self.violations.merge_cells('L' + str(i) + ':T' + str(i))  # label for cumulative violations
+        self.violations['L' + str(i)] = "Cumulative Total Violations:  "
+        self.violations['L' + str(i)].style = self.date_dov_title
+        self.violations.merge_cells('U' + str(i) + ':X' + str(i))  # total violation summary at bottom of page
+        formula_h = "=SUM(%s!X%s:X%s)" \
+                    % ("violations", "9", str(i-2))
+        self.violations['U' + str(i)] = formula_h
+        self.violations['U' + str(i)].style = self.calcs
+        self.violations['X' + str(i)].style = self.calcs
+        self.violations['U' + str(i)].number_format = "#,###.00"
+        self.violations.row_dimensions[i].height = 20  # adjust all row height
 
     def save_open(self):
+        """ save the spreadsheet and open """
         xl_filename = "kb_om" + str(format(projvar.invran_date_week[0], "_%y_%m_%d")) + ".xlsx"
         try:
             self.wb.save(dir_path('over_max_spreadsheet') + xl_filename)
