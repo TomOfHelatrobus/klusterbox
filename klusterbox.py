@@ -20,6 +20,7 @@ from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
 from kbcsv_reader import max_hr, ee_skimmer
 from kbpdfhandling import pdf_converter
+from kbenterrings import EnterRings
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # Standard Libraries
@@ -603,6 +604,9 @@ class OtDistribution:
 
 
 class OtEquitability:
+    """
+    This class creates a window where the user can configure the ot equitability spreadsheet.
+    """
     def __init__(self):
         self.frame = None
         self.win = None
@@ -630,7 +634,8 @@ class OtEquitability:
         self.eligible_carriers = []  # carriers on the otdl during the quarter from carriers table
         self.ineligible_carriers = []  # carriers with no otdl rec during quarter, but a rec in otdl prefs
 
-    def create(self, frame):  # called from the main screen to build ot preferences screen
+    def create(self, frame):
+        """ called from the main screen to build ot preferences screen"""
         self.frame = frame
         self.win = MakeWindow()
         self.startup_stringvars()
@@ -638,6 +643,7 @@ class OtEquitability:
         self.win.finish()
 
     def create_from_refusals(self, frame, enddate, station):
+        """ called from the refusals screen to recreate the window """
         self.frame = frame
         self.station = station
         self.win = MakeWindow()
@@ -645,7 +651,8 @@ class OtEquitability:
         self.create_lower()
         self.win.finish()
 
-    def re_create(self, frame):  # called from the ot preferences screen when invran is changed.
+    def re_create(self, frame):
+        """ called from the ot preferences screen when invran is changed. """
         self.row = 0  # re initialize vars
         self.carrierlist = []  # distinct list of carriers by station and quarter
         self.recset = []  # recset of otdl carriers
@@ -669,6 +676,7 @@ class OtEquitability:
         self.win.finish()
 
     def create_lower(self):
+        """ the bottom segment of the create method used by multiple create methods. """
         self.get_quarter()
         self.get_stations_list()
         self.win.create(self.frame)
@@ -687,6 +695,7 @@ class OtEquitability:
         self.buttons_frame()
 
     def startup_stringvars(self):
+        """ defines stringvars. """
         if projvar.invran_weekly_span is None:  # if no investigation range is set
             date = datetime.now()
             station = "undefined"
@@ -707,6 +716,7 @@ class OtEquitability:
         self.quartinvran_station.set(station)
 
     def setup_stringvars_from_refusals(self, enddate, station):
+        """ re creates string vars when called from refusals screen. """
         year = enddate.strftime("%Y")
         month = enddate.strftime("%m")
         quarter = Quarter(month).find()  # get the quarter from the month
@@ -718,6 +728,7 @@ class OtEquitability:
         self.quartinvran_station.set(station)
 
     def re_startup_stringvars(self):
+        """ defines string vars. called when screen is refreshed. """
         self.quartinvran_year = StringVar(self.win.body)
         self.quartinvran_quarter = StringVar(self.win.body)
         self.quartinvran_station = StringVar(self.win.body)
@@ -725,7 +736,8 @@ class OtEquitability:
         self.quartinvran_quarter.set(self.new_quartinvran_quarter)
         self.quartinvran_station.set(self.new_quartinvran_station)
 
-    def get_quarter(self):  # creates quarter in format "2021-3"
+    def get_quarter(self):
+        """ creates quarter in format "2021-3" """
         self.quarter = self.quartinvran_year.get() + "-" + self.quartinvran_quarter.get()
 
     def get_stations_list(self):  # get a list of stations for station optionmenu
@@ -734,7 +746,8 @@ class OtEquitability:
         if len(self.stations_minus_outofstation) == 0:
             self.stations_minus_outofstation.append("undefined")
 
-    def get_dates(self):  # find startdate, enddate and station
+    def get_dates(self):
+        """ find startdate, enddate and station """
         year = int(self.quartinvran_year.get())
         startdate = (datetime(year, 1, 1), datetime(year, 4, 1), datetime(year, 7, 1), datetime(year, 10, 1))
         enddate = (datetime(year, 3, 31), datetime(year, 6, 30), datetime(year, 9, 30), datetime(year, 12, 31))
@@ -746,9 +759,11 @@ class OtEquitability:
             self.station = self.quartinvran_station.get()
 
     def get_carrierlist(self):
+        """ defines the carrier list. """
         self.carrierlist = CarrierList(self.startdate, self.enddate, self.station).get_distinct()
 
     def get_recsets(self):
+        """ gets clock rings for a carrier and defines recset (record set). """
         for carrier in self.carrierlist:
             otlist = ("otdl", )
             rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs(otlist)
@@ -756,6 +771,7 @@ class OtEquitability:
                 self.recset.append(rec)
 
     def build_invran(self):
+        """ creates widgets which allow the user to adjust the investigation range. """
         Label(self.win.body, text="OTDL Preferences", font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=self.row, column=0, sticky="w", columnspan=20)
         self.row += 1
@@ -786,14 +802,17 @@ class OtEquitability:
         self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
 
     def set_invran(self):
+        """ sets the investigation range """
         if not self.check_quarterinvran():
             return
         self.re_create(self.win.topframe)
 
     def error_msg(self, text):
+        """ generates an error message. """
         messagebox.showerror("OTDL Preferences", text, parent=self.win.topframe)
 
     def check_quarterinvran(self):
+        """ checks the investigation range. """
         if not isint(self.quartinvran_year.get()):
             self.error_msg("The year must be a numeric.")
             return False
@@ -814,13 +833,15 @@ class OtEquitability:
         self.new_quartinvran_station = self.quartinvran_station.get()
         return True
 
-    def get_status(self, recs):  # returns true if the carrier's last record is otdl and the station is correct.
+    def get_status(self, recs):
+        """ returns true if the carrier's last record is otdl and the station is correct. """
         if recs[0][2] == "otdl" and recs[0][5] == self.station:
             return "on"
         return "off"
 
     @staticmethod
-    def check_consistancy(recs):  # check that carriers on list have not gotten off then on again.
+    def check_consistancy(recs):
+        """ check that carriers on list have not gotten off then on again. """
         off_list = False
         on_list = False
         for rec in reversed(recs):
@@ -833,11 +854,13 @@ class OtEquitability:
             return True
         return False
 
-    def get_eligible_carriers(self):  # builds array of carriers on otdl at any point during quarter from carrier table
+    def get_eligible_carriers(self):
+        """ builds array of carriers on otdl at any point during quarter from carrier table """
         for carrier in self.recset:
             self.eligible_carriers.append(carrier[0][1])
 
-    def get_pref(self, carrier):  # pull otdl preferences from dbase - insert if there is no preference.
+    def get_pref(self, carrier):
+        """ pull otdl preferences from dbase - insert if there is no preference. """
         sql = "SELECT preference FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
               % (carrier, self.quarter, self.station)
         pref = inquire(sql)
@@ -850,7 +873,8 @@ class OtEquitability:
         else:
             return pref[0]
 
-    def get_makeups(self, carrier):  # pull makeups from the dbase
+    def get_makeups(self, carrier):
+        """ pull makeups from the dbase """
         sql = "SELECT makeups FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
               % (carrier, self.quarter, self.station)
         makeups = inquire(sql)
@@ -859,6 +883,7 @@ class OtEquitability:
         return makeups[0]
 
     def get_onrecs_set_stringvars(self):
+        """ sets stringvars for carriers. """
         i = 0
         for carrier in self.eligible_carriers:
             self.pref_var.append(StringVar(self.win.body))  # build array of string vars for otdl preferences
@@ -873,6 +898,7 @@ class OtEquitability:
             i += 1
 
     def get_onrec_pref_carriers(self):
+        """ get the otdl preference for each carriers. """
         sql = "SELECT carrier_name FROM otdl_preference WHERE quarter = '%s'and station = '%s'" \
               % (self.quarter, self.station)
         pref = inquire(sql)
@@ -880,11 +906,13 @@ class OtEquitability:
             self.onrec_prefs_carriers.append(carrier[0])
 
     def get_ineligible(self):
+        """ fills the ineligible carriers array. """
         for pref_carrier in self.onrec_prefs_carriers:
             if pref_carrier not in self.eligible_carriers:
                 self.ineligible_carriers.append(pref_carrier)
 
     def delete_ineligible(self):
+        """ removes ineligible carriers from the otdl preference table. """
         for carrier in self.ineligible_carriers:
             sql = "DELETE FROM otdl_preference WHERE quarter = '%s' AND carrier_name = '%s' AND station = '%s'" \
                   % (self.quarter, carrier, self.station)
@@ -892,6 +920,7 @@ class OtEquitability:
             self.delete_report.append(carrier)
 
     def deletion_report(self):
+        """ creates a message box for deleted carriers. """
         if len(self.delete_report) > 0:
             deleted_list = ""
             for name in self.delete_report:
@@ -901,6 +930,7 @@ class OtEquitability:
             messagebox.showinfo("OTDL Preferences", msg, parent=self.win.body)
 
     def carrier_report(self, recs, consistant):
+        """ generates a text file which shows carrier list status during the investigation range. """
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "report_carrier_history" + "_" + stamp + ".txt"
         report = open(dir_path('report') + filename, "w")
@@ -931,6 +961,7 @@ class OtEquitability:
             subprocess.call(["open", dir_path('report') + filename])
 
     def build_header(self):
+        """ build the header for the screen. """
         Label(self.win.body, text="Name", fg="Gray").grid(row=self.row, column=1, sticky="w")
         Label(self.win.body, text="Preference", fg="Gray").grid(row=self.row, column=5, sticky="w")
         Label(self.win.body, text="Make up", fg="Gray").grid(row=self.row, column=6, sticky="w")
@@ -941,6 +972,7 @@ class OtEquitability:
         self.row += 1
 
     def build_main(self):
+        """ builds the main part of the screen. """
         i = 0
         for carrier in self.recset:
             Label(self.win.body, text=i+1, anchor="w").grid(row=self.row, column=0, sticky="w")
@@ -973,12 +1005,14 @@ class OtEquitability:
             i += 1
 
     def check_all(self):
+        """ router for checking times """
         for i in range(len(self.onrec_makeups)):
             if not self.check_each(i):
                 return False
         return True
 
     def check_each(self, i):
+        """ checks time values. """
         carrier = self.recset[i][0][1]
         makeup = self.makeup_var[i].get()  # call method to inquire otdl preference table
         if RingTimeChecker(makeup).check_for_zeros():
@@ -1002,6 +1036,7 @@ class OtEquitability:
         return True
 
     def apply(self, home):
+        """ applies to update the otdl preferences. """
         if not self.check_all():
             return
         updates = 0
@@ -1030,6 +1065,7 @@ class OtEquitability:
             self.reset_onrecs_and_vars()
 
     def reset_onrecs_and_vars(self):
+        """ sets the preferences and make ups. """
         for i in range(len(self.pref_var)):
             pref = self.pref_var[i].get()
             makeup = Convert(self.makeup_var[i].get()).empty_not_zero()
@@ -1039,10 +1075,12 @@ class OtEquitability:
             self.makeup_var[i].set(makeup)
 
     def status_report(self, updates):
+        """ generates the status update """
         msg = "{} Record{} Updated.".format(updates, Handler(updates).plurals())
         self.status_update.config(text="{}".format(msg))
 
     def buttons_frame(self):
+        """ generates the frame at the bottom of the screen. """
         button = Button(self.win.buttons)
         button.config(text="Submit", width=macadj(17, 12),
                       command=lambda: self.apply(True))  # apply and return to main screen
@@ -1074,6 +1112,9 @@ class OtEquitability:
 
 
 class SpeedConfigGui:
+    """
+    builds a screen that allows the user to configure Speedsheets.
+    """
     def __init__(self, frame):
         self.frame = frame
         self.win = MakeWindow()
@@ -1085,6 +1126,7 @@ class SpeedConfigGui:
         self.status_update = Label(self.win.buttons, text="", fg="red")
 
     def create(self):
+        """ builds the widgets that fill the page. """
         self.win.create(self.frame)
         Label(self.win.body, text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=0, sticky="w", columnspan=4)
@@ -1152,6 +1194,7 @@ class SpeedConfigGui:
         self.buttons_frame()
 
     def buttons_frame(self):
+        """ builds the buttons and status update at the bottom of the page. """
         button = Button(self.win.buttons)
         button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":
@@ -1161,6 +1204,7 @@ class SpeedConfigGui:
         self.win.finish()
 
     def apply_ns_mode(self):
+        """ applies change to ns preference mode. """
         if self.ns_mode.get() == "rotating":
             value = True
         else:
@@ -1169,33 +1213,39 @@ class SpeedConfigGui:
         self.commit_to_base(value, "speedcell_ns_rotate_mode", msg)
 
     def apply_abc_breakdown(self):
+        """ appplies change to abc breakdown preference - True/False. """
         msg = "Alphabetical Breakdown (multiple tabs) updated: {}".format(self.abc_breakdown.get())
         self.commit_to_base(self.abc_breakdown.get(), "abc_breakdown", msg)
 
     def apply_min_empid(self):
+        """ applies changes to minimum rows for the employee id speedsheet. """
         if self.check(self.min_empid.get()) is None:
             msg = "Minimum rows for Employee ID tab updated: {}".format(self.min_empid.get())
             self.commit_to_base(self.min_empid.get(), "min_spd_empid", msg)
 
     def apply_min_alpha(self):
+        """ applies changes to minimum rows for alphabetical speedsheets. """
         if self.check(self.min_alpha.get()) is None:
             msg = "Minimum rows for Alphabetically tab updated: {}".format(self.min_alpha.get())
             self.commit_to_base(self.min_alpha.get(), "min_spd_alpha", msg)
 
     def apply_min_abc(self):
+        """ applies changes to minimum rows for alphabetical breakdown speedsheets. """
         if self.check(self.min_abc.get()) is None:
             if self.check_abc(self.min_abc.get()) is None:
                 msg = "Minimum rows for Alphabetical breakdown tabs updated: {}".format(self.min_abc.get())
                 self.commit_to_base(self.min_abc.get(), "min_spd_abc", msg)
 
     def commit_to_base(self, value, setting, msg):
+        """ commits to tolerances table. """
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % \
               (value, setting)
         commit(sql)
         self.set_stringvars()
         self.status_update.config(text="{}".format(msg))
 
-    def check(self, value):  # check values for minimum rows
+    def check(self, value):
+        """ check values for minimum rows """
         if not isint(value):
             text = "You must enter a number with no decimals. "
             messagebox.showerror("Tolerance value entry error",
@@ -1223,6 +1273,7 @@ class SpeedConfigGui:
             return False
 
     def check_abc(self, value):
+        """ checks the arg to make sure it is less than 50. """
         if float(value) > 50:
             text = "You must enter a value less than fifty."
             messagebox.showerror("Tolerance value entry error",
@@ -1231,6 +1282,7 @@ class SpeedConfigGui:
             return False
 
     def preset_default(self):
+        """ sets the normal defaults. """
         empid = "50"
         alpha = "50"
         abc = "10"
@@ -1238,6 +1290,7 @@ class SpeedConfigGui:
         self.status_update.config(text="Default Minimum Row Settings Restored")
 
     def preset_high(self):
+        """ a high setting for defaults. """
         empid = "150"
         alpha = "150"
         abc = "40"
@@ -1245,6 +1298,7 @@ class SpeedConfigGui:
         self.status_update.config(text="High Minimum Row Settings Enabled")
 
     def preset_low(self):
+        """ a low setting for defaults. """
         empid = "10"
         alpha = "10"
         abc = "5"
@@ -1253,7 +1307,7 @@ class SpeedConfigGui:
 
     @staticmethod
     def preset_to_base(self, empid, alpha, abc):
-        #  abc breakdown is false in all cases
+        """ abc breakdown is false in all cases """
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
         commit(sql)
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (empid, "min_spd_empid")
@@ -1265,6 +1319,7 @@ class SpeedConfigGui:
         self.set_stringvars()
 
     def set_stringvars(self):
+        """ gets settings and sets stringvars. """
         setting = SpeedSettings()  # retrieve settings from tolerance table in dbase
         if setting.speedcell_ns_rotate_mode:
             self.ns_mode.set("rotating")
@@ -1276,6 +1331,7 @@ class SpeedConfigGui:
         self.min_abc.set(setting.min_abc)
 
     def info(self, switch):
+        """ controls messages to messagebox. """
         text = ""
         if switch == "min_spd_empid":
             text = "Sets the minimum number of rows for the " \
@@ -1292,13 +1348,15 @@ class SpeedConfigGui:
         messagebox.showinfo("SpeedSheet Minimum Rows", text, parent=self.win.topframe)
 
 
-class SpeedLoadThread(Thread):  # use multithreading to load workbook while progress bar runs
+class SpeedLoadThread(Thread):
+    """ use multithreading to load workbook while progress bar runs """
     def __init__(self, path):
         Thread.__init__(self)
         self.path = path
         self.workbook = ""
 
     def run(self):
+        """ runs the speedsheet loading. """
         global pb_flag  # this will signal when the thread has ended to end the progress bar
         wb = load_workbook(self.path)  # load xlsx doc with openpyxl
         self.workbook = wb
@@ -1306,14 +1364,19 @@ class SpeedLoadThread(Thread):  # use multithreading to load workbook while prog
 
 
 class SpeedWorkBookGet:
+    """
+    this class gets the spreedsheet and opens it.
+    """
     @staticmethod
     def get_filepath():
+        """ get the file path"""
         if projvar.platform == "macapp" or projvar.platform == "winapp":
             return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
         else:
             return 'kb_sub/speedsheets'
 
     def get_file(self):
+        """ returns the file path if there is one. else no selection/invalid selection. """
         path = self.get_filepath()
         file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.xlsx")])
         if file_path[-5:].lower() == ".xlsx":
@@ -1324,6 +1387,7 @@ class SpeedWorkBookGet:
             return "invalid selection"
 
     def open_file(self, frame, interject):
+        """ gets the file and calls the speedsheet check and progress bar. """
         global pb_flag
         pb_flag = True
         file_path = self.get_file()
@@ -1347,6 +1411,9 @@ class SpeedWorkBookGet:
 
 
 class SpeedSheetCheck:
+    """
+    this class checks the speedsheet. sends rows to speedcarriercheck and speedringcheck.
+    """
     def __init__(self, frame, wb, path, interject):
         self.frame = frame
         self.wb = wb
@@ -1384,6 +1451,7 @@ class SpeedSheetCheck:
         self.step = 2
 
     def check(self):
+        """ master method for running other methods and returns to the mainframe. """
         global try_absorber  # uses local variable in try statement to avoid error
         try:
             date_array = [1, 1, 1]
@@ -1409,8 +1477,9 @@ class SpeedSheetCheck:
             self.pb.delete()  # stop and destroy progress bar
             self.showerror()
 
-    def set_ns_preference(self):  # are ns day preferences rotating or fixed?
-        rotation = self.wb["by employee id"].cell(row=3, column=10).value  # get the ns day mode preference.
+    def set_ns_preference(self):
+        """ are ns day preferences rotating or fixed? """
+        rotation = self.wb["by employee id"].cell(row=3, column=12).value  # get the ns day mode preference.
         if rotation.lower() not in ("r", "f"):
             self.ns_rotate_mode = None
         elif rotation == "r":
@@ -1419,7 +1488,7 @@ class SpeedSheetCheck:
             self.ns_rotate_mode = False
 
     def set_all_inclusive(self):
-        # is the speedsheet all inclusive/ carrier only.
+        """ is the speedsheet all inclusive/ carrier only. """
         all_in = self.wb["by employee id"].cell(row=1, column=1).value
         if all_in == "Speedsheet - All Inclusive Weekly":
             return True  # default settings from __init__ do not need changing
@@ -1437,10 +1506,12 @@ class SpeedSheetCheck:
             return False
 
     def set_sheet_facts(self):
+        """ get the worksheet names and number worksheets. """
         self.sheets = self.wb.sheetnames  # get the names of the worksheets as a list
         self.sheet_count = len(self.sheets)  # get the number of worksheets
 
-    def set_dates(self):  # set the dates and the investigation range based on speedsheet input
+    def set_dates(self):
+        """ set the dates and the investigation range based on speedsheet input """
         datecell = self.wb[self.sheets[0]].cell(row=2, column=2).value  # get the date or range of dates
         if len(datecell) < 12:  # if the investigation range is daily
             self.start_date = Convert(datecell).backslashdate_to_datetime()  # convert formatted date to datetime
@@ -1452,6 +1523,7 @@ class SpeedSheetCheck:
             self.end_date = Convert(d[1]).backslashdate_to_datetime()
 
     def set_ns_dictionaries(self):
+        """ gets the nsday as a dictionary. """
         ns_obj = NsDayDict(self.start_date)  # get the ns day object
         self.ns_xlate = ns_obj.get()  # get ns day dictionary
         self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
@@ -1459,13 +1531,16 @@ class SpeedSheetCheck:
         self.ns_custom = ns_obj.custom_config()  # shows custom ns day configurations for  printout / reports
 
     def set_station(self):
-        self.station = self.wb[self.sheets[0]].cell(row=2, column=9).value  # get the station.
+        """ gets the station from the speedsheet. """
+        self.station = self.wb[self.sheets[0]].cell(row=2, column=11).value  # get the station.
 
     def start_reporter(self):
+        """ starts the report. """
         self.report.write("\nSpeedSheet Pre-Check Report \n")
         self.report.write(">>> {}\n".format(self.path))
 
-    def row_count(self):  # get a count of all rows for all sheets - need for progress bar
+    def row_count(self):
+        """ get a count of all rows for all sheets - need for progress bar """
         total_rows = 0
         for i in range(self.sheet_count):
             ws = self.wb[self.sheets[i]]  # assign the worksheet object
@@ -1475,6 +1550,7 @@ class SpeedSheetCheck:
         return total_rows
 
     def showerror(self):
+        """ message box for showing errors. """
         messagebox.showerror("Klusterbox SpeedSheets",
                              "SpeedSheets Precheck or Input has failed. \n"
                              "Either you have selected a spreadsheet that is not \n"
@@ -1485,6 +1561,7 @@ class SpeedSheetCheck:
                              parent=self.frame)
 
     def checking(self):
+        """ reads rows and send to SpeedCarrierCheck or SpeedRingCheck. """
         is_name = False  # initialize bool for speedcell name
         count_diff = self.sheet_count * self.start_row  # subtract top five/six rows from the row count
         self.pb.max_count(self.row_count() - count_diff)  # get total count of rows for the progress bar
@@ -1502,10 +1579,10 @@ class SpeedSheetCheck:
                         is_name = True  # bool: the speedcell has a name
                         day = Handler(ws.cell(row=ii, column=1).value).nonetype()
                         name = Handler(ws.cell(row=ii, column=2).value).nonetype()
-                        list_stat = Handler(ws.cell(row=ii, column=5).value).nonetype()
-                        nsday = Handler(ws.cell(row=ii, column=6).value).ns_nonetype()
-                        route = Handler(ws.cell(row=ii, column=7).value).nonetype()
-                        empid = Handler(ws.cell(row=ii, column=10).value).nonetype()
+                        list_stat = Handler(ws.cell(row=ii, column=6).value).nonetype()
+                        nsday = Handler(ws.cell(row=ii, column=7).value).ns_nonetype()
+                        route = Handler(ws.cell(row=ii, column=8).value).nonetype()
+                        empid = Handler(ws.cell(row=ii, column=12).value).nonetype()
                         self.name = name
                         self.pb.change_text("Reading Speedcell: {}".format(name))  # update text for progress bar
                         SpeedCarrierCheck(self, self.sheets[i], ii, name, day, list_stat, nsday, route,
@@ -1520,16 +1597,20 @@ class SpeedSheetCheck:
                         # Handler().nonetype will convert any nonetypes to empty stings
                         day = Handler(ws.cell(row=ii, column=1).value).nonetype()
                         hours = Handler(ws.cell(row=ii, column=2).value).nonetype()
-                        moves = Handler(ws.cell(row=ii, column=3).value).nonetype()
-                        rs = Handler(ws.cell(row=ii, column=7).value).nonetype()
-                        codes = Handler(ws.cell(row=ii, column=8).value).nonetype()
-                        lv_type = Handler(ws.cell(row=ii, column=9).value).nonetype()
-                        lv_time = Handler(ws.cell(row=ii, column=10).value).nonetype()
-                        SpeedRingCheck(self, self.sheets[i], ii, day, hours, moves, rs, codes, lv_type, lv_time).check()
+                        bt = Handler(ws.cell(row=ii, column=3).value).nonetype()
+                        moves = Handler(ws.cell(row=ii, column=4).value).nonetype()
+                        rs = Handler(ws.cell(row=ii, column=8).value).nonetype()
+                        et = Handler(ws.cell(row=ii, column=9).value).nonetype()
+                        codes = Handler(ws.cell(row=ii, column=10).value).nonetype()
+                        lv_type = Handler(ws.cell(row=ii, column=11).value).nonetype()
+                        lv_time = Handler(ws.cell(row=ii, column=12).value).nonetype()
+                        SpeedRingCheck(self, self.sheets[i], ii, day, hours, bt, moves, rs, et, codes,
+                                       lv_type, lv_time).check()
                 pb_counter += 1
         self.pb.stop()
 
     def reporter(self):
+        """ writes the report """
         self.report.write("\n\n----------------------------------")
         # build report summary for carrier checks
         self.report.write("\n\nSpeedSheet Carrier Check Complete.\n\n")
@@ -1565,7 +1646,10 @@ class SpeedSheetCheck:
             subprocess.call(["open", dir_path('report') + self.filename])
 
 
-class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
+class SpeedCarrierCheck:
+    """
+    accepts carrier records from SpeedSheets
+    """
     def __init__(self, parent, sheet, row, name, day, list_stat, nsday, route, empid):
         self.parent = parent  # get objects from SpeedSheetCheck
         self.sheet = sheet  # input here is coming directly from the speedcell
@@ -1610,6 +1694,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
              "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri"}
 
     def check_all(self):
+        """ master method to run other methods. """
         self.get_carrec()  # get carrier records and condense them into one array
         self.check_name()  # check for errors with the carrier name
         self.check_employee_id_format()
@@ -1622,7 +1707,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.add_recs()
         self.generate_report()
 
-    def get_carrec(self):  # get carrier records and condense them into one array
+    def get_carrec(self):
+        """ get carrier records and condense them into one array """
         carrec = CarrierRecSet(self.name, self.parent.start_date, self.parent.end_date, self.parent.station).get()
         self.filtered_recset = CarrierRecFilter(carrec, self.parent.start_date).filter_nonlist_recs()
         carrec = CarrierRecFilter(self.filtered_recset, self.parent.start_date).condense_recs_ns()
@@ -1632,7 +1718,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.onrec_nsday = carrec[3]
         self.onrec_route = carrec[4]
 
-    def check_name(self):  # check for errors with the carrier name
+    def check_name(self):
+        """ check for errors with the carrier name """
         if self.name == self.onrec_name:
             return
         if not NameChecker(self.name).check_characters():
@@ -1651,9 +1738,9 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             attn = "     ATTENTION: Carrier name should must contain one initial ideally, \n" \
                    "                unless more are needed to create a distinct carrier name.\n"
             self.attn_array.append(attn)
-        # self.name = NameChecker(self.name).add_comma_spacing()  # make sure there is a space after the comma
 
     def check_employee_id_situation(self):
+        """ checks the employee id. """
         if self.index_id == "" and self.empid == "":  # if both emp id and name index are blank
             pass
         elif self.index_id == self.empid:  # if the emp id from the name index and the speedsheet match
@@ -1672,7 +1759,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
 
-    def check_employee_id_format(self):  # verifies the employee id
+    def check_employee_id_format(self):
+        """ verifies the employee id """
         if self.empid == "":  # allow empty strings
             pass
         elif str(self.empid).isnumeric():  # allow integers and numeric strings
@@ -1684,7 +1772,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.parent.allowaddrecs = False
             return
 
-    def check_employee_id_use(self):  # make sure the employee id is not being used by another carrier
+    def check_employee_id_use(self):
+        """ make sure the employee id is not being used by another carrier """
         kb_name = ""
         emp_id = ""
         if self.empid != "":
@@ -1703,6 +1792,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.parent.allowaddrecs = False
 
     def add_list_status(self, dlsn_array, dlsn_day_array):
+        """ checks for list status. """
         if not self.filtered_recset:  # if the carrier is new
             self.addlist = dlsn_array
             self.addday = dlsn_day_array
@@ -1722,6 +1812,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             pass
 
     def check_list_status(self):
+        """ adds list status. """
         self.list_stat = str(self.list_stat)
         self.list_stat = self.list_stat.strip()
         if self.list_stat == "":  # if the list_stat is empty
@@ -1794,7 +1885,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.add_list_status(dlsn_array, dlsn_day_array)
 
     @staticmethod
-    def dlsn_baseready(array):  # format dynamic list status notation into database ready
+    def dlsn_baseready(array):
+        """ format dynamic list status notation into database ready """
         new = []
         for ls in array:  # for each list status
             if ls in ("nl", "n"):
@@ -1809,7 +1901,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 new.append("ptf")
         return new
 
-    def check_day_sequence(self, array):  # check the day/s for correct sequence
+    def check_day_sequence(self, array):
+        """ check the day/s for correct sequence """
         sequence = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         past = []
         for a in array:
@@ -1825,7 +1918,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 past.append(s)
 
     @staticmethod
-    def day_baseready(array):  # format dynamic list status notation into database ready
+    def day_baseready(array):
+        """ format dynamic list status notation into database ready """
         new = []
         for d in array:
             if d in ("sat", "s"):
@@ -1842,13 +1936,15 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 new.append("fri")
         return new
 
-    def ns_baseready(self, ns, mode):  # formats provided ns day into a fixed or rotating ns day for database input
+    def ns_baseready(self, ns, mode):
+        """ formats provided ns day into a fixed or rotating ns day for database input """
         baseready = self.parent.ns_true_rev[ns]  # if True is passed use rotate mode
         if not mode:  # if False is passed use fixed mode
             baseready = self.parent.ns_false_rev[ns]
         return baseready
 
     def add_ns(self, baseready):
+        """ add ns day """
         if self.onrec_nsday == baseready:
             pass  # keep value of addnsday var as "empty"
         else:
@@ -1857,7 +1953,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.addnsday = baseready
 
     def check_ns(self):
-        #  self.parent.ns_rotate_mode: True for rotate, False for fixed
+        """ self.parent.ns_rotate_mode: True for rotate, False for fixed """
         ns = "none"  # initialize ns variable
         if not self.nsday:  # if string is empty
             self.add_ns(ns)  # ns day is "none"
@@ -1884,6 +1980,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
         self.add_ns(baseready)
 
     def add_route(self):
+        """ add route """
         if self.route == self.onrec_route:
             pass  # retain "empty" value for addroute variable
         else:
@@ -1892,6 +1989,7 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.addroute = self.route  # save to input to dbase
 
     def check_route(self):
+        """ check route """
         self.route = str(self.route)
         self.route = self.route.strip()
         if self.route == "":
@@ -1908,10 +2006,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
             self.add_route()
 
     def add_recs(self):
+        """ add records using the add___ vars. """
         chg_these = []
-        # list_place = []
-        # ns_place = ""
-        # route_place = ""
         if not self.parent.allowaddrecs:  # if all checks passed
             return
         if self.addlist != ["empty"]:
@@ -1975,7 +2071,8 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                           % (date, self.name, list_place[i], ns_place, route_place, self.parent.station)
                     commit(sql)
 
-    def generate_report(self):  # generate a report
+    def generate_report(self):
+        """ generate a report """
         self.parent.fatal_rpt += len(self.error_array)
         self.parent.add_rpt += len(self.add_array)
         self.parent.fyi_rpt += len(self.fyi_array)
@@ -1995,15 +2092,20 @@ class SpeedCarrierCheck:  # accepts carrier records from SpeedSheets
                 self.parent.report.write(rpt)
 
 
-class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
-    def __init__(self, parent, sheet, row, day, hours, moves, rs, codes, lv_type, lv_time):
+class SpeedRingCheck:
+    """
+    accepts carrier rings from SpeedSheets
+    """
+    def __init__(self, parent, sheet, row, day, hours, bt, moves, rs, et, codes, lv_type, lv_time):
         self.parent = parent
         self.sheet = sheet
         self.row = row
         self.day = day
         self.hours = hours
+        self.bt = bt
         self.moves = moves
         self.rs = rs
+        self.et = et
         self.codes = codes
         self.lv_type = lv_type
         self.lv_time = lv_time
@@ -2018,25 +2120,35 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.onrec_date = ""  # get rings information "on record" from the database
         self.onrec_name = ""
         self.onrec_5200 = ""
-        self.onrec_rs = ""
-        self.onrec_codes = ""
+        self.onrec_bt = ""
         self.onrec_moves = ""
+        self.onrec_rs = ""
+        self.onrec_et = ""
+        self.onrec_codes = ""
         self.onrec_leave_type = ""
         self.onrec_leave_time = ""
         self.adddate = "empty"  # checked input formatted for entry into database
         self.add5200 = "empty"
+        self.addbt = "empty"
         self.addrs = "empty"
+        self.addet = "empty"
         self.addcode = "empty"
         self.addmoves = "empty"
         self.addlvtype = "empty"
         self.addlvtime = "empty"
+        self.exist5200 = False
+        self.existbt = False
+        self.auto_et = False
 
     def check(self):
+        """ master method for running methods in sequence. """
         if self.check_day():  # if the day is a valid day
             self.get_onrecs()  # get existing "on record" records from the database
             self.check_5200()  # check 5200/ hours
             self.check_leave_time()  # check leave time
             if not self.check_empty():  # checks if the record should be deleted
+                self.check_bt()  # check "begin tour"
+                self.check_et()  # check "end tour"
                 self.check_rs()   # check "return to station"
                 self.check_codes()  # check the codes/notes
                 self.check_leave_type()  # check leave type
@@ -2045,12 +2157,14 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                     self.add_recs()  # format and input rings into database
         self.generate_report()
 
-    def get_day_as_datetime(self):  # get the datetime object for the day in use
+    def get_day_as_datetime(self):
+        """ get the datetime object for the day in use """
         day = Convert(self.day).day_to_datetime_str(self.parent.start_date)
         self.adddate = day
         return day
 
     def get_onrecs(self):
+        """ gets the records already in the database ie on record. """
         carrec = CarrierRecSet(self.parent.name, self.parent.start_date, self.parent.end_date,
                                self.parent.station).get()
         if carrec:
@@ -2067,8 +2181,11 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                 self.onrec_moves = ringrec[0][5]
                 self.onrec_leave_type = ringrec[0][6]
                 self.onrec_leave_time = ringrec[0][7]
+                self.onrec_bt = ringrec[0][9]
+                self.onrec_et = ringrec[0][10]
 
     def check_day(self):
+        """ checks the day. """
         days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         self.day = self.day.strip()
         self.day = str(self.day)
@@ -2082,7 +2199,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         return True
 
     def check_empty(self):
-        # determine conditions where existing record is deleted
+        """ determine conditions where existing record is deleted """
         if not self.hours:
             if not self.lv_time:
                 if self.codes != "no call":
@@ -2092,6 +2209,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         return False
 
     def add_5200(self):
+        """ adds 5200 time to an add5200 array which will add values to database. """
         if self.hours == "0.0" and self.onrec_5200 in ("0", "0.00", "0.0", "", 0, 0.0):
             pass
         elif self.hours != self.onrec_5200:  # compare 5200 time against 5200 from database,
@@ -2100,6 +2218,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.fyi_array.append(fyi)
 
     def check_5200(self):
+        """ checks the 5200 time """
         if type(self.hours) == str and not self.hours:  # pass if value is an empty string
             self.add_5200()
             return
@@ -2129,9 +2248,111 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             return
         self.hours = str(self.hours)  # convert float back to string
         self.hours = Convert(self.hours).hundredths()  # make number a string with 2 decimal places
+        self.exist5200 = self.hours
         self.add_5200()
+        
+    def add_bt(self):
+        """ defines the addbt var and writes report """
+        if self.bt == "0.0" and self.onrec_bt in ("0", "0.00", "0.0", "", 0, 0.0):
+            pass
+        elif self.bt != self.onrec_bt:  # compare 5200 time against 5200 from database,
+            self.addbt = self.bt  # if different, the add
+            fyi = "     FYI: New or updated begin tour: {}\n".format(self.bt)
+            self.fyi_array.append(fyi)
+    
+    def check_bt(self):
+        """ check the begin tour """
+        if type(self.bt) == str and not self.bt:  # pass if value is an empty string
+            self.add_bt()
+            return
+        ring = RingTimeChecker(self.bt).make_float()  # returns float or False
+        if ring is not False:
+            self.bt = ring  # convert the attribute to a float, if not already
+        else:  # if fail, create error msg and return
+            error = "     ERROR: BT must be a number. Got instead \"{}\": \n".format(self.bt)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.bt).over_24():
+            error = "     ERROR: BT time can not exceed 24.00. Got instead \"{}\": \n".format(self.bt)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.bt).less_than_zero():
+            error = "     ERROR: BT time can not be negative. Got instead \"{}\": \n".format(self.bt)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.bt).count_decimals_place():
+            error = "     ERROR: BT time can have no more than two decimal places. Got instead \"{}\": \n". \
+                format(self.bt)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        self.bt = str(self.bt)  # convert float back to string
+        self.bt = Convert(self.bt).hundredths()  # make number a string with 2 decimal places
+        self.existbt = self.bt
+        self.add_bt()
+
+    def add_et(self):
+        """ defines the addet var and writes report """
+        if self.et in ("0", "0.00", "0.0", "", 0, 0.0) and self.existbt and self.exist5200:
+            endtour = self.auto_endtour()
+            self.addet = endtour  # if different, the add
+            fyi = "     FYI: Automated end tour generated: {}\n".format(endtour)
+            self.auto_et = True  # enables message in text report to show auto endtour was used.
+        elif self.et == "0.0" and self.onrec_et in ("0", "0.00", "0.0", "", 0, 0.0):
+            pass
+        elif self.et != self.onrec_et:  # compare 5200 time against 5200 from database,
+            self.addet = self.et  # if different, the add
+            fyi = "     FYI: New or updated end tour: {}\n".format(self.et)
+            self.fyi_array.append(fyi)
+
+    def auto_endtour(self):
+        """ add 50 clicks to the begin tour and 5200 time """
+        if float(self.exist5200) >= 6:
+            auto_et = float(self.existbt) + float(self.exist5200) + .50
+        else:
+            auto_et = float(self.existbt) + float(self.exist5200)
+        if auto_et >= 24:
+            auto_et -= 24
+        return "{:.2f}".format(auto_et)
+
+    def check_et(self):
+        """ check the end tour """
+        if type(self.et) == str and not self.et:  # pass if value is an empty string
+            self.add_et()
+            return
+        ring = RingTimeChecker(self.et).make_float()  # returns float or False
+        if ring is not False:
+            self.et = ring  # convert the attribute to a float, if not already
+        else:  # if fail, create error msg and return
+            error = "     ERROR: ET must be a number. Got instead \"{}\": \n".format(self.et)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.et).over_24():
+            error = "     ERROR: ET time can not exceed 24.00. Got instead \"{}\": \n".format(self.et)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.et).less_than_zero():
+            error = "     ERROR: ET time can not be negative. Got instead \"{}\": \n".format(self.et)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        if not RingTimeChecker(self.et).count_decimals_place():
+            error = "     ERROR: ET time can have no more than two decimal places. Got instead \"{}\": \n". \
+                format(self.et)
+            self.error_array.append(error)
+            self.allowaddrings = False
+            return
+        self.et = str(self.et)  # convert float back to string
+        self.et = Convert(self.et).hundredths()  # make number a string with 2 decimal places
+        self.add_et()
 
     def add_rs(self):
+        """ defines the addrs var and writes report. """
         if self.rs == "0.0" and self.onrec_rs in ("0", "0.00", "0.0", "", 0, 0.0):
             pass
         elif self.rs != self.onrec_rs:  # compare 5200 time against 5200 from database,
@@ -2140,6 +2361,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.fyi_array.append(fyi)
 
     def check_rs(self):
+        """ check the return to station. """
         if type(self.rs) == str and not self.rs:  # pass if value is an empty string
             self.add_rs()
             return
@@ -2172,12 +2394,14 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.add_rs()
 
     def add_moves(self, baseready):
+        """ defines the addmoves variable and writes to report. """
         if baseready != self.onrec_moves:  # if the moves are different from on record moves from dbase,
             self.addmoves = baseready  # add the moves
             fyi = "     FYI: New or updated moves: {}\n".format(baseready)
             self.fyi_array.append(fyi)
 
     def check_moves(self):
+        """ checks the moves. """
         self.moves = str(self.moves)
         self.moves = self.moves.strip()
         if type(self.moves) == str and not self.moves:
@@ -2248,6 +2472,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.add_moves(baseready)
 
     def add_codes(self):
+        """ adds to the codes varible and writes to the report. """
         if self.codes == self.onrec_codes:  # compare 5200 time against 5200 from database,
             pass
         else:
@@ -2256,6 +2481,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.fyi_array.append(fyi)
 
     def check_codes(self):
+        """ checks the codes. """
         all_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
         self.codes = self.codes.strip()
         self.codes = str(self.codes)
@@ -2286,7 +2512,8 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
                 self.attn_array.append(attn)
         self.add_codes()
 
-    def add_lvtype(self):  # store the leave type if it has changed and passes checks
+    def add_lvtype(self):
+        """ store the leave type if it has changed and passes checks """
         if self.lv_type == self.onrec_leave_type:  # compare 5200 time against 5200 from database,
             pass  # take no action if they are the same
         else:
@@ -2294,7 +2521,8 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             fyi = "     FYI: New or updated leave type: {}\n".format(self.lv_type)
             self.fyi_array.append(fyi)
 
-    def check_leave_type(self):  # check the leave type
+    def check_leave_type(self):
+        """ check the leave type """
         all_codes = ("none", "annual", "sick", "holiday", "other", "combo")
         self.lv_type = str(self.lv_type)  # make sure lv type is a string
         self.lv_type = self.lv_type.strip()  # remove whitespace
@@ -2313,6 +2541,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.add_lvtype()  # store the leave type if it has changed and passes checks
 
     def add_leave_time(self):
+        """ add to the leave time variable. """
         if self.lv_time == "0.0" and self.onrec_leave_time in ("0", "0.00", "0.0", "", 0, 0.0):
             pass  # if new and old lv times are both empty, take no action
         elif self.lv_time != self.onrec_leave_time:  # compare lv type time against lv type from database,
@@ -2321,6 +2550,7 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             self.fyi_array.append(fyi)
 
     def check_leave_time(self):
+        """ checks the leave time. """
         if type(self.lv_time) == str and not self.lv_time:  # pass if value is an empty string
             self.add_leave_time()
             return
@@ -2352,7 +2582,8 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.lv_time = Convert(self.lv_time).hundredths()  # make lv time into a string number with 2 decimal places
         self.add_leave_time()
 
-    def delete_recs(self):  # delete any pre existing record
+    def delete_recs(self):
+        """ delete any pre existing record """
         if not self.parent.interject:
             fyi = "     FYI: Clock Rings record will be deleted from database\n"
             self.fyi_array.append(fyi)
@@ -2363,13 +2594,8 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         self.add_array.append(add)
 
     def add_recs(self):
+        """ adds the records to the database"""
         chg_these = []
-        # hours_place = ""
-        # rs_place = ""
-        # code_place = None
-        # moves_place = ""
-        # lv_type_place = ""
-        # lv_time_place = ""
         if not self.allowaddrings:
             return
         # determine conditions where existing record is deleted
@@ -2387,6 +2613,23 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
             hours_place = self.add5200
         else:
             hours_place = self.onrec_5200
+        if self.addbt != "empty":  # bt place of sql command
+            add = "     INPUT: BT time added or updated to database >>{}\n".format(self.addbt)  # report
+            self.add_array.append(add)
+            chg_these.append("bt")
+            bt_place = self.addbt
+        else:
+            bt_place = self.onrec_bt
+        if self.addet != "empty":  # et place of sql command
+            if self.auto_et:
+                add = "     INPUT: ET time added to database automatically >>{}\n".format(self.addet)  # report
+            else:
+                add = "     INPUT: ET time added or updated to database >>{}\n".format(self.addet)  # report
+            self.add_array.append(add)
+            chg_these.append("et")
+            et_place = self.addet
+        else:
+            et_place = self.onrec_et
         if self.addrs != "empty":  # rs place of sql command
             add = "     INPUT: RS time added or updated to database >>{}\n".format(self.addrs)  # report
             self.add_array.append(add)
@@ -2426,16 +2669,19 @@ class SpeedRingCheck:  # accepts carrier rings from SpeedSheets
         if chg_these:
             if not self.onrec_date:  # if there is no rings record for the date
                 sql = "INSERT INTO rings3(rings_date, carrier_name, total, rs, code, " \
-                      "moves, leave_type, leave_time) VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" \
+                      "moves, leave_type, leave_time, bt, et) " \
+                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" \
                       % (self.adddate, self.parent.name, hours_place, rs_place, code_place, moves_place,
-                         lv_type_place, lv_time_place)
+                         lv_type_place, lv_time_place, bt_place, et_place)
             else:  # if a record already exist
                 sql = "UPDATE rings3 SET total = '%s', rs = '%s', code = '%s', moves = '%s', leave_type = '%s', " \
-                      "leave_time = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" % (hours_place,
-                      rs_place, code_place, moves_place, lv_type_place, lv_time_place, self.adddate, self.parent.name)
+                      "leave_time = '%s', bt = '%s', et = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" % \
+                      (hours_place, rs_place, code_place, moves_place, lv_type_place, lv_time_place, bt_place,
+                       et_place,  self.adddate, self.parent.name)
             commit(sql)
 
-    def generate_report(self):  # generate a report
+    def generate_report(self):
+        """ generate a report """
         self.parent.rings_fatal_rpt += len(self.error_array)
         self.parent.rings_add_rpt += len(self.add_array)
         self.parent.rings_fyi_rpt += len(self.fyi_array)
@@ -10137,773 +10383,6 @@ def output_tab(frame, list_carrier):
     projvar.root.mainloop()
 
 
-class EnterRings:
-    """
-    A Screen for entering in carrier clock rings
-    """
-    def __init__(self, carrier):
-        self.frame = None
-        self.origin_frame = None  # defunct
-        self.win = None
-        self.carrier = carrier
-        self.carrecs = []  # get the carrier rec set
-        self.ringrecs = []  # get the rings for the week
-        self.dates = []  # get a datetime object for each day in the investigation range
-        self.daily_carrecs = []  # get the carrier record for each day
-        self.daily_ringrecs = []  # get the rings record for each day
-        self.totals = []  # arrays holding stringvars
-        self.moves = []
-        self.rss = []
-        self.codes = []
-        self.lvtypes = []
-        self.lvtimes = []
-        self.refusals = []
-        self.begintour = []
-        self.endtour = []
-        self.now_moves = ""  # default values of the stringvars
-        self.sat_mm = []  # holds daily stringvars for moves
-        self.sun_mm = []
-        self.mon_mm = []
-        self.tue_mm = []
-        self.wed_mm = []
-        self.thu_mm = []
-        self.fri_mm = []
-        self.move_string = ""
-        self.ot_rings_limiter = None
-        self.tourrings = None  # True if user wants to display the BT (begin tour) and ET (end tour)
-        self.chg_these = []
-        self.addrings = []
-        if projvar.invran_weekly_span:
-            for i in range(7):
-                self.addrings.append([])
-        self.status_update = ""
-        self.delete_report = 0
-        self.update_report = 0
-        self.insert_report = 0
-        self.day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-
-    def start(self, frame):
-        """ a master method for running the other methods in proper sequence """
-        self.frame = frame
-        self.win = MakeWindow()
-        self.win.create(self.frame)
-        self.re_initialize()  # initialize all variables
-        self.get_carrecs()
-        self.get_ringrecs()
-        self.get_dates()
-        self.get_daily_carrecs()
-        self.get_daily_ringrecs()
-        self.get_rings_limiter()
-        self.get_tourrings()
-        self.build_page()
-        self.write_report()
-        self.buttons_frame()
-        self.zero_report_vars()
-        self.win.finish()
-
-    def re_initialize(self):
-        """ a method for re initializing all variables after Apply is pressed or when first started. """
-        self.carrecs = []  # get the carrier rec set
-        self.ringrecs = []  # get the rings for the week
-        self.dates = []  # get a datetime object for each day in the investigation range
-        self.daily_carrecs = []  # get the carrier record for each day
-        self.daily_ringrecs = []  # get the rings record for each day
-        self.totals = []  # arrays holding stringvars
-        self.moves = []
-        self.rss = [] 
-        self.codes = []
-        self.lvtypes = []
-        self.lvtimes = []
-        self.refusals = []
-        self.begintour = []
-        self.endtour = []
-        self.now_moves = ""  # default values of the stringvars
-        self.sat_mm = []  # holds daily stringvars for moves
-        self.sun_mm = []
-        self.mon_mm = []
-        self.tue_mm = []
-        self.wed_mm = []
-        self.thu_mm = []
-        self.fri_mm = []
-        self.move_string = ""
-        self.chg_these = []
-        self.addrings = []
-        if projvar.invran_weekly_span:
-            for i in range(7):
-                self.addrings.append([])
-
-    def get_carrecs(self):
-        """ get the carrier's carrier rec set """
-        if projvar.invran_weekly_span:  # get the records for the full service week
-            self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date_week[0], projvar.invran_date_week[6],
-                                         projvar.invran_station).get()
-        else:  # get the records for the day
-            self.carrecs = CarrierRecSet(self.carrier, projvar.invran_date, projvar.invran_date,
-                                         projvar.invran_station).get()
-
-    def get_ringrecs(self):
-        """ get the ring recs for the invran """
-        if projvar.invran_weekly_span:  # get the records for the full service week
-            self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_week()
-        else:  # get the records for the day
-            self.ringrecs = Rings(self.carrier, projvar.invran_date).get_for_day()
-
-    def get_dates(self):
-        """ get a datetime object for each day in the investigation range """
-        if projvar.invran_weekly_span:
-            self.dates = projvar.invran_date_week
-        else:
-            self.dates = [projvar.invran_date, ]
-
-    def get_daily_carrecs(self):
-        """ make a list of carrier records for each day """
-        for d in self.dates:
-            for rec in self.carrecs:
-                if rec[0] <= str(d):  # if the dates match
-                    self.daily_carrecs.append(rec)  # append the record
-                    break
-
-    def get_daily_ringrecs(self):
-        """ make list of ringrecs for each day, insert empty rec if there is no rec """
-        match = False
-        for d in self.dates:  # for each day in self.dates
-            for rr in self.ringrecs:
-                if rr:  # if there is a ring rec
-                    if rr[0] == str(d):  # when the dates match
-                        self.daily_ringrecs.append(list(rr))  # creates the daily_ringrecs array
-                        match = True
-            if not match:  # if there is no match
-                add_this = [d, self.carrier, "", "", "none", "", "none", "", "", "", ""]  # insert an empty record
-                self.daily_ringrecs.append(add_this)  # creates the daily_ringrecs array
-            match = False
-        # convert the time item from string to datetime object
-        for i in range(len(self.daily_ringrecs)):
-            if type(self.daily_ringrecs[i][0]) == str:
-                self.daily_ringrecs[i][0] = Convert(self.daily_ringrecs[i][0]).dt_converter()
-
-    def get_rings_limiter(self):
-        """ get the status of rings limiter which limits the widgets in the screen """
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
-        results = inquire(sql)
-        self.ot_rings_limiter = int(results[0][0])
-
-    def get_tourrings(self):
-        """ get tourrings from database which allow user to show BT (begin tour) and ET (end tour) """
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "tourrings"
-        results = inquire(sql)
-        self.tourrings = int(results[0][0])
-
-    def get_widgetlist(self, i):
-        """ returns a list with moves and/or tourrings or an empty list. """
-        widgetlist = []
-        if self.tourrings:
-            widgetlist.append("tourrings")
-        if self.daily_carrecs[i][2] in ("otdl",) and not self.ot_rings_limiter:
-            widgetlist.append("moves")
-        if self.daily_carrecs[i][2] in ("nl", "wal"):
-            widgetlist.append("moves")
-        return widgetlist
-
-    @staticmethod
-    def get_ww(widgetlist):
-        """ get the widget of widgets in windows """
-        if len(widgetlist)>1:  # if there is more than one thing in the widgetlist
-            return 6  # shorten the widget
-        return 8
-
-    def build_page(self):
-        """ builds the screen """
-        day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
-        frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
-        color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
-        nolist_codes = ("none", "ns day")
-        ot_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
-        aux_codes = ("none", "no call", "light", "sch chg", "annual", "sick", "excused")
-        lv_options = ("none", "annual", "sick", "holiday", "other", "combo")
-        option_menu = ["om0", "om1", "om2", "om3", "om4", "om5", "om6"]
-        lv_option_menu = ["lom0", "lom1", "lom2", "lom3", "lom4", "lom5", "lom6"]
-        total_widget = ["tw0", "tw1", "tw2", "tw3", "tw4", "tw5", "tw6"]
-        frame_i = 0  # counter for the frame
-        header_frame = Frame(self.win.body, width=500)  # header  frame
-        header_frame.grid(row=frame_i, padx=5, sticky="w")
-        # Header at top of window: name
-        Label(header_frame, text="carrier name: ", fg="Grey", font=macadj("bold", "Helvetica 18")) \
-            .grid(row=0, column=0, sticky="w")
-        Label(header_frame, text="{}".format(self.carrecs[0][1]), font=macadj("bold", "Helvetica 18")) \
-            .grid(row=0, column=1, sticky="w")
-        Label(header_frame, text="list status: {}".format(self.carrecs[0][2])) \
-            .grid(row=1, sticky="w", columnspan=2)
-        if self.carrecs[0][4] != "":
-            Label(header_frame, text="route/s: {}".format(self.carrecs[0][4])) \
-                .grid(row=2, sticky="w", columnspan=2)
-        frame_i += 2
-        if projvar.invran_weekly_span:  # if investigation range is weekly
-            i_range = 7  # loop 7 times for week or once for day
-        else:
-            i_range = 1
-        for i in range(i_range):
-            # for ring in self.daily_ringrecs:  # assign the values for each rings attribute
-            now_total = Convert(self.daily_ringrecs[i][2]).empty_not_zero()
-            now_bt = Convert(self.daily_ringrecs[i][9]).empty_not_zero()
-            now_rs = Convert(self.daily_ringrecs[i][3]).empty_not_zero()
-            now_et = Convert(self.daily_ringrecs[i][10]).auto_not_zero()
-            now_code = Convert(self.daily_ringrecs[i][4]).none_not_empty()
-            self.now_moves = self.daily_ringrecs[i][5]
-            now_lv_type = Convert(self.daily_ringrecs[i][6]).none_not_empty()
-            now_lv_time = Convert(self.daily_ringrecs[i][7]).empty_not_zero()
-            grid_i = 0  # counter for the grid within the frame
-            frame[i] = Frame(self.win.body, width=500)
-            frame[i].grid(row=frame_i, padx=5, sticky="w")
-            # Display the day and date
-            if projvar.ns_code[self.carrecs[0][3]] == self.dates[i].strftime("%a"):
-                Label(frame[i], text="{} NS DAY".format(self.dates[i].strftime("%a %b %d, %Y")), fg="red") \
-                    .grid(row=grid_i, column=0, columnspan=5, sticky="w")
-            else:
-                Label(frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
-                    .grid(row=grid_i, column=0, columnspan=5, sticky="w")
-            grid_i += 1
-            widgetlist = self.get_widgetlist(i)  # returns a list with moves and/or tourrings or an empty list.
-            ww = self.get_ww(widgetlist)
-            colcount = 0
-            if self.daily_carrecs[i][5] == projvar.invran_station:
-                Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=colcount)  # Display 5200 label
-                colcount += 1
-                if "tourrings" in widgetlist:
-                    Label(frame[i], text="BT", fg=color[7]).grid(row=grid_i, column=colcount)
-                    colcount += 1
-                if "moves" in widgetlist:
-                    Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=colcount)  # Display MV off
-                    Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=colcount+1)  # Display MV on
-                    Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=colcount+2)  # Display Route
-                    colcount += 4
-                Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=colcount)  # Display RS label
-                colcount += 1
-                if "tourrings" in widgetlist:
-                    Label(frame[i], text="ET", fg=color[7]).grid(row=grid_i, column=colcount)  # Display ET label
-                    colcount += 1
-                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=colcount)  # Display code label
-                colcount += 1
-                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=colcount)  # Display LV type label
-                colcount += 1
-                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=colcount)  # Display LV time label
-
-                grid_i += 1  # increment the grid to add a line
-                colcount = 0  # reset the column counter to zero
-                # Display the entry widgets
-                # 5200 time
-                self.totals.append(StringVar(frame[i]))  # append stringvar to totals array
-                total_widget[i] = Entry(frame[i], width=macadj(ww, 4), textvariable=self.totals[i])
-                total_widget[i].grid(row=grid_i, column=colcount)
-                self.totals[i].set(now_total)  # set the starting value for total
-                colcount += 1
-                # BT - begin tour
-                if "tourrings" in widgetlist:
-                    self.begintour.append(StringVar(frame[i]))  # append stringvar to bt array
-                    Entry(frame[i], width=macadj(ww, 4), textvariable=self.begintour[i])\
-                        .grid(row=grid_i, column=colcount)
-                    self.begintour[i].set(now_bt)  # set the starting value for BT
-                    colcount += 1
-                # Moves
-                if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
-                    self.new_entry(frame[i], day[i], colcount, ww)  # MOVES on, off and route entry widgets
-                    original_colcount = colcount
-                    colcount += 3
-                    Button(frame[i], text="more moves",
-                           command=lambda x=i: self.new_entry(frame[x], day[x], original_colcount, ww)) \
-                        .grid(row=grid_i, column=colcount)
-                    colcount += 1
-                self.now_moves = ""  # zero out self.now_moves so more moves button works properly
-                # Return to Station (rs)
-                self.rss.append(StringVar(frame[i]))  # RS entry widget
-                Entry(frame[i], width=macadj(ww, 4), textvariable=self.rss[i]).grid(row=grid_i, column=colcount)
-                self.rss[i].set(now_rs)  # set the starting value for RS
-                colcount += 1
-                # ET - end tour
-                if "tourrings" in widgetlist:
-                    self.endtour.append(StringVar(frame[i]))  # append stringvar to bt array
-                    Entry(frame[i], width=macadj(ww, 4), textvariable=self.endtour[i]) \
-                        .grid(row=grid_i, column=colcount)
-                    self.endtour[i].set(now_et)  # set the starting value for ET
-                    colcount += 1
-                # Codes/Notes
-                self.codes.append(StringVar(frame[i]))  # code entry widget
-                if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
-                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *nolist_codes)
-                elif self.daily_carrecs[i][2] == "otdl":
-                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *ot_codes)
-                else:
-                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *aux_codes)
-                self.codes[i].set(now_code)
-                option_menu[i].configure(width=macadj(7, 6))
-                option_menu[i].grid(row=grid_i, column=colcount)  # code widget
-                colcount += 1  # increment the column
-                # Leave Type
-                self.lvtypes.append(StringVar(frame[i]))  # leave type entry widget
-                lv_option_menu[i] = OptionMenu(frame[i], self.lvtypes[i], *lv_options)
-                lv_option_menu[i].configure(width=macadj(7, 6))
-                lv_option_menu[i].grid(row=grid_i, column=colcount)  # leave type widget
-                colcount += 1  # increment the column
-                # Leave Time
-                self.lvtimes.append(StringVar(frame[i]))  # leave time entry widget
-                self.lvtypes[i].set(now_lv_type)  # set the starting value for leave type
-                self.lvtimes[i].set(now_lv_time)  # set the starting value for leave type
-                Entry(frame[i], width=macadj(ww, 4), textvariable=self.lvtimes[i]) \
-                    .grid(row=grid_i, column=colcount)  # leave time widget
-                colcount += 1  # increment the column
-                # Refusals
-                self.refusals.append("")  # refusals column is not used.
-            else:
-                self.totals.append(StringVar(frame[i]))  # 5200 entry widget
-                self.rss.append(StringVar(frame[i]))  # RS entry
-                if self.daily_carrecs[i][5] != "no record":  # display for records that are out of station
-                    Label(frame[i], text="out of station: {}".format(self.daily_carrecs[i][5]),
-                          fg="white", bg="grey", width=55, height=2, anchor="w").grid(row=grid_i, column=0)
-                else:  # display for when there is no record relevant for that day.
-                    Label(frame[i], text="no record", fg="white", bg="grey", width=55, height=2, anchor="w")\
-                        .grid(row=grid_i, column=0)
-            frame_i += 1
-        f7 = Frame(self.win.body)
-        f7.grid(row=frame_i)
-        Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
-
-    @staticmethod
-    def triad_row_finder(index):
-        """ finds the row of the moves entry widget or button """
-        if index % 3 == 0:
-            return int(index / 3)
-        elif (index - 1) % 3 == 0:
-            return int((index - 1) / 3)
-        elif (index - 2) % 3 == 0:
-            return int((index - 2) / 3)
-
-    @staticmethod
-    def triad_col_finder(index):
-        """ finds the column of the moves widget """
-        if index % 3 == 0:  # first column
-            return int(0)
-        elif (index - 1) % 3 == 0:  # second column
-            return int(1)
-        elif (index - 2) % 3 == 0:  # third column
-            return int(2)
-
-    def new_entry(self, frame, day, colcount, ww):
-        """ creates new entry fields for 'more move functionality' """
-        mm = []
-        if day == "sat":
-            mm = self.sat_mm  # find the day in question and use the correlating  array
-        elif day == "sun":
-            mm = self.sun_mm
-        elif day == "mon":
-            mm = self.mon_mm
-        elif day == "tue":
-            mm = self.tue_mm
-        elif day == "wed":
-            mm = self.wed_mm
-        elif day == "thr":
-            mm = self.thu_mm
-        elif day == "fri":
-            mm = self.fri_mm
-        # what to do depending on the moves
-        if self.now_moves == "":  # if there are no moves sent to the function
-            mm.append(StringVar(frame))  # create first entry field for new entries
-            Entry(frame, width=macadj(ww, 4), textvariable=mm[len(mm) - 1]) \
-                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # route
-            mm.append(StringVar(frame))  # create second entry field for new entries
-            Entry(frame, width=macadj(ww, 4), textvariable=mm[len(mm) - 1]) \
-                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # move off
-            mm.append(StringVar(frame))  # create second entry field for new entries
-            Entry(frame, width=macadj(ww, 5), textvariable=mm[len(mm) - 1]) \
-                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # move on
-        else:  # if there are moves which need to be set
-            moves = self.now_moves.split(",")  # turn now_moves into an array
-            iterations = len(moves)  # get the number of items in moves array
-            for i in range(int(iterations)):  # loop through all items in moves array
-                mm.append(StringVar(frame))  # create entry field for moves from database
-                mm[i].set(moves[i])  # set values for the StringVars
-                if (i + 1) % 3 == 0:  # adjust the lenght of the route widget pending os
-                    ml = 5  # on mac, the route widget lenght is 5
-                else:
-                    ml = 4  # on mac, the rings widget lenght is 4
-                # build the widget
-                Entry(frame, width=macadj(ww, ml), textvariable=mm[i]) \
-                    .grid(row=self.triad_row_finder(i) + 2, column=self.triad_col_finder(i) + colcount)
-
-    def write_report(self):
-        """ build the report to appear on bottom of screen """
-        if not self.status_update:
-            return
-        if self.delete_report + self.update_report + self.insert_report == 0:
-            self.status_update = "No records changed. "  # if there are no changes
-            return
-        status_update = ""
-        if self.insert_report:  # new records
-            status_update += str(self.insert_report) + " new record{} added. "\
-                .format(Handler(self.insert_report).plurals())  # make "record" plural if necessary
-        if self.update_report:  # updated records
-            status_update += str(self.update_report) + " record{} updated. "\
-                .format(Handler(self.update_report).plurals())  # make "record" plural if necessary
-        if self.delete_report:  # deleted records
-            status_update += str(self.delete_report) + " record{} deleted. "\
-                .format(Handler(self.delete_report).plurals())  # make "record" plural if necessary
-        self.status_update = status_update
-
-    def buttons_frame(self):
-        """ build the buttons for the bottom of the screen """
-        Button(self.win.buttons, text="Submit", width=10, anchor="w",
-               command=lambda: self.apply_rings(True)).pack(side=LEFT)
-        Button(self.win.buttons, text="Apply", width=10, anchor="w",
-               command=lambda: self.apply_rings(False)).pack(side=LEFT)
-        Button(self.win.buttons, text="Go Back", width=10, anchor="w",
-               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
-        Label(self.win.buttons, text="{}".format(self.status_update), fg="red").pack(side=LEFT)
-
-    def zero_report_vars(self):
-        """ initializes the report variables. """
-        self.status_update = "No records changed."
-        self.delete_report = 0
-        self.update_report = 0
-        self.insert_report = 0
-
-    def apply_rings(self, go_home):
-        """ execute when apply or submit is pressed """
-        self.empty_addrings()
-        self.add_date()
-        if not self.check_5200():
-            return  # abort if there is an error
-        if not self.check_rs():
-            return  # abort if there is an error
-        self.add_codes()
-        if not self.check_moves():
-            return  # abort if there is an error
-        self.add_leavetype()
-        if not self.check_leave():
-            return  # abort if there is an error
-        self.add_refusals()
-        if not self.check_bt():
-            return  # abort if there is an error
-        if not self.check_et():
-            return  # abort if there is an error
-        self.addrecs()  # insert rings into the database
-        if go_home:  # if True, then exit screen to main screen
-            MainFrame().start(frame=self.win.topframe)
-        else:  # if False, then rebuild the Enter Rings screen
-            self.start(self.win.topframe)
-
-    def empty_addrings(self):
-        """ empty out addring arrays """
-        for i in range(len(self.addrings)):
-            self.addrings[i] = []
-
-    def add_date(self):
-        """ start the addrings array """
-        for i in range(len(self.dates)):  # loop for each day in the investigation
-            self.addrings[i].append(self.dates[i])  # add the date
-            self.addrings[i].append(self.carrier)  # add the carrier name
-
-    def check_5200(self):
-        """ a check for the 5200 time """
-        for i in range(len(self.totals)):
-            total = self.totals[i].get().strip()
-            if RingTimeChecker(total).check_for_zeros():
-                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
-                continue  # skip other checks
-            if not RingTimeChecker(total).check_numeric():
-                text = "You must enter a numeric value in 5200 for {}.".format(self.day[i])
-                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(total).over_24():
-                text = "Values greater than 24 are not accepted in 5200 for {}.".format(self.day[i])
-                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(total).less_than_zero():
-                text = "Values less than or equal to 0 are not accepted in 5200 for {}.".format(self.day[i])
-                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(total).count_decimals_place():
-                text = "Values with more than 2 decimal places are not accepted in 5200 for {}.".format(self.day[i])
-                messagebox.showerror("5200 Error", text, parent=self.win.topframe)
-                return False
-            total = Convert(total).hundredths()  # format it as a number with 2 decimal places
-            self.addrings[i].append(total)  # if all checks pass, add to addrings
-        return True
-
-    def check_rs(self):
-        """ a check for return to station time """
-        for i in range(len(self.rss)):
-            rs = str(self.rss[i].get()).strip()
-            if RingTimeChecker(rs).check_for_zeros():
-                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
-                continue  # skip other checks
-            if not RingTimeChecker(rs).check_numeric():
-                text = "You must enter a numeric value in RS for {}.".format(self.day[i])
-                messagebox.showerror("RS Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(rs).over_24():
-                text = "Values greater than 24 are not accepted in RS for {}.".format(self.day[i])
-                messagebox.showerror("RS Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(rs).less_than_zero():
-                text = "Values less than or equal to 0 are not accepted in RS for {}.".format(self.day[i])
-                messagebox.showerror("RS Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(rs).count_decimals_place():
-                text = "Values with more than 2 decimal places are not accepted in RS for {}.".format(self.day[i])
-                messagebox.showerror("RS Error", text, parent=self.win.topframe)
-                return False
-            rs = Convert(rs).hundredths()  # format it as a number with 2 decimal places
-            self.addrings[i].append(rs)  # if all checks pass, add to addrings
-        return True
-
-    def add_codes(self):
-        """ adds the code to the an array of values to be entered into the database """
-        for i in range(len(self.codes)):
-            self.addrings[i].append(self.codes[i].get())
-
-    def bypass_moves(self):
-        """ keep existing moves if otdl rings limiter is on/True """
-        if projvar.invran_weekly_span:  # if investigation range is weekly
-            i_range = 7  # investigation range is seven days
-        else:
-            i_range = 1  # investigation range is one day
-        for i in range(i_range):  # loop for each day in investigation
-            moves = self.daily_ringrecs[i][5]  # get the preexisting record for that day
-            self.addrings[i].append(moves)  # add that record to addrings array
-
-    def move_string_constructor(self, first, second, third):
-        """ builds the moves triad - move off, move on and route - into the form entered into the database """
-        if self.move_string and first and second:
-            self.move_string += ","
-        if first and second:
-            self.move_string += first + "," + second + "," + third
-
-    def check_moves(self):
-        """ checks the moves for errors """
-        if self.ot_rings_limiter:  # if the otdl rings limiter is on/True
-            self.bypass_moves()  # bypass all checks and put preexisting moves into addrings
-            return True  # mission accomplished
-        first_move = None
-        second_move = None
-        # route = None
-        days = (self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm)
-        cc = 0  # increments one for each day
-        for d in days:  # check for bad inputs in moves
-            self.move_string = ""  # emtpy out string where moves data is passed
-            x = len(d)
-            for i in range(x):
-                if self.triad_col_finder(i) == 0:  # find the first of the triad
-                    first_move = d[i].get().strip()
-                    second_move = d[i + 1].get().strip()
-                    if MovesChecker(first_move).check_for_zeros() or MovesChecker(second_move).check_for_zeros():
-                        if MovesChecker(first_move).check_for_zeros() and \
-                                MovesChecker(second_move).check_for_zeros():  # if both are zeros
-                            continue  # skip the rest of the checks
-                        text = "You must provide two values on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).check_numeric() or \
-                            not RingTimeChecker(second_move).check_numeric():
-                        text = "You must enter a numeric value on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not MovesChecker(first_move).compare(second_move):
-                        text = "The earlier value can not be greater than the later value on moves for {}." \
-                            .format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).over_24() or not RingTimeChecker(second_move).over_24():
-                        text = "Values greater than 24 are not accepted on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).less_than_zero() or \
-                            not RingTimeChecker(second_move).less_than_zero():
-                        text = "Values less than 0 are not accepted on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).count_decimals_place() or \
-                            not RingTimeChecker(second_move).count_decimals_place():
-                        text = "Moves can not have more than two decimal places on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    first_move = Convert(first_move).hundredths()
-                    second_move = Convert(second_move).hundredths()
-                if self.triad_col_finder(i) == 2:  # find the third of the triad
-                    route = d[i].get().strip()
-                    if RouteChecker(route).is_empty():  # if the route is an empty string
-                        self.move_string_constructor(first_move, second_move, "")
-                        continue  # skip the rest of the checks
-                    if not RouteChecker(route).check_numeric():
-                        text = "You must enter a numeric value on route for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RouteChecker(route).only_one():
-                        text = "Only one route is allowed in route field on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if RouteChecker(route).only_numbers():
-                        text = "Only numbers are allowed in route field on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RouteChecker(route).check_length():
-                        text = "The route number for {} must be four or five digits long.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    self.move_string_constructor(first_move, second_move, route)
-            self.addrings[cc].append(self.move_string)
-            cc += 1
-        return True
-
-    def add_leavetype(self):
-        """ adds the leave type into an array to be entered into the database. """
-        for i in range(len(self.lvtypes)):
-            self.addrings[i].append(self.lvtypes[i].get())
-
-    def check_leave(self):
-        """ checks then adds the leave time into an array to be entered into the database. """
-        for i in range(len(self.lvtimes)):
-            lvtime = str(self.lvtimes[i].get()).strip()
-            if RingTimeChecker(lvtime).check_for_zeros():
-                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
-                continue  # skip other checks
-            if not RingTimeChecker(lvtime).check_numeric():
-                text = "You must enter a numeric value in Leave Time for {}.".format(self.day[i])
-                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(lvtime).over_8():
-                text = "Values greater than 8 are not accepted in Leave Time for {}.".format(self.day[i])
-                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(lvtime).less_than_zero():
-                text = "Values less than or equal to 0 are not accepted in Leave Time for {}.".format(self.day[i])
-                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(lvtime).count_decimals_place():
-                text = "Values with more than 2 decimal places are not accepted in Leave Time for {}."\
-                    .format(self.day[i])
-                messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
-                return False
-            # lvtime = format(float(lvtime), '.2f')  # format it as a float with 2 decimal places
-            lvtime = Convert(lvtime).hundredths()  # format it as a number with 2 decimal places
-            self.addrings[i].append(lvtime)  # if all checks pass, add to addrings
-        return True
-
-    def add_refusals(self):
-        """ adds the refusals into an array to be entered into the database. """
-        for i in range(len(self.refusals)):
-            self.addrings[i].append(self.refusals[i])
-    
-    def check_bt(self):
-        """ a check for begin tour time """
-        for i in range(len(self.begintour)):
-            bt = str(self.begintour[i].get()).strip()
-            if RingTimeChecker(bt).check_for_zeros():
-                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
-                continue  # skip other checks
-            if not RingTimeChecker(bt).check_numeric():
-                text = "You must enter a numeric value in BT for {}.".format(self.day[i])
-                messagebox.showerror("BT Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(bt).over_24():
-                text = "Values greater than 24 are not accepted in BT for {}.".format(self.day[i])
-                messagebox.showerror("BT Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(bt).less_than_zero():
-                text = "Values less than or equal to 0 are not accepted in BT for {}.".format(self.day[i])
-                messagebox.showerror("BT Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(bt).count_decimals_place():
-                text = "Values with more than 2 decimal places are not accepted in BT for {}.".format(self.day[i])
-                messagebox.showerror("BT Error", text, parent=self.win.topframe)
-                return False
-            bt = Convert(bt).hundredths()  # format it as a number with 2 decimal places
-            self.addrings[i].append(bt)  # if all checks pass, add to addrings
-        return True
-    
-    def check_et(self):
-        """ a check for end tour time """
-        for i in range(len(self.endtour)):
-            et = str(self.endtour[i].get()).strip()
-            if et == "" or et == "auto":
-                total = self.totals[i].get().strip()
-                bt = str(self.begintour[i].get()).strip()
-                autotime = ""
-                if total and bt:
-                    autotime = self.auto_endtour(total, bt)
-                self.addrings[i].append(autotime)  # if variable is zero or empty, add an empty string to addrings
-                continue  # skip other checks
-            if RingTimeChecker(et).check_for_zeros():
-                self.addrings[i].append("")  # if variable is zero or empty, add an empty string to addrings
-                continue  # skip other checks
-            if not RingTimeChecker(et).check_numeric():
-                text = "You must enter a numeric value in ET for {}.".format(self.day[i])
-                messagebox.showerror("ET Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(et).over_24():
-                text = "Values greater than 24 are not accepted in ET for {}.".format(self.day[i])
-                messagebox.showerror("ET Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(et).less_than_zero():
-                text = "Values less than or equal to 0 are not accepted in ET for {}.".format(self.day[i])
-                messagebox.showerror("ET Error", text, parent=self.win.topframe)
-                return False
-            if not RingTimeChecker(et).count_decimals_place():
-                text = "Values with more than 2 decimal places are not accepted in ET for {}.".format(self.day[i])
-                messagebox.showerror("ET Error", text, parent=self.win.topframe)
-                return False
-            et = Convert(et).hundredths()  # format it as a number with 2 decimal places
-            self.addrings[i].append(et)  # if all checks pass, add to addrings
-        return True
-
-    @staticmethod
-    def auto_endtour(total, bt):
-        """ add 50 clicks to the begin tour an 5200 time """
-        if float(total) >= 6:
-            auto_et = float(bt) + float(total) + .50
-        else:
-            auto_et = float(bt) + float(total)
-        if auto_et >= 24:
-            auto_et -= 24
-        return "{:.2f}".format(auto_et)
-
-    def addrecs(self):
-        """ add records to database """
-        sql = ""
-        for i in range(len(self.dates)):
-            empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", "", "", ""]
-            if self.addrings[i] == self.daily_ringrecs[i]:
-                sql = ""  # if new and old are a match, take no action
-            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call" \
-                    and self.daily_ringrecs[i] == empty_rec:
-                sql = ""  # if old is empty and new is not qualified as a legit record, take no action
-            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call":
-                # if new record has no total or lvtime
-                sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
-                      % (self.dates[i], self.carrier)
-                self.delete_report += 1
-            elif self.daily_ringrecs[i] != empty_rec and self.addrings[i] != empty_rec:
-                # if a record exist but is different from the new record
-                sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type ='%s'," \
-                      "leave_time='%s', refusals='%s', bt='%s', et='%s' WHERE rings_date='%s' and carrier_name='%s'" \
-                      % (self.addrings[i][2], self.addrings[i][3], self.addrings[i][4],
-                         self.addrings[i][5], self.addrings[i][6], self.addrings[i][7],
-                         self.addrings[i][8], self.addrings[i][9], self.addrings[i][10],
-                         self.dates[i], self.carrier)
-                self.update_report += 1
-            elif self.daily_ringrecs[i] == empty_rec and self.addrings[i] != empty_rec:
-                # if a record doesn't exist and the new record is not empty
-                sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time, " \
-                      "refusals, bt, et )" \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s') " \
-                      % (self.dates[i], self.carrier, self.addrings[i][2], self.addrings[i][3],
-                         self.addrings[i][4], self.addrings[i][5], self.addrings[i][6], self.addrings[i][7],
-                         self.addrings[i][8], self.addrings[i][9], self.addrings[i][10])
-                self.insert_report += 1
-            if sql:
-                commit(sql)
-
-
 def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, frame):
     """ executes when the carrier information is updated. """
     if year.get() > 9999:
@@ -12139,7 +11618,7 @@ class MainFrame:
                 if rec_count == 0:  # display the first row of carrier recs
                     Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
                     Button(self.main_frame, text=rec[1], width=macadj(25, 23), bg=color, anchor="w",
-                           command=lambda x=rec: EnterRings(x[1]).start(self.win.topframe)).grid(row=r, column=1)
+                           command=lambda x=rec: EnterRings(x[1]).start()).grid(row=r, column=1)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
                            command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
                         .grid(row=r, column=5)

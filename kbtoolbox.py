@@ -157,6 +157,70 @@ class MakeWindow:
         Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
+class NewWindow:
+    """
+    creates a new window with a scrollbar and a frame for buttons on the bottom
+    """
+    def __init__(self):
+        self.root = Tk()
+        size_x = projvar.root.winfo_width()
+        size_y = projvar.root.winfo_height()
+        position_x = projvar.root.winfo_x() + 20
+        position_y = projvar.root.winfo_y() + 20
+        self.root.title("KLUSTERBOX")
+        titlebar_icon(self.root)  # place icon in titlebar
+        self.root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
+        self.topframe = None
+        self.s = None
+        self.c = None
+        self.body = None
+        self.buttons = None  # button bar
+
+    def create(self, frame):
+        """ this method creates the window """
+        self.topframe = Frame(self.root)
+        self.s = Scrollbar(self.topframe)
+        self.c = Canvas(self.topframe, width=1600)
+        self.body = Frame(self.c)
+        self.buttons = Canvas(self.topframe)  # button bar
+        """ call this method to build the window. If a frame is passed, it will be destroyed """
+        if frame is not None:
+            frame.destroy()  # close out the previous frame
+        self.topframe.pack(fill=BOTH, side=LEFT)
+        self.buttons.pack(fill=BOTH, side=BOTTOM)
+        # link up the canvas and scrollbar
+        self.s.pack(side=RIGHT, fill=BOTH)
+        self.c.pack(side=LEFT, fill=BOTH)
+        self.s.configure(command=self.c.yview, orient="vertical")
+        self.c.configure(yscrollcommand=self.s.set)
+        # link the mousewheel - implementation varies by platform
+        if sys.platform == "win32":
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
+            (int(projvar.mousewheel * (event.delta / 120)), "units"))
+        elif sys.platform == "darwin":
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
+            (int(projvar.mousewheel * event.delta), "units"))
+        elif sys.platform == "linux":
+            self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
+            self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        self.c.create_window((0, 0), window=self.body, anchor=NW)
+
+    def finish(self):
+        """ This closes the window created by front_window() """
+        self.root.update()
+        self.c.config(scrollregion=self.c.bbox("all"))
+        try:
+            mainloop()
+        except KeyboardInterrupt:
+            self.root.destroy()
+
+    def fill(self, last, count):
+        """ fill bottom of screen to for scrolling. """
+        for i in range(count):
+            Label(self.body, text="").grid(row=last + i)
+        Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
+
+
 def front_window(frame):
     """ Sets up a tkinter page with buttons on the bottom"""
     if frame != "none":

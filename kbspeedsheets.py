@@ -17,6 +17,9 @@ from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFi
 
 
 class SpeedSheetGen:
+    """
+    this class generates speedsheets.
+    """
     def __init__(self, frame, full_report):
         self.frame = frame
         self.full_report = full_report  # true - all inclusive, false - carrier recs only
@@ -43,6 +46,7 @@ class SpeedSheetGen:
         self.ws_titles = []
         self.wb = Workbook()  # define the workbook
         self.ws_header = ""
+        self.tourrings_mode = None
         self.list_header = ""  # spreadsheet styles
         self.date_dov = ""
         self.date_dov_title = ""
@@ -55,15 +59,18 @@ class SpeedSheetGen:
         self.filename = ""
 
     def gen(self):
+        """ this is the master method. """
         self.get_id_recset()  # get carrier list and format for speedsheets
         self.get_car_recs()  # sort carrier list by worksheet
         self.speedcell_count = self.count()  # get a count of rows for progress bar
         self.make_workbook_object()  # generate and open the workbook
         self.name_styles()  # define the spreadsheet styles
+        self.get_tourring_mode()  # if the tourrings mode is true, there are two extra column
         self.make_workbook()  # generate and open the workbook
         self.stopsaveopen()  # stop, save and open
 
-    def get_id_recset(self):  # get filtered/ condensed record set and employee id
+    def get_id_recset(self):
+        """ get filtered/ condensed record set and employee id """
         if projvar.invran_weekly_span:  # if the investigation range is weekly
             start = projvar.invran_date_week[0]  # use sat - fri to curate the carrier list
             end = projvar.invran_date_week[6]
@@ -80,7 +87,8 @@ class SpeedSheetGen:
             self.id_recset.append(self.add_id(condensed_recs))  # merge carriers with emp id
 
     @staticmethod
-    def add_id(recset):  # put the employee id and carrier records together in a list
+    def add_id(recset):
+        """ put the employee id and carrier records together in a list """
         carrier = recset[1]
         sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
         result = inquire(sql)
@@ -90,7 +98,8 @@ class SpeedSheetGen:
             addthis = ("", recset)  # if there is no employee id, insert an empty string
         return addthis
 
-    def get_car_recs(self):  # sort carrier records by the worksheets they will be put on
+    def get_car_recs(self):
+        """ sort carrier records by the worksheets they will be put on """
         self.car_recs = [self.order_by_id()]  # combine the id_rec arrays for emp id and alphabetical
         if not self.db.abc_breakdown:
             order_abc = self.order_alphabetically()  # sort the id_recset alphabetically
@@ -99,7 +108,8 @@ class SpeedSheetGen:
         for abc in order_abc:
             self.car_recs.append(abc)
 
-    def order_by_id(self):  # order id_recset by employee id
+    def order_by_id(self):
+        """ order id_recset by employee id """
         ordered_recs = []
         for rec in self.id_recset:  # loop through the carrier list
             if rec[0] != "":  # if the item for employee id is not empty
@@ -107,7 +117,8 @@ class SpeedSheetGen:
         ordered_recs.sort(key=itemgetter(0))  # sort the array by the employee id
         return ordered_recs
 
-    def order_alphabetically(self):  # order id recset alphabetically into one tab
+    def order_alphabetically(self):
+        """ order id recset alphabetically into one tab """
         alpha_recset = ["alpha_array", ]
         alpha_recset[0] = []
         for rec in self.id_recset:
@@ -115,7 +126,8 @@ class SpeedSheetGen:
                 alpha_recset[0].append(rec)
         return alpha_recset
 
-    def order_by_abc_breakdown(self):  # sort id recset alphabetically into multiple tabs
+    def order_by_abc_breakdown(self):
+        """ sort id recset alphabetically into multiple tabs """
         abc_recset = ["a_array", "b_array", "cd_array", "efg_array", "h_array", "ijk_array", "m_array",
                       "nop_array", "qr_array", "s_array", "tuv_array", "w_array", "xyz_array"]
         for i in range(len(abc_recset)):
@@ -150,7 +162,8 @@ class SpeedSheetGen:
                     abc_recset[12].append(rec)
         return abc_recset
 
-    def count_minrow_array(self):  # gets a count of minimum row info for each SpeedSheet tab
+    def count_minrow_array(self):
+        """ gets a count of minimum row info for each SpeedSheet tab """
         minrow_array = [self.db.min_empid, ]  # get minimum rows for employee id sheet
         if not self.db.abc_breakdown:
             minrow_array.append(self.db.min_alpha)  # get minimum rows for alphabetical sheet
@@ -159,7 +172,8 @@ class SpeedSheetGen:
                 minrow_array.append(self.db.min_abc)
         return minrow_array
 
-    def count_car_recs(self):  # gets a count of carrier records for each SpeedSheet tab
+    def count_car_recs(self):
+        """ gets a count of carrier records for each SpeedSheet tab """
         car_recs = [len(self.car_recs[0]), ]  # get count of carrier recs for employee id sheet
         if not self.db.abc_breakdown:
             car_recs.append(len(self.car_recs[1]))  # get count of carriers for alphabetical sheet
@@ -168,7 +182,8 @@ class SpeedSheetGen:
                 car_recs.append(len(self.car_recs[i]))
         return car_recs
 
-    def count(self):  # compare the minimum row and carrier records arrays to get the number of SpeedCells
+    def count(self):
+        """ compare the minimum row and carrier records arrays to get the number of SpeedCells """
         speedcell_count = 0  # initialized the count
         minrows = self.count_minrow_array()  # get minimum row count
         carrecs = self.count_car_recs()  # get count of carriers
@@ -176,14 +191,16 @@ class SpeedSheetGen:
             speedcell_count += max(minrows[i], carrecs[i])  # take the larger of the two
         return speedcell_count  # return total number of speedcells to be generated
 
-    def mv_to_speed(self, triset):  # format mv triads for output to speedsheets
+    def mv_to_speed(self, triset):
+        """ format mv triads for output to speedsheets """
         if triset == "":
             return triset  # do nothing if blank
         else:
             return self.mv_format(triset)  # send to mv_format for formating if not blank
 
     @staticmethod
-    def mv_format(triset):  # format mv triads for output to speedsheets
+    def mv_format(triset):
+        """ format mv triads for output to speedsheets """
         mv_array = triset.split(",")  # split by commas
         mv_str = ""  # the move string
         i = 1  # initiate counter
@@ -199,6 +216,7 @@ class SpeedSheetGen:
         return mv_str
 
     def make_workbook_object(self):
+        """ make the workbook object """
         if not self.db.abc_breakdown:
             self.ws_list = ["emp_id", "alphabet"]
             self.ws_titles = ["by employee id", "alphabetically"]
@@ -213,7 +231,8 @@ class SpeedSheetGen:
             self.ws_list[i] = self.wb.create_sheet(self.ws_titles[i])
             # self.ws_list[i].protection.sheet = True
 
-    def title(self):  # generate title and filename
+    def title(self):
+        """ generate title and filename """
         if self.full_report and self.range == "week":
             title = "Speedsheet - All Inclusive Weekly"
             self.filename = "speed_" + str(format(projvar.invran_date_week[0], "%y_%m_%d")) + "_all_w" + ".xlsx"
@@ -228,7 +247,8 @@ class SpeedSheetGen:
             self.filename = "speed_" + str(format(projvar.invran_date, "%y_%m_%d")) + "_carrier_d" + ".xlsx"
         return title
 
-    def name_styles(self):  # Named styles for workbook
+    def name_styles(self):
+        """ Named styles for workbook """
         bd = Side(style='thin', color="80808080")  # defines borders
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
         self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
@@ -266,29 +286,47 @@ class SpeedSheetGen:
                                    border=Border(left=bd, top=bd, right=bd, bottom=bd),
                                    alignment=Alignment(horizontal='right'))
 
+    def get_tourring_mode(self):
+        """ get the tourrings mode. if the tourrings mode is True then the worksheet will include BT and ET.
+        Also, columns will be shortened to accomodate the extra columns. """
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "tourrings"
+        results = inquire(sql)
+        self.tourrings_mode = int(results[0][0])
+
     def make_workbook(self):
+        """ build the workbook, cell by cell"""
         pi = 0
         empty_sc = 0
+        width = 8  # set the widths of the colums
+        ringwidth = 8
+        if self.tourrings_mode:  # if bt/et are displayed, columns are shorter
+            width = 7
+            ringwidth = 6
         self.pb.max_count(self.speedcell_count)  # set length of progress bar
         self.pb.start_up()  # start the progress bar
         for i in range(len(self.ws_list)):
             # format cell widths
             self.ws_list[i].oddFooter.center.text = "&A"
-            self.ws_list[i].column_dimensions["A"].width = 8
-            self.ws_list[i].column_dimensions["B"].width = 8
-            self.ws_list[i].column_dimensions["C"].width = 8
-            self.ws_list[i].column_dimensions["D"].width = 8
-            self.ws_list[i].column_dimensions["E"].width = 8
-            self.ws_list[i].column_dimensions["F"].width = 8
-            self.ws_list[i].column_dimensions["G"].width = 8
-            self.ws_list[i].column_dimensions["H"].width = 8
-            self.ws_list[i].column_dimensions["I"].width = 8
-            self.ws_list[i].column_dimensions["J"].width = 8
-            self.ws_list[i].column_dimensions["K"].width = 8
+            self.ws_list[i].column_dimensions["A"].width = ringwidth
+            self.ws_list[i].column_dimensions["B"].width = ringwidth
+            self.ws_list[i].column_dimensions["C"].width = ringwidth
+            self.ws_list[i].column_dimensions["D"].width = width
+            self.ws_list[i].column_dimensions["E"].width = width
+            self.ws_list[i].column_dimensions["F"].width = width
+            self.ws_list[i].column_dimensions["G"].width = width
+            self.ws_list[i].column_dimensions["H"].width = ringwidth
+            self.ws_list[i].column_dimensions["I"].width = ringwidth
+            self.ws_list[i].column_dimensions["J"].width = width
+            self.ws_list[i].column_dimensions["K"].width = width
+            self.ws_list[i].column_dimensions["L"].width = width
+            # hide BT/ET column if self.tourrings_mode is False
+            if not self.tourrings_mode:
+                self.ws_list[i].column_dimensions["C"].hidden = True
+                self.ws_list[i].column_dimensions["I"].hidden = True
             cell = self.ws_list[i].cell(column=1, row=1)
             cell.value = self.title()
             cell.style = self.ws_header
-            self.ws_list[i].merge_cells('A1:E1')
+            self.ws_list[i].merge_cells('A1:J1')
             # create date/ pay period/ station header
             cell = self.ws_list[i].cell(row=2, column=1)  # date label
             cell.value = "Date:  "
@@ -307,13 +345,14 @@ class SpeedSheetGen:
             cell = self.ws_list[i].cell(row=2, column=7)  # pay period
             cell.value = projvar.pay_period
             cell.style = self.date_dov
-            cell = self.ws_list[i].cell(row=2, column=8)  # station label
-            cell.value = "Station:  "
+            cell = self.ws_list[i].cell(row=2, column=9)  # station label
+            cell.value = "Station:"
             cell.style = self.date_dov_title
-            cell = self.ws_list[i].cell(row=2, column=9)  # station
+            self.ws_list[i].merge_cells('I2:J2')
+            cell = self.ws_list[i].cell(row=2, column=11)  # station
             cell.value = projvar.invran_station
             cell.style = self.date_dov
-            self.ws_list[i].merge_cells('I2:J2')
+            self.ws_list[i].merge_cells('K2:L2')
             # apply title - show how carriers are sorted
             cell = self.ws_list[i].cell(row=3, column=1)
             if i == 0:
@@ -321,13 +360,13 @@ class SpeedSheetGen:
             else:
                 cell.value = "Carriers listed Alphabetically: {}".format(self.ws_titles[i])
             cell.style = self.list_header
-            self.ws_list[i].merge_cells('A3:E3')
+            self.ws_list[i].merge_cells('A3:F3')
             if i == 0:  # only execute on the first sheet of the workbook
-                cell = self.ws_list[i].cell(row=3, column=6)  #
+                cell = self.ws_list[i].cell(row=3, column=7)  #
                 cell.value = "ns day preference (r=rotating/f=fixed): "  # ns day preference
                 cell.style = self.date_dov_title
-                self.ws_list[i].merge_cells('F3:I3')
-                cell = self.ws_list[i].cell(row=3, column=10)  #
+                self.ws_list[i].merge_cells('G3:K3')
+                cell = self.ws_list[i].cell(row=3, column=12)  #
                 cell.value = self.ns_pref
                 cell.style = self.date_dov
             # Headers for Carrier List
@@ -337,18 +376,18 @@ class SpeedSheetGen:
             cell = self.ws_list[i].cell(row=4, column=2)  # header carrier name
             cell.value = "Carrier Name"
             cell.style = self.car_col_header
-            self.ws_list[i].merge_cells('B4:D4')
-            cell = self.ws_list[i].cell(row=4, column=5)  # header list type
+            self.ws_list[i].merge_cells('B4:E4')
+            cell = self.ws_list[i].cell(row=4, column=6)  # header list type
             cell.value = "List"
             cell.style = self.car_col_header
-            cell = self.ws_list[i].cell(row=4, column=6)  # header ns day
+            cell = self.ws_list[i].cell(row=4, column=7)  # header ns day
             cell.value = "NS Day"
             cell.style = self.car_col_header
-            cell = self.ws_list[i].cell(row=4, column=7)  # header route
+            cell = self.ws_list[i].cell(row=4, column=8)  # header route
             cell.value = "Route/s"
             cell.style = self.car_col_header
-            self.ws_list[i].merge_cells('G4:I4')
-            cell = self.ws_list[i].cell(row=4, column=10)  # header emp id
+            self.ws_list[i].merge_cells('H4:K4')
+            cell = self.ws_list[i].cell(row=4, column=12)  # header emp id
             cell.value = "Emp id"
             cell.style = self.car_col_header
             row = 5  # start at row 5 after the page header display
@@ -360,20 +399,26 @@ class SpeedSheetGen:
                 cell = self.ws_list[i].cell(row=5, column=2)  # header 5200
                 cell.value = "5200"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=3)  # header MOVES
+                cell = self.ws_list[i].cell(row=5, column=3)  # header BT
+                cell.value = "BT"
+                cell.style = self.col_header
+                cell = self.ws_list[i].cell(row=5, column=4)  # header MOVES
                 cell.value = "MOVES"
                 cell.style = self.col_header
-                self.ws_list[i].merge_cells('C5:F5')
-                cell = self.ws_list[i].cell(row=5, column=7)  # header RS
+                self.ws_list[i].merge_cells('D5:G5')
+                cell = self.ws_list[i].cell(row=5, column=8)  # header RS
                 cell.value = "RS"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=8)  # header codes
+                cell = self.ws_list[i].cell(row=5, column=9)  # header ET
+                cell.value = "ET"
+                cell.style = self.col_header
+                cell = self.ws_list[i].cell(row=5, column=10)  # header codes
                 cell.value = "CODE"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=9)  # header leave type
+                cell = self.ws_list[i].cell(row=5, column=11)  # header leave type
                 cell.value = "LV type"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=10)  # header leave time
+                cell = self.ws_list[i].cell(row=5, column=12)  # header leave time
                 cell.value = "LV time"
                 cell.style = self.col_header
                 row = 6  # update start at row 6 after the page header display if all inclusive
@@ -415,21 +460,21 @@ class SpeedSheetGen:
                 cell.value = car_name
                 cell.style = self.bold_name
                 cell.protection = Protection(locked=False)
-                self.ws_list[i].merge_cells('B' + str(row) + ':' + 'D' + str(row))
-                cell = self.ws_list[i].cell(row=row, column=5)  # carrier list status
+                self.ws_list[i].merge_cells('B' + str(row) + ':' + 'E' + str(row))
+                cell = self.ws_list[i].cell(row=row, column=6)  # carrier list status
                 cell.value = car_list
                 cell.style = self.input_name
                 cell.protection = Protection(locked=False)
-                cell = self.ws_list[i].cell(row=row, column=6)  # carrier ns day
+                cell = self.ws_list[i].cell(row=row, column=7)  # carrier ns day
                 cell.value = car_ns
                 cell.style = self.input_name
                 cell.protection = Protection(locked=False)
-                cell = self.ws_list[i].cell(column=7, row=row)  # carrier route
+                cell = self.ws_list[i].cell(column=8, row=row)  # carrier route
                 cell.value = car_route
                 cell.style = self.input_name
                 cell.protection = Protection(locked=False)
-                self.ws_list[i].merge_cells('G' + str(row) + ':' + 'I' + str(row))
-                cell = self.ws_list[i].cell(column=10, row=row)  # carrier emp id
+                self.ws_list[i].merge_cells('H' + str(row) + ':' + 'K' + str(row))
+                cell = self.ws_list[i].cell(column=12, row=row)  # carrier emp id
                 cell.value = car_empid
                 cell.style = self.input_name
                 cell.protection = Protection(locked=False)
@@ -449,6 +494,8 @@ class SpeedSheetGen:
                             ring_code = ring_recs[d][4]  # rings CODES
                             ring_lvty = ring_recs[d][6]  # rings LEAVE TYPE
                             ring_lvtm = ring_recs[d][7]  # rings LEAVE TIME
+                            ring_bt = ring_recs[d][9]  # rings BT
+                            ring_et = ring_recs[d][10]  # rings ET
                         else:
                             ring_5200 = ""  # rings 5200
                             ring_move = ""  # rings MOVES
@@ -456,6 +503,8 @@ class SpeedSheetGen:
                             ring_code = ""  # rings CODES
                             ring_lvty = ""  # rings LEAVE TYPE
                             ring_lvtm = ""  # rings LEAVE TIME
+                            ring_bt = ""  # rings BT
+                            ring_et = ""  # rings ET
                         cell = self.ws_list[i].cell(column=1, row=row)  # rings day
                         cell.value = self.day_array[d]
                         if self.day_array[d] == self.dlsn_dict[car_ns.lower()]:  # if it is the nsday
@@ -466,24 +515,32 @@ class SpeedSheetGen:
                         cell.value = ring_5200
                         cell.style = self.input_s
                         cell.protection = Protection(locked=False)
-                        cell = self.ws_list[i].cell(column=3, row=row)  # rings moves
+                        cell = self.ws_list[i].cell(column=3, row=row)  # rings BT
+                        cell.value = ring_bt
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
+                        cell = self.ws_list[i].cell(column=4, row=row)  # rings moves
                         cell.value = ring_move
                         cell.style = self.input_s
                         cell.protection = Protection(locked=False)
-                        self.ws_list[i].merge_cells('C' + str(row) + ':' + 'F' + str(row))
-                        cell = self.ws_list[i].cell(column=7, row=row)  # rings RS
+                        self.ws_list[i].merge_cells('D' + str(row) + ':' + 'G' + str(row))
+                        cell = self.ws_list[i].cell(column=8, row=row)  # rings RS
                         cell.value = ring_rs
                         cell.style = self.input_s
                         cell.protection = Protection(locked=False)
-                        cell = self.ws_list[i].cell(column=8, row=row)  # rings code
+                        cell = self.ws_list[i].cell(column=9, row=row)  # rings ET
+                        cell.value = ring_et
+                        cell.style = self.input_s
+                        cell.protection = Protection(locked=False)
+                        cell = self.ws_list[i].cell(column=10, row=row)  # rings code
                         cell.value = ring_code
                         cell.style = self.input_s
                         cell.protection = Protection(locked=False)
-                        cell = self.ws_list[i].cell(column=9, row=row)  # rings lv type
+                        cell = self.ws_list[i].cell(column=11, row=row)  # rings lv type
                         cell.value = ring_lvty
                         cell.style = self.input_s
                         cell.protection = Protection(locked=False)
-                        cell = self.ws_list[i].cell(column=10, row=row)  # rings lv time
+                        cell = self.ws_list[i].cell(column=12, row=row)  # rings lv time
                         cell.value = ring_lvtm
                         cell.style = self.input_s
                         cell.protection = Protection(locked=False)
@@ -491,6 +548,7 @@ class SpeedSheetGen:
         self.pb.stop()
 
     def stopsaveopen(self):
+        """ save and open the speedsheet. """
         try:
             self.wb.save(dir_path('speedsheets') + self.filename)
             messagebox.showinfo("Speedsheet Generator",
@@ -513,10 +571,14 @@ class SpeedSheetGen:
 
 
 class OpenText:
+    """
+    This is a class used by the About Klusterbox to open files for viewing.
+    """
     def __init__(self):
         self.frame = None
 
-    def open_docs(self, frame, doc):  # opens docs in the about_klusterbox() function
+    def open_docs(self, frame, doc):
+        """ opens docs in the about_klusterbox() function """
         self.frame = frame
         try:
             if sys.platform == "win32":
