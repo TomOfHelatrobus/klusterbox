@@ -15,7 +15,7 @@ from kbreports import Reports, Messenger
 from kbtoolbox import *
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
-from kbspeedsheets import SpeedSheetGen, OpenText
+from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
 from kbcsv_reader import max_hr, ee_skimmer
@@ -1644,1061 +1644,6 @@ class SpeedSheetCheck:
             subprocess.call(["xdg-open", 'kb_sub/report/' + self.filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + self.filename])
-
-
-class SpeedCarrierCheck:
-    """
-    accepts carrier records from SpeedSheets
-    """
-    def __init__(self, parent, sheet, row, name, day, list_stat, nsday, route, empid):
-        self.parent = parent  # get objects from SpeedSheetCheck
-        self.sheet = sheet  # input here is coming directly from the speedcell
-        self.row = str(row)
-        self.name = name  # get information passed from SpeedCell
-        self.day = day
-        self.list_stat = list_stat
-        self.nsday = nsday.lower()
-        self.route = route
-        self.empid = empid
-        self.tacs_name = ""  # get names and employee id numbers from name index
-        self.kb_name = ""
-        self.index_id = ""
-        sql = "SELECT * FROM name_index WHERE kb_name = '%s'" % self.name  # access dbase to check emp id
-        result = inquire(sql)
-        if result:
-            self.tacs_name = result[0][0]
-            self.kb_name = result[0][1]
-            self.index_id = result[0][2]
-        self.filtered_recset = []
-        self.onrec_date = ""  # get carrier information "on record" from the database
-        self.onrec_name = ""
-        self.onrec_list = ""
-        self.onrec_nsday = ""
-        self.onrec_route = ""
-        self.addday = []  # checked input formatted for entry into database
-        self.addlist = ["empty"]
-        self.addnsday = "empty"
-        self.addroute = "empty"
-        self.addempid = ""
-        self.parent.allowaddrecs = True  # if False, records will not be added to database
-        self.error_array = []  # arrays for error, fyi and add reports
-        self.fyi_array = []
-        self.attn_array = []
-        self.add_array = []
-        self.ns_dict = \
-            {"s": "sat", "m": "mon", "tu": "tue", "u": "tue", "w": "wed", "th": "thu", "h": "thu", "f": "fri",
-             "fs": "sat", "fm": "mon", "ftu": "tue", "fu": "tue", "fw": "wed", "fth": "thu", "fh": "thu", "ff": "fri",
-             "rs": "sat", "rm": "mon", "rtu": "tue", "ru": "tue", "rw": "wed", "rth": "thu", "rh": "thu", "rf": "fri",
-             "sat": "sat", "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri",
-             "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
-             "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri"}
-
-    def check_all(self):
-        """ master method to run other methods. """
-        self.get_carrec()  # get carrier records and condense them into one array
-        self.check_name()  # check for errors with the carrier name
-        self.check_employee_id_format()
-        self.check_employee_id_situation()
-        self.check_employee_id_use()
-        self.check_list_status()
-        self.check_ns()
-        self.check_route()
-        if self.parent.interject:  # True = add to database/ False = pre-check
-            self.add_recs()
-        self.generate_report()
-
-    def get_carrec(self):
-        """ get carrier records and condense them into one array """
-        carrec = CarrierRecSet(self.name, self.parent.start_date, self.parent.end_date, self.parent.station).get()
-        self.filtered_recset = CarrierRecFilter(carrec, self.parent.start_date).filter_nonlist_recs()
-        carrec = CarrierRecFilter(self.filtered_recset, self.parent.start_date).condense_recs_ns()
-        self.onrec_date = carrec[0]
-        self.onrec_name = carrec[1]
-        self.onrec_list = carrec[2]
-        self.onrec_nsday = carrec[3]
-        self.onrec_route = carrec[4]
-
-    def check_name(self):
-        """ check for errors with the carrier name """
-        if self.name == self.onrec_name:
-            return
-        if not NameChecker(self.name).check_characters():
-            error = "     ERROR: Carrier name can not contain numbers or most special characters\n"
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
-        if not NameChecker(self.name).check_length():
-            error = "     ERROR: Carrier name must not exceed 42 characters\n"
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
-        if not NameChecker(self.name).check_comma():
-            error = "     ERROR: Carrier name must contain one comma to separate last name and first initial\n"
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
-        if not NameChecker(self.name).check_initial():
-            attn = "     ATTENTION: Carrier name should must contain one initial ideally, \n" \
-                   "                unless more are needed to create a distinct carrier name.\n"
-            self.attn_array.append(attn)
-
-    def check_employee_id_situation(self):
-        """ checks the employee id. """
-        if self.index_id == "" and self.empid == "":  # if both emp id and name index are blank
-            pass
-        elif self.index_id == self.empid:  # if the emp id from the name index and the speedsheet match
-            pass
-        elif self.index_id != "" and self.empid == "":  # if value in name index but spdcell is blank
-            attn = "     ATTENTION: employee id can not be deleted from speedsheet\n"
-            self.attn_array.append(attn)  # place this on "addition" report for user's information
-            return
-        elif self.index_id == "" and self.empid != "":  # if name index blank and spd cell has a value
-            self.addempid = self.empid
-            attn = "     ATTENTION: Possible new employee id\n"  # report
-            self.attn_array.append(attn)
-        else:
-            error = "     ERROR: Employee id contridiction. \n" \
-                    "            You can not change employee id with speedsheet\n"  # report
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
-
-    def check_employee_id_format(self):
-        """ verifies the employee id """
-        if self.empid == "":  # allow empty strings
-            pass
-        elif str(self.empid).isnumeric():  # allow integers and numeric strings
-            self.empid = str(self.empid).zfill(8)  # change self.empid to string and zero fill to 8 places
-            pass
-        else:  # don't allow anything else
-            error = "     ERROR: employee id is not numeric\n"  # report
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False
-            return
-
-    def check_employee_id_use(self):
-        """ make sure the employee id is not being used by another carrier """
-        kb_name = ""
-        emp_id = ""
-        if self.empid != "":
-            sql = "SELECT * FROM name_index WHERE emp_id = '%s'" % self.empid
-            result = inquire(sql)
-            if result:
-                kb_name = result[0][1]
-                emp_id = result[0][2]
-        if emp_id == "":
-            return
-        elif kb_name == self.name:
-            pass
-        else:
-            error = "     ERROR: employee id is in use by another carrier\n"
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False
-
-    def add_list_status(self, dlsn_array, dlsn_day_array):
-        """ checks for list status. """
-        if not self.filtered_recset:  # if the carrier is new
-            self.addlist = dlsn_array
-            self.addday = dlsn_day_array
-            fyi = "     FYI: New List status will be entered: {}\n".format(dlsn_array)
-            self.fyi_array.append(fyi)
-        elif self.onrec_list != Convert(dlsn_array).array_to_string():  # if the list has changed
-            self.addlist = dlsn_array
-            self.addday = dlsn_day_array
-            fyi = "     FYI: List status will be updated to: {}\n".format(dlsn_array)
-            self.fyi_array.append(fyi)
-        elif self.onrec_date != Convert(dlsn_day_array).array_to_string():  # if the days have changed
-            self.addlist = dlsn_array
-            self.addday = dlsn_day_array
-            fyi = "     FYI: List status will be updated to: {}\n".format(dlsn_array)
-            self.fyi_array.append(fyi)
-        else:  # if there has been no change, do not change add___ vars.
-            pass
-
-    def check_list_status(self):
-        """ adds list status. """
-        self.list_stat = str(self.list_stat)
-        self.list_stat = self.list_stat.strip()
-        if self.list_stat == "":  # if the list_stat is empty
-            self.add_list_status(["nl"], [])
-            return
-        dlsn_array = []  # dynamic list status notation array
-        if self.list_stat != "":
-            dlsn_array = Convert(self.list_stat).string_to_array()
-        if len(dlsn_array) > 6:  # check number of list status changes
-            error = "     ERROR: More than six changes in list status are not allowed\n"
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False
-            return
-        for ls in dlsn_array:  # check for any input that does not conform with list status notation
-            ls = ls.strip()  # strip any whitespace
-            ls = ls.lower()  # make lowercase
-            if ls in ("n", "w", "o", "a", "p", "c"):  # acceptable values
-                pass
-            elif ls in ("nl", "wal", "otdl", "odl", "aux", "cca", "ptf"):  # acceptable values
-                pass
-            else:
-                error = "     ERROR: No such list status or list status notation {}\n".format(ls)
-                self.error_array.append(error)
-                self.parent.allowaddrecs = False
-                return
-        dlsn_array = self.dlsn_baseready(dlsn_array)  # format the list status/es for database
-        # check days
-        self.day = str(self.day)
-        self.day = self.day.strip()
-        dlsn_day_array = []
-        if self.day != "":
-            dlsn_day_array = Convert(self.day).string_to_array()
-        if len(dlsn_day_array) > 7:
-            error = "     ERROR: More than seven changes in days are not allowed\n"
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False
-        if len(dlsn_day_array) == 0 and len(dlsn_array) == 0:
-            return
-        elif len(dlsn_day_array) + 1 > len(dlsn_array):
-            error = "     ERROR: Too many days compared to the list status {}\n" \
-                    "            (hint: SpeedCell notation does not mention the \n" \
-                    "            first day.) \n".format(self.day)
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False
-            return
-        elif len(dlsn_day_array) + 1 < len(dlsn_array):
-            error = "     ERROR: Too many list statuses compared to days {}\n" \
-                    "            (SpeedCell notation requires that list status \n" \
-                    "            changes be accompanied by the day of the change.) \n".format(self.day)
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False
-            return
-        else:
-            pass
-        for d in dlsn_day_array:
-            d = d.strip()  # strip any whitespace
-            d = d.lower()  # make lowercase
-            if d in ("s", "m", "tu", "u", "w", "th", "h", "f"):
-                pass
-            elif d in ("sat", "mon", "tue", "wed", "thu", "fri"):
-                pass
-            else:
-                error = "     ERROR: No such day or day notation {}\n".format(d)
-                self.error_array.append(error)
-                self.parent.allowaddrecs = False
-                return
-        dlsn_day_array = self.day_baseready(dlsn_day_array)  # format the day/s for the database
-        if self.check_day_sequence(dlsn_day_array) is False:  # check days for correct sequence
-            return
-        self.add_list_status(dlsn_array, dlsn_day_array)
-
-    @staticmethod
-    def dlsn_baseready(array):
-        """ format dynamic list status notation into database ready """
-        new = []
-        for ls in array:  # for each list status
-            if ls in ("nl", "n"):
-                new.append("nl")
-            if ls in ("wal", "w"):
-                new.append("wal")
-            if ls in ("otdl", "odl", "o"):
-                new.append("otdl")
-            if ls in ("aux", "a", "cca", "c"):
-                new.append("aux")
-            if ls in ("ptf", "p"):
-                new.append("ptf")
-        return new
-
-    def check_day_sequence(self, array):
-        """ check the day/s for correct sequence """
-        sequence = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
-        past = []
-        for a in array:
-            if a in past:
-                error = "     ERROR: Days are out of sequence {}\n".format(self.day)
-                self.error_array.append(error)
-                self.parent.allowaddrecs = False
-                return False
-            for s in sequence:
-                if s == a:
-                    past.append(s)
-                    break
-                past.append(s)
-
-    @staticmethod
-    def day_baseready(array):
-        """ format dynamic list status notation into database ready """
-        new = []
-        for d in array:
-            if d in ("sat", "s"):
-                new.append("sat")
-            if d in ("mon", "m"):
-                new.append("mon")
-            if d in ("tue", "tu", "u"):
-                new.append("tue")
-            if d in ("wed", "w"):
-                new.append("wed")
-            if d in ("thu", "th", "h"):
-                new.append("thu")
-            if d in ("fri", "f"):
-                new.append("fri")
-        return new
-
-    def ns_baseready(self, ns, mode):
-        """ formats provided ns day into a fixed or rotating ns day for database input """
-        baseready = self.parent.ns_true_rev[ns]  # if True is passed use rotate mode
-        if not mode:  # if False is passed use fixed mode
-            baseready = self.parent.ns_false_rev[ns]
-        return baseready
-
-    def add_ns(self, baseready):
-        """ add ns day """
-        if self.onrec_nsday == baseready:
-            pass  # keep value of addnsday var as "empty"
-        else:
-            fyi = "     FYI: New or updated nsday: {}.\n".format(self.parent.ns_custom[baseready])  # report
-            self.fyi_array.append(fyi)
-            self.addnsday = baseready
-
-    def check_ns(self):
-        """ self.parent.ns_rotate_mode: True for rotate, False for fixed """
-        ns = "none"  # initialize ns variable
-        if not self.nsday:  # if string is empty
-            self.add_ns(ns)  # ns day is "none"
-        if self.nsday in ("sat", "mon", "tue", "wed", "thu", "fri"):
-            baseready = self.ns_baseready(self.nsday, self.parent.ns_rotate_mode)  # format for dbase input
-        elif self.nsday in ("s", "m", "tu", "u", "w", "th", "h", "f"):
-            ns = self.ns_dict[self.nsday]  # translate the notation
-            baseready = self.ns_baseready(ns, self.parent.ns_rotate_mode)
-        elif self.nsday == "  ":  # if the string is almost empty
-            baseready = ns  # ns day is "none"
-        elif self.nsday in ("rsat", "rmon", "rtue", "rwed", "rthu", "rfri",
-                            "rs", "rm", "rtu", "ru", "rw", "rth", "rh", "rf"):
-            ns = self.ns_dict[self.nsday]  # use dictionary to get the day
-            baseready = self.ns_baseready(ns, True)  # use ns rotate mode to get correct dictionary for day
-        elif self.nsday in ("fsat", "fmon", "ftue", "fwed", "fthu", "ffri",
-                            "fs", "fm", "ftu", "fu", "fw", "fth", "fh", "ff"):
-            ns = self.ns_dict[self.nsday]
-            baseready = self.ns_baseready(ns, False)  # use ns rotate mode to get correct dictionary for day
-        else:
-            error = "     ERROR: No such nsday: \"{}\"\n".format(self.nsday)  # report
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False  # do not allow speedcell to be input into dbase
-            return
-        self.add_ns(baseready)
-
-    def add_route(self):
-        """ add route """
-        if self.route == self.onrec_route:
-            pass  # retain "empty" value for addroute variable
-        else:
-            fyi = "     FYI: New or updated route: {}\n".format(self.route)
-            self.fyi_array.append(fyi)
-            self.addroute = self.route  # save to input to dbase
-
-    def check_route(self):
-        """ check route """
-        self.route = str(self.route)
-        self.route = self.route.strip()
-        if self.route == "":
-            self.add_route()
-        elif 4 > len(self.route) > 0:  # zero fill any inputs with between 0 and 4 digits
-            self.route = self.route.zfill(4)
-        if not RouteChecker(self.route).check_all():
-            error = "     ERROR: Improper route formatting\n"  # report
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False  # do not allow speedcell to be input into dbase
-            return
-        else:
-            self.route = Handler(self.route).routes_adj()
-            self.add_route()
-
-    def add_recs(self):
-        """ add records using the add___ vars. """
-        chg_these = []
-        if not self.parent.allowaddrecs:  # if all checks passed
-            return
-        if self.addlist != ["empty"]:
-
-            add = "     INPUT: List Status added or updated to database >>{}\n" \
-                .format(Convert(self.addlist).array_to_string())  # report
-            self.add_array.append(add)
-            chg_these.append("list")
-            list_place = self.addlist
-        else:
-            list_place = Convert(self.onrec_list).string_to_array()
-        if self.addnsday != "empty":
-            add = "     INPUT: Nsday added or updated to database >>{}\n".format(self.addnsday)  # report
-            self.add_array.append(add)
-            chg_these.append("ns")
-            ns_place = self.addnsday
-        else:
-            ns_place = self.onrec_nsday
-        if self.addroute != "empty":
-            add = "     INPUT: Route added or updated to database >>{}\n".format(self.addroute)  # report
-            self.add_array.append(add)
-            chg_these.append("route")
-            route_place = self.addroute
-        else:
-            route_place = self.onrec_route
-        if self.addempid != "":
-            sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) VALUES('%s', '%s', '%s')" \
-                  % ("", self.name, str(self.empid).zfill(8))
-            commit(sql)
-            add = "     INPUT: Employee id added or updated to database >>{}\n".format(self.addempid)  # report
-            self.add_array.append(add)
-        # is the earliest car rec a Relevent Preceeding Record or a sat range:
-        rpr = True  # Relevent Preceeding Record
-        if self.filtered_recset:
-            lastrec = self.filtered_recset.pop()  # get the earliest rec from rec set
-            if lastrec[0] == str(self.parent.start_date):  # if last rec is the saturday in range
-                rpr = False  # then there is no RPR
-        if len(chg_these) != 0:  # build the first rec
-            if rpr:  # insert the first rec
-                sql = "INSERT INTO carriers(effective_date, carrier_name, list_status, ns_day, route_s, " \
-                      "station) VALUES('%s','%s','%s','%s','%s','%s')" \
-                      % (self.parent.start_date, self.name, list_place[0], ns_place, route_place, self.parent.station)
-            else:  # update the first rec to replace pre existing record.
-                sql = "UPDATE carriers SET list_status = '%s', ns_day = '%s', route_s = '%s', station = '%s'" \
-                      "WHERE carrier_name = '%s' and effective_date = '%s'" \
-                      % (list_place[0], ns_place, route_place, self.parent.station, self.name, self.parent.start_date)
-            commit(sql)
-        if self.addlist != ["empty"] and "list" in chg_these:
-            second_date = self.parent.start_date + timedelta(days=1)
-            seventh_date = self.parent.end_date  # delete all dates in service week except sat range
-            sql = "DELETE FROM carriers WHERE carrier_name = '%s' and effective_date BETWEEN '%s' and '%s'" % \
-                  (self.name, second_date, seventh_date)
-            commit(sql)  # delete any records in investigation range except saturday
-            for i in range(len(self.addlist)):
-                if i == 0:
-                    pass  # the first rec has already been entered
-                else:
-                    date = Convert(self.addday[i - 1]).day_to_datetime_str(self.parent.start_date)
-                    sql = "INSERT INTO carriers(effective_date, carrier_name, list_status, ns_day, route_s, " \
-                          "station) VALUES('%s','%s','%s','%s','%s','%s')" \
-                          % (date, self.name, list_place[i], ns_place, route_place, self.parent.station)
-                    commit(sql)
-
-    def generate_report(self):
-        """ generate a report """
-        self.parent.fatal_rpt += len(self.error_array)
-        self.parent.add_rpt += len(self.add_array)
-        self.parent.fyi_rpt += len(self.fyi_array)
-        if not self.parent.interject:
-            master_array = self.error_array + self.attn_array + self.fyi_array  # use these reports for precheck
-        else:
-            master_array = self.error_array + self.attn_array + self.add_array  # use these reports for input
-        if len(master_array) > 0:
-            if not self.parent.name_mentioned:
-                self.parent.report.write("\n{}\n".format(self.name))
-                self.parent.name_mentioned = True
-            self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\"  <<<\n".format(self.sheet, self.row))
-            if not self.parent.allowaddrecs:
-                self.parent.report.write("     SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
-                # self.parent.fatal_rpt += 1
-            for rpt in master_array:  # write all reports that have been keep in arrays.
-                self.parent.report.write(rpt)
-
-
-class SpeedRingCheck:
-    """
-    accepts carrier rings from SpeedSheets
-    """
-    def __init__(self, parent, sheet, row, day, hours, bt, moves, rs, et, codes, lv_type, lv_time):
-        self.parent = parent
-        self.sheet = sheet
-        self.row = row
-        self.day = day
-        self.hours = hours
-        self.bt = bt
-        self.moves = moves
-        self.rs = rs
-        self.et = et
-        self.codes = codes
-        self.lv_type = lv_type
-        self.lv_time = lv_time
-        self.allowaddrings = True
-        self.error_array = []
-        self.fyi_array = []
-        self.attn_array = []
-        self.add_array = []
-        self.onrec_list = ""  # get carrier information "on record" from the database
-        self.onrec_nsday = ""
-        self.onrec_route = ""
-        self.onrec_date = ""  # get rings information "on record" from the database
-        self.onrec_name = ""
-        self.onrec_5200 = ""
-        self.onrec_bt = ""
-        self.onrec_moves = ""
-        self.onrec_rs = ""
-        self.onrec_et = ""
-        self.onrec_codes = ""
-        self.onrec_leave_type = ""
-        self.onrec_leave_time = ""
-        self.adddate = "empty"  # checked input formatted for entry into database
-        self.add5200 = "empty"
-        self.addbt = "empty"
-        self.addrs = "empty"
-        self.addet = "empty"
-        self.addcode = "empty"
-        self.addmoves = "empty"
-        self.addlvtype = "empty"
-        self.addlvtime = "empty"
-        self.exist5200 = False
-        self.existbt = False
-        self.auto_et = False
-
-    def check(self):
-        """ master method for running methods in sequence. """
-        if self.check_day():  # if the day is a valid day
-            self.get_onrecs()  # get existing "on record" records from the database
-            self.check_5200()  # check 5200/ hours
-            self.check_leave_time()  # check leave time
-            if not self.check_empty():  # checks if the record should be deleted
-                self.check_bt()  # check "begin tour"
-                self.check_et()  # check "end tour"
-                self.check_rs()   # check "return to station"
-                self.check_codes()  # check the codes/notes
-                self.check_leave_type()  # check leave type
-                self.check_moves()  # check moves
-                if self.parent.interject:  # if user wants to update database
-                    self.add_recs()  # format and input rings into database
-        self.generate_report()
-
-    def get_day_as_datetime(self):
-        """ get the datetime object for the day in use """
-        day = Convert(self.day).day_to_datetime_str(self.parent.start_date)
-        self.adddate = day
-        return day
-
-    def get_onrecs(self):
-        """ gets the records already in the database ie on record. """
-        carrec = CarrierRecSet(self.parent.name, self.parent.start_date, self.parent.end_date,
-                               self.parent.station).get()
-        if carrec:
-            self.onrec_list = carrec[0][2]  # get carrier information "on record" from the database
-            self.onrec_nsday = carrec[0][3]
-            self.onrec_route = carrec[0][4]
-            ringrec = Rings(self.parent.name, self.get_day_as_datetime()).get_for_day()
-            if ringrec[0]:  # if there is a result for clock rings on that day
-                self.onrec_date = ringrec[0][0]  # get rings information "on record" from the database
-                self.onrec_name = ringrec[0][1]
-                self.onrec_5200 = ringrec[0][2]
-                self.onrec_rs = ringrec[0][3]
-                self.onrec_codes = ringrec[0][4]
-                self.onrec_moves = ringrec[0][5]
-                self.onrec_leave_type = ringrec[0][6]
-                self.onrec_leave_time = ringrec[0][7]
-                self.onrec_bt = ringrec[0][9]
-                self.onrec_et = ringrec[0][10]
-
-    def check_day(self):
-        """ checks the day. """
-        days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
-        self.day = self.day.strip()
-        self.day = str(self.day)
-        self.day = self.day.lower()
-        if self.day not in days:
-            error = "     ERROR: Rings day is not correctly formatted. Acceptable values: sat, sun \n" \
-                    "     mon, tue, wed, thu, or fri. Got instead \"{}\": \n".format(self.day)
-            self.error_array.append(error)
-            self.allowaddrings = False  # do not allow speedcell to be input into dbase
-            return False
-        return True
-
-    def check_empty(self):
-        """ determine conditions where existing record is deleted """
-        if not self.hours:
-            if not self.lv_time:
-                if self.codes != "no call":
-                    if self.onrec_date:  # if there is an existing record to delete
-                        self.delete_recs()  # delete any pre existing record
-                    return True
-        return False
-
-    def add_5200(self):
-        """ adds 5200 time to an add5200 array which will add values to database. """
-        if self.hours == "0.0" and self.onrec_5200 in ("0", "0.00", "0.0", "", 0, 0.0):
-            pass
-        elif self.hours != self.onrec_5200:  # compare 5200 time against 5200 from database,
-            self.add5200 = self.hours  # if different, the add
-            fyi = "     FYI: New or updated 5200 time: {}\n".format(self.hours)
-            self.fyi_array.append(fyi)
-
-    def check_5200(self):
-        """ checks the 5200 time """
-        if type(self.hours) == str and not self.hours:  # pass if value is an empty string
-            self.add_5200()
-            return
-        ring = RingTimeChecker(self.hours).make_float()  # returns float or False
-        if ring is not False:
-            self.hours = ring  # convert the item to a float, if not already
-        else:  # if fail, create error msg and return
-            error = "     ERROR: 5200 time must be a number. Got instead \"{}\": \n".format(self.hours)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.hours).over_24():
-            error = "     ERROR: 5200 time can not exceed 24.00. Got instead \"{}\": \n".format(self.hours)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.hours).less_than_zero():
-            error = "     ERROR: 5200 time can not be negative. Got instead \"{}\": \n".format(self.hours)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.hours).count_decimals_place():
-            error = "     ERROR 5200 time can have no more than two decimal places. Got instead \"{}\": \n"\
-                .format(self.hours)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        self.hours = str(self.hours)  # convert float back to string
-        self.hours = Convert(self.hours).hundredths()  # make number a string with 2 decimal places
-        self.exist5200 = self.hours
-        self.add_5200()
-        
-    def add_bt(self):
-        """ defines the addbt var and writes report """
-        if self.bt == "0.0" and self.onrec_bt in ("0", "0.00", "0.0", "", 0, 0.0):
-            pass
-        elif self.bt != self.onrec_bt:  # compare 5200 time against 5200 from database,
-            self.addbt = self.bt  # if different, the add
-            fyi = "     FYI: New or updated begin tour: {}\n".format(self.bt)
-            self.fyi_array.append(fyi)
-    
-    def check_bt(self):
-        """ check the begin tour """
-        if type(self.bt) == str and not self.bt:  # pass if value is an empty string
-            self.add_bt()
-            return
-        ring = RingTimeChecker(self.bt).make_float()  # returns float or False
-        if ring is not False:
-            self.bt = ring  # convert the attribute to a float, if not already
-        else:  # if fail, create error msg and return
-            error = "     ERROR: BT must be a number. Got instead \"{}\": \n".format(self.bt)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.bt).over_24():
-            error = "     ERROR: BT time can not exceed 24.00. Got instead \"{}\": \n".format(self.bt)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.bt).less_than_zero():
-            error = "     ERROR: BT time can not be negative. Got instead \"{}\": \n".format(self.bt)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.bt).count_decimals_place():
-            error = "     ERROR: BT time can have no more than two decimal places. Got instead \"{}\": \n". \
-                format(self.bt)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        self.bt = str(self.bt)  # convert float back to string
-        self.bt = Convert(self.bt).hundredths()  # make number a string with 2 decimal places
-        self.existbt = self.bt
-        self.add_bt()
-
-    def add_et(self):
-        """ defines the addet var and writes report """
-        if self.et in ("0", "0.00", "0.0", "", 0, 0.0) and self.existbt and self.exist5200:
-            endtour = self.auto_endtour()
-            self.addet = endtour  # if different, the add
-            fyi = "     FYI: Automated end tour generated: {}\n".format(endtour)
-            self.auto_et = True  # enables message in text report to show auto endtour was used.
-        elif self.et == "0.0" and self.onrec_et in ("0", "0.00", "0.0", "", 0, 0.0):
-            pass
-        elif self.et != self.onrec_et:  # compare 5200 time against 5200 from database,
-            self.addet = self.et  # if different, the add
-            fyi = "     FYI: New or updated end tour: {}\n".format(self.et)
-            self.fyi_array.append(fyi)
-
-    def auto_endtour(self):
-        """ add 50 clicks to the begin tour and 5200 time """
-        if float(self.exist5200) >= 6:
-            auto_et = float(self.existbt) + float(self.exist5200) + .50
-        else:
-            auto_et = float(self.existbt) + float(self.exist5200)
-        if auto_et >= 24:
-            auto_et -= 24
-        return "{:.2f}".format(auto_et)
-
-    def check_et(self):
-        """ check the end tour """
-        if type(self.et) == str and not self.et:  # pass if value is an empty string
-            self.add_et()
-            return
-        ring = RingTimeChecker(self.et).make_float()  # returns float or False
-        if ring is not False:
-            self.et = ring  # convert the attribute to a float, if not already
-        else:  # if fail, create error msg and return
-            error = "     ERROR: ET must be a number. Got instead \"{}\": \n".format(self.et)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.et).over_24():
-            error = "     ERROR: ET time can not exceed 24.00. Got instead \"{}\": \n".format(self.et)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.et).less_than_zero():
-            error = "     ERROR: ET time can not be negative. Got instead \"{}\": \n".format(self.et)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.et).count_decimals_place():
-            error = "     ERROR: ET time can have no more than two decimal places. Got instead \"{}\": \n". \
-                format(self.et)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        self.et = str(self.et)  # convert float back to string
-        self.et = Convert(self.et).hundredths()  # make number a string with 2 decimal places
-        self.add_et()
-
-    def add_rs(self):
-        """ defines the addrs var and writes report. """
-        if self.rs == "0.0" and self.onrec_rs in ("0", "0.00", "0.0", "", 0, 0.0):
-            pass
-        elif self.rs != self.onrec_rs:  # compare 5200 time against 5200 from database,
-            self.addrs = self.rs  # if different, the add
-            fyi = "     FYI: New or updated return to station: {}\n".format(self.rs)
-            self.fyi_array.append(fyi)
-
-    def check_rs(self):
-        """ check the return to station. """
-        if type(self.rs) == str and not self.rs:  # pass if value is an empty string
-            self.add_rs()
-            return
-        ring = RingTimeChecker(self.rs).make_float()  # returns float or False
-        if ring is not False:
-            self.rs = ring  # convert the attribute to a float, if not already
-        else:  # if fail, create error msg and return
-            error = "     ERROR: RS must be a number. Got instead \"{}\": \n".format(self.rs)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.rs).over_24():
-            error = "     ERROR: RS time can not exceed 24.00. Got instead \"{}\": \n".format(self.rs)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.rs).less_than_zero():
-            error = "     ERROR: RS time can not be negative. Got instead \"{}\": \n".format(self.rs)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.rs).count_decimals_place():
-            error = "     ERROR: RS time can have no more than two decimal places. Got instead \"{}\": \n".\
-                format(self.rs)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        self.rs = str(self.rs)  # convert float back to string
-        self.rs = Convert(self.rs).hundredths()  # make number a string with 2 decimal places
-        self.add_rs()
-
-    def add_moves(self, baseready):
-        """ defines the addmoves variable and writes to report. """
-        if baseready != self.onrec_moves:  # if the moves are different from on record moves from dbase,
-            self.addmoves = baseready  # add the moves
-            fyi = "     FYI: New or updated moves: {}\n".format(baseready)
-            self.fyi_array.append(fyi)
-
-    def check_moves(self):
-        """ checks the moves. """
-        self.moves = str(self.moves)
-        self.moves = self.moves.strip()
-        if type(self.moves) == str and not self.moves:
-            self.add_moves("")
-            return
-        self.moves = self.moves.replace("+", ",").replace("/", ",").replace("//", ",")\
-            .replace("-", ",").replace("*", ",")  # replace all delimiters with commas
-        moves_array = Convert(self.moves).string_to_array()  # convert the moves string to an array
-        if not MovesChecker(moves_array).length():  # check number of items is multiple of three
-            error = "     ERROR: Moves must be given in multiples of three. Got instead \"{}\": \n"\
-                .format(len(moves_array))
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        for i in range(len(moves_array)):
-            if i % 3 == 0 or (i + 2) % 3 == 0:  # check the time components of the moves triad
-                move_ring = RingTimeChecker(moves_array[i]).make_float()  # try to convert moves_array[i] to a float.
-                if move_ring is not False:  # if fail, create error msg and return
-                    moves_array[i] = move_ring  # convert the item to a float, if not already
-                else:
-                    error = "     ERROR: Move times must be a number. Got instead \"{}\": \n".format(moves_array[i])
-                    self.error_array.append(error)
-                    self.allowaddrings = False
-                    return
-                if not RingTimeChecker(moves_array[i]).over_24():
-                    error = "     ERROR: Move time can not exceed 24.00. Got instead \"{}\": ".format(moves_array[i])
-                    self.error_array.append(error)
-                    self.allowaddrings = False
-                    return
-                if not RingTimeChecker(moves_array[i]).less_than_zero():
-                    error = "     ERROR: Move time can not be negative. Got instead \"{}\": \n".format(moves_array[i])
-                    self.error_array.append(error)
-                    self.allowaddrings = False
-                    return
-                if not RingTimeChecker(moves_array[i]).count_decimals_place():
-                    error = "     ERROR: Move time can have no more than two decimal places. Got instead \"{}\": \n"\
-                        .format(moves_array[i])
-                    self.error_array.append(error)
-                    self.allowaddrings = False
-                    return
-            if (i + 1) % 3 == 0:  # check the route component of the move triad
-                if not RouteChecker(moves_array[i]).check_numeric():
-                    error = "     ERROR: Routes in move triads must be numeric. Got instead \"{}\": \n" \
-                        .format(moves_array[i])
-                    self.error_array.append(error)
-                    self.allowaddrings = False
-                    return
-                if not RouteChecker(moves_array[i]).check_length():
-                    error = "     ERROR: Routes in move triads must have 4 or 5 digits. Got instead \"{}\": \n" \
-                        .format(moves_array[i])
-                    self.error_array.append(error)
-                    self.allowaddrings = False
-                    return
-        for i in range(0, len(moves_array), 3):
-            if moves_array[i] > moves_array[i + 1]:
-                error = "     ERROR: first value \"{}\" must be lesser than the second \n" \
-                        "            value \"{}\" in moves.\n".format(moves_array[i], moves_array[i + 1])
-                self.error_array.append(error)
-                self.allowaddrings = False
-                return
-            else:  # convert the items back into strings with 2 decimal places
-                moves_array[i] = str(moves_array[i])
-                moves_array[i] = Convert(moves_array[i]).hundredths()
-                moves_array[i + 1] = str(moves_array[i + 1])
-                moves_array[i + 1] = Convert(moves_array[i + 1]).hundredths()
-
-        baseready = Convert(moves_array).array_to_string()  # convert the moves array to a baseready string
-        self.add_moves(baseready)
-
-    def add_codes(self):
-        """ adds to the codes varible and writes to the report. """
-        if self.codes == self.onrec_codes:  # compare 5200 time against 5200 from database,
-            pass
-        else:
-            self.addcode = self.codes  # if different, the add
-            fyi = "     FYI: New or updated code/note: {}\n".format(self.codes)
-            self.fyi_array.append(fyi)
-
-    def check_codes(self):
-        """ checks the codes. """
-        all_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
-        self.codes = self.codes.strip()
-        self.codes = str(self.codes)
-        self.codes = self.codes.lower()
-        if not self.codes:
-            self.codes = "none"
-            self.add_codes()
-            return
-        if self.codes not in all_codes:
-            error = "     ERROR: There is no such code/note. Got instead: \"{}\" \n" \
-                .format(self.codes)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if self.onrec_list in ("nl", "wal"):
-            if self.codes in ("no call", "light", "sch chg", "annual", "sick", "excused"):
-                attn = "     ATTENTION: The code/note you entered is not consistant with the list status \n" \
-                       "                for the day. Only \"none\" and \"ns day\" are useful for {} carriers. \n" \
-                       "                Got instead: {}\n".format(self.onrec_list, self.codes)  # report
-                self.attn_array.append(attn)
-        # deleted otdl from list below. as of version 4.003 otdl carrier are allowed the ns day code.
-        if self.onrec_list in ("aux", "ptf"):
-            if self.codes in ("ns day",):
-                attn = "     ATTENTION: The code/note you entered is not consistant with the list status \n" \
-                       "                for the day. Only \"none\", \"no call\", \"light\", \"sch chg\", \n" \
-                       "                \"annual\", \"sick\", \"excused\" are useful for {} carriers. \n" \
-                       "                Got instead: {}\n".format(self.onrec_list, self.codes)
-                self.attn_array.append(attn)
-        self.add_codes()
-
-    def add_lvtype(self):
-        """ store the leave type if it has changed and passes checks """
-        if self.lv_type == self.onrec_leave_type:  # compare 5200 time against 5200 from database,
-            pass  # take no action if they are the same
-        else:
-            self.addlvtype = self.lv_type  # if different, the add
-            fyi = "     FYI: New or updated leave type: {}\n".format(self.lv_type)
-            self.fyi_array.append(fyi)
-
-    def check_leave_type(self):
-        """ check the leave type """
-        all_codes = ("none", "annual", "sick", "holiday", "other", "combo")
-        self.lv_type = str(self.lv_type)  # make sure lv type is a string
-        self.lv_type = self.lv_type.strip()  # remove whitespace
-        self.lv_type = self.lv_type.lower()  # force lv type to be lowercase
-        if not self.lv_type:
-            self.lv_type = "none"
-            self.add_lvtype()  # store the leave type if it has changed and passes checks
-            return
-        if self.lv_type not in all_codes:
-            error = "     ERROR: There is no such leave type. Acceptable types are: \"none\", \n" \
-                    "            \"annual\", \"sick\", \"holiday\", \"other\" \n" \
-                    "            Got instead: \"{}\"\n".format(self.lv_type)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        self.add_lvtype()  # store the leave type if it has changed and passes checks
-
-    def add_leave_time(self):
-        """ add to the leave time variable. """
-        if self.lv_time == "0.0" and self.onrec_leave_time in ("0", "0.00", "0.0", "", 0, 0.0):
-            pass  # if new and old lv times are both empty, take no action
-        elif self.lv_time != self.onrec_leave_time:  # compare lv type time against lv type from database,
-            self.addlvtime = self.lv_time  # if different, the add
-            fyi = "     FYI: New or updated leave time: {}\n".format(self.lv_time)
-            self.fyi_array.append(fyi)
-
-    def check_leave_time(self):
-        """ checks the leave time. """
-        if type(self.lv_time) == str and not self.lv_time:  # pass if value is an empty string
-            self.add_leave_time()
-            return
-        ring = RingTimeChecker(self.lv_time).make_float()  # try to convert moves_array[i] to a float.
-        if ring is not False:  # if fail, create error msg and return
-            self.lv_time = ring  # convert the item to a float, if not already
-        else:
-            error = "     ERROR: Leave time must be a number. Got instead \"{}\": \n".format(self.lv_time)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.lv_time).over_8():
-            error = "     ERROR: Leave time can not exceed 8.00. Got instead \"{}\": \n".format(self.lv_time)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.lv_time).less_than_zero():
-            error = "     ERROR: Leave time can not be negative. Got instead \"{}\": \n".format(self.lv_time)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        if not RingTimeChecker(self.lv_time).count_decimals_place():
-            error = "     ERROR: Leave time can have no more than two decimal places. Got instead \"{}\": \n" \
-                .format(self.lv_time)
-            self.error_array.append(error)
-            self.allowaddrings = False
-            return
-        self.lv_time = str(self.lv_time)  # make lv time back into a string
-        self.lv_time = Convert(self.lv_time).hundredths()  # make lv time into a string number with 2 decimal places
-        self.add_leave_time()
-
-    def delete_recs(self):
-        """ delete any pre existing record """
-        if not self.parent.interject:
-            fyi = "     FYI: Clock Rings record will be deleted from database\n"
-            self.fyi_array.append(fyi)
-            return
-        sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" % (self.adddate, self.parent.name)
-        commit(sql)
-        add = "     DELETE: Clock Rings record deleted from database\n"  # report
-        self.add_array.append(add)
-
-    def add_recs(self):
-        """ adds the records to the database"""
-        chg_these = []
-        if not self.allowaddrings:
-            return
-        # determine conditions where existing record is deleted
-        if not self.hours:
-            if not self.lv_time:
-                if self.codes != "no call":
-                    if self.onrec_date:  # if there is an existing record to delete
-                        self.delete_recs()  # delete any pre existing record
-                        return
-        # contruct the sql command to commit to the database.
-        if self.add5200 != "empty":  # 5200 place of sql command
-            add = "     INPUT: 5200 time added or updated to database >>{}\n".format(self.add5200)  # report
-            self.add_array.append(add)
-            chg_these.append("hours")
-            hours_place = self.add5200
-        else:
-            hours_place = self.onrec_5200
-        if self.addbt != "empty":  # bt place of sql command
-            add = "     INPUT: BT time added or updated to database >>{}\n".format(self.addbt)  # report
-            self.add_array.append(add)
-            chg_these.append("bt")
-            bt_place = self.addbt
-        else:
-            bt_place = self.onrec_bt
-        if self.addet != "empty":  # et place of sql command
-            if self.auto_et:
-                add = "     INPUT: ET time added to database automatically >>{}\n".format(self.addet)  # report
-            else:
-                add = "     INPUT: ET time added or updated to database >>{}\n".format(self.addet)  # report
-            self.add_array.append(add)
-            chg_these.append("et")
-            et_place = self.addet
-        else:
-            et_place = self.onrec_et
-        if self.addrs != "empty":  # rs place of sql command
-            add = "     INPUT: RS time added or updated to database >>{}\n".format(self.addrs)  # report
-            self.add_array.append(add)
-            chg_these.append("rs")
-            rs_place = self.addrs
-        else:
-            rs_place = self.onrec_rs
-        if self.addcode != "empty":  # code place of sql command
-            add = "     INPUT: Code/note added or updated to database >>{}\n".format(self.addcode)  # report
-            self.add_array.append(add)
-            chg_these.append("code")
-            code_place = self.addcode
-        else:
-            code_place = self.onrec_codes
-        if self.addmoves != "empty":  # moves place of sql command
-            add = "     INPUT: Moves added or updated to database >>{}\n".format(self.addmoves)  # report
-            self.add_array.append(add)
-            chg_these.append("moves")
-            moves_place = self.addmoves
-        else:
-            moves_place = self.onrec_moves
-        if self.addlvtype != "empty":  # lv type place of sql command
-            add = "     INPUT: Leave type added or updated to database >>{}\n".format(self.addlvtype)  # report
-            self.add_array.append(add)
-            chg_these.append("lv type")
-            lv_type_place = self.addlvtype
-        else:
-            lv_type_place = self.onrec_leave_type
-        if self.addlvtime != "empty":  # lv time place of sql command
-            add = "     INPUT: Leave time added or updated to database >>{}\n".format(self.addlvtime)  # report
-            self.add_array.append(add)
-            chg_these.append("lv time")
-            lv_time_place = self.addlvtime
-        else:
-            lv_time_place = self.onrec_leave_time
-        # if there are items to change, construct the sql command
-        if chg_these:
-            if not self.onrec_date:  # if there is no rings record for the date
-                sql = "INSERT INTO rings3(rings_date, carrier_name, total, rs, code, " \
-                      "moves, leave_type, leave_time, bt, et) " \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" \
-                      % (self.adddate, self.parent.name, hours_place, rs_place, code_place, moves_place,
-                         lv_type_place, lv_time_place, bt_place, et_place)
-            else:  # if a record already exist
-                sql = "UPDATE rings3 SET total = '%s', rs = '%s', code = '%s', moves = '%s', leave_type = '%s', " \
-                      "leave_time = '%s', bt = '%s', et = '%s' WHERE rings_date = '%s' and carrier_name = '%s'" % \
-                      (hours_place, rs_place, code_place, moves_place, lv_type_place, lv_time_place, bt_place,
-                       et_place,  self.adddate, self.parent.name)
-            commit(sql)
-
-    def generate_report(self):
-        """ generate a report """
-        self.parent.rings_fatal_rpt += len(self.error_array)
-        self.parent.rings_add_rpt += len(self.add_array)
-        self.parent.rings_fyi_rpt += len(self.fyi_array)
-        if not self.parent.interject:
-            master_array = self.error_array + self.attn_array + self.fyi_array  # use these reports for precheck
-        else:
-            master_array = self.error_array + self.attn_array + self.add_array  # use these reports for input
-        if len(master_array) > 0:
-            if not self.parent.name_mentioned:
-                self.parent.report.write("\n{}\n".format(self.parent.name))
-                self.parent.name_mentioned = True
-            self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\" <<<\n".format(self.sheet, self.row))
-            if not self.allowaddrings:
-                self.parent.report.write("     CLOCK RINGS ENTRY PROHIBITED: Correct errors!\n")
-                # self.parent.fatal_rpt += 1
-            for rpt in master_array:  # write all reports that have been keep in arrays.
-                self.parent.report.write(rpt)
 
 
 class GuiConfig:
@@ -6282,6 +5227,11 @@ def name_index_screen():
 
 
 class AutoDataEntry:
+    """
+    this class allows the user to input Employee Everything Reports in the csv format. The reports must be for an
+    entire service week. No longer or shorter. The Auto Data Entry reads the reports, ask for input from the user,
+    and inputs the data into the database.
+    """
     def __init__(self):
         self.frame = None
         self.file_path = None
@@ -6302,10 +5252,12 @@ class AutoDataEntry:
         self.target_file = None
 
     def run(self, frame):
+        """ calls auto set up to get needed csv file. """
         self.frame = frame
         self.AutoSetUp(self).run(self.frame)
 
-    def get_file(self):  # read the csv file and assign to self.a_file attribute
+    def get_file(self):
+        """ read the csv file and assign to self.a_file attribute """
         self.target_file = open(self.file_path, newline="")
         self.a_file = csv.reader(self.target_file)
 
@@ -6321,6 +5273,7 @@ class AutoDataEntry:
         MainFrame().start(frame=frame)
 
     class AutoSetUp:
+        """ gets the needed csv file and reads the pay period"""
         def __init__(self, parent):
             self.parent = parent
             self.frame = None
@@ -6350,7 +5303,8 @@ class AutoDataEntry:
             else:
                 self.parent.AutoIndexer2(self.parent).run(self.frame)
 
-        def get_path(self):  # get the path to the employee everything report or return False
+        def get_path(self):
+            """ get the path to the employee everything report or return False """
             path = dir_filedialog()
             self.parent.file_path = filedialog.askopenfilename(initialdir=path,
                                                                filetypes=[("Excel files", "*.csv *.xls")])
@@ -6367,7 +5321,7 @@ class AutoDataEntry:
 
         @staticmethod
         def auto_precheck():
-            # delete any records from name index which don't have corresponding records in carriers table
+            """ delete any records from name index which don't have corresponding records in carriers table """
             sql = "SELECT kb_name FROM name_index"
             kb_name = inquire(sql)
             sql = "SELECT carrier_name FROM carriers"
@@ -6389,7 +5343,8 @@ class AutoDataEntry:
                 i += 1
             pb.stop()  # stop and destroy the progress bar
 
-        def check_file(self):  # check for invalid file, find station and pay period
+        def check_file(self):
+            """ check for invalid file, find station and pay period """
             self.parent.get_file()  # read the csv file
             cc = 0
             for line in self.parent.a_file:
@@ -6431,7 +5386,8 @@ class AutoDataEntry:
                 self.parent.t_range = True
             return True
 
-        def check_tacs_station(self):  # make sure the csv has a stations
+        def check_tacs_station(self):
+            """ make sure the csv has a stations """
             if len(self.parent.tacs_station) == 0:
                 messagebox.showwarning("Auto Data Entry Error",
                                        "The Employee Everything Report is corrupt. Data Entry will stop.  \n"
@@ -6443,12 +5399,14 @@ class AutoDataEntry:
                 return False
             return True
 
-        def get_tacs_date(self):  # get the tacs date expressed as pay period
+        def get_tacs_date(self):
+            """ get the tacs date expressed as pay period """
             year = int(self.tacs_pp[:-3])
             pp = self.tacs_pp[-3:]
             self.parent.t_date = find_pp(year, pp)  # returns the starting date of the pp when given year and pay period
 
         def get_stations(self):
+            """ inquires the database to get a list of stations. """
             sql = "SELECT tacs_station, kb_station, finance_num FROM station_index"
             results = inquire(sql)
             for line in results:
@@ -6478,15 +5436,18 @@ class AutoDataEntry:
             self.station_new = None
 
         def run(self, frame):
+            """ master method for running other methods. """
             self.frame = frame
             self.get_window_object()
             self.station_screen()
 
         def get_window_object(self):
+            """ creates the window object. """
             self.win = MakeWindow()
             self.win.create(self.frame)
 
-        def station_screen(self):  # pair station from tacs to correct station in klusterbox/ part 1
+        def station_screen(self):
+            """ pair station from tacs to correct station in klusterbox/ part 1 """
             Label(self.win.body, text="Station Pairing", font=macadj("bold", "Helvetica 18"), pady=10) \
                 .grid(row=0, column=0, columnspan=4, sticky=W)  # page contents
             Label(self.win.body, text="Match the station detected from TACS with a pre-existing station\n "
@@ -6526,6 +5487,7 @@ class AutoDataEntry:
             self.win.finish()  # close out the window function
 
         def apply(self):
+            """ the method runs when the submit button is pressed. """
             if self.check():  # if the user entered data passes all checks
                 self.insert()  # insert the user entered data into the database
                 self.parent.AutoIndexer2(self.parent).run(self.win.topframe)
@@ -6535,6 +5497,7 @@ class AutoDataEntry:
                 self.run(frame)  # re run the methods of the class
 
         def check(self):
+            """ this method ensures that the station input is valid. """
             self.station_new = self.station_new.get()
             self.station_new = self.station_new.strip()
             """ user didn't select station from the option menu or didn't select ADD STATION and entered a station 
@@ -6560,6 +5523,7 @@ class AutoDataEntry:
             return True
 
         def insert(self):
+            """ this inputs the station into the database and updates project variables. """
             if self.station_sorter.get() == "ADD STATION":
                 """ if the user is using ADD STATION  to enter a new station not in the option menu """
                 # add the new station to the stations table if it is not already there.
@@ -6604,7 +5568,8 @@ class AutoDataEntry:
             self.possible_names = []  # an array of possible matches of kb names and tacs names
             self.possible_match = False  # False if there are no possible matches ever
 
-        def run(self, frame):  # namepairing_create
+        def run(self, frame):
+            """ namepairing_create """
             self.frame = frame
             self.set_globals()
             self.get_carrier_indexes()
@@ -6619,6 +5584,7 @@ class AutoDataEntry:
             self.namepairing_router()
 
         def set_globals(self):
+            """ sets globals for the investigation range. This will change the main frame when it is called. """
             s_year = self.parent.t_date.strftime("%Y")
             s_mo = self.parent.t_date.strftime("%m")
             s_day = self.parent.t_date.strftime("%d")
@@ -6627,6 +5593,7 @@ class AutoDataEntry:
             set_globals(s_year, s_mo, s_day, self.parent.t_range, station[0][0], "None")
 
         def get_carrier_indexes(self):
+            """ gets carrier names and employee ids from the database."""
             sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
             results = inquire(sql)
             for line in results:
@@ -6641,7 +5608,8 @@ class AutoDataEntry:
                 if each[1] not in self.c_list:
                     self.c_list.append(each[1])
 
-        def get_tacslist(self):  # Get the names from tacs report and create tacs_list
+        def get_tacslist(self):
+            """ Get the names from tacs report and create tacs_list """
             good_jobs = ("134", "844", "434")
             cc = 0
             for line in self.parent.a_file:
@@ -6667,6 +5635,7 @@ class AutoDataEntry:
                 cc += 1
 
         def remove_tacs_duplicates(self):
+            """ I think this removes any multiple BASE/TEMP lines. """
             holder = ["", "", "", ""]  # find the duplicates and remove them where there is both BASE and TEMP
             put_back = []
             for item in self.parent.tacs_list:  # crawler goes down the list to identify Temp entries
@@ -6685,6 +5654,7 @@ class AutoDataEntry:
             self.parent.tacs_list.sort(key=itemgetter(1))  # re-alphabetize the list of carriers
 
         def qualify_tacslist(self):
+            """ inserts new carriers into the name index. """
             sql = ""
             add = 0  # create tallies for reports
             rec = 0
@@ -6723,7 +5693,7 @@ class AutoDataEntry:
             pb.stop()  # stop and destroy the progress bar
 
         def get_new_carrier(self):
-            # find the carriers in name_index who have records w/ eff dates in the future
+            """ find the carriers in name_index who have records w/ eff dates in the future """
             dont_check = []  # remove items from check these if future carriers are found
             for name in self.parent.check_these:
                 sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % name[0]
@@ -6741,10 +5711,12 @@ class AutoDataEntry:
             self.parent.check_these = [x for x in self.parent.check_these if x[0] not in dont_check]
 
         def limit_tacslist(self):
+            """ deletes from the tacs list. """
             self.parent.tacs_list = [x for x in self.parent.tacs_list if x[0] not in self.parent.new_carrier]
             self.parent.tacs_list = [x for x in self.parent.tacs_list if x[0] not in self.to_remove]
 
         def get_name_index(self):
+            """ gets names and employee ids and puts them into arrays. """
             sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
             results = inquire(sql)
             for item in self.name_index:
@@ -6753,7 +5725,8 @@ class AutoDataEntry:
             for line in results:
                 self.name_index.append(line[1])
 
-        def namepairing_router(self):  # route to appropriate function based on array contents
+        def namepairing_router(self):
+            """ route to appropriate function based on array contents """
             # all tacs list resolved/ nothing to check
             if len(self.parent.tacs_list) < 1 and len(self.parent.new_carrier) < 1 and len(self.parent.check_these) < 1:
                 self.parent.AutoIndexer6(self.parent).run(self.frame)  # to straight to entering rings
@@ -6768,7 +5741,8 @@ class AutoDataEntry:
             else:  # If there are candidates sort, generate PAIRING SCREEN 1
                 self.namepairing_screen()
 
-        def namepairing_screen(self):  # Pairing screen #1
+        def namepairing_screen(self):
+            """ Pairing screen #1 """
             self.c_list = [x for x in self.c_list if x not in self.name_index]
             self.win = MakeWindow()
             self.win.create(self.frame)
@@ -6842,6 +5816,7 @@ class AutoDataEntry:
                 self.win.finish()  # otherwise stay on this screen
 
         def get_possible_names(self, t_name):
+            """ gets possible name matches for names not in the name index. """
             self.possible_names = []
             for c_name in self.c_list:
                 """ if the first letter of a carrier name has no record in the name index and matches the 
@@ -6853,7 +5828,8 @@ class AutoDataEntry:
                     self.possible_match = True
 
         @staticmethod
-        def indexer_default(widget, count, options, choice):  # changes the default for the optionmenu widget
+        def indexer_default(widget, count, options, choice):
+            """ changes the default for the optionmenu widget """
             for i in range(count - 1):
                 widget[i].set(options[choice])
             
@@ -6871,6 +5847,7 @@ class AutoDataEntry:
             self.new_name = []  # array of new names which have been modified with emp id
 
         def run(self, frame):
+            """ master method for running other methods. """
             self.frame = frame
             self.apply_namepairing_1()  # apply pairing screen
             # if empty tacs list and something in check these
@@ -6882,7 +5859,8 @@ class AutoDataEntry:
                 self.build_namepairing_options()
                 self.namepairing_screen_2()  # create pairing screen #2
     
-        def apply_namepairing_1(self):  # apply pairing screen #1 / AutoIndexer 2
+        def apply_namepairing_1(self):
+            """ apply pairing screen #1 / AutoIndexer 2 """
             i = 0  # count iterations of loops
             dis = 0  # count of discarded items
             out = 0  # count of unresolved items
@@ -6919,7 +5897,8 @@ class AutoDataEntry:
             .format(pair, dis, out), parent=frame)
             """
     
-        def build_namepairing_options(self):  # build possible names for option menus
+        def build_namepairing_options(self):
+            """ build possible names for option menus """
             sql = "SELECT kb_name FROM name_index"
             results = inquire(sql)
             name_result = []  # create a list of klusterbox names
@@ -6931,7 +5910,8 @@ class AutoDataEntry:
                 if item[0] not in self.c_list and item[0] not in self.parent.tried_names and item[0] not in name_result:
                     self.c_list.append(item[0])
     
-        def namepairing_screen_2(self):  # create pairing screen #2
+        def namepairing_screen_2(self):
+            """ create pairing screen #2 """
             self.win = MakeWindow()
             self.win.create(self.frame)
             self.parent.name_sorter = []  # page contents
@@ -7002,11 +5982,13 @@ class AutoDataEntry:
             self.win.finish()
     
         @staticmethod
-        def indexer_default(widget, count, options, choice):  # changes the default for the optionmenu widget
+        def indexer_default(widget, count, options, choice):
+            """ changes the default for the optionmenu widget """
             for i in range(count - 1):
                 widget[i].set(options[choice])
     
-        def ai3_apply(self):  # apply pairing screen 2
+        def ai3_apply(self):
+            """ apply pairing screen 2 """
             self.build_n_index()
             self.ai3_apply_sort()  # discard, add or pair name
             self.insert_to_nameindex()  # add names to name index
@@ -7028,7 +6010,8 @@ class AutoDataEntry:
             for line in results:  # loop to fill arrays
                 self.n_index.append(line[1])
     
-        def ai3_apply_sort(self):  # discard, add or pair name
+        def ai3_apply_sort(self):
+            """ discard, add or pair name """
             i = 0  # count iterations of the loops..
             for item in self.parent.name_sorter:  # sort passed data from auto index 4
                 if item.get() == "DISCARD":
@@ -7045,7 +6028,8 @@ class AutoDataEntry:
                     # pair += 1  # count of paired items
                 i += 1
     
-        def insert_to_nameindex(self):  # add names to name index
+        def insert_to_nameindex(self):
+            """ add names to name index """
             pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
             pb_label.grid(row=0, column=2)
             pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
@@ -7068,14 +6052,16 @@ class AutoDataEntry:
             pb.destroy()
 
         @staticmethod
-        def no_record(empid):  # check for a record in name index by employee id #
+        def no_record(empid):
+            """ check for a record in name index by employee id """
             sql = "SELECT emp_id FROM name_index WHERE emp_id = '%s'" % empid
             result = inquire(sql)
             if result:
                 return False  # if there is a record
             return True  # if there is no record
     
-        def insert_to_addname(self):  # add names to name index
+        def insert_to_addname(self):
+            """ add names to name index """
             self.to_chg = []  # array of items from to_addname where the name needs to be modified with emp id
             self.new_name = []  # array of new names which have been modified with emp id
             for name in self.parent.new_carrier:
@@ -7119,14 +6105,16 @@ class AutoDataEntry:
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()
     
-        def apply_ai3_report(self):  # message screens to summerize output
+        def apply_ai3_report(self):
+            """ message screens to summerize output """
             messagebox.showinfo("Processing Carriers", "{} Carrier names were added to the database\n"
                                                        "{} Carrier names were paired to names in klusterbox\n"
                                                        "{} Carrier names were discarded.\n"
                                                        .format(len(self.parent.to_addname), len(self.to_nameindex),
                                                        len(self.to_remove)), parent=self.win.topframe)
     
-        def build_addname(self):  # build to_addname array
+        def build_addname(self):
+            """ build to_addname array """
             count = 0  # swap out the names which have been modified in self.parent.to_addname
             for item in self.to_chg:  # for each item to be swapped
                 self.parent.to_addname.remove(item)  # clear out the old one
@@ -7135,7 +6123,10 @@ class AutoDataEntry:
                 self.parent.to_addname.append(mod_str)  # put in the new one
                 count += 1
 
-    class AutoIndexer4:  # input new carrier information after a check
+    class AutoIndexer4:
+        """
+        input new carrier information after a check
+        """
         def __init__(self, parent):
             self.parent = parent
             self.frame = None
@@ -7151,14 +6142,16 @@ class AutoDataEntry:
             self.ai4_l_ns = []  # create array for ns days
             self.ai4_route = []  # create array for route/s
 
-        def run(self, frame):  # add new carriers to carrier table / pairing screen #3
+        def run(self, frame):
+            """ add new carriers to carrier table / pairing screen #3 """
             self.frame = frame
             self.ai4_opt_nsday()
             self.ai4_full_ns_dict()
             self.ai4_ns_dict()
             self.ai4_screen()
 
-        def ai4_opt_nsday(self):  # get ns structure preference from database
+        def ai4_opt_nsday(self):
+            """ get ns structure preference from database """
             sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
             result = inquire(sql)
             ns_toggle = result[0][0]  # modify available ns days per ns_toggle
@@ -7179,6 +6172,7 @@ class AutoDataEntry:
                 self.opt_nsday.append(ns_option)
 
         def ai4_full_ns_dict(self):
+            """ get a dictionary of ns days and colors. """
             days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             for each in self.opt_nsday:  # Make a dictionary to match full days and option menu options
                 for day in days:
@@ -7189,12 +6183,14 @@ class AutoDataEntry:
                     self.full_ns_dict["None"] = ns_option  # creates full_ns_dict None option
 
         def ai4_ns_dict(self):
+            """ creates the ns dict variable with carrier emp id and name. """
             results = gen_ns_dict(self.parent.file_path, self.parent.to_addname)  # returns id and name
             for ids in results:  # loop to fill dictionary with ns day info
                 self.ns_dict[ids[0]] = ids[1]
             return self.ns_dict
 
         def ai4_screen(self):
+            """ builds the screen and fills it with widget. """
             self.win = MakeWindow()
             self.win.create(self.frame)
             Label(self.win.body, text="Input New Carriers", font=macadj("bold", "Helvetica 18"), pady=10) \
@@ -7275,7 +6271,8 @@ class AutoDataEntry:
                    command=lambda: self.parent.go_back(self.win.topframe)).pack(side=LEFT)
             self.win.finish()
 
-        def ai4_apply(self):  # adds new carriers to the carriers table
+        def ai4_apply(self):
+            """ adds new carriers to the carriers table """
             self.ai4_date()  # get the effective date
             self.ai4_station()  # get the station as a stringvar (apply2 reads station as stringvar)
             if self.ai4_check():
@@ -7292,16 +6289,19 @@ class AutoDataEntry:
                 self.__init__(self.parent)  # re initialize the child class
                 self.run(frame)
 
-        def ai4_date(self):  # get the effective date
+        def ai4_date(self):
+            """ get the effective date """
             self.eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
             if not projvar.invran_weekly_span:  # if investigation range is daily
                 self.eff_date = projvar.invran_date
 
-        def ai4_station(self):  # get the station as a stringvar (apply2 reads station as stringvar)
+        def ai4_station(self):
+            """ get the station as a stringvar (apply2 reads station as stringvar) """
             self.station = StringVar(self.win.body)  # put station var in a StringVar object
             self.station.set(projvar.invran_station)
 
-        def ai4_check(self):  # check and enter carrier info
+        def ai4_check(self):
+            """ check and enter carrier info """
             pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
             pb_label.pack(side=LEFT)
             pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
@@ -7323,7 +6323,8 @@ class AutoDataEntry:
             pb.destroy()
             return True
 
-        def ai4_count_change(self):  # get count of carrier changes for current day
+        def ai4_count_change(self):
+            """ get count of carrier changes for current day """
             self.changecount = []
             for name in self.ai4_carrier_name:
                 sql = "SELECT * FROM carriers WHERE carrier_name == '%s' and effective_date == '%s'" \
@@ -7332,7 +6333,10 @@ class AutoDataEntry:
                 if result:
                     self.changecount.append(result)
 
-    class AutoIndexer5:  # discrepancy resolution screen
+    class AutoIndexer5:
+        """
+        discrepancy resolution screen
+        """
         def __init__(self, parent):
             self.parent = parent
             self.frame = None
@@ -7358,6 +6362,7 @@ class AutoDataEntry:
             self.color = "blue"  # the display color of information from tacs
 
         def run(self, frame):
+            """ master method for running other methods. """
             self.frame = frame
             if len(self.parent.check_these) == 0:
                 self.parent.AutoIndexer6(self.parent).run(self.frame)
@@ -7371,7 +6376,8 @@ class AutoDataEntry:
                 self.ai5_screen()
 
         def ai5_opt_nsday(self):
-            for each in projvar.ns_code:  # creates the option menu options for ns day menu
+            """ creates the option menu options for ns day menu """
+            for each in projvar.ns_code:
                 ns_option = projvar.ns_code[each] + " - " + each  # make a string for each day/color
                 self.ns_opt_dict[each] = ns_option
                 if each == "none":
@@ -7379,18 +6385,21 @@ class AutoDataEntry:
                     self.ns_opt_dict[each] = ns_option
                 self.opt_nsday.append(ns_option)
 
-        def ai5_ns_dict(self):  # create dictionary for ns day data
+        def ai5_ns_dict(self):
+            """ create dictionary for ns day data """
             results = gen_ns_dict(self.parent.file_path, self.parent.check_these)  # returns id and name
             for ids in results:  # loop to fill dictionary with ns day info
                 self.ns_dict[ids[0]] = ids[1]
                 
-        def ai5_nameindex_dict(self):  # generate dictionary for emp id to kb_name
+        def ai5_nameindex_dict(self):
+            """ generate dictionary for emp id to kb_name """
             sql = "SELECT tacs_name, kb_name, emp_id FROM name_index ORDER BY kb_name"
             results = inquire(sql)
             for line in results:  # loop to fill arrays
                 self.name_dict[line[2]] = line[1]
 
-        def ai5_carrierlist(self):  # generate list of only names from 'in range carrier list'
+        def ai5_carrierlist(self):
+            """ generate list of only names from 'in range carrier list' """
             self.ai5_carrier_list = gen_carrier_list()  # generate an in range carrier list
             for name in self.ai5_carrier_list:
                 self.carriers_names_list.append(name[1])
@@ -7406,9 +6415,11 @@ class AutoDataEntry:
             self.ai5_carrier_list.sort(key=itemgetter(1))  # resort carrier list after additions
             
         def ai5_nscode(self):
-            self.code_ns = NsDayDict(projvar.invran_date_week[0]).gen_rev_ns_dict()  # generate reverse ns code dict
+            """ generate reverse ns code dict """
+            self.code_ns = NsDayDict(projvar.invran_date_week[0]).gen_rev_ns_dict()
             
         def ai5_screen(self):
+            """ master method for creating the screen. """
             self.win = MakeWindow()
             self.win.create(self.frame)
             self.ai5_screen_header()
@@ -7417,6 +6428,7 @@ class AutoDataEntry:
             self.ai5_screen_buttons()
             
         def ai5_screen_header(self):
+            """ creates the widgets which fill the top part of the screen. """
             header = Frame(self.win.body)
             header.grid(row=0, columnspan=6, sticky="w")
             Label(header, text="Discrepancy Resolution Screen", font=macadj("bold", "Helvetica 18"), pady=10) \
@@ -7433,6 +6445,7 @@ class AutoDataEntry:
                 .grid(row=1, sticky="w")
             
         def ai5_screen_labels(self):
+            """ creates column header labels. """
             if not self.parent.is_mac:  # skip labels if the os is mac
                 Label(self.win.body, text="    ", fg="Grey").grid(row=self.y, column=0, sticky="w")
                 Label(self.win.body, text=macadj("List Status", "List"), fg="Grey")\
@@ -7444,7 +6457,8 @@ class AutoDataEntry:
                     .grid(row=self.y, column=5, sticky="w")
                 self.y += 1
                 
-        def ai5_find_discrepancies(self):  # look for any discrepancies in carrier list
+        def ai5_find_discrepancies(self):
+            """ look for any discrepancies in carrier list """
             tlist = ()
             tnsday = "none"
             troute = ""
@@ -7494,6 +6508,7 @@ class AutoDataEntry:
                             self.ai5_display_discrepancies(name, k_name)
         
         def ai5_display_discrepancies(self, name, k_name):
+            """ displays the main body of the screen. """
             name_f = Frame(self.win.body)  # create separate frame for names
             name_f.grid(row=self.y, columnspan=6, sticky="w")
             Label(name_f, text="Name: ", fg="Grey").grid(row=0, column=0, sticky="w")
@@ -7535,6 +6550,7 @@ class AutoDataEntry:
             self.i += 1
 
         def ai5_screen_buttons(self):
+            """ displays the buttons on the bottom of the page. """
             Button(self.win.buttons, text="Continue", width=macadj(15, 16),
                    command=lambda: self.ai5_apply()).pack(side=LEFT)
             Button(self.win.buttons, text="Cancel", width=macadj(15, 16),
@@ -7544,7 +6560,8 @@ class AutoDataEntry:
             else:
                 self.win.finish()  # get rear window objects
 
-        def ai5_apply(self):  # generate progressbar - sends data to be checked
+        def ai5_apply(self):
+            """ generate progressbar - sends data to be checked """
             eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
             if not projvar.invran_weekly_span:  # if investigation range is daily
                 eff_date = projvar.invran_date
@@ -7572,7 +6589,8 @@ class AutoDataEntry:
             self.parent.AutoIndexer6(self.parent).run(self.win.topframe)
 
         @staticmethod
-        def check_and_apply(frame, date, carrier, ls, ns, route, station):  # adds new carriers to the carriers table
+        def check_and_apply(frame, date, carrier, ls, ns, route, station):
+            """ adds new carriers to the carriers table """
             if len(route.get()) > 29:
                 messagebox.showerror("Route number input error",
                                      "There can be no more than five routes per carrier "
@@ -7624,7 +6642,10 @@ class AutoDataEntry:
                 commit(sql)
             return True
 
-    class AutoIndexer6:  # detect carriers who are no longer in station
+    class AutoIndexer6:
+        """
+        detect carriers who are no longer in station
+        """
         def __init__(self, parent):
             self.parent = parent
             self.frame = None
@@ -7643,6 +6664,7 @@ class AutoDataEntry:
             self.cc = 0
 
         def run(self, frame):
+            """ master method for running the class. """
             self.frame = frame
             self.ai6_nameslist()  # create the names list array
             self.ai6_filtered_ids()
@@ -7658,13 +6680,15 @@ class AutoDataEntry:
                 self.ai6_screen_buttons()
                 self.win.finish()
 
-        def ai6_nameslist(self):  # list who are not in the TACS list
+        def ai6_nameslist(self):
+            """ list who are not in the TACS list"""
             carrier_list = gen_carrier_list()  # create names_list array
             for name in carrier_list:  # eliminate duplicate names
                 if name[1] not in self.names_list:
                     self.names_list.append(name[1])
 
-        def ai6_filtered_ids(self):  # filter the tacs ids to get the good jobs
+        def ai6_filtered_ids(self):
+            """ filter the tacs ids to get the good good_jobs """
             self.parent.get_file()  # read the csv file
             tacs_ids = []  # generate tacs list
             good_jobs = ("844", "134", "434")
@@ -7686,22 +6710,26 @@ class AutoDataEntry:
             del tacs_ids
 
         def ai6_t_names(self):
+            """ get carrier names from the employee ids. """
             for name in self.filtered_ids:  #
                 sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % (name[0])
                 result = inquire(sql)  # check dbase for a match
                 if result:  # if there is a match in the dbase, then add data to array
                     self.t_names.append(result[0][0])
 
-        def ai6_ex_carriers(self):  # get a list of carriers no longer in the station
+        def ai6_ex_carriers(self):
+            """ get a list of carriers no longer in the station """
             for name in self.names_list:  # for each name in carrier list
                 if name not in self.t_names:  # if they are not also in the tacs data
                     self.ex_carrier.append(name)  # then add them to the array
 
         def ai6_screen(self):
+            """ create the window object. """
             self.win = MakeWindow()
             self.win.create(self.frame)
 
         def ai6_screen_header(self):
+            """ creates the header labels for the top of the screen. """
             header = Frame(self.win.body)
             header.grid(row=0, columnspan=5, sticky="w")
             Label(header, text="Carriers No Longer At Station", font=macadj("bold", "Helvetica 18"), pady=10) \
@@ -7721,6 +6749,7 @@ class AutoDataEntry:
             Label(header, text=macadj(wintext, mactext) + text, justify=LEFT).grid(row=1, sticky="w")
 
         def ai6_screen_labels(self):
+            """ creates the labels to be used as column headers. """
             Label(self.win.body, text="Name", fg="Grey").grid(row=self.y, column=0, sticky="w")
             Label(self.win.body, text=macadj("List Status", "List"), fg="Grey").grid(row=self.y, column=1, sticky="w")
             if sys.platform != "darwin":
@@ -7730,6 +6759,7 @@ class AutoDataEntry:
             self.y += 1
 
         def ai6_screen_loop(self):
+            """ generate widges for all carriers no longer at station. """
             for name in self.ex_carrier:
                 sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
                       "ORDER BY effective_date DESC" \
@@ -7765,12 +6795,14 @@ class AutoDataEntry:
                 self.y += 1
 
         def ai6_screen_buttons(self):
+            """ creates buttons on the bottom of the page. """
             Button(self.win.buttons, text="Continue", width=macadj(15, 16),
                    command=lambda: self.ai6_apply()).pack(side=LEFT)
             Button(self.win.buttons, text="Cancel", width=macadj(15, 16),
                    command=lambda: self.parent.go_back(self.win.topframe)).pack(side=LEFT)
 
         def ai6_apply(self):
+            """ executes when apply is pressed. """
             date = projvar.invran_date_week[0]
             pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
             pb_label.pack(side=LEFT)
@@ -7839,6 +6871,7 @@ class AutoDataEntry:
             self.new_order = []
 
         def run(self, frame):
+            """ master method for running other methods. """
             self.frame = frame
             self.skim_configs()  # get configuration settings
             carrier_list_cleaning_for_auto_skimmer(self.frame, msgbox=False)
@@ -7857,7 +6890,8 @@ class AutoDataEntry:
                                         parent=self.frame)
                     self.parent.go_back(self.frame)  # quit and return to main screen
 
-        def skim_configs(self):  # get configuration settings
+        def skim_configs(self):
+            """ get configuration settings """
             sql = "SELECT code FROM skippers"  # get skippers data from dbase
             results = inquire(sql)
             self.skippers = []  # fill the array for skippers
@@ -7865,12 +6899,14 @@ class AutoDataEntry:
                 self.skippers.append(item[0])
 
         def skim_day_dict(self):
+            """ make a dictionary for each day in the week """
             x = 0
-            for item in self.days:  # make a dictionary for each day in the week
+            for item in self.days:
                 self.day_dict[item] = projvar.invran_date_week[x]
                 x += 1
 
-        def skim_check_csv(self):  # checks for employee everything report
+        def skim_check_csv(self):
+            """ checks for employee everything report """
             self.parent.get_file()  # read the csv file
             for line in self.parent.a_file:
                 if line[0][:8] == "TAC500R3":
@@ -7969,7 +7005,8 @@ class AutoDataEntry:
                 self.fix_carrierline_moves(moves_holder)  # call a method to put them in proper order
             self.carrier_lines = self.new_order[:]  # carrier lines is over written with correctly order array
 
-        def fix_carrierline_moves(self, moves_holder):  # puts the BT, MV and ET lines in proper order
+        def fix_carrierline_moves(self, moves_holder):
+            """ puts the BT, MV and ET lines in proper order """
             bt_array = []  # holds begin tour lines
             mv_array = []  # hold moves lines
             et_array = []  # holds end tour lines
@@ -8012,11 +7049,13 @@ class AutoDataEntry:
             self.weekly_protoarray.append(to_input)  # add the proto array for an array
 
         def skim_check_nameindex(self):
+            """ check if the carrier is in the name index """
             sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % self.weekly_protoarray[0][1]
             result = inquire(sql)  # check to verify that they are in the name index
             return result  # if there is a match in the name index, then continue
                 
-        def skim_check_carriers(self, result):    
+        def skim_check_carriers(self, result):
+            """ get the most recent record for the carrier. """
             self.kb_name = result[0][0]  # get the kb name which correlates to the emp id
             for line in self.weekly_protoarray:
                 self.daily_protoarray = line
@@ -8034,7 +7073,7 @@ class AutoDataEntry:
                 return False
                 
         def skim_detect_nsday(self):
-            # find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code
+            """ find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code """
             if self.newest_carrier[2] in ("nl", "wal"):  # if the current day matches the ns day
                 if self.day_dict[self.daily_protoarray[0]].strftime("%a") == \
                         projvar.ns_code[self.newest_carrier[3]] and \
@@ -8062,11 +7101,13 @@ class AutoDataEntry:
                 self.c_code = "none"
             
         def skim_get_routes(self):
-            self.routes = []  # create an array for self.routes
+            """ create an array for self.routes """
+            self.routes = []
             if self.newest_carrier[4] != "":
                 self.routes = self.newest_carrier[4].split("/")
 
-        def skim_detect_moves(self):  # find the moves if any
+        def skim_detect_moves(self):
+            """ find the moves if any """
             self.mv_triad = []  # triad is route number, start time off route, end time off route
             route_holder = ""
             if len(self.routes) > 0:  # if the route is in kb
@@ -8091,10 +7132,12 @@ class AutoDataEntry:
                     self.mv_triad.append(mv_time)
                     self.mv_triad.append(route_holder)
         
-        def skim_get_movestring(self):                
-            self.mv_str = ','.join(self.mv_triad)  # format array as string to fit in dbase
+        def skim_get_movestring(self):
+            """ format array as string to fit in dbase """
+            self.mv_str = ','.join(self.mv_triad)
             
-        def skim_get_hour52(self):  # get paid leave
+        def skim_get_hour52(self):
+            """ get paid leave """
             # if hours worked > 0 or there is a code or a leave type
             if float(self.daily_protoarray[2]) > 0 or self.c_code != "none" or self.daily_protoarray[6] != "":
                 hr_52 = self.daily_protoarray[2]  # assign 5200 hours variable
@@ -8105,14 +7148,16 @@ class AutoDataEntry:
                 return True
             return False
         
-        def skim_returntostation(self):            
-            rs = self.daily_protoarray[3]  # assign return to station variable
+        def skim_returntostation(self):
+            """ assign return to station variable """
+            rs = self.daily_protoarray[3]
             if RingTimeChecker(rs).check_for_zeros():  # adjust rs to version 4 record standards
                 self.rs = ""
             else:
                 self.rs = Convert(rs).hundredths()
               
         def skim_get_leavetime(self):
+            """ check and handle leave time. """
             lv_time = float(self.daily_protoarray[7])  # assign leave time variable
             self.lv_type = Convert(self.daily_protoarray[6]).none_not_empty()  # adjust lv type to version 4 standards
             if RingTimeChecker(lv_time).check_for_zeros():  # adjust lv time to version 4 record standards
@@ -8120,12 +7165,13 @@ class AutoDataEntry:
             else:
                 self.lv_time = Convert(lv_time).hundredths()
        
-        def skim_current_array(self):         
+        def skim_current_array(self):
+            """ build the current array """
             self.current_array = [str(self.day_dict[self.daily_protoarray[0]]), self.kb_name, self.hr_52, self.rs,
                                   self.c_code, self.mv_str, self.lv_type, self.lv_time]
             
         def skim_input_update(self):    
-            # check rings table to see if record already exist.
+            """ check rings table to see if record already exist."""
             sql = "SELECT * FROM rings3 WHERE carrier_name = '%s' and rings_date = '%s'" % (
                 self.kb_name, self.day_dict[self.daily_protoarray[0]])
             result = inquire(sql)
@@ -8148,6 +7194,7 @@ class AutoDataEntry:
                 commit(sql)
 
         def build_protoarray(self, rings):
+            """ build the protoarray. """
             self.daily_rings = rings
             self.skim_daily_initialize()  # zero out all daily values for each iteration
             if len(self.daily_rings) > 0:
@@ -8171,7 +7218,8 @@ class AutoDataEntry:
                                self.day_moves, self.day_final_leave_type, self.day_final_leave_time]
                 return proto_array  # send it back to auto weekly analysis()
 
-        def skim_daily_initialize(self):  # initialize variables for build_protoarray()
+        def skim_daily_initialize(self):
+            """ initialize variables for build_protoarray()self """
             self.day_hr_52 = 0.0  # work hours
             self.day_hr_55 = 0.0  # annual leave
             self.day_hr_56 = 0.0  # sick leave
@@ -8187,13 +7235,16 @@ class AutoDataEntry:
             self.day_final_leave_time = 0.0
             self.day_dayofweek = None
 
-        def skim_name(self):  # get the carrier id from the tacs data
+        def skim_name(self):
+            """ get the carrier id from the tacs data """
             self.day_name = self.daily_rings[0][4].zfill(8)  # Get NAME
 
-        def skim_dayofweek(self):  # get the day of the week from the tacs data line
+        def skim_dayofweek(self):
+            """ get the day of the week from the tacs data line """
             self.day_dayofweek = self.daily_line[18]
 
         def skim_get_hours(self):
+            """ identify different types of hours. """
             spt_20 = self.daily_line[20].split(':')  # split to get code and hours
             # get second and third digits of the of the split line 20 or spt_20
             spt_20_mod = "".join([spt_20[0][1], spt_20[0][2]])
@@ -8210,7 +7261,8 @@ class AutoDataEntry:
             if spt_20_mod == "86":
                 self.day_hr_86 = spt_20[1]  # get other leave hours
 
-        def skim_daily_leavetime(self):  # fill day leave type and time variables
+        def skim_daily_leavetime(self):
+            """ fill day leave type and time variables """
             if float(self.day_hr_55) > 0:
                 self.day_leave_type.append("annual")
                 self.day_leave_time.append(self.day_hr_55)
@@ -8237,16 +7289,19 @@ class AutoDataEntry:
                 self.day_final_leave_type = ""
                 self.day_final_leave_time = 0.0
 
-        def skim_get_code(self):  # detects annual or sick leave for day_code variable
+        def skim_get_code(self):
+            """ detects annual or sick leave for day_code variable """
             if float(self.day_hr_55) > 1:
                 self.day_code = "annual"  # alter CODE if annual leave was used
             if float(self.day_hr_56) > 1:
                 self.day_code = "sick"  # alter code if sick leave was used
 
-        def skim_get_returntostation(self):  # get return to station time and fill day_rs variable
+        def skim_get_returntostation(self):
+            """ get return to station time and fill day_rs variable """
             self.day_rs = self.daily_line[21]  # save the last occurrence.
 
-        def skim_get_moves(self):  # build an array of moves for the day
+        def skim_get_moves(self):
+            """ build an array of moves for the day """
             route_z = self.daily_line[24].zfill(6)  # because some reports omit leading zeros
             # reformat route to 5 digit format
             route = route_z[1] + route_z[2] + route_z[3] + route_z[4] + route_z[5]  # build 5 digit route number
@@ -9797,590 +8852,6 @@ def mass_input(frame, day, sort):
     del carrier_list[:]
     projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
-
-
-def tab_selected(t):  # attach notebook tab for
-    global current_tab
-    current_tab = t
-
-
-def output_tab(frame, list_carrier):
-    frame.destroy()
-    switch_f5 = Frame(projvar.root, bg="white")
-    switch_f5.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(switch_f5)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    Button(c1, text="spreadsheet", width=15, anchor="w",
-           command=lambda: ImpManSpreadsheet().create(switch_f5)).pack(side=LEFT)
-    Button(c1, text="Go Back", width=15, anchor="w",
-           command=lambda: MainFrame().start(frame=switch_f5)).pack(side=LEFT)
-    dates = []  # array containing days
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        dates = projvar.invran_date_week
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        dates.append(projvar.invran_date)
-    if projvar.invran_weekly_span:  # if investigation range is weekly
-        sql = "SELECT * FROM rings3 WHERE rings_date BETWEEN '%s' AND '%s' ORDER BY rings_date, carrier_name" \
-              % (projvar.invran_date_week[0], projvar.invran_date_week[6])
-    else:
-        sql = "SELECT * FROM rings3 WHERE rings_date = '%s' ORDER BY rings_date, " \
-              "carrier_name" % projvar.invran_date
-    r_rings = inquire(sql)
-    sql = "SELECT * FROM tolerances"  # get tolerances
-    tol_results = inquire(sql)
-    ot_own_rt = tol_results[0][2]
-    ot_tol = tol_results[1][2]
-    av_tol = tol_results[2][2]
-    daily_list = []  # array
-    candidates = []
-    dl_nl = []
-    dl_wal = []
-    dl_otdl = []
-    dl_aux = []
-    # list the names of the tabs
-    tab = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
-    c = ["C0", "C1", "C2", "C3", "C4", "C5", "C6"]
-    global current_tab
-    current_tab = 0
-    tab_control = ttk.Notebook(switch_f5)  # Create Tab Control
-    tab_control.pack(expand=1, fill="both")
-    t = 0
-    # for day in dates:
-    for day in dates:
-        del daily_list[:]
-        del dl_nl[:]
-        del dl_wal[:]
-        del dl_otdl[:]
-        del dl_aux[:]
-        # create a list of carriers for each day.
-        for i in range(len(list_carrier)):
-            if list_carrier[i][0] <= str(day):
-                candidates.append(list_carrier[i])  # put name into candidates array
-            jump = "no"  # triggers an analysis of the candidates array
-            if i != len(list_carrier) - 1:  # if the loop has not reached the end of the list
-                if list_carrier[i][1] == list_carrier[i + 1][1]:  # if the name current and next name are the same
-                    jump = "yes"  # bypasses an analysis of the candidates array
-            if jump == "no":  # review the list of candidates
-                winner = max(candidates, key=itemgetter(0))  # select the most recent
-                if winner[5] == projvar.invran_station:
-                    daily_list.append(winner)  # add the record if it matches the station
-                del candidates[:]  # empty out the candidates array.
-        for item in daily_list:  # sort carriers in daily list by the list they are in
-            if item[2] == "nl":
-                dl_nl.append(item)
-            if item[2] == "wal":
-                dl_wal.append(item)
-            if item[2] == "otdl":
-                dl_otdl.append(item)
-            if item[2] in ("aux", "ptf"):
-                dl_aux.append(item)
-        tabs = Frame(tab_control)  # put frame in notebook
-        tabs.pack(fill=BOTH, side=LEFT)
-        if projvar.invran_weekly_span:  # if investigation range is weekly
-            tab_control.add(tabs, text="{}".format(tab[t]))  # Add the tab
-        c[t] = Canvas(tabs, width=1600, bg="white")  # put canvas inside notebook frame
-        s = Scrollbar(tabs, command=c[t].yview)  # define and bind the scrollbar with the canvas
-        c[t].config(yscrollcommand=s.set, scrollregion=(0, 0, 100, 5000))  # bind the canvas with the scrollbar
-        #   Enable mousewheel
-        c[t].bind("<Map>", lambda event, tb=t: tab_selected(tb))
-        if sys.platform == "win32":
-            c[current_tab].bind_all('<MouseWheel>',
-                                    lambda event: c[current_tab].yview_scroll
-                                    (int(projvar.mousewheel * (event.delta / 120)), "units"))
-        elif sys.platform == "darwin":
-            c[current_tab].bind_all('<MouseWheel>',
-                                    lambda event: c[current_tab].yview_scroll
-                                    (int(projvar.mousewheel * event.delta), "units"))
-        elif sys.platform == "linux":
-            c[current_tab].bind_all('<Button-4>', lambda event: c[current_tab].yview('scroll', -1, 'units'))
-            c[current_tab].bind_all('<Button-5>', lambda event: c[current_tab].yview('scroll', 1, 'units'))
-
-        s.pack(side=RIGHT, fill=BOTH)
-        c[t].pack(side=LEFT, fill=BOTH, expand=True)
-        f = Frame(c[t], bg="white")  # put a frame in the canvas
-        f.pack()
-        c[t].create_window((0, 0), window=f, anchor=NW)  # create window with frame
-        oi = 0
-        Label(f, text=day.strftime("%A  %m/%d/%y"), justify=LEFT, anchor=W, font=macadj("bold", "Helvetica 18"),
-              pady=5, bg="white").grid(row=oi, column=0, columnspan=10, sticky=W)
-        in_color = "white"
-        out_color = "light goldenrod yellow"
-        oi += 1
-        #  no list xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        Label(f, text="no list", justify=LEFT, bg="white",
-              font=macadj('Helvetica 10 bold', 'Futura 16 bold')) \
-            .grid(sticky=W, row=oi, column=0, columnspan=10)
-        oi += 1
-        Label(f, text=" moves", bg="gray90", width=macadj(24, 16), anchor="w") \
-            .grid(row=oi, column=4, columnspan=4)  # top of move total
-        Label(f, text="off", bg="white").grid(row=oi, column=9)  # top of off route
-        Label(f, text="ot off", bg="white").grid(row=oi, column=10)  # top of ot off route
-        oi += 1
-        Label(f, text="Carrier", bg="white").grid(row=oi, column=0, sticky=W)
-        Label(f, text="note", bg="white").grid(row=oi, column=1)
-        Label(f, text="5200", bg="white").grid(row=oi, column=2)
-        Label(f, text="RS", bg="white").grid(row=oi, column=3)
-        Label(f, text=macadj("MV off", "off"), bg="white").grid(row=oi, column=4)
-        Label(f, text=macadj("MV on", "on"), bg="white").grid(row=oi, column=5)
-        Label(f, text="Rte", bg="white").grid(row=oi, column=6)
-        Label(f, text="total", bg="white").grid(row=oi, column=7)
-        Label(f, text="OT", bg="white").grid(row=oi, column=8)
-        Label(f, text="route", bg="white").grid(row=oi, column=9)
-        Label(f, text="route", bg="white").grid(row=oi, column=10)
-        oi += 1
-        move_totals = []
-        ot_total = 0
-        ot_off_total = 0
-        for line in dl_nl:
-            match = "miss"
-            del move_totals[:]  # empty array of moves totals.
-            # if there is a ring to match the carrier/ date then printe
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        s_moves = each[5].split(",")  # converts str to array
-                        cc = 0
-                        for i in range(int(len(s_moves) / 3)):
-                            total = float(s_moves[cc + 1]) - float(s_moves[cc])  # calc off time off route
-                            cc += 3
-                            move_totals.append(total)
-                        off_route = 0.0
-                        if str(each[2]) != "":  # in case the 5200 time is blank
-                            time5200 = each[2]
-                        else:
-                            time5200 = 0
-                        if each[4] == "ns day":  # if the carrier worked on their ns day
-                            off_route = float(time5200)  # cal >off route
-                            ot = float(time5200)  # cal > ot
-                        else:  # if carrier did not work ns day
-                            ot = max(float(time5200) - float(8), 0)  # calculate overtime
-                            if ot <= float(ot_own_rt):
-                                ot = 0  # adjust sum for tolerance
-                            for mt in move_totals:  # cal off route work.
-                                off_route += float(mt)
-                        ot_total += ot
-                        ot_off_route = min(off_route, ot)  # calculate the ot off route
-                        if ot_off_route <= float(ot_tol):
-                            ot_off_route = 0  # adjust sum for tolerance
-                        ot_off_total += ot_off_route
-                        move_count = (int(len(s_moves) / 3))  # find the number of sets of moves
-                        # output to the gui
-                        Label(f, text=each[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=0)  # name
-                        if each[4] == "none":
-                            code = ""
-                        else:
-                            code = each[4]
-                        Label(f, text=code, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=1)  # code
-                        if each[2] == "" or each[2] == " ":  # handle empty 5200 strings
-                            t_hrs = ""
-                        else:
-                            t_hrs = format(float(each[2]), '.2f')
-                        Label(f, text=t_hrs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=2)  # 5200
-                        if each[3] == "" or each[3] == " ":
-                            rs = ""  # handle empty RS strings
-                        else:
-                            rs = format(float(each[3]), '.2f')
-                        Label(f, text=rs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=3)  # return to station
-                        count = 0
-                        if move_count == 0:  # if there are no moves, fill in with empty cells.
-                            for i in range(4, 8):
-                                if i < 7:
-                                    color = in_color
-                                else:
-                                    color = out_color
-                                if i == 6:
-                                    ml = 5
-                                else:
-                                    ml = 4
-                                Label(f, text="", justify=LEFT, width=macadj(6, ml),
-                                      relief=RIDGE, bg=color).grid(row=oi, column=i)
-                        for i in range(move_count):  # if there are moves, create + populate cells
-                            Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
-                                  relief=RIDGE, bg=in_color).grid(row=oi, column=4)  # move off
-                            count += 1
-                            Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
-                                  relief=RIDGE, bg=in_color).grid(row=oi, column=5)  # move on
-                            count += 1
-                            Label(f, text=s_moves[count], justify=LEFT, width=macadj(6, 5),
-                                  relief=RIDGE, bg=in_color).grid(row=oi, column=6)  # route
-                            count += 1
-                            Label(f, text=format(move_totals[i], '.2f'), justify=LEFT, width=macadj(6, 4),
-                                  relief=RIDGE, bg=out_color).grid(row=oi, column=7)  # move total
-                            if i < move_count - 1:
-                                oi += 1
-                        Label(f, text=format(ot, '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=8)  # overtime
-                        Label(f, text=format(off_route, '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=9)  # off route
-                        Label(f, text=format(ot_off_route, '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=10)  # OT off route
-                        oi += 1
-            #  if there is no match, then just printe the name.
-            if match == "miss":
-                Label(f, text=line[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                    .grid(row=oi, column=0)  # name
-                for i in range(10):
-                    if i < 6:
-                        color = in_color
-                    else:
-                        color = out_color
-                    if i == 5:
-                        ml = 5
-                    else:
-                        ml = 4
-                    Label(f, text="", width=macadj(6, ml), relief=RIDGE, bg=color) \
-                        .grid(row=oi, column=i + 1)  # generate blank cells
-                oi += 1
-        oi += 1
-        Label(f, text="", height=2, bg="white").grid(row=oi, column=0)
-        Label(f, text=format(ot_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=8)  # overtime
-        Label(f, text=format(ot_off_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=10)  # OT off route
-        oi += 2
-        # work assignment list xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        Label(f, text="work assignment list", justify=LEFT,
-              font=macadj('Helvetica 10 bold', 'Futura 16 bold'), bg="white") \
-            .grid(sticky=W, row=oi, column=0, columnspan=10)
-        oi += 1
-        Label(f, text=" moves", bg="gray90", width=macadj(24, 16), anchor="w") \
-            .grid(row=oi, column=4, columnspan=4)  # top of move total
-        Label(f, text="off", bg="white").grid(row=oi, column=9)  # top of off route
-        Label(f, text="ot off", bg="white").grid(row=oi, column=10)  # top of ot off route
-        oi += 1
-        Label(f, text="Carrier", bg="white").grid(row=oi, column=0, sticky=W)
-        Label(f, text="note", bg="white").grid(row=oi, column=1)
-        Label(f, text="5200", bg="white").grid(row=oi, column=2)
-        Label(f, text="RS", bg="white").grid(row=oi, column=3)
-        Label(f, text="off", bg="white").grid(row=oi, column=4)
-        Label(f, text="on", bg="white").grid(row=oi, column=5)
-        Label(f, text="Rte", bg="white").grid(row=oi, column=6)
-        Label(f, text="total", bg="white").grid(row=oi, column=7)
-        Label(f, text="OT", bg="white").grid(row=oi, column=8)
-        Label(f, text="route", bg="white").grid(row=oi, column=9)
-        Label(f, text="route", bg="white").grid(row=oi, column=10)
-        oi += 1
-        move_totals = []
-        ot_total = 0
-        ot_off_total = 0
-        for line in dl_wal:
-            match = "miss"
-            del move_totals[:]  # empty array of moves totals.
-            # if there is a ring to match the carrier/ date then printe
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        s_moves = each[5].split(",")
-                        cc = 0
-                        for i in range(int(len(s_moves) / 3)):
-                            total = float(s_moves[cc + 1]) - float(s_moves[cc])  # calc off time off route
-                            cc += 3
-                            move_totals.append(total)
-                        off_route = 0.0
-                        if str(each[2]) != "":  # in case the 5200 time is blank
-                            time5200 = each[2]
-                        else:
-                            time5200 = 0
-                        if each[4] == "ns day":  # if the carrier worked on their ns day
-                            off_route = float(time5200)  # cal >off route
-                            ot = float(time5200)  # cal > ot
-                        else:  # if carrier did not work ns day
-                            ot = max(float(time5200) - float(8), 0)  # calculate overtime
-                            for mt in move_totals:  # cal off route work.
-                                off_route += float(mt)
-                        ot_total += ot
-                        ot_off_route = min(off_route, ot)  # calculate the ot off route
-                        if ot_off_route <= float(ot_tol):
-                            ot_off_route = 0  # adjust sum for tolerance
-                        ot_off_total += ot_off_route
-                        move_count = (int(len(s_moves) / 3))  # find the number of sets of moves
-                        # output to the gui
-                        Label(f, text=each[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=0)  # name
-                        if each[4] == "none":
-                            code = ""
-                        else:
-                            code = each[4]
-                        Label(f, text=code, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=1)  # code
-                        if each[2] == "" or each[2] == " ":  # handle empty 5200 strings
-                            t_hrs = ""
-                        else:
-                            t_hrs = format(float(each[2]), '.2f')
-                        Label(f, text=t_hrs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=2)  # 5200
-                        if each[3] == "" or each[3] == " ":
-                            rs = ""  # handle empty RS strings
-                        else:
-                            rs = format(float(each[3]), '.2f')
-                        Label(f, text=rs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=3)  # return to station
-                        count = 0
-                        if move_count == 0:  # if there are no moves, fill in with empty cells.
-                            for i in range(4, 8):
-                                if i < 7:
-                                    color = in_color
-                                else:
-                                    color = out_color
-                                if i == 6:
-                                    ml = 5
-                                else:
-                                    ml = 4
-                                Label(f, text="", justify=LEFT, width=macadj(6, ml),
-                                      relief=RIDGE, bg=color).grid(row=oi, column=i)
-                        for i in range(move_count):  # if there are moves, create + populate cells
-                            Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
-                                  relief=RIDGE, bg=in_color).grid(row=oi, column=4)  # move off
-                            count += 1
-                            Label(f, text=format(float(s_moves[count]), '.2f'), justify=LEFT, width=macadj(6, 4),
-                                  relief=RIDGE, bg=in_color).grid(row=oi, column=5)  # move on
-                            count += 1
-                            Label(f, text=s_moves[count], justify=LEFT, width=macadj(6, 5),
-                                  relief=RIDGE, bg=in_color).grid(row=oi, column=6)  # route
-                            count += 1
-                            Label(f, text=format(move_totals[i], '.2f'), justify=LEFT, width=macadj(6, 4),
-                                  relief=RIDGE, bg=out_color).grid(row=oi, column=7)  # move total
-                            if i < move_count - 1:
-                                oi += 1
-                        Label(f, text=format(ot, '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=8)  # overtime
-                        Label(f, text=format(off_route, '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=9)  # off route
-                        Label(f, text=format(ot_off_route, '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=10)  # OT off route
-                        oi += 1
-            # if there is no match, then just printe the name.
-            if match == "miss":
-                Label(f, text=line[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                    .grid(row=oi, column=0)  # name
-                for i in range(10):
-                    if i < 6:
-                        color = in_color
-                    else:
-                        color = out_color
-                    if i == 5:
-                        ml = 5
-                    else:
-                        ml = 4
-                    Label(f, text="", width=macadj(6, ml), relief=RIDGE, bg=color) \
-                        .grid(row=oi, column=i + 1)  # generate blank cells
-                oi += 1
-        oi += 1
-        Label(f, text="", height=2, bg="white").grid(row=oi, column=0)
-        Label(f, text=format(ot_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=8)  # overtime
-        Label(f, text=format(ot_off_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=10)  # OT off route
-        oi += 2
-        #  overtime desired list xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        Label(f, text="overtime desired list", justify=LEFT,
-              font=macadj('Helvetica 10 bold', 'Futura 16 bold'), bg="white") \
-            .grid(sticky=W, row=oi, column=0, columnspan=10)
-        oi += 1
-        Label(f, text="Availability to:", bg="white") \
-            .grid(row=oi, column=4, columnspan=macadj(3, 3), sticky=W)
-        oi += 1
-        Label(f, text="Carrier", bg="white").grid(row=oi, column=0, sticky=W)
-        Label(f, text="note", bg="white").grid(row=oi, column=1)
-        Label(f, text="5200", bg="white").grid(row=oi, column=2)
-        Label(f, text="RS", bg="white").grid(row=oi, column=3)
-        Label(f, text="10", bg="white").grid(row=oi, column=4)
-        Label(f, text="12", bg="white").grid(row=oi, column=5)
-        oi += 1
-        aval_10_total = 0
-        aval_12_total = 0
-        for line in dl_otdl:
-            match = "miss"
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        # find 10 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg" or each[4] == "excused":
-                            aval_10 = 0.00
-                        elif each[4] == "no call":
-                            aval_10 = 10.00
-                        elif each[4] == "sick" or each[4] == "annual":
-                            aval_10 = 0.00
-                        elif each[2].strip() == "":
-                            aval_10 = 0.00
-                        else:
-                            aval_10 = max(10 - float(each[2]), 0)
-                        if aval_10 <= float(av_tol):
-                            aval_10 = 0  # adjust sum for tolerance
-                        aval_10_total += aval_10  # add to availability total
-                        # find 12 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg" or each[4] == "excused":
-                            aval_12 = 0.00
-                        elif each[4] == "no call":
-                            aval_12 = 12.00
-                        elif each[4] == "sick" or each[4] == "annual":
-                            aval_12 = 0.00
-                        elif each[2].strip() == "":
-                            aval_12 = 0.00
-                        else:
-                            aval_12 = max(12 - float(each[2]), 0)
-                        if aval_12 <= float(av_tol):
-                            aval_12 = 0  # adjust sum for tolerance
-                        aval_12_total += aval_12  # add to availability total
-                        # output to the gui
-                        Label(f, text=each[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=0)  # name
-                        if each[4] == "none":
-                            code = ""
-                        else:
-                            code = each[4]
-                        Label(f, text=code, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=1)  # code
-                        if each[2] == "" or each[2] == " ":  # handle empty 5200 strings
-                            t_hrs = ""
-                        else:
-                            t_hrs = format(float(each[2]), '.2f')
-                        Label(f, text=t_hrs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=2)  # 5200
-                        if each[3] == "" or each[3] == " ":  # handle empty RS strings
-                            rs = ""
-                        else:
-                            rs = format(float(each[3]), '.2f')
-                        Label(f, text=rs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=3)  # return to station
-                        Label(f, text=format(float(aval_10), '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=4)  # availability to 10
-                        Label(f, text=format(float(aval_12), '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=5)  # availability to 12
-                        oi += 1
-                    # if there is no match, then just printe the name.
-            if match == "miss":
-                Label(f, text=line[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                    .grid(row=oi, column=0)  # name
-                for i in range(5):
-                    if i < 3:
-                        color = in_color
-                    else:
-                        color = out_color
-                    Label(f, text="", width=macadj(6, 4), relief=RIDGE, bg=color) \
-                        .grid(row=oi, column=i + 1)  # generate blank cells
-                oi += 1
-        oi += 1
-        Label(f, text="", height=2, bg="white").grid(row=oi, column=0)
-        Label(f, text=format(aval_10_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=4)  # availability to 10 total
-        Label(f, text=format(aval_12_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=5)  # availability to 12 total
-        oi += 2
-        # auxiliary assistance xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        Label(f, text="auxiliary assistance", justify=LEFT,
-              font=macadj('Helvetica 10 bold', 'Futura 16 bold'), bg="white") \
-            .grid(sticky=W, row=oi, column=0, columnspan=10)
-        oi += 1
-        Label(f, text="Availability to:", bg="white").grid(row=oi, column=4, columnspan=macadj(3, 3), sticky=W)
-        oi += 1
-        Label(f, text="Carrier", bg="white").grid(row=oi, column=0, sticky=W)
-        Label(f, text="note", bg="white").grid(row=oi, column=1)
-        Label(f, text="5200", bg="white").grid(row=oi, column=2)
-        Label(f, text="RS", bg="white").grid(row=oi, column=3)
-        Label(f, text="10", bg="white").grid(row=oi, column=4)
-        Label(f, text="11.5", bg="white").grid(row=oi, column=5)
-        oi += 1
-        aval_10_total = 0  # initialize variables for availability totals.
-        aval_115_total = 0
-        for line in dl_aux:
-            match = "miss"
-            for each in r_rings:
-                if each[0] == str(day) and each[1] == line[1]:  # if the rings record is a match
-                    match = "hit"
-                    if match == "hit":
-                        # find 10 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg" or each[4] == "excused":
-                            aval_10 = 0.00
-                        elif each[4] == "no call":
-                            aval_10 = 10.00
-                        elif each[4] == "sick" or each[4] == "annual":
-                            aval_10 = 0.00
-                        elif each[2].strip() == "":
-                            aval_10 = 0.00
-                        else:
-                            aval_10 = max(10 - float(each[2]), 0)
-                        if aval_10 <= float(av_tol):
-                            aval_10 = 0  # adjust sum for tolerance
-                        aval_10_total += aval_10  # add to availability total
-                        # find 11.5 hour availability pending code status
-                        if each[4] == "light" or each[4] == "sch chg" or each[4] == "excused":
-                            aval_115 = 0.00
-                        elif each[4] == "no call":
-                            aval_115 = 12.00
-                        elif each[4] == "sick" or each[4] == "annual":
-                            aval_115 = 0.00
-                        elif each[2].strip() == "":
-                            aval_115 = 0.00
-                        else:
-                            aval_115 = max(12 - float(each[2]), 0)
-                        if aval_115 <= float(av_tol):
-                            aval_115 = 0  # adjust sum for tolerance
-                        aval_115_total += aval_115  # add to availability total
-                        # output to the gui
-                        Label(f, text=each[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=0)  # name
-                        if each[4] == "none":
-                            code = ""
-                        else:
-                            code = each[4]
-                        Label(f, text=code, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=1)  # code
-                        if each[2] == "" or each[2] == " ":  # handle empty 5200 strings
-                            t_hrs = ""
-                        else:
-                            t_hrs = format(float(each[2]), '.2f')
-                        Label(f, text=t_hrs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=2)  # 5200
-                        if each[3] == "" or each[3] == " ":  # handle empty RS strings
-                            rs = ""
-                        else:
-                            rs = format(float(each[3]), '.2f')
-                        Label(f, text=rs, justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=in_color) \
-                            .grid(row=oi, column=3)  # return to station
-                        Label(f, text=format(float(aval_10), '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=4)  # availability to 10
-                        Label(f, text=format(float(aval_115), '.2f'), justify=LEFT, width=macadj(6, 4),
-                              relief=RIDGE, bg=out_color) \
-                            .grid(row=oi, column=5)  # availability to 12
-                        oi += 1
-            # if there is no match, then just printe the name.
-            if match == "miss":
-                Label(f, text=line[1], anchor=W, width=macadj(21, 16), relief=RIDGE, bg=in_color) \
-                    .grid(row=oi, column=0)  # name
-                for i in range(5):
-                    if i < 3:
-                        color = in_color
-                    else:
-                        color = out_color
-                    Label(f, text="", width=macadj(6, 4), relief=RIDGE, bg=color) \
-                        .grid(row=oi, column=i + 1)  # generate blank cells
-            oi += 1
-        oi += 1
-        Label(f, text="", height=2, bg="white").grid(row=oi, column=0)
-        Label(f, text=format(aval_10_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=4)  # availability to 10 total
-        Label(f, text=format(aval_115_total, '.2f'), justify=LEFT, width=macadj(6, 4), relief=RIDGE, bg=out_color) \
-            .grid(row=oi, column=5)  # availability to 11.5 total
-        oi += 2
-        t += 1  # t increaments tabs
-    projvar.root.mainloop()
 
 
 def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, frame):

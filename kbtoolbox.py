@@ -161,13 +161,13 @@ class NewWindow:
     """
     creates a new window with a scrollbar and a frame for buttons on the bottom
     """
-    def __init__(self):
+    def __init__(self, title=""):
         self.root = Tk()
         size_x = projvar.root.winfo_width()
         size_y = projvar.root.winfo_height()
         position_x = projvar.root.winfo_x() + 20
         position_y = projvar.root.winfo_y() + 20
-        self.root.title("KLUSTERBOX")
+        self.root.title("KLUSTERBOX {}".format(title))
         titlebar_icon(self.root)  # place icon in titlebar
         self.root.geometry("%dx%d+%d+%d" % (size_x, size_y, position_x, position_y))
         self.topframe = None

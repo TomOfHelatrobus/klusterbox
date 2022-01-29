@@ -16,7 +16,7 @@ class EnterRings:
     """
 
     def __init__(self, carrier):
-        self.win = NewWindow()
+        self.win = NewWindow(title="Enter Clock Rings")
         self.frame = None
         self.origin_frame = None  # defunct
         self.carrier = carrier
