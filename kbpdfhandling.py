@@ -24,7 +24,8 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 
 
-def pdf_converter_pagecount(filepath):  # gives a page count for pdf_to_text
+def pdf_converter_pagecount(filepath):
+    """ gives a page count for pdf_to_text """
     file = open(filepath, 'rb')
     parser = PDFParser(file)
     document = PDFDocument(parser)
@@ -32,7 +33,8 @@ def pdf_converter_pagecount(filepath):  # gives a page count for pdf_to_text
     return page_count
 
 
-def pdf_to_text(frame, filepath):  # Called by pdf_converter() to read pdfs with pdfminer
+def pdf_to_text(frame, filepath):
+    """ Called by pdf_converter() to read pdfs with pdfminer """
     text = None
     codec = 'utf-8'
     password = ""
@@ -121,6 +123,7 @@ def pdf_to_text(frame, filepath):  # Called by pdf_converter() to read pdfs with
 
 
 def pdf_converter_reorder_founddays(found_days):
+    """ makes sure the days are in the proper order. """
     new_order = []
     correct_series = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     for cs in correct_series:
@@ -129,7 +132,8 @@ def pdf_converter_reorder_founddays(found_days):
     return new_order
 
 
-def pdf_converter_path_generator(file_path, add_on, extension):  # generate csv file name and path
+def pdf_converter_path_generator(file_path, add_on, extension):
+    """ generate csv file name and path """
     file_parts = file_path.split("/")  # split path into folders and file
     file_name_xten = file_parts[len(file_parts) - 1]  # get the file name from the end of the path
     file_name = file_name_xten[:-4]  # remove the file extension from the file name
@@ -141,12 +145,14 @@ def pdf_converter_path_generator(file_path, add_on, extension):  # generate csv 
 
 
 def pdf_converter_short_name(file_path):
+    """ get the last part of the file name"""
     file_parts = file_path.split("/")  # split path into folders and file
     file_name_xten = file_parts[len(file_parts) - 1]  # get the file name from the end of the path
     return file_name_xten
 
 
 def pdf_converter(frame):
+    """ I have to break this up at some point. """
     kbpc_rpt = None
     kbpc_rpt_file_path = None
     kbpc_raw_rpt_file_path = None

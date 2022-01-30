@@ -1,8 +1,8 @@
 """
 a klusterbox module: Klusterbox Reports Generator
 this module generates text files which provide the user with information, such as the routes of all carriers in the
-investigation range, or their ns days, etc. The Messenger class gives the location of the program and also provides the user information in the form of
-    message boxes.
+investigation range, or their ns days, etc. The Messenger class gives the location of the program and also provides
+the user information in the form of message boxes.
 """
 import projvar
 from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path
@@ -14,6 +14,9 @@ from datetime import datetime, timedelta
 
 
 class Reports:
+    """
+    generates reports
+    """
     def __init__(self, frame):
         self.frame = frame
         self.start_date = projvar.invran_date
@@ -24,25 +27,29 @@ class Reports:
         self.carrier_list = []
 
     def get_carrierlist(self):
+        """ gets the carrier list for the investigation range. """
         # get carrier list
         self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
     @staticmethod
-    def rpt_dt_limiter(date, first_date):  # return the first day if it is earlier than the date
+    def rpt_dt_limiter(date, first_date):
+        """ return the first day if it is earlier than the date """
         if date < first_date:
             return first_date
         else:
             return date
 
     @staticmethod
-    def rpt_ns_fixer(nsday_code):  # remove the day from the ns_code if fixed
+    def rpt_ns_fixer(nsday_code):
+        """ remove the day from the ns_code if fixed """
         if "fixed" in nsday_code:
             fix = nsday_code.split(":")
             return fix[0]
         else:
             return nsday_code
 
-    def rpt_carrier(self):  # Generate and display a report of carrier routes and nsday
+    def rpt_carrier(self):
+        """ Generate and display a report of carrier routes and nsday """
         self.get_carrierlist()
         ns_dict = NsDayDict.get_custom_nsday()  # get the ns day names from the dbase
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
@@ -87,7 +94,8 @@ class Reports:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
 
-    def rpt_carrier_route(self):  # Generate and display a report of carrier routes
+    def rpt_carrier_route(self):
+        """ Generate and display a report of carrier routes """
         self.get_carrierlist()
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "report_carrier_route" + "_" + stamp + ".txt"
@@ -128,7 +136,8 @@ class Reports:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
 
-    def rpt_carrier_nsday(self):  # Generate and display a report of carrier ns day
+    def rpt_carrier_nsday(self):
+        """ Generate and display a report of carrier ns day """
         self.get_carrierlist()
         ns_dict = NsDayDict.get_custom_nsday()  # get the ns day names from the dbase
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -172,6 +181,7 @@ class Reports:
             subprocess.call(["open", dir_path('report') + filename])
 
     def rpt_carrier_by_list(self):
+        """ generates a report which shows carriers by the list. """
         self.get_carrierlist()
         list_dict = {"nl": "No List", "wal": "Work Assignment List",
                      "otdl": "Overtime Desired List", "ptf": "Part Time Flexible", "aux": "Auxiliary Carrier"}
@@ -238,6 +248,7 @@ class Reports:
 
     @staticmethod
     def rpt_carrier_history(carrier):
+        """ generates a report showing all records from a specified carrier. """
         sql = "SELECT effective_date, list_status, ns_day, route_s, station" \
               " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % carrier
         results = inquire(sql)
@@ -325,7 +336,8 @@ class Messenger:
     def __init__(self, frame):
         self.frame = frame
 
-    def location_klusterbox(self):  # provides the location of the program
+    def location_klusterbox(self):
+        """ provides the location of the program """
         archive = ""
         dbase = None
         path = None
@@ -356,6 +368,7 @@ class Messenger:
                             parent=self.frame)
 
     def tolerance_info(self, switch):
+        """ generates a message box giving information on options/buttons. """
         text = ""
         if switch == "OT_own_route":
             text = "Sets the tolerance for no list carrier overtime\n" \

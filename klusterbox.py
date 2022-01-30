@@ -99,6 +99,7 @@ class RefusalWin:
         self.status_update = None
 
     def create(self, frame, carrier, startdate, enddate, station):
+        """ a master method for running other methods in proper order. """
         self.frame = frame
         self.carrier_name = carrier
         self.startdate = startdate
@@ -182,6 +183,7 @@ class RefusalWin:
         self.row += 1
 
     def build(self):
+        """ build labels and entry fields for refusals and refusal indicators. """
         column = self.start_column()
         for i in range(len(self.time_vars)):
             Label(self.win.body, width=macadj(2, 0), text="").grid(row=self.row, column=column)  # blank column
@@ -199,11 +201,13 @@ class RefusalWin:
                 self.row += 2  # and start a new row
 
     def build_bottom(self):
+        """ builds label for status update at the bottom of the screen. """
         for _ in range(3):
             self.row += 1
             Label(self.win.body, text="").grid(row=self.row)
 
     def buttons_frame(self):
+        """ builds buttons on the bottom of the screen. """
         button = Button(self.win.buttons)
         button.config(text="Submit", width=macadj(20, 21),
                       command=lambda: self.apply(True))  # apply and do no return to main screen
@@ -253,6 +257,7 @@ class RefusalWin:
             RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate, self.station)
 
     def checktypes(self, i):
+        """ checks the refusal indicator to make sure it is propely formatted. """
         type_var = self.type_vars[i].get().strip()
         time_var = self.time_vars[i].get().strip()
         if RefusalTypeChecker(type_var).is_empty():
@@ -275,6 +280,7 @@ class RefusalWin:
         return True
 
     def checktimes(self, i):
+        """ checks leave times for proper formatting. """
         time_var = self.time_vars[i].get().strip()
         if RingTimeChecker(time_var).check_for_zeros():  # if blank or zero, skip all other checks
             return True
@@ -337,6 +343,9 @@ class RefusalWin:
 
 
 class OtDistribution:
+    """
+    creates a screen to allow the user to configure overtime distribution settings and generate a spreadsheet.
+    """
     def __init__(self):
         self.frame = None
         self.win = None
@@ -365,7 +374,8 @@ class OtDistribution:
         self.list_option_array = []
         self.status_update = ""
 
-    def create(self, frame):  # called from the main screen to build ot preferences screen
+    def create(self, frame):
+        """ called from the main screen to build ot preferences screen """
         self.frame = frame
         self.win = MakeWindow()
         self.win.create(self.frame)
@@ -373,7 +383,8 @@ class OtDistribution:
         self.setup_listoption_stringvars()
         self.create_lower()
 
-    def re_create(self, frame):  # called from the ot preferences screen when invran is changed.
+    def re_create(self, frame):
+        """ called from the ot preferences screen when invran is changed. """
         self.row = 0  # re initialize vars
         self.startdate = datetime(1, 1, 1)
         self.enddate = datetime(1, 1, 1)
@@ -386,6 +397,7 @@ class OtDistribution:
         self.create_lower()
 
     def create_lower(self):
+        """ a continuation of create or re-create methods. """
         self.get_quarter()
         self.get_stations_list()
         self.get_dates()  # get startdate, enddate and station
@@ -397,13 +409,15 @@ class OtDistribution:
         self.buttons_frame()
         self.win.finish()
 
-    def get_stations_list(self):  # get a list of stations for station optionmenu
+    def get_stations_list(self):
+        """ get a list of stations for station optionmenu """
         self.stations_minus_outofstation = projvar.list_of_stations[:]
         self.stations_minus_outofstation.remove("out of station")
         if len(self.stations_minus_outofstation) == 0:
             self.stations_minus_outofstation.append("undefined")
 
-    def get_dates(self):  # find startdate, enddate and station
+    def get_dates(self):
+        """ find startdate, enddate and station """
         year = int(self.quartinvran_year.get())
         startdate = (datetime(year, 1, 1), datetime(year, 4, 1), datetime(year, 7, 1), datetime(year, 10, 1))
         enddate = (datetime(year, 3, 31), datetime(year, 6, 30), datetime(year, 9, 30), datetime(year, 12, 31))
@@ -415,6 +429,7 @@ class OtDistribution:
             self.station = self.quartinvran_station.get()
 
     def build_quarterinvran(self):
+        """ build widgets to change the investigation range. """
         Label(self.win.body, text="Overtime Distribution", font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=self.row, column=0, sticky="w", columnspan=20)
         self.row += 1
@@ -444,7 +459,8 @@ class OtDistribution:
         self.row += 1
         self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
 
-    def investigation_status(self):  # provide message on status of investigation range
+    def investigation_status(self):
+        """ provide message on status of investigation range """
         Label(self.win.body, text="").grid(row=self.row, column=0)
         self.row += 1
         Label(self.win.body, text="WEEKLY INVESTIGATION RANGE") \
@@ -467,6 +483,7 @@ class OtDistribution:
                 .grid(row=self.row, column=0, columnspan=8, sticky="w")
 
     def build_range(self):
+        """ build widgets for changing the range to weekly or quarterly """
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row, column=0)
         self.row += 1
@@ -481,6 +498,7 @@ class OtDistribution:
             .grid(row=self.row, column=1, sticky=W, columnspan=3)
 
     def build_list_options(self):
+        """ build widgets for selecting list statuses to include. """
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row, column=0)
         self.row += 1
@@ -503,14 +521,17 @@ class OtDistribution:
         self.row += 1
 
     def set_invran(self):
+        """ sets the investigation range. """
         if not self.check_quarterinvran():
             return
         self.re_create(self.win.topframe)
 
     def error_msg(self, text):
+        """ generates error messageboxes. """
         messagebox.showerror("OTDL Preferences", text, parent=self.win.topframe)
 
     def check_quarterinvran(self):
+        """ checks values for the investigation range date. """
         if not isint(self.quartinvran_year.get()):
             self.error_msg("The year must be a numeric.")
             return False
@@ -532,6 +553,7 @@ class OtDistribution:
         return True
 
     def startup_stringvars(self):
+        """ sets up the stringvars for the investigation range and station. """
         if projvar.invran_weekly_span is None:  # if no investigation range is set
             date = datetime.now()
             station = "undefined"
@@ -552,6 +574,7 @@ class OtDistribution:
         self.quartinvran_station.set(station)
 
     def re_startup_stringvars(self):
+        """ re initializes stringvars """
         self.quartinvran_year = StringVar(self.win.body)
         self.quartinvran_quarter = StringVar(self.win.body)
         self.quartinvran_station = StringVar(self.win.body)
@@ -560,6 +583,7 @@ class OtDistribution:
         self.quartinvran_station.set(self.new_quartinvran_station)
 
     def setup_listoption_stringvars(self):
+        """ sets up the intvars for the option menus. """
         self.list_option_otdl = IntVar(self.win.body)
         self.list_option_wal = IntVar(self.win.body)
         self.list_option_nl = IntVar(self.win.body)
@@ -571,10 +595,12 @@ class OtDistribution:
         self.list_option_aux.set(0)
         self.list_option_ptf.set(0)
 
-    def get_quarter(self):  # creates quarter in format "2021-3"
+    def get_quarter(self):
+        """ creates quarter in format "2021-3" """
         self.quarter = self.quartinvran_year.get() + "-" + self.quartinvran_quarter.get()
 
     def buttons_frame(self):
+        """ creates the buttons on the bottom of the screen. also creates a status update. """
         button = Button(self.win.buttons)
         button.config(text="Go Back", width=macadj(18, 12),
                       command=lambda: MainFrame().start(frame=self.win.topframe))
@@ -594,6 +620,7 @@ class OtDistribution:
         self.status_update.pack(side=LEFT)
 
     def set_listoption_array(self):
+        """ get the values from the option menus """
         self.list_option_array = []
         options = ("otdl", "wal", "nl", "aux", "ptf")
         strvars = (self.list_option_otdl.get(), self.list_option_wal.get(), self.list_option_nl.get(),
@@ -740,7 +767,8 @@ class OtEquitability:
         """ creates quarter in format "2021-3" """
         self.quarter = self.quartinvran_year.get() + "-" + self.quartinvran_quarter.get()
 
-    def get_stations_list(self):  # get a list of stations for station optionmenu
+    def get_stations_list(self):
+        """ get a list of stations for station optionmenu """
         self.stations_minus_outofstation = projvar.list_of_stations[:]
         self.stations_minus_outofstation.remove("out of station")
         if len(self.stations_minus_outofstation) == 0:
@@ -1528,7 +1556,7 @@ class SpeedSheetCheck:
         self.ns_xlate = ns_obj.get()  # get ns day dictionary
         self.ns_true_rev = ns_obj.get_rev(True)  # get ns day dictionary for rotating days
         self.ns_false_rev = ns_obj.get_rev(False)  # get ns day dictionary for fixed days
-        self.ns_custom = ns_obj.custom_config()  # shows custom ns day configurations for  printout / reports
+        self.ns_custom = ns_obj.custom_config()  # shows custom ns day configurations for reports
 
     def set_station(self):
         """ gets the station from the speedsheet. """
@@ -1889,6 +1917,7 @@ def database_rings_report(frame, station):
 
 
 def database_delete_carriers_apply(frame, station, car_vars):
+    """ delete carriers from the database. """
     if station.get() == "Select a station":
         station_string = "x"
     else:
@@ -1939,6 +1968,7 @@ def database_delete_carriers_apply(frame, station, car_vars):
 
 
 def database_chg_station(frame, station):
+    """ delete the carrier in a station. """
     if station.get() == "Select a station":
         station_string = "x"
     else:
@@ -1947,6 +1977,7 @@ def database_chg_station(frame, station):
 
 
 def database_delete_carriers(frame, station):
+    """ build a screen to delete carriers. """
     wd = front_window(frame)
     Label(wd[3], text="Delete Carriers", font=macadj("bold", "Helvetica 18")) \
         .grid(row=0, column=0, sticky="w")
@@ -2016,6 +2047,7 @@ def database_delete_carriers(frame, station):
 
 
 def database_delete_records(masterframe, frame, time_range, date, end_date, table, stations):
+    """ deletes records from the database. """
     db_date = datetime(1, 1, 1)
     db_end_date = datetime(1, 1, 1)
     table_array = []
@@ -2291,7 +2323,8 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
     database_maintenance(masterframe)
 
 
-def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
+def database_reset(masterframe, frame):
+    """ deletes the database and rebuilds it. """
     if not messagebox.askokcancel("Delete Database",
                                   "This action will delete your database and all information inside it."
                                   "This includes carrier information, rings information, settings as "
@@ -2322,7 +2355,8 @@ def database_reset(masterframe, frame):  # deletes the database and rebuilds it.
     StartUp().start()
 
 
-def database_clean_carriers():  # delete carrier records where station no longer exist
+def database_clean_carriers():
+    """ delete carrier records where station no longer exist """
     sql = "SELECT DISTINCT station FROM carriers"
     all_stations = inquire(sql)
     sql = "SELECT station FROM stations"
@@ -2357,6 +2391,7 @@ def database_clean_carriers():  # delete carrier records where station no longer
 
 
 def database_clean_rings():
+    """ cleans the database from carriers who are no longer in the carriers table, but remain in the rings table. """
     sql = "SELECT DISTINCT carrier_name FROM carriers"
     carriers_results = inquire(sql)
     sql = "SELECT DISTINCT carrier_name FROM rings3"
@@ -2396,6 +2431,7 @@ def database_clean_rings():
 
 
 def database_maintenance(frame):
+    """ a screen for controlling database maintenance. """
     wd = front_window(frame)
     r = 0
     Label(wd[3], text="Database Maintenance", font=macadj("bold", "Helvetica 18"), anchor="w") \
@@ -2682,10 +2718,12 @@ def database_maintenance(frame):
 
 
 class RptWin:
+    """ report window. generatess the carrier status history screen. """
     def __init__(self, frame):
         self.frame = frame
 
     def rpt_chg_station(self, frame, station):
+        """ gets the station """
         self.frame = frame
         if station.get() == "Select a station":
             station_string = "x"
@@ -2694,6 +2732,7 @@ class RptWin:
         self.rpt_find_carriers(station_string)
 
     def rpt_find_carriers(self, station):
+        """ fills the screen with widgets. """
         win = MakeWindow()
         win.create(self.frame)
         Label(win.body, text="Carriers Status History", font=macadj("bold", "Helvetica 18")) \
@@ -2764,7 +2803,8 @@ class RptWin:
         win.finish()
 
 
-def clean_rings3_table():  # database maintenance
+def clean_rings3_table():
+    """ database maintenance """
     sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
     result = inquire(sql)
     types = ""
@@ -2784,7 +2824,7 @@ def clean_rings3_table():  # database maintenance
 
 
 def ns_config_apply(frame, text_array, color_array):
-    # set ns configurations from Non-Scheduled Day Configurations page
+    """ set ns configurations from Non-Scheduled Day Configurations page """
     for t in text_array:
         if len(t.get()) > 6:
             messagebox.showerror("Non_Scheduled Day Configuration",
@@ -2805,7 +2845,8 @@ def ns_config_apply(frame, text_array, color_array):
     ns_config(frame)
 
 
-def ns_config_reset(frame):  # reset ns day configurations from Non-Scheduled Day Configurations page
+def ns_config_reset(frame):
+    """ reset ns day configurations from Non-Scheduled Day Configurations page """
     fill = ("gold", "navy", "forest green", "saddle brown", "red3", "gray10")
     color = ("yellow", "blue", "green", "brown", "red", "black")
     for i in range(6):
@@ -2816,7 +2857,8 @@ def ns_config_reset(frame):  # reset ns day configurations from Non-Scheduled Da
     ns_config(frame)
 
 
-def ns_config(frame):  # generate Non-Scheduled Day Configurations page to configure ns day settings
+def ns_config(frame):
+    """ generate Non-Scheduled Day Configurations page to configure ns day settings """
     if projvar.invran_day is None:
         messagebox.showerror("Non-Scheduled Day Configurations",
                              "You must set the Investigation Range before changing the NS Day Configurations.",
@@ -2920,6 +2962,7 @@ def ns_config(frame):  # generate Non-Scheduled Day Configurations page to confi
 
 
 def informalc_grvchange(frame, passed_result, old_num, new_num):
+    """ check grv number and input it into the informalc_grv table. """
     l_passed_result = [list(x) for x in passed_result]  # chg tuple of tuples to list of lists
     if messagebox.askokcancel("Grievance Number Change",
                               "This will change the grievance number from {} to {} in all "
@@ -2967,6 +3010,7 @@ def informalc_grvchange(frame, passed_result, old_num, new_num):
 
 def informalc_edit_apply(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, docs,
                          description, lvl):
+    """ edit informalc peticulars. """
     check = informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats_number, description)
     if check == "fail":
         return
@@ -3004,6 +3048,7 @@ def informalc_edit_apply(frame, grv_no, incident_start, incident_end, date_signe
 
 
 def informalc_delete(frame, grv_no):
+    """ deletes a record and associated records for a grievance. """
     check = messagebox.askokcancel("Delete Grievance",
                                    "Are you sure you want to delete his grievance and all the "
                                    "data associated with it?",
@@ -3017,6 +3062,7 @@ def informalc_delete(frame, grv_no):
 
 
 def informalc_edit(frame, result, grv_num, msg):
+    """ screen for editing informalc grievances. """
     wd = front_window(frame)
     Label(wd[3], text="Informal C: Edit Grievance", font=macadj("bold", "Helvetica 18")).grid(row=0, columnspan=2,
                                                                                               sticky="w")
@@ -3125,6 +3171,7 @@ def informalc_edit(frame, result, grv_num, msg):
 
 
 def informalc_check_grv(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, description):
+    """ checks the grievance number. """
     if station.get() == "Select a Station":
         messagebox.showerror("Invalid Data Entry",
                              "You must select a station.",
@@ -3156,6 +3203,7 @@ def informalc_check_grv(frame, grv_no, incident_start, incident_end, date_signed
 
 
 def informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats_number, description):
+    """ checks the information for informalc grievances. """
     global try_absorber  # uses local variable in try statement to avoid error
     dates = [incident_start, incident_end, date_signed]
     date_ids = ("starting incident date", "ending incident date", "date signed")
@@ -3235,6 +3283,7 @@ def informalc_check_grv_2(frame, incident_start, incident_end, date_signed, gats
 
 def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number, docs,
                         description, lvl):
+    """ applies changes to settlement information. """
     check = informalc_check_grv(frame, grv_no, incident_start, incident_end, date_signed, station, gats_number,
                                 description)
     if check == "pass":
@@ -3282,6 +3331,7 @@ def informalc_new_apply(frame, grv_no, incident_start, incident_end, date_signed
 
 
 def informalc_gen_clist(start, end, station):
+    """ generates carrier list for informal c. """
     rec = None
     end += timedelta(weeks=52)
     sql = "SELECT * FROM carriers WHERE effective_date<='%s'and station='%s' " \
@@ -3315,6 +3365,7 @@ def informalc_gen_clist(start, end, station):
 
 
 def informalc_addnames(grv_no, c_list, listbox):
+    """ inserts names into informal c awards table. """
     for index in listbox:
         sql = "INSERT INTO informalc_awards (grv_no,carrier_name,hours,rate,amount) VALUES('%s','%s','%s','%s','%s')" \
               % (grv_no, c_list[int(index)], '', '', '')
@@ -3322,6 +3373,7 @@ def informalc_addnames(grv_no, c_list, listbox):
 
 
 def informalc_root(passed_result, grv_no):
+    """ creates a companion window for selecting carrier names. """
     start = None
     end = None
     station = None
@@ -3368,12 +3420,14 @@ def informalc_root(passed_result, grv_no):
 
 
 def informalc_deletename(frame, passed_result, grv_no, ids):
+    """ deletes records from informal c awards. """
     sql = "DELETE FROM informalc_awards WHERE rowid='%s'" % ids
     commit(sql)
     informalc_addaward2(frame, passed_result, grv_no)
 
 
 def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_name, var_hours, var_rate, var_amount):
+    """ checks and adds records to the informal c add awards table. """
     pb_label = Label(buttons, text="Updating Changes: ")  # make label for progress bar
     pb_label.grid(row=0, column=2)
     pb = ttk.Progressbar(buttons, length=200, mode="determinate")  # create progress bar
@@ -3522,6 +3576,7 @@ def informalc_apply_addaward(frame, buttons, passed_result, grv_no, var_id, var_
 
 
 def informalc_addaward2(frame, passed_result, grv_no):
+    """ creates a screen which allows a user to adds the awards to a settlement. """
     global informalc_addframe
     wd = front_window(frame)
     informalc_addframe = wd[0]
@@ -3578,6 +3633,7 @@ def informalc_addaward2(frame, passed_result, grv_no):
 
 
 def informalc_call_grvlist_result(frame, passed_result):
+    """ exit out fo the Add Award screen. Destroy the companion window if it still exist. """
     try:
         informalc_newroot.destroy()
     except TclError:
@@ -3586,11 +3642,13 @@ def informalc_call_grvlist_result(frame, passed_result):
 
 
 def informalc_addaward(frame, passed_result, grv_no):
+    """ adds carrier to the add award screen from the companion screen. """
     informalc_root(passed_result, grv_no)
     informalc_addaward2(frame, passed_result, grv_no)
 
 
 def informalc_rptgrvsum(frame, result):
+    """ generates a text report for grievance summary. """
     if len(result) > 0:
         result = list(result)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3682,6 +3740,7 @@ def informalc_rptgrvsum(frame, result):
 
 
 def informalc_bycarriers(frame, result):
+    """ generates a text report for settlements by carriers. """
     unique_carrier = informalc_uniquecarrier(result)
     unique_grv = []  # get a list of all grv numbers in search range
     for grv in result:
@@ -3756,6 +3815,7 @@ def informalc_bycarriers(frame, result):
 
 
 def informalc_apply_bycarrier(frame, result, names, cursor):
+    """ generates a text report for a specified carrier. """
     if len(cursor) == 0:
         return
     unique_grv = []  # get a list of all grv numbers in search range
@@ -3830,6 +3890,7 @@ def informalc_apply_bycarrier(frame, result, names, cursor):
 
 
 def informalc_bycarrier(frame, result):
+    """ builds a screen that allows a user to select a carrier and generate a text report of settlements. """
     unique_carrier = informalc_uniquecarrier(result)
     wd = front_window(frame)
     Label(wd[3], text="Informal C: Select Carrier", font=macadj("bold", "Helvetica 18")).pack(anchor="w")
@@ -3851,6 +3912,7 @@ def informalc_bycarrier(frame, result):
 
 
 def informalc_uniquecarrier(result):
+    """ gets the awards for a carrier from the informalc awards table. """
     unique_grv = []
     for grv in result:
         if grv[0] not in unique_grv:
@@ -3867,6 +3929,7 @@ def informalc_uniquecarrier(result):
 
 
 def informalc_rptbygrv(frame, grv_info):
+    """ generates a text report for a specific grievance number. """
     grv_info = list(grv_info)  # correct for legacy problem of NULL Settlement Levels
     if grv_info[8] is None:
         grv_info[8] = "unknown"
@@ -3945,6 +4008,7 @@ def informalc_rptbygrv(frame, grv_info):
 
 
 def informalc_grvlist_setsum(result):
+    """ generates text report for settlement list summary showing all grievance settlements. """
     if len(result) > 0:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
@@ -4009,6 +4073,7 @@ def informalc_grvlist_setsum(result):
 
 
 def informalc_grvlist_result(frame, result):
+    """ shows the results for the specified range."""
     wd = front_window(frame)
     Label(wd[3], text="Informal C: Search Results", font=macadj("bold", "Helvetica 18")) \
         .grid(row=0, column=0, columnspan=4, sticky="w")
@@ -4062,6 +4127,7 @@ def informalc_grvlist_result(frame, result):
 
 
 def informalc_date_checker(frame, date, typee):
+    """ checks the date """
     global try_absorber  # uses local variable in try statement to avoid error
     d = date.get().split("/")
     if len(d) != 3:
@@ -4115,6 +4181,8 @@ def informalc_grvlist_apply(frame,
                             station, set_lvl, level,
                             gats, have_gats,
                             docs, have_docs):
+    """ applies changes to the grievance list after a check. """
+
     conditions = []
     if incident_date.get() == "yes":
         check = informalc_date_checker(frame, incident_start, "starting incident date")
@@ -4187,6 +4255,7 @@ def informalc_grvlist_apply(frame,
 
 
 def informalc_grvlist(frame):
+    """ builds page for searching grievance settlements. """
     wd = front_window(frame)
     Label(wd[3], text="Informal C: Settlement Search Criteria", font=macadj("bold", "Helvetica 18")) \
         .grid(row=0, columnspan=6, sticky="w")
@@ -4291,6 +4360,7 @@ def informalc_grvlist(frame):
 
 
 def informalc_new(frame, msg):
+    """ screen for entering in new settlements. """
     wd = front_window(frame)  # F,S,C,FF,buttons
     Label(wd[3], text="New Settlement", font=macadj("bold", "Helvetica 18")).grid(row=0, column=0, sticky="w")
     Label(wd[3], text="").grid(row=1, column=0, sticky="w")
@@ -4375,6 +4445,7 @@ def informalc_new(frame, msg):
 
 
 def informalc_poe_apply_search(frame, year, station, backdate):
+    """ pay out entry - search the args for acceptable values. """
     if year.get().strip() == "":
         messagebox.showerror("Data Entry Error",
                              "You must enter a year.",
@@ -4413,6 +4484,7 @@ def informalc_poe_apply_search(frame, year, station, backdate):
 
 
 def informalc_poe_apply_add(frame, name, year, buttons):
+    """ payout entry - apply changes """
     if name == "none":
         messagebox.showerror("Data Entry Error",
                              "You must select a name.",
@@ -4567,6 +4639,7 @@ def informalc_poe_apply_add(frame, name, year, buttons):
 
 
 def informalc_poe_add_plus(frame, payouts):
+    """ pay out entry """
     if len(payouts) == 0:
         poe_add_pay_periods.append(StringVar(frame))  # set up array of stringvars for hours,rate,amount
         poe_add_hours.append(StringVar(frame))
@@ -4601,6 +4674,7 @@ def informalc_poe_add_plus(frame, payouts):
 
 
 def informalc_poe_add(frame, array, selection, year, msg):
+    """ pay out entry - add payout. """
     empty_array = []
     global poe_add_pay_periods
     global poe_add_hours
@@ -4647,6 +4721,7 @@ def informalc_poe_add(frame, array, selection, year, msg):
 
 
 def informalc_poe_goback(frame):
+    """ pay out entry - go back and destroy the companion window if it still exist. """
     try:
         informalc_poe_lbox.destroy()
     except TclError:
@@ -4655,6 +4730,7 @@ def informalc_poe_goback(frame):
 
 
 def informalc_poe_listbox(dt_year, station, dt_start, year):
+    """ pay out entry - create a listbox which allows the user to add carriers. """
     global informalc_poe_lbox  # initialize the global
     poe_root = Tk()
     informalc_poe_lbox = poe_root  # set the global
@@ -4689,6 +4765,7 @@ def informalc_poe_listbox(dt_year, station, dt_start, year):
 
 
 def informalc_poe_search(frame):
+    """ creates a screen that allows user to update payouts for carriers. """
     wd = front_window(frame)
     the_year = StringVar(wd[0])
     the_station = StringVar(wd[0])
@@ -4722,13 +4799,15 @@ def informalc_poe_search(frame):
     rear_window(wd)
 
 
-def informalc_date_converter(date):  # be sure to run informalc date checker before using this
+def informalc_date_converter(date):
+    """ be sure to run informalc date checker before using this """
     sd = date.get().split("/")
     dt = datetime(int(sd[2]), int(sd[0]), int(sd[1]))
     return dt
 
 
 def informalc_por_all(frame, afterdate, beforedate, station, backdate):
+    """ pay out report. generates text report for all. """
     check = informalc_date_checker(frame, afterdate, "After Date")
     if check == "fail":
         return
@@ -4817,6 +4896,7 @@ def informalc_por_all(frame, afterdate, beforedate, station, backdate):
 
 
 def informalc_por(frame):
+    """ pay out report - allows user to conduct a search. """
     wd = front_window(frame)
     afterdate = StringVar(wd[0])
     beforedate = StringVar(wd[0])
@@ -4858,6 +4938,7 @@ def informalc_por(frame):
 
 
 def informalc(frame):
+    """ the main screen for informal c. """
     if os.path.isdir(dir_path_check('infc_grv')):  # clear contents of temp folder
         shutil.rmtree(dir_path_check('infc_grv'))
     sql = 'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,' \
@@ -4898,6 +4979,7 @@ def informalc(frame):
 
 
 def pdf_converter_settings_apply(frame, error, raw, txt):
+    """ updates the settings for the pdf converter. """
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (error.get(), "pdf_error_rpt")
     commit(sql)
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (raw.get(), "pdf_raw_rpt")
@@ -4908,6 +4990,7 @@ def pdf_converter_settings_apply(frame, error, raw, txt):
 
 
 def pdf_converter_settings(frame):
+    """ a screen for updating the pdf converter settings. """
     sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
     result = inquire(sql)
     wd = front_window(frame)
@@ -4962,6 +5045,9 @@ def pdf_converter_settings(frame):
 
 
 class PdfSplitter:
+    """
+    The PDF Splitter. Builds a screen that allows the user to split a PDF.
+    """
     def __init__(self):
         self.subject_path = None
         self.frame = None
@@ -4970,20 +5056,22 @@ class PdfSplitter:
         self.firstpage = None
         self.lastpage = None
 
-    def get_file_path(self):  # Created for pdf splitter - gets a pdf file
+    def get_file_path(self):
+        """ Created for pdf splitter - gets a pdf file """
         path = dir_filedialog()  # get the pdf file
         file_path = filedialog.askopenfilename(initialdir=path,
                                                filetypes=[("PDF files", "*.pdf")], title="Select PDF")
         self.subject_path.set(file_path)
 
-    def get_new_path(self):  # Created for pdf splitter - creates/overwrites a pdf file
+    def get_new_path(self):
+        """ Created for pdf splitter - creates/overwrites a pdf file """
         path = dir_filedialog()
         save_filename = filedialog.asksaveasfilename(initialdir=path,
                                                      filetypes=[("PDF files", "*.pdf")], title="Overwrite/Create PDF")
         self.new_path.set(save_filename)
 
-    # check for empty fields / return if there are any errors
     def pdf_splitter_apply(self):
+        """ check for empty fields / return if there are any errors """
         subject_path = self.subject_path.get().strip()
         firstpage = self.firstpage.get()
         lastpage = self.lastpage.get()
@@ -5036,7 +5124,8 @@ class PdfSplitter:
                                  "Pro DC",
                                  parent=self.win.topframe)
 
-    def run(self, frame):  # PDF Splitter
+    def run(self, frame):
+        """ PDF Splitter - builds a screen to so the user can split pdfs. """
         self.win = MakeWindow()
         self.win.create(frame)
         Label(self.win.body, text="PDF Splitter", font=macadj("bold", "Helvetica 18"), anchor="w") \
@@ -5081,6 +5170,7 @@ class PdfSplitter:
 
 
 def station_rec_del(frame, tacs, kb):
+    """ delete a record from the station index. """
     sql = "DELETE FROM station_index WHERE tacs_station = '%s' and kb_station='%s'" % (tacs, kb)
     commit(sql)
     frame.destroy()
@@ -5088,12 +5178,14 @@ def station_rec_del(frame, tacs, kb):
 
 
 def station_index_rename_apply(frame, tacs, newname):
+    """ rename a station in the station index. """
     sql = "UPDATE station_index SET kb_station='%s' WHERE tacs_station='%s'" % (newname.get(), tacs)
     commit(sql)
     station_index_mgmt(frame)
 
 
 def station_index_rename(self, frame, tacs, kb, newname, button, all_stations):
+    """ creates an option menu that allows the user to rename a station in the station index. """
     button.destroy()
     Button(frame, text=" ", width=6).grid(row=0, column=2)
     if len(all_stations) > 0:
@@ -5110,12 +5202,14 @@ def station_index_rename(self, frame, tacs, kb, newname, button, all_stations):
 
 
 def stationindexer_del_all():
+    """ deletes everything from the station index. """
     sql = "DELETE FROM station_index"
     commit(sql)
     station_index_mgmt("none")
 
 
 def station_index_mgmt(frame):
+    """ creates a screen that allows the user to adjust the station index. """
     wd = front_window(frame)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
     g = 0
     Label(wd[3], text="Station Index Management", font=macadj("bold", "Helvetica 18")) \
@@ -5180,6 +5274,7 @@ def station_index_mgmt(frame):
 
 
 def apply_nameindexer_list(frame, x):
+    """ deletes a carrier/record from the name index. """
     sql = "DELETE FROM name_index WHERE emp_id = '%s'" % x
     commit(sql)
     frame.destroy()
@@ -5187,6 +5282,7 @@ def apply_nameindexer_list(frame, x):
 
 
 def del_all_nameindexer(frame):
+    """ deletes everything from the name index. """
     sql = "DELETE FROM name_index"
     commit(sql)
     frame.destroy()
@@ -5194,6 +5290,7 @@ def del_all_nameindexer(frame):
 
 
 def name_index_screen():
+    """ creates a screen which shows all records in the name index. """
     sql = "SELECT * FROM name_index ORDER BY tacs_name"
     results = inquire(sql)
     wd = front_window("none")  # get window objects
@@ -5282,6 +5379,7 @@ class AutoDataEntry:
             self.kb_stations = []  # array of all stations in stations table
 
         def run(self, frame):
+            """ a master method for running methods in proper order. """
             self.frame = frame
             if not self.get_path():  # get the path to the employee everything report
                 return  # return if invalid response
@@ -5833,8 +5931,8 @@ class AutoDataEntry:
             for i in range(count - 1):
                 widget[i].set(options[choice])
             
-    class AutoIndexer3:  # Carrier pairing screen -
-        # allows users to match new carrier entries to carriers already in klusterbox.
+    class AutoIndexer3:
+        """ Carrier pairing screen - allows users to match new carrier entries to carriers already in klusterbox."""
         def __init__(self, parent):
             self.parent = parent
             self.frame = None
@@ -6848,6 +6946,8 @@ class AutoDataEntry:
             self.rs = ""  # return to station time
             self.lv_type = ""  # 5200 leave type
             self.lv_time = ""  # 5200 leave time
+            self.bt = ""  # begin tour
+            self.et = ""   # end tour
             self.current_array = []  # product of skim weekly - formatted data to dbase input
             # variables for build_protoarray()
             self.daily_rings = []
@@ -6859,13 +6959,15 @@ class AutoDataEntry:
             self.day_hr_58 = 0.0  # holiday leave
             self.day_hr_62 = 0.0  # guaranteed time
             self.day_hr_86 = 0.0  # other paid leave
-            self.day_rs = 0
+            self.day_rs = 0  # the return to station time for the proto array
             self.day_code = ""
             self.day_moves = []
             self.day_leave_type = []
             self.day_leave_time = []
             self.day_final_leave_type = ""
             self.day_final_leave_time = 0.0
+            self.day_bt = 0  # the begin tour time for the proto array
+            self.day_et = 0  # the end tour time for the proto array
             self.day_dayofweek = None
             # variables for fix carrier lines
             self.new_order = []
@@ -6968,7 +7070,6 @@ class AutoDataEntry:
                 result = self.skim_check_nameindex()  # get the carriers employee id number
                 if result:  # if there is an employee id number in the name index, then continue
                     if self.skim_check_carriers(result):  # get the kb name which correlates to the emp id
-                        # self.skim_detect_nsday()  # find if the day is an ns day
                         self.skim_get_routes()  # create an array of the carrier's routes for self.routes
                         for i in range(len(self.weekly_protoarray)):  # loop for each day of carrier information
                             self.daily_protoarray = self.weekly_protoarray[i]
@@ -6980,6 +7081,8 @@ class AutoDataEntry:
                             if self.skim_get_hour52():
                                 self.skim_returntostation()
                                 self.skim_get_leavetime()
+                                self.skim_begintour()
+                                self.skim_endtour()
                                 self.skim_current_array()
                                 self.skim_input_update()
 
@@ -7023,7 +7126,7 @@ class AutoDataEntry:
         def skim_input_rings(self):
             """
             Takes The carrier lines from enter rings method and creates a daily protoarrays for the
-            investigation range.
+            investigation range then compiles them in a weekly protoarray.
             """
             rings = []
             good_day = "no"
@@ -7046,7 +7149,7 @@ class AutoDataEntry:
                     if line[18] not in self.days:
                         rings.append(line)
             to_input = self.build_protoarray(rings)  # call function for last line  # returns the protoarray for one day
-            self.weekly_protoarray.append(to_input)  # add the proto array for an array
+            self.weekly_protoarray.append(to_input)  # add the daily proto array to the weekly proto array
 
         def skim_check_nameindex(self):
             """ check if the carrier is in the name index """
@@ -7155,6 +7258,22 @@ class AutoDataEntry:
                 self.rs = ""
             else:
                 self.rs = Convert(rs).hundredths()
+
+        def skim_begintour(self):
+            """ assign the begin tour variable. """
+            bt = self.daily_protoarray[8]
+            if RingTimeChecker(bt).check_for_zeros():  # adjust bt to version 4 record standards
+                self.bt = ""
+            else:
+                self.bt = Convert(bt).hundredths()
+
+        def skim_endtour(self):
+            """ assign the end tour variable. """
+            et = self.daily_protoarray[9]
+            if RingTimeChecker(et).check_for_zeros():  # adjust et to version 4 record standards
+                self.et = ""
+            else:
+                self.et = Convert(et).hundredths()
               
         def skim_get_leavetime(self):
             """ check and handle leave time. """
@@ -7168,7 +7287,7 @@ class AutoDataEntry:
         def skim_current_array(self):
             """ build the current array """
             self.current_array = [str(self.day_dict[self.daily_protoarray[0]]), self.kb_name, self.hr_52, self.rs,
-                                  self.c_code, self.mv_str, self.lv_type, self.lv_time]
+                                  self.c_code, self.mv_str, self.lv_type, self.lv_time, self.bt, self.et]
             
         def skim_input_update(self):    
             """ check rings table to see if record already exist."""
@@ -7177,24 +7296,24 @@ class AutoDataEntry:
             result = inquire(sql)
             if len(result) == 0:
                 sql = "INSERT INTO rings3 (rings_date, carrier_name, total, " \
-                      "rs, code, moves, leave_type,leave_time) " \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
+                      "rs, code, moves, leave_type,leave_time, bt, et) " \
+                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" % \
                       (self.current_array[0], self.current_array[1], self.current_array[2], self.current_array[3],
-                       self.current_array[4],
-                       self.current_array[5], self.current_array[6], self.current_array[7])
+                       self.current_array[4], self.current_array[5], self.current_array[6], self.current_array[7],
+                       self.current_array[8], self.current_array[9])
                 commit(sql)
             else:
-                sql = "UPDATE rings3 SET total='%s',rs='%s' ,code='%s',moves='%s'," \
-                      "leave_type ='%s',leave_time = '%s'" \
-                      "WHERE rings_date = '%s' and carrier_name = '%s'" \
-                      % (
+                sql = "UPDATE rings3 SET total='%s', rs='%s' ,code='%s',moves='%s'," \
+                      "leave_type ='%s',leave_time = '%s', bt='%s', et='%s' " \
+                      "WHERE rings_date = '%s' and carrier_name = '%s'" % (
                           self.current_array[2], self.current_array[3], self.current_array[4], self.current_array[5],
-                          self.current_array[6], self.current_array[7],
+                          self.current_array[6], self.current_array[7], self.current_array[8], self.current_array[9],
                           self.current_array[0], self.current_array[1])
                 commit(sql)
 
         def build_protoarray(self, rings):
-            """ build the protoarray. """
+            """ build the protoarray. One days worth of rings are sent in rings arg an put into daily rings.
+            """
             self.daily_rings = rings
             self.skim_daily_initialize()  # zero out all daily values for each iteration
             if len(self.daily_rings) > 0:
@@ -7214,8 +7333,13 @@ class AutoDataEntry:
                         self.skim_get_returntostation()  # get return to station time and fill day_rs variable
                     if self.daily_line[19] in self.mv_codes:  # get the MOVES
                         self.skim_get_moves()  # build an array of moves for the day
+                    if self.daily_line[19] == "BT":  # get the begin tour time
+                        self.skim_get_begintour()  # define self.day_bt
+                    if self.daily_line[19] == "ET":  # get the end tour time
+                        self.skim_get_endtour()  # define self.day_et
                 proto_array = [self.day_dayofweek, self.day_name, self.day_hr_52, self.day_rs, self.day_code,
-                               self.day_moves, self.day_final_leave_type, self.day_final_leave_time]
+                               self.day_moves, self.day_final_leave_type, self.day_final_leave_time,
+                               self.day_bt, self.day_et]
                 return proto_array  # send it back to auto weekly analysis()
 
         def skim_daily_initialize(self):
@@ -7233,6 +7357,8 @@ class AutoDataEntry:
             self.day_leave_time = []
             self.day_final_leave_type = ""
             self.day_final_leave_time = 0.0
+            self.day_bt = 0
+            self.day_et = 0
             self.day_dayofweek = None
 
         def skim_name(self):
@@ -7310,8 +7436,17 @@ class AutoDataEntry:
             mv_data = [self.daily_line[19], self.daily_line[21], self.daily_line[23][:3], route]
             self.day_moves.append(mv_data)
 
+        def skim_get_begintour(self):
+            """ the the begin tour time for the proto array"""
+            self.day_bt = self.daily_line[21]
+
+        def skim_get_endtour(self):
+            """ get the end tour time for the proto array """
+            self.day_et = self.daily_line[21]
+
 
 def save_all(frame):
+    """ this creates a message when someone selects the 'save' menu option. """
     messagebox.showinfo("For Your Information ",
                         "All data has already been saved. Data is saved to the\n"
                         "database whenever an apply or submit button is pressed.\n"
@@ -7319,7 +7454,8 @@ def save_all(frame):
                         parent=frame)
 
 
-def file_dialogue(folder):  # opens file folders to access generated reports
+def file_dialogue(folder):
+    """ opens file folders to access generated kbreports """
     if not os.path.isdir(folder):
         os.makedirs(folder)
     if projvar.platform == "py":
@@ -7335,12 +7471,14 @@ def file_dialogue(folder):  # opens file folders to access generated reports
             subprocess.call(["open", file_path])
 
 
-def remove_file(folder):  # removes a file and all contents
+def remove_file(folder):
+    """ removes a file and all contents """
     if os.path.isdir(folder):
         shutil.rmtree(folder)
 
 
-def remove_file_var(frame, folder):  # removes a file and all contents
+def remove_file_var(frame, folder):
+    """ removes a file and all contents """
     if sys.platform == "win32":
         folder_name = folder.split("\\")
     else:
@@ -7370,12 +7508,17 @@ def remove_file_var(frame, folder):  # removes a file and all contents
 
 
 class AboutKlusterbox:
+    """
+    a class for displaying the About Klusterbox screen. Will display the version number, release date, contact
+    information and source code.
+    """
     def __init__(self):
         self.win = None
         self.frame = None
         self.photo = None
         
     def start(self, frame):
+        """ a master method to run other methods in proper order. """
         self.frame = frame
         self.win = MakeWindow()
         self.win.create(self.frame)
@@ -7384,6 +7527,7 @@ class AboutKlusterbox:
         self.win.finish()
         
     def build(self):
+        """ fills the screen with widgets. """
         r = 0  # set row counter
         if projvar.platform == "macapp":
             path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', 'kb_about.jpg')
@@ -7520,13 +7664,15 @@ class AboutKlusterbox:
         Label(self.win.body, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
 
     def button_frame(self):
+        """ builds the buttons on the bottom of the screen. """
         button = Button(self.win.buttons)
         button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
 
-    def open_docs(self, doc):  # opens docs in the about_klusterbox() function
+    def open_docs(self, doc):
+        """ opens docs in the about_klusterbox() function """
         try:
             if sys.platform == "win32":
                 if projvar.platform == "py":
@@ -7553,16 +7699,22 @@ class AboutKlusterbox:
                                  parent=self.win.body)
 
     @staticmethod
-    def callback(url):  # open hyperlinks at about_klusterbox()
+    def callback(url):
+        """ open hyperlinks at about_klusterbox() """
         webbrowser.open_new(url)
 
 
 class StartUp:
+    """
+    This class creates a screen which is displayed if there are no stations in the station index. It will show up
+    when the program is first started.
+    """
     def __init__(self):
         self.win = None
         self.new_station = None
 
     def start(self):
+        """ a master method for running the other methods in proper order. """
         self.win = MakeWindow()
         self.win.create(None)
         self.new_station = StringVar(self.win.body)
@@ -7572,6 +7724,7 @@ class StartUp:
         self.win.finish()
 
     def build(self):
+        """ fills the screen with widgets. """
         Label(self.win.body, text="Welcome to Klusterbox", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, columnspan=2, sticky="w")
         Label(self.win.body, text="version: {}".format(version)).grid(row=1, columnspan=2, sticky="w")
@@ -7591,9 +7744,11 @@ class StartUp:
                command=lambda: MainFrame().start(frame=self.win.topframe)).grid(row=7, columnspan=2, sticky="e")
 
     def buttons_frame(self):
+        """ creates a label at the bottom of the screen. """
         Label(self.win.buttons, text="").pack()
 
     def apply_startup(self):
+        """ run checks after the user presses apply. """
         if not self.new_station.get().strip():
             messagebox.showerror("Prohibited Action",
                                  "You can not enter a blank entry for a station.",
@@ -7612,7 +7767,8 @@ class StartUp:
         MainFrame().start(frame=self.win.topframe)  # load new frame
 
 
-def carrier_list_cleaning_for_auto_skimmer(frame, msgbox=True):  # cleans the database of duplicate records
+def carrier_list_cleaning_for_auto_skimmer(frame, msgbox=True):
+    """ cleans the database of duplicate records """
     sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
     results = inquire(sql)
     duplicates = []
@@ -7653,7 +7809,8 @@ def carrier_list_cleaning_for_auto_skimmer(frame, msgbox=True):  # cleans the da
     del duplicates[:]
 
 
-def carrier_list_cleaning(frame):  # cleans the database of duplicate records
+def carrier_list_cleaning(frame):
+    """ cleans the database of duplicate database_delete_records """
     sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
     results = inquire(sql)
     duplicates = []
@@ -7706,12 +7863,14 @@ def carrier_list_cleaning(frame):  # cleans the database of duplicate records
 
 
 def data_mods_codes_delete(frame, to_delete):
+    """ method of deleting operation numbers which are ignored by the automatic data entry """
     sql = "DELETE FROM skippers WHERE code='%s'" % to_delete[0]
     commit(sql)
     auto_data_entry_settings(frame)
 
 
 def data_mods_codes_add(frame, code, description):
+    """ checks and enters operation codes skipped by ADE. """
     sql = "SELECT code FROM skippers"
     results = inquire(sql)
     existing_codes = []
@@ -7750,6 +7909,7 @@ def data_mods_codes_add(frame, code, description):
 
 
 def data_mods_codes_default(frame):
+    """ resets the defaults operation codes skipped by ADE. """
     sql = "DELETE FROM skippers"
     commit(sql)
     # put records in the skippers table
@@ -7761,6 +7921,7 @@ def data_mods_codes_default(frame):
 
 
 def apply_auto_ns_structure(frame, ns_structure):
+    """ method of updating the ns day preference for the ADE. """
     sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
     commit(sql)
     messagebox.showinfo("Settings Updated",
@@ -7769,10 +7930,10 @@ def apply_auto_ns_structure(frame, ns_structure):
 
 
 def auto_data_entry_settings(frame):
+    """ creates window that allows the user to adjust the settings for the ADE. """
     i = None
     win = MakeWindow()
     win.create(frame)
-    # wd = front_window(frame)  # F,S,C,FF,buttons
     r = 0
     Label(win.body, text="Auto Data Entry Settings", font=macadj("bold", "Helvetica 18")) \
         .grid(row=r, column=0, sticky="w", columnspan=4)
@@ -7850,6 +8011,9 @@ def auto_data_entry_settings(frame):
 
 
 class SpreadsheetConfig:
+    """
+    creates a window that allows the user to adjust the settings for spreadsheets.
+    """
     def __init__(self):
         self.frame = None
         self.win = None
@@ -7895,6 +8059,7 @@ class SpreadsheetConfig:
         self.add_ot_calc_pref_dist = None  # overtime calcuations preference for otdl distribution
 
     def start(self, frame):
+        """ a master method for controlling other methods. """
         self.frame = frame
         self.win = MakeWindow()
         self.win.create(self.frame)
@@ -7906,6 +8071,7 @@ class SpreadsheetConfig:
         self.win.finish()
 
     def get_settings(self):
+        """ gets the current settings from the database. """
         sql = "SELECT tolerance FROM tolerances"
         results = inquire(sql)  # get spreadsheet settings from database
         self.min_nl = results[3][0]
@@ -7927,7 +8093,8 @@ class SpreadsheetConfig:
         self.min_ot_dist = results[27][0]  # minimum rows
         self.ot_calc_pref_dist = results[28][0]  # ot calculations preference
 
-    def build_stringvars(self):    # create stringvars
+    def build_stringvars(self):
+        """ create stringvars """
         self.min_nl_var = StringVar(self.win.body)
         self.min_wal_var = StringVar(self.win.body)
         self.min_otdl_var = StringVar(self.win.body)
@@ -7941,7 +8108,8 @@ class SpreadsheetConfig:
         self.min_ot_dist_var = StringVar(self.win.body)
         self.ot_calc_pref_dist_var = StringVar(self.win.body)
 
-    def set_stringvars(self):  # set stringvar values
+    def set_stringvars(self):
+        """ set stringvar values """
         self.min_nl_var.set(self.min_nl)
         self.min_wal_var.set(self.min_wal)
         self.min_otdl_var.set(self.min_otdl)
@@ -7956,6 +8124,7 @@ class SpreadsheetConfig:
         self.ot_calc_pref_dist_var.set(self.ot_calc_pref_dist)
 
     def build(self):
+        """ fills the window with widgets. """
         row = 0
         Label(self.win.body, text="Improper Mandate Spreadsheet Configuration", 
               font=macadj("bold", "Helvetica 18"), anchor="w").grid(row=row, sticky="w", columnspan=4)
@@ -8112,6 +8281,7 @@ class SpreadsheetConfig:
         self.win.fill(row + 1, 15)
 
     def buttons_frame(self):
+        """ configures the widgets on the bottom of the frame """
         button_submit = Button(self.win.buttons)
         button_apply = Button(self.win.buttons)
         button_back = Button(self.win.buttons)
@@ -8133,6 +8303,7 @@ class SpreadsheetConfig:
         self.status_update.pack(side=LEFT)
 
     def min_ss_presets(self, order):
+        """ defines the presets. """
         num = "25"
         over_num = "30"
         ot_num = "19"  # default for otdl equitability minimum rows
@@ -8171,6 +8342,7 @@ class SpreadsheetConfig:
         self.set_stringvars()
 
     def check(self, var):
+        """ checks entries for minimum rows. """
         current_var = ("No List minimum rows", "Work Assignment minimum rows", "OT Desired minimum rows",
                        "Auxiliary minimum rows", "Over Max minimum rows", "OTDL Equitability minimum rows")
         if MinrowsChecker(var).is_empty():
@@ -8199,6 +8371,7 @@ class SpreadsheetConfig:
         return True
 
     def apply(self, go_home):
+        """ checks and updates spreadsheet settings """
         onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux, self.min_overmax, self.min_ot_equit,
                       self.min_ot_dist)
         onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux)
@@ -8247,6 +8420,7 @@ class SpreadsheetConfig:
             self.set_stringvars()
 
     def write_report(self):
+        """ changes the status at the bottom of the screen. """
         text = "No Records Updated"
         if self.report_counter:
             text = "{} Record{} Updated"\
@@ -8256,6 +8430,7 @@ class SpreadsheetConfig:
 
 
 def apply_tolerance(frame, tolerance, tolerance_type):
+    """ checks tolerances. """
     if not isfloat(tolerance):
         text = "You must enter a number."
         messagebox.showerror("Tolerance value entry error", text, parent=frame)
@@ -8288,6 +8463,7 @@ def apply_tolerance(frame, tolerance, tolerance_type):
 
 
 def tolerance_presets(frame, order):
+    """ defines defaults for tolerances. """
     num = None
     if order == "default":
         num = ".25"
@@ -8301,6 +8477,7 @@ def tolerance_presets(frame, order):
 
 
 def tolerances(frame):
+    """ creatses a screen where the user can change tolerances. """
     frame.destroy()
     f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
@@ -8378,6 +8555,7 @@ def tolerances(frame):
 
 
 def apply_station(switch, station, frame):
+    """ checks and enters stations into the station table. """
     if switch == "enter":
         if station.get().strip() == "" or station.get().strip() == "x":
             messagebox.showerror("Prohibited Action",
@@ -8421,6 +8599,7 @@ def apply_station(switch, station, frame):
 
 
 def station_update_apply(frame, old_station, new_station):
+    """ change the name of a station. """
     if old_station.get() == "select a station":
         messagebox.showerror("Prohibited Action",
                              "Please select a station.",
@@ -8464,6 +8643,9 @@ def station_update_apply(frame, old_station, new_station):
 
 
 def station_list(frame):
+    """
+    creates a screen that allows the user to add stations.
+    """
     frame.destroy()
     f = Frame(projvar.root)
     f.pack(fill=BOTH, side=LEFT)
@@ -8577,7 +8759,8 @@ def station_list(frame):
     c.config(scrollregion=c.bbox("all"))
 
 
-def apply_mi(frame, array_var, ls, ns, station, route, date):  # enter changes from multiple input into database
+def apply_mi(frame, array_var, ls, ns, station, route, date):
+    """ enter changes from multiple input into database """
     x = date.get()
     year = IntVar()
     month = IntVar()
@@ -8607,6 +8790,8 @@ def apply_mi(frame, array_var, ls, ns, station, route, date):  # enter changes f
 
 
 def mass_input(frame, day, sort):
+    """ creates the mass input screen that allows the user to update the list status, ns day or station for
+    multiple carries. """
     sql = ""
     frame.destroy()
     switch_f7 = Frame(projvar.root)
@@ -8944,6 +9129,7 @@ def apply(year, month, day, c_name, ls, ns, route, station, frame):
 
 
 def apply_2(date, carrier, ls, ns, route, station, frame):
+    """ checks and enters carrier information. """
     route_list = route.get().split("/")
     if len(route.get()) > 29:
         messagebox.showerror("Route number input error",
@@ -9912,7 +10098,8 @@ class MainFrame:
         if len(self.stations_minus_outofstation) == 0:
             self.stations_minus_outofstation.append("undefined")
 
-    def get_invran_mode(self):  # get the investigation range mode
+    def get_invran_mode(self):
+        """ get the investigation range mode """
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
         results = inquire(sql)
         self.invran_result = results[0][0]
@@ -10058,7 +10245,8 @@ class MainFrame:
         for i in range(25):
             Label(self.main_frame, text="").grid(row=4 + i, column=1)
 
-    def empty_carrierlist(self):  # the carrier list is empty
+    def empty_carrierlist(self):
+        """ the carrier list is empty """
         Label(self.main_frame, text="").grid(row=0, column=0)
         Label(self.main_frame, text="The carrier list is empty. ", font=macadj("bold", "Helvetica 18")) \
             .grid(row=1, column=0, sticky="w")
