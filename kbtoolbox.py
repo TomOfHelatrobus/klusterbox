@@ -210,9 +210,13 @@ class NewWindow:
         self.root.update()
         self.c.config(scrollregion=self.c.bbox("all"))
         try:
-            mainloop()
+            mainloop()  # the window object will loop if it exist.
         except KeyboardInterrupt:
-            self.root.destroy()
+            try:  # if the object has already been destroyed
+                if self.root:
+                    self.root.destroy()  # destroy it.
+            except TclError:
+                pass  # else do no nothing.
 
     def fill(self, last, count):
         """ fill bottom of screen to for scrolling. """
@@ -1677,6 +1681,54 @@ class BackSlashDateChecker:
             return True
         except ValueError:
             return False
+
+
+def informalc_date_checker(frame, date, typee):
+    """ checks the date """
+    d = date.get().split("/")
+    if len(d) != 3:
+        messagebox.showerror("Invalid Data Entry",
+                             "The date for the {} is not properly formatted.".format(typee),
+                             parent=frame)
+        return "fail"
+    for num in d:
+        if not num.isnumeric():
+            messagebox.showerror("Invalid Data Entry",
+                                 "The month, day and year for the {} "
+                                 "must be numeric.".format(type),
+                                 parent=frame)
+            return "fail"
+    if len(d[0]) > 2:
+        messagebox.showerror("Invalid Data Entry",
+                             "The month for the {} must be no more than two digits"
+                             " long.".format(type),
+                             parent=frame)
+        return "fail"
+    if len(d[1]) > 2:
+        messagebox.showerror("Invalid Data Entry",
+                             "The day for the {} must be no more than two digits"
+                             " long.".format(type),
+                             parent=frame)
+        return "fail"
+    if len(d[2]) != 4:
+        messagebox.showerror("Invalid Data Entry",
+                             "The year for the {} must be four digits long."
+                             .format(type),
+                             parent=frame)
+        return "fail"
+    try:
+        date = datetime(int(d[2]), int(d[0]), int(d[1]))
+        valid_date = True
+        if date:
+            projvar.try_absorber = True  # uses project variable in try statement to avoid error
+    except ValueError:
+        valid_date = False
+    if not valid_date:
+        messagebox.showerror("Invalid Data Entry",
+                             "The date entered for {} is not a valid date."
+                             .format(type),
+                             parent=frame)
+        return "fail"
 
 
 class CarrierRecFilter:
