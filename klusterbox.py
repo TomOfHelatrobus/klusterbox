@@ -11,8 +11,13 @@ Visit https://github.com/TomOfHelatrobus/klusterbox for the most recent source c
 This version of Klusterbox is being released under the GNU General Public License version 3.
 """
 # custom modules
+import projvar
 from kbreports import Reports, Messenger
-from kbtoolbox import *
+from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, gen_ns_dict, \
+    informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
+    ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
+    find_pp, front_window, rear_window, gen_carrier_list, Quarter, RingTimeChecker, set_globals, \
+    SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -25,8 +30,9 @@ from kbinformalc import InformalC
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # Standard Libraries
-from tkinter import *
-from tkinter import messagebox, filedialog, ttk
+from tkinter import messagebox, filedialog, ttk, BooleanVar, BOTH, BOTTOM, Button, Canvas, Checkbutton, \
+    DISABLED, E, Entry, FALSE, Frame, IntVar, Label, LEFT, mainloop, Menu, NW, OptionMenu, Radiobutton, \
+    RIDGE, RIGHT, Scrollbar, StringVar, TclError, Tk, W
 from datetime import datetime, timedelta
 import sqlite3
 from operator import itemgetter
@@ -37,7 +43,7 @@ import sys
 import subprocess
 import time
 import webbrowser  # for hyper link at about_klusterbox()
-from threading import *  # run load workbook while progress bar runs
+from threading import Thread  # run load workbook while progress bar runs
 # Pillow Library
 from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
@@ -1850,327 +1856,782 @@ class GenConfig:
         self.status_update.config(text="{}".format(msg))
 
 
-def database_rings_report(frame, station):
-    """ generate a report summary of all clock rings for the station """
-    gross_dates = []  # captures all dates of rings for given station
-    # master_dates = []  # a distinct collection of dates for given station
-    unique_dates = []
-    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' ORDER BY carrier_name" \
-          % station
-    results = inquire(sql)
-    for name in results:
-        active_station = []
-        # get all records for the carrier
-        sql = "SELECT * FROM carriers WHERE carrier_name= '%s' ORDER BY effective_date" % name[0]
-        result_1 = inquire(sql)
-        start_search = True
-        start = ''
-        end = ''
-        # build the active_station array - find dates where carrier entered/left station
-        for r in result_1:
-            if r[5] == station and start_search:
-                start = r
-                start_search = False
-            if r[5] != station and not start_search:
-                end = r
-                active_station.append([start, end])
-                start = ''
-                end = ''
-                start_search = True
-        if not start_search:
-            active_station.append([start, end])
-        for active in active_station:
-            if active[1] != '':
-                sql = "SELECT rings_date FROM rings3 WHERE rings_date " \
-                      "BETWEEN '%s' AND '%s' AND carrier_name = '%s' " \
-                      % (active[0][0], active[1][0], name[0])
-                the_dates = inquire(sql)
-                for td in the_dates:
-                    gross_dates.append(td[0])
-            else:
-                sql = "SELECT rings_date FROM rings3 WHERE rings_date >= '%s' AND carrier_name = '%s' " \
-                      % (active[0][0], name[0])
-                the_dates = inquire(sql)
-                for td in the_dates:
-                    gross_dates.append(td[0])
-    for gd in gross_dates:  # get a list of unique dates
-        if gd not in unique_dates:
-            unique_dates.append(gd)
-    unique_dates.sort(reverse=True)  # sort the unique dates in reverse order
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = "clock_rings_summary" + "_" + stamp + ".txt"
-    try:
-        report = open(dir_path('report') + filename, "w")
-        report.write("\nClock Rings Summary Report\n\n\n")
-        report.write('   Showing results for:\n')
-        report.write('   Station: {}\n'.format(station))
-        report.write('\n')
-        report.write('{:>4}  {:<26} {:<24}\n'.format("", "Date", "Records Available"))
-        report.write('      --------------------------------------------\n')
-        i = 1
-        for line in unique_dates:
-            report.write('{:>4}  {:<26} {:<24}\n'
-                         .format("", dt_converter(line).strftime("%m/%d/%Y - %a"), gross_dates.count(line)))
-            if i % 3 == 0:
-                report.write('      --------------------------------------------\n')
-            i += 1
-        report.write('\n')
-        report.write('Total distinct dates for which clock ring records are available: {:<9}\n'.format(i - 1))
-        report.close()
-        if sys.platform == "win32":  # open the text document
-            os.startfile(dir_path('report') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('report') + filename])
-    except PermissionError:
-        messagebox.showerror("Report Generator",
-                             "The report failed to generate.",
-                             parent=frame)
+class DatabaseAdmin:
+    """
+    a class for the management of the database.
+    """
+    def __init__(self):
+        pass
 
-
-def database_delete_carriers_apply(frame, station, car_vars):
-    """ delete carriers from the database. """
-    if station.get() == "Select a station":
-        station_string = "x"
-    else:
-        station_string = station.get()
-
-    del_holder = []
-    for pair in car_vars:
-        if pair[1].get():
-            del_holder.append(pair[0])
-    if len(del_holder) > 0:
-        if messagebox.askokcancel("Delete Carrier Records",
-                                  "Are you sure you want to delete {} carriers, \n"
-                                  "along with all their clock rings and name indexes? \n\n"
-                                  "This action is not reversible.".format(len(del_holder)),
-                                  parent=frame):
-            pb_root = Tk()  # create a window for the progress bar
-            pb_root.title("Deleting Carrier Records")
-            titlebar_icon(pb_root)
-            pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
-            pb_label.grid(row=0, column=0, sticky="w")
-            pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-            pb.grid(row=0, column=1, sticky="w")
-            pb_text = Label(pb_root, text="", anchor="w")
-            pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
-            steps = len(del_holder)
-            pb_count = 0
-            pb["maximum"] = steps  # set length of progress bar
-            pb.start()
-            for name in del_holder:
-                pb_count += 1
-                # change text for progress bar
-                pb_text.config(text="Deleting records for: {}".format(name))
-                pb_root.update()
-                pb["value"] = pb_count  # increment progress bar
-                sql = "DELETE FROM rings3 WHERE carrier_name = '%s'" % name
-                commit(sql)
-                sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % name
-                commit(sql)
-                sql = "DELETE FROM name_index WHERE kb_name = '%s'" % name
-                commit(sql)
-            pb.stop()  # stop and destroy the progress bar
-            pb_label.destroy()  # destroy the label for the progress bar
-            pb.destroy()
-            pb_root.destroy()
-            database_delete_carriers(frame, station_string)
+    def run(self, frame):
+        """ a screen for controlling database maintenance. """
+        wd = front_window(frame)
+        r = 0
+        Label(wd[3], text="Database Maintenance", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=r, sticky="w", columnspan=4)
+        r += 1
+        Label(wd[3], text="").grid(row=r)
+        r += 1
+        Label(wd[3], text="Database Records").grid(row=r, sticky="w", columnspan=4)
+        r += 1
+        Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+        r += 1
+        # get and display number of records for rings3
+        sql = "SELECT COUNT (*) FROM rings3"
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" total records in rings table").grid(row=r, column=1, sticky="w")
+        r += 1
+        # get and display number of records for unique carriers in rings3
+        sql = "SELECT COUNT (DISTINCT carrier_name) FROM rings3"
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" distinct carrier names in rings table").grid(row=r, column=1, sticky="w")
+        r += 1
+        # get and display number of records for unique days in rings3
+        sql = "SELECT COUNT (DISTINCT rings_date) FROM rings3"
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" distinct days in rings table").grid(row=r, column=1, sticky="w")
+        r += 1
+        # get and display number of records for carriers
+        sql = "SELECT COUNT (*) FROM carriers"
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
+        r += 1
+        # get and display number of records for distinct carrier names from carriers
+        sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers"
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
+        r += 1
+        # get and display number of records for stations
+        sql = "SELECT COUNT (*) FROM stations"
+        results = inquire(sql)
+        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" total records in station table (this includes \'out of station\')") \
+            .grid(row=r, column=1, sticky="w")
+        r += 1
+        # find orphaned rings from deceased carriers
+        sql = "SELECT DISTINCT carrier_name FROM carriers"
+        carriers_results = inquire(sql)
+        sql = "SELECT DISTINCT carrier_name FROM rings3"
+        rings_results = inquire(sql)
+        deceased = [x for x in rings_results if x not in carriers_results]
+        Label(wd[3], text=len(deceased), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" \'deceased\' carriers in rings table").grid(row=r, column=1, sticky=W)
+        r += 1
+        if len(deceased) > 0:
+            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            r += 1
+            Button(wd[3], text="clean",
+                   command=lambda: (self.database_clean_rings(), wd[0].destroy(), self.run(frame))) \
+                .grid(row=r, column=0, sticky="w")
+            Label(wd[3], text="Delete rings records where carriers no longer exist (recommended)") \
+                .grid(row=r, column=1, sticky="w", columnspan=6)
+            r += 1
+            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            r += 1
+        sql = "SELECT DISTINCT station FROM carriers"
+        all_stations = inquire(sql)
+        sql = "SELECT station FROM stations"
+        good_stations = inquire(sql)
+        deceased_cars = [x for x in all_stations if x not in good_stations]
+        Label(wd[3], text=len(deceased_cars), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(wd[3], text=" \'deceased\' stations in carriers table").grid(row=r, column=1, sticky=W)
+        r += 1
+        if len(deceased_cars) > 0:
+            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            r += 1
+            Button(wd[3], text="clean",
+                   command=lambda: (self.database_clean_carriers(), wd[0].destroy(), self.run(frame))) \
+                .grid(row=r, column=0, sticky="w")
+            Label(wd[3], text="Delete carrier records where station no longer exist (recommended)") \
+                .grid(row=r, column=1, sticky="w", columnspan=6)
+            r += 1
+        if projvar.invran_station is None:
+            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            r += 1
+            Label(wd[3], text="Database Records, {} Specific".format(projvar.invran_station)) \
+                .grid(row=r, sticky="w", columnspan=4)
+            r += 1
+            Label(wd[3], text="To see results from other stations, change station "
+                              "in the investigation range", fg="grey") \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+            r += 1
+            # get and display number of records for carriers
+            sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % projvar.invran_station
+            results = inquire(sql)
+            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
+            r += 1
+            # get and display number of records for distinct carrier names from carriers
+            sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % projvar.invran_station
+            results = inquire(sql)
+            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
+            r += 1
+        if "out of station" in projvar.list_of_stations:
+            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            r += 1
+            Label(wd[3], text="Database Records, for \"{}\"".format("out of station")) \
+                .grid(row=r, sticky="w", columnspan=4)
+            r += 1
+            Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+            r += 1
+            # get and display number of records for carriers
+            sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % "out of station"
+            results = inquire(sql)
+            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
+            r += 1
+            # get and display number of records for distinct carrier names from carriers
+            sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % "out of station"
+            results = inquire(sql)
+            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
+            r += 1
+            Label(wd[3], text="").grid(row=r)
+            r += 1
+        #  Clock Rings summary
+        rings_frame = Frame(wd[3])
+        rings_frame.grid(row=r, column=0, columnspan=6, sticky=W)
+        rings_station = StringVar(rings_frame)
+        rr = 0
+        Label(rings_frame, text="Clock Rings Summary Report by Station:").grid(row=rr, column=0, columnspan=6, sticky=W)
+        rr += 1
+        Label(rings_frame, text="").grid(row=rr)
+        rr += 1
+        Label(rings_frame, text="Station: ").grid(row=rr, column=0, sticky=W)
+        om_rings = OptionMenu(rings_frame, rings_station, *projvar.list_of_stations)
+        om_rings.config(width=20)
+        if projvar.invran_station is None:
+            present_station = projvar.invran_station
         else:
+            present_station = "select a station"
+        rings_station.set(present_station)
+        om_rings.grid(row=rr, column=1, sticky=W)
+        Button(rings_frame, text="Report", width=8,
+               command=lambda: self.database_rings_report(wd[0], rings_station.get())) \
+            .grid(row=rr, column=2, sticky=W, padx=20)
+        rr += 1
+        Label(rings_frame, text="").grid(row=rr)
+        r += 1
+        # declare variables for Delete Database Records
+        clean1_range = StringVar(wd[3])
+        clean1_date = StringVar(wd[3])
+        clean1_table = StringVar(wd[3])
+        clean1_station = StringVar(wd[3])
+        # create frame and widgets for Delete Database Records
+        cleaner_frame1 = Frame(wd[3])
+        cleaner_frame1.grid(row=r, columnspan=6)
+        rr = 0
+        Label(cleaner_frame1, text="Delete Database Records (Remove records from database per given specifications)",
+              anchor="w").grid(row=rr, sticky="w", columnspan=4, column=0)
+        rr += 1
+        Label(cleaner_frame1, text="* format all date fields as mm/dd/yyyy, failure to do so will return an error",
+              anchor="w", fg="grey").grid(row=rr, sticky="w", columnspan=4, column=0)
+        rr += 1
+        Label(cleaner_frame1, text="                                               ").grid(row=rr, column=5)
+        rr += 1
+        Label(cleaner_frame1, text="Delete Records: ", anchor="w").grid(row=rr, sticky="w", column=0)
+        Radiobutton(cleaner_frame1, text="before and on date", variable=clean1_range, value="before",
+                    anchor="w").grid(row=rr, sticky="w", column=1)
+        rr += 1
+        Radiobutton(cleaner_frame1, text="entered date only", variable=clean1_range, value="this_date",
+                    anchor="w").grid(row=rr, sticky="w", column=1)
+        rr += 1
+        Radiobutton(cleaner_frame1, text="after and on date", variable=clean1_range, value="after",
+                    anchor="w").grid(row=rr, sticky="w", column=1)
+        rr += 1
+        Radiobutton(cleaner_frame1, text="all dates", variable=clean1_range, value="all", anchor="w") \
+            .grid(row=rr, sticky="w", column=1)
+        clean1_range.set("after")
+        r += 1
+        # create frame and widgets for Delete Database Records
+        cleaner_frame2 = Frame(wd[3])
+        cleaner_frame2.grid(row=r, columnspan=6, sticky="w")
+        rrr = 0
+        Label(cleaner_frame2, text="date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
+        Entry(cleaner_frame2, textvariable=clean1_date, width=macadj(12, 8), justify='right') \
+            .grid(row=rrr, column=1, sticky="w")
+        Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
+        table_options = ("carriers + index", "carriers", "name index", "clock rings", "all")
+        om1_table = OptionMenu(cleaner_frame2, clean1_table, *table_options)
+        clean1_table.set(table_options[-1])
+        if sys.platform != "darwin":
+            om1_table.config(width=20, anchor="w")
+        else:
+            om1_table.config(width=20)
+        om1_table.grid(row=rrr, column=3, sticky="w")
+        rrr += 1
+        station_options = projvar.list_of_stations[:]  # use splice to make copy of list without creating alias
+        station_options.append("all stations")
+        Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
+        om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
+        clean1_station.set(station_options[-1])
+        if sys.platform != "darwin":
+            om1_station.config(width=20, anchor="w")
+        else:
+            om1_station.config(width=20)
+        om1_station.grid(row=rrr, column=3, sticky="w")
+        Button(cleaner_frame2, text="delete", width=macadj(6, 5),
+               command=lambda: self.database_delete_records
+               (frame, wd[0], clean1_range, clean1_date, "x", clean1_table, clean1_station)) \
+            .grid(row=rrr, column=4, sticky="w")
+        rrr += 1
+        Label(cleaner_frame2, text="").grid(row=rrr)
+        rrr += 1
+        # declare variables for Delete Database Records
+        clean2_range = StringVar(wd[3])
+        clean2_startdate = StringVar(wd[3])
+        clean2_enddate = StringVar(wd[3])
+        clean2_table = StringVar(wd[3])
+        clean2_station = StringVar(wd[3])
+        rr += 1
+        Label(cleaner_frame2, text="Delete Records within a specified range: ", anchor="w") \
+            .grid(row=rrr, sticky="w", column=0, columnspan=6)
+        rrr += 1
+        Label(cleaner_frame2, text="* format all date fields as mm/dd/yyyy, failure to do so will return an error",
+              anchor="w", fg="grey").grid(row=rrr, sticky="w", columnspan=4)
+        rrr += 1
+        # declare range as "between by default
+        clean2_range.set("between")
+        Label(cleaner_frame2, text="     start date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
+        Entry(cleaner_frame2, textvariable=clean2_startdate, width=macadj(12, 8), justify='right') \
+            .grid(row=rrr, column=1, sticky="w")
+        Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
+        om2_table = OptionMenu(cleaner_frame2, clean2_table, *table_options)
+        clean2_table.set(table_options[-1])
+        if sys.platform != "darwin":
+            om2_table.config(width=20, anchor="w")
+        else:
+            om2_table.config(width=20)
+        om2_table.grid(row=rrr, column=3, sticky="w")
+        rrr += 1
+        Label(cleaner_frame2, text="end date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
+        Entry(cleaner_frame2, textvariable=clean2_enddate, width=macadj(12, 8), justify='right') \
+            .grid(row=rrr, column=1, sticky="w")
+        Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
+        om2_station = OptionMenu(cleaner_frame2, clean2_station, *station_options)
+        clean2_station.set(station_options[-1])
+        if sys.platform != "darwin":
+            om2_station.config(width=20, anchor="w")
+        else:
+            om2_station.config(width=20)
+        om2_station.grid(row=rrr, column=3, sticky="w")
+        Button(cleaner_frame2, text="delete", width=macadj(6, 5),
+               command=lambda: self.database_delete_records(frame, wd[0], clean2_range, clean2_startdate,
+                                                            clean2_enddate, clean2_table, clean2_station)) \
+            .grid(row=rrr, column=4, sticky="w")
+        rrr += 1
+        Label(cleaner_frame2, text="").grid(row=rrr)
+        rrr += 1
+        Label(cleaner_frame2, text="Reset Database - Delete and Rebuild the Database (all information will be lost)") \
+            .grid(row=rrr, sticky="w", column=0, columnspan=6)
+        rrr += 1
+        Label(cleaner_frame2, text="").grid(row=rrr)
+        rrr += 1
+        Button(cleaner_frame2, text="Reset", width=10, padx=5, fg=macadj("white", "red"), bg=macadj("red", "white"),
+               command=lambda: self.database_reset(frame, wd[0])) \
+            .grid(row=rrr, column=0, sticky="w")
+        rrr += 1
+        Label(cleaner_frame2, text="").grid(row=rrr)
+        rrr += 1
+        Label(cleaner_frame2, text="").grid(row=rrr)
+        r += 1
+        button = Button(wd[4])
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+        if sys.platform == "win32":  # center the widget text for mac
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        rear_window(wd)
+
+    @staticmethod
+    def database_clean_rings():
+        """ cleans the database from carriers who are no longer in the carriers table, but remain in the
+        rings table. """
+        sql = "SELECT DISTINCT carrier_name FROM carriers"
+        carriers_results = inquire(sql)
+        sql = "SELECT DISTINCT carrier_name FROM rings3"
+        rings_results = inquire(sql)
+        deceased = [x for x in rings_results if x not in carriers_results]
+        pb_root = Tk()  # create a window for the progress bar
+        pb_root.title("Deleting Orphaned Clock Rings")
+        titlebar_icon(pb_root)  # place icon in titlebar
+        pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+        pb_label.grid(row=0, column=0, sticky="w")
+        pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+        pb.grid(row=0, column=1, sticky="w")
+        pb_text = Label(pb_root, text="", anchor="w")
+        pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+        steps = len(deceased)
+        pb_count = 0
+        pb["maximum"] = steps  # set length of progress bar
+        pb.start()
+        for dead in deceased:
+            pb_text.config(text="Deleting clock rings for: {}".format(dead[0]))
+            pb_count += 1
+            pb["value"] = pb_count  # increment progress bar
+            # change text for progress bar
+            pb_root.update()
+            sql = "DELETE FROM rings3 WHERE carrier_name='%s'" % dead
+            commit(sql)
+        pb_text.config(text="Deleting NULL clock rings.")
+        pb_root.update()
+        sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
+        commit(sql)
+        sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_type ='%s'" % ("", 'none', '0.0')
+        commit(sql)
+        pb.stop()  # stop and destroy the progress bar
+        pb_label.destroy()  # destroy the label for the progress bar
+        pb.destroy()
+        pb_root.destroy()
+
+    @staticmethod
+    def database_clean_carriers():
+        """ delete carrier records where station no longer exist """
+        sql = "SELECT DISTINCT station FROM carriers"
+        all_stations = inquire(sql)
+        sql = "SELECT station FROM stations"
+        good_stations = inquire(sql)
+        deceased = [x for x in all_stations if x not in good_stations]
+        pb_root = Tk()  # create a window for the progress bar
+        pb_root.title("Deleting Orphaned Clock Rings")
+        titlebar_icon(pb_root)  # place icon in titlebar
+        pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+        pb_label.grid(row=0, column=0, sticky="w")
+        pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+        pb.grid(row=0, column=1, sticky="w")
+        pb_text = Label(pb_root, text="", anchor="w")
+        pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+        steps = len(deceased)
+        pb_count = 0
+        pb["maximum"] = steps  # set length of progress bar
+        pb.start()
+        for dead in deceased:
+            sql = "DELETE FROM carriers WHERE station ='%s'" % (dead[0])
+            commit(sql)
+            pb_count += 1
+            pb_text.config(text="Deleting carrier records for: {}".format(dead[0]))
+            pb["value"] = pb_count  # increment progress bar
+            pb_root.update()
+        sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
+        commit(sql)
+        pb.stop()  # stop and destroy the progress bar
+        pb_label.destroy()  # destroy the label for the progress bar
+        pb.destroy()
+        pb_root.destroy()
+
+    @staticmethod
+    def database_reset(masterframe, frame):
+        """ deletes the database and rebuilds it. """
+        if not messagebox.askokcancel("Delete Database",
+                                      "This action will delete your database and all information inside it."
+                                      "This includes carrier information, rings information, settings as "
+                                      "well as any informal c data. The database will be rebuilt and will be "
+                                      "like new. "
+                                      "\n\n This action can not be reversed."
+                                      "\n\n Are you sure you want to proceed?", parent=frame):
             return
+        path = "kb_sub/mandates.sqlite"
+        if projvar.platform == "macapp":
+            path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
+        if projvar.platform == "winapp":
+            path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
+        if projvar.platform == "py":
+            path = "kb_sub/mandates.sqlite"
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except sqlite3.OperationalError:
+            messagebox.showerror("Access Error",
+                                 "Klusterbox can not delete the database as it is being used by another "
+                                 "application. Close the database in the other application and retry.",
+                                 parent=frame)
+        frame.destroy()
+        masterframe.destroy()
+        reset("none")  # reset initial value of globals
+        DataBase().setup()
+        StartUp().start()
 
-
-def database_chg_station(frame, station):
-    """ delete the carrier in a station. """
-    if station.get() == "Select a station":
-        station_string = "x"
-    else:
-        station_string = station.get()
-    database_delete_carriers(frame, station_string)
-
-
-def database_delete_carriers(frame, station):
-    """ build a screen to delete carriers. """
-    wd = front_window(frame)
-    Label(wd[3], text="Delete Carriers", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=0, sticky="w")
-    Label(wd[3], text="").grid(row=1, column=0)
-    Label(wd[3], text="Select the station to see all carriers who have ever worked "
-                      "at the station - past and present. \nDeleting the carrier will"
-                      "result in all records for that carrier being deleted. This "
-                      "includes clock \nrings and name indexes. ", justify=LEFT) \
-        .grid(row=2, column=0, sticky="w", columnspan=6)
-    Label(wd[3], text="").grid(row=3, column=0)
-    Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
-    station_selection = StringVar(wd[3])
-    om_station = OptionMenu(wd[3], station_selection, *projvar.list_of_stations)
-    om_station.config(width=30, anchor="w")
-    om_station.grid(row=5, column=0, columnspan=2, sticky="w")
-    if station == "x":
-        station_selection.set("Select a station")
-    else:
-        station_selection.set(station)
-    Button(wd[3], text="select", width=macadj(14, 12), anchor="w",
-           command=lambda: database_chg_station(wd[0], station_selection)) \
-        .grid(row=5, column=2, sticky="w")
-    Label(wd[3], text="                ",
-          anchor="w").grid(row=5, column=3, sticky="w")
-    Label(wd[3], text="").grid(row=6, column=0)
-    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
-          "ORDER BY carrier_name ASC" % station
-    results = inquire(sql)
-    if station != "x":
-        Label(wd[3], text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
-    results_frame = Frame(wd[3])
-    results_frame.grid(row=8, columnspan=4)
-    i = 0
-    car_vars = []
-    if len(results) == 0 and station != "x":
-        Label(results_frame, text="", anchor="w").grid(row=i, column=2, sticky="w")
-        i += 1
-        Label(results_frame, text="After a search, no carrier records were found in the Klustebox database",
-              anchor="w").grid(row=i, column=0, columnspan=3, sticky="w")
-        Label(results_frame, text="                                    ",
-              anchor="w").grid(row=i, column=3, sticky="w")
-    for name in results:
-        sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
-        top_rec = inquire(sql)
-        var = BooleanVar()
-        chk = Checkbutton(results_frame, text=name[0], variable=var, anchor="w")
-        chk.grid(row=i, column=0, sticky="w")
-        car_vars.append((name[0], var))
-        Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
-            .grid(row=i, column=1, sticky="w")
-        Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
-        Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
-        Label(results_frame, text="                 ", anchor="w").grid(row=i, column=4, sticky="w")
-        i += 1
-    # apply and close buttons
-    button_apply = Button(wd[4])
-    button_back = Button(wd[4])
-    button_apply.config(text="Apply", width=15,
-                        command=lambda: database_delete_carriers_apply(wd[0], station_selection, car_vars))
-    button_back.config(text="Go Back", width=15, command=lambda: MainFrame().start(frame=wd[0]))
-    if sys.platform == "win32":
-        button_apply.config(anchor="w")
-        button_back.config(anchor="w")
-    button_apply.pack(side=LEFT)
-    button_back.pack(side=LEFT)
-    rear_window(wd)
-
-
-def database_delete_records(masterframe, frame, time_range, date, end_date, table, stations):
-    """ deletes records from the database. """
-    db_date = datetime(1, 1, 1)
-    db_end_date = datetime(1, 1, 1)
-    table_array = []
-    if time_range.get() != "all":
-        if informalc_date_checker(frame, date, "date") == "fail":
+    def database_delete_records(self, masterframe, frame, time_range, date, end_date, table, stations):
+        """ deletes records from the database. """
+        db_date = datetime(1, 1, 1)
+        db_end_date = datetime(1, 1, 1)
+        table_array = []
+        if time_range.get() != "all":
+            if informalc_date_checker(frame, date, "date") == "fail":
+                return
+        if time_range.get() == "between":
+            if informalc_date_checker(frame, end_date, "end date") == "fail":
+                return
+        if table.get() == "" or stations.get() == "":
+            if messagebox.showerror("Database Maintenance",
+                                    "You must select a table and a station. ",
+                                    parent=frame):
+                return
+        if not messagebox.askokcancel("Database Maintenance",
+                                      "This action will delete records from the database. \n\n"
+                                      "This action is irreversible. \n\n"
+                                      "Are you sure you want to proceed?",
+                                      parent=frame):
             return
-    if time_range.get() == "between":
-        if informalc_date_checker(frame, end_date, "end date") == "fail":
-            return
-    if table.get() == "" or stations.get() == "":
-        if messagebox.showerror("Database Maintenance",
-                                "You must select a table and a station. ",
-                                parent=frame):
-            return
-    if not messagebox.askokcancel("Database Maintenance",
-                                  "This action will delete records from the database. \n\n"
-                                  "This action is irreversible. \n\n"
-                                  "Are you sure you want to proceed?",
-                                  parent=frame):
-        return
-    #  convert date to format usable by sqlite
-    if time_range.get() != "all":
-        d = date.get().split("/")
-        db_date = datetime(int(d[2]), int(d[0]), int(d[1]))
-    if time_range.get() == "between":
-        d = end_date.get().split("/")
-        db_end_date = datetime(int(d[2]), int(d[0]), int(d[1]))
-    # define the station array to loop
-    if stations.get() == "all stations":
-        station_array = projvar.list_of_stations[:]
-    else:
-        station_array = [stations.get()]
-    # define the table array to loop
-    if table.get() == "all":
-        table_array = ["rings3", "name_index", "carriers", "stations", "station_index"]
-    elif table.get() == "carriers + index":
-        table_array = ["carriers", "name_index"]
-    elif table.get() == "carriers":
-        table_array = ["carriers"]
-    elif table.get() == "name index":
-        table_array = ["name_index"]
-    elif table.get() == "clock rings":
-        table_array = ["rings3"]
-    #  short cuts to delete all records in table
-    if time_range.get() == "all" and stations.get() == "all stations":
-        for tab in table_array:
-            if tab == "stations":
-                sql = "DELETE FROM stations"
-                commit(sql)
-            if tab == "station_index":
-                sql = "DELETE FROM station_index"
-                commit(sql)
-            if tab == "name_index":
-                sql = "DELETE FROM name_index"
-                commit(sql)
-            if tab == "carriers":
-                sql = "DELETE FROM carriers"
-                commit(sql)
-            if tab == "rings3":
-                sql = "DELETE FROM rings3"
-                commit(sql)
-            if tab == "stations":
-                sql = "DELETE FROM stations"
-                commit(sql)
-                sql = "INSERT INTO stations (station) VALUES('%s')" % "out of station"
-                commit(sql)
-                del projvar.list_of_stations[:]
-                projvar.list_of_stations.append("out of station")
+        #  convert date to format usable by sqlite
+        if time_range.get() != "all":
+            d = date.get().split("/")
+            db_date = datetime(int(d[2]), int(d[0]), int(d[1]))
+        if time_range.get() == "between":
+            d = end_date.get().split("/")
+            db_end_date = datetime(int(d[2]), int(d[0]), int(d[1]))
+        # define the station array to loop
+        if stations.get() == "all stations":
+            station_array = projvar.list_of_stations[:]
+        else:
+            station_array = [stations.get()]
+        # define the table array to loop
+        if table.get() == "all":
+            table_array = ["rings3", "name_index", "carriers", "stations", "station_index"]
+        elif table.get() == "carriers + index":
+            table_array = ["carriers", "name_index"]
+        elif table.get() == "carriers":
+            table_array = ["carriers"]
+        elif table.get() == "name index":
+            table_array = ["name_index"]
+        elif table.get() == "clock rings":
+            table_array = ["rings3"]
+        #  short cuts to delete all records in table
+        if time_range.get() == "all" and stations.get() == "all stations":
+            for tab in table_array:
+                if tab == "stations":
+                    sql = "DELETE FROM stations"
+                    commit(sql)
+                if tab == "station_index":
+                    sql = "DELETE FROM station_index"
+                    commit(sql)
+                if tab == "name_index":
+                    sql = "DELETE FROM name_index"
+                    commit(sql)
+                if tab == "carriers":
+                    sql = "DELETE FROM carriers"
+                    commit(sql)
+                if tab == "rings3":
+                    sql = "DELETE FROM rings3"
+                    commit(sql)
+                if tab == "stations":
+                    sql = "DELETE FROM stations"
+                    commit(sql)
+                    sql = "INSERT INTO stations (station) VALUES('%s')" % "out of station"
+                    commit(sql)
+                    del projvar.list_of_stations[:]
+                    projvar.list_of_stations.append("out of station")
 
-                reset("none")  # reset investigation range
+                    reset("none")  # reset investigation range
+            messagebox.showinfo("Database Maintenance",
+                                "Success! The database has been cleaned of the specified records.",
+                                parent=frame)
+            frame.destroy()
+            self.run(masterframe)
+            return
+        # loop for great justice
+        operator = ""
+        for stat in station_array:
+            for tab in table_array:
+                # delete all rings associated with station
+                if tab == "stations":
+                    if stat != "out of station":
+                        sql = "DELETE FROM stations WHERE station = '%s'" % stat
+                        commit(sql)
+                    if stat != "out of station":
+                        projvar.list_of_stations.remove(stat)
+                    if projvar.invran_station == stat:
+                        reset("none")  # reset initial value of globals
+                if tab == "station_index":
+                    if stat != "out of station":
+                        sql = "DELETE FROM station_index WHERE kb_station = '%s'" % stat
+                        commit(sql)
+                if tab == "rings3":
+                    # determine operator based on time_range
+                    if time_range.get() == "before":
+                        operator = " AND rings_date <= '%s'" % db_date
+                    elif time_range.get() == "this_date":
+                        operator = " AND rings_date = '%s'" % db_date
+                    elif time_range.get() == "after":
+                        operator = " AND rings_date >= '%s'" % db_date
+                    elif time_range.get() == "all":
+                        operator = ""
+                    elif time_range.get() == "between":
+                        operator = " AND rings_date BETWEEN '%s' AND '%s'" % (db_date, db_end_date)
+                    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' ORDER BY carrier_name" \
+                          % stat
+                    result = inquire(sql)
+                    pb_root = Tk()  # create a window for the progress bar
+                    pb_root.title("Deleting Clock Rings from {}".format(stat))
+                    titlebar_icon(pb_root)
+                    pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+                    pb_label.grid(row=0, column=0, sticky="w")
+                    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+                    pb.grid(row=0, column=1, sticky="w")
+                    pb_text = Label(pb_root, text="", anchor="w")
+                    pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+                    steps = len(result)
+                    pb_count = 0
+                    pb["maximum"] = steps  # set length of progress bar
+                    pb.start()
+                    for name in result:
+                        pb_count += 1
+                        active_station = []
+                        # get all records for the carrier
+                        sql = "SELECT * FROM carriers WHERE carrier_name= '%s' ORDER BY effective_date" % name[0]
+                        result_1 = inquire(sql)
+                        start_search = True
+                        start = ''
+                        end = ''
+                        # build the active_station array - find dates where carrier entered/left station
+                        for r in result_1:
+                            if r[5] == stat and start_search is True:
+                                start = r
+                                start_search = False
+                            if r[5] != stat and start_search is False:
+                                end = r
+                                active_station.append([start, end])
+                                start = ''
+                                end = ''
+                                start_search = True
+                        if not start_search:
+                            active_station.append([start, end])
+                        for active in active_station:
+                            if active[1] != '':
+                                sql = "DELETE FROM rings3 WHERE rings_date " \
+                                      "BETWEEN '%s' AND '%s'{} AND carrier_name = '%s' " \
+                                          .format(operator) % (active[0][0], active[1][0], name[0])
+                                commit(sql)
+                                # change text for progress bar
+                                pb_text.config(text="Deleting in range rings for: {} - {} through {}"
+                                               .format(name[0], active[0][0], active[1][0]))
+                                pb["value"] = pb_count  # increment progress bar
+                                pb_root.update()
+                            else:
+                                sql = "DELETE FROM rings3 WHERE rings_date >= '%s'{} AND carrier_name = '%s' " \
+                                          .format(operator) % (active[0][0], name[0])
+                                commit(sql)
+                                # change text for progress bar
+                                pb_text.config(
+                                    text="Deleting in range rings for: {} - {} +".format(name[0], active[0][0]))
+                                pb_root.update()
+                                pb["value"] = pb_count  # increment progress bar
+                    pb.stop()  # stop and destroy the progress bar
+                    pb_label.destroy()  # destroy the label for the progress bar
+                    pb.destroy()
+                    pb_root.destroy()
+                if tab == "name_index":
+                    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s'" \
+                          % stat
+                    results = inquire(sql)
+                    pb_root = Tk()  # create a window for the progress bar
+                    pb_root.title("Deleting Clock Rings from {}".format(stat))
+                    titlebar_icon(pb_root)
+                    pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+                    pb_label.grid(row=0, column=0, sticky="w")
+                    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+                    pb.grid(row=0, column=1, sticky="w")
+                    pb_text = Label(pb_root, text="", anchor="w")
+                    pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+                    steps = len(results)
+                    pb_count = 0
+                    pb["maximum"] = steps  # set length of progress bar
+                    pb.start()
+                    for car in results:
+                        sql = "DELETE FROM name_index WHERE kb_name='%s'" % car[0]
+                        commit(sql)
+                        pb_count += 1
+                        pb_text.config(text="Deleting name index for: {}".format(car[0]))
+                        pb["value"] = pb_count  # increment progress bar
+                        pb_root.update()
+                    pb.stop()  # stop and destroy the progress bar
+                    pb_label.destroy()  # destroy the label for the progress bar
+                    pb.destroy()
+                    pb_root.destroy()
+                if tab == "carriers":
+                    # determine operator based on time_range
+                    if time_range.get() == "before":
+                        operator = "AND effective_date <= '%s'" % db_date
+                    elif time_range.get() == "this_date":
+                        operator = "AND effective_date = '%s'" % db_date
+                    elif time_range.get() == "after":
+                        operator = "AND effective_date >= '%s'" % db_date
+                    elif time_range.get() == "all":
+                        operator = ""
+                    elif time_range.get() == "between":
+                        operator = "AND '%s' <= effective_date <= '%s'" % (db_date, db_end_date)
+                    sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' {}" \
+                              .format(operator) % stat
+                    results = inquire(sql)
+                    pb_root = Tk()  # create a window for the progress bar
+                    pb_root.title("Deleting Carrier Records from {}".format(stat))
+                    titlebar_icon(pb_root)
+                    pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
+                    pb_label.grid(row=0, column=0, sticky="w")
+                    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+                    pb.grid(row=0, column=1, sticky="w")
+                    pb_text = Label(pb_root, text="", anchor="w")
+                    pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
+                    steps = len(results)
+                    pb_count = 0
+                    pb["maximum"] = steps  # set length of progress bar
+                    pb.start()
+                    for car in results:
+                        pb_text.config(
+                            text="Deleting clock rings for: {}".format(car[0]))  # change text for progress bar
+                        pb_count += 1
+                        pb["value"] = pb_count  # increment progress bar
+                        pb_root.update()
+                        sql = "SELECT * FROM carriers WHERE  carrier_name = '%s' {}".format(operator) % car[0]
+                        car_ask = inquire(sql)
+                        outside_station = False
+                        for cc in car_ask:  # look for rings where the station doesn't match or out of station
+                            if cc[5] != "out of station" or cc[5] != stat:
+                                outside_station = True
+                        if not outside_station:
+                            for carr in results:
+                                # update all records where station/carrier match to 'out of station'
+                                sql = "UPDATE carriers SET station='%s' WHERE carrier_name ='%s' AND station='%s' {}" \
+                                          .format(operator) % ("out of station", carr[0], stat)
+                                commit(sql)
+                                # find redundancies where two 'out of station' records are adjacent.
+                                sql = "SELECT * FROM carriers WHERE carrier_name ='%s' " \
+                                      "ORDER BY carrier_name, effective_date" % carr[0]
+                                car_results = inquire(sql)
+                                duplicates = []
+                                for i in range(len(car_results)):
+                                    if i != len(car_results) - 1:  # if the loop has not reached the end of the list
+                                        # if the name current and next name are the same
+                                        if car_results[i][5] == 'out of station' and \
+                                                car_results[i + 1][5] == 'out of station':
+                                            duplicates.append(i + 1)
+                                for d in duplicates:
+                                    sql = "DELETE FROM carriers WHERE effective_date='%s' and carrier_name='%s'" % (
+                                        car_results[d][0], car_results[d][1])
+                                    commit(sql)
+                                # find and delete records where a carrier has only 'one out of station' record
+                                sql = "SELECT station FROM carriers WHERE carrier_name = '%s'" \
+                                      % carr[0]
+                                if len(inquire(sql)) == 1:
+                                    sql = "DELETE FROM carriers WHERE carrier_name = '%s' AND station = '%s'" \
+                                          % (carr[0], "out of station")
+                                    commit(sql)
+                        else:
+                            sql = "DELETE FROM carriers WHERE carrier_name = '%s' {}".format(operator) % car[0]
+                            commit(sql)
+                    pb.stop()  # stop and destroy the progress bar
+                    pb_label.destroy()  # destroy the label for the progress bar
+                    pb.destroy()
+                    pb_root.destroy()
         messagebox.showinfo("Database Maintenance",
                             "Success! The database has been cleaned of the specified records.",
                             parent=frame)
         frame.destroy()
-        database_maintenance(masterframe)
-        return
-    # loop for great justice
-    operator = ""
-    for stat in station_array:
-        for tab in table_array:
-            # delete all rings associated with station
-            if tab == "stations":
-                if stat != "out of station":
-                    sql = "DELETE FROM stations WHERE station = '%s'" % stat
-                    commit(sql)
-                if stat != "out of station":
-                    projvar.list_of_stations.remove(stat)
-                if projvar.invran_station == stat:
-                    reset("none")  # reset initial value of globals
-            if tab == "station_index":
-                if stat != "out of station":
-                    sql = "DELETE FROM station_index WHERE kb_station = '%s'" % stat
-                    commit(sql)
-            if tab == "rings3":
-                # determine operator based on time_range
-                if time_range.get() == "before":
-                    operator = " AND rings_date <= '%s'" % db_date
-                elif time_range.get() == "this_date":
-                    operator = " AND rings_date = '%s'" % db_date
-                elif time_range.get() == "after":
-                    operator = " AND rings_date >= '%s'" % db_date
-                elif time_range.get() == "all":
-                    operator = ""
-                elif time_range.get() == "between":
-                    operator = " AND rings_date BETWEEN '%s' AND '%s'" % (db_date, db_end_date)
-                sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' ORDER BY carrier_name" \
-                      % stat
-                result = inquire(sql)
+        self.run(masterframe)
+
+    def database_delete_carriers(self, frame, station):
+        """ build a screen to delete carriers. """
+        wd = front_window(frame)
+        Label(wd[3], text="Delete Carriers", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, column=0, sticky="w")
+        Label(wd[3], text="").grid(row=1, column=0)
+        Label(wd[3], text="Select the station to see all carriers who have ever worked "
+                          "at the station - past and present. \nDeleting the carrier will"
+                          "result in all records for that carrier being deleted. This "
+                          "includes clock \nrings and name indexes. ", justify=LEFT) \
+            .grid(row=2, column=0, sticky="w", columnspan=6)
+        Label(wd[3], text="").grid(row=3, column=0)
+        Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
+        station_selection = StringVar(wd[3])
+        om_station = OptionMenu(wd[3], station_selection, *projvar.list_of_stations)
+        om_station.config(width=30, anchor="w")
+        om_station.grid(row=5, column=0, columnspan=2, sticky="w")
+        if station == "x":
+            station_selection.set("Select a station")
+        else:
+            station_selection.set(station)
+        Button(wd[3], text="select", width=macadj(14, 12), anchor="w",
+               command=lambda: self.database_chg_station(wd[0], station_selection)) \
+            .grid(row=5, column=2, sticky="w")
+        Label(wd[3], text="                ",
+              anchor="w").grid(row=5, column=3, sticky="w")
+        Label(wd[3], text="").grid(row=6, column=0)
+        sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
+              "ORDER BY carrier_name ASC" % station
+        results = inquire(sql)
+        if station != "x":
+            Label(wd[3], text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
+        results_frame = Frame(wd[3])
+        results_frame.grid(row=8, columnspan=4)
+        i = 0
+        car_vars = []
+        if len(results) == 0 and station != "x":
+            Label(results_frame, text="", anchor="w").grid(row=i, column=2, sticky="w")
+            i += 1
+            Label(results_frame, text="After a search, no carrier records were found in the Klustebox database",
+                  anchor="w").grid(row=i, column=0, columnspan=3, sticky="w")
+            Label(results_frame, text="                                    ",
+                  anchor="w").grid(row=i, column=3, sticky="w")
+        for name in results:
+            sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
+            top_rec = inquire(sql)
+            var = BooleanVar()
+            chk = Checkbutton(results_frame, text=name[0], variable=var, anchor="w")
+            chk.grid(row=i, column=0, sticky="w")
+            car_vars.append((name[0], var))
+            Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
+                .grid(row=i, column=1, sticky="w")
+            Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
+            Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
+            Label(results_frame, text="                 ", anchor="w").grid(row=i, column=4, sticky="w")
+            i += 1
+        # apply and close buttons
+        button_apply = Button(wd[4])
+        button_back = Button(wd[4])
+        button_apply.config(text="Apply", width=15,
+                            command=lambda: self.database_delete_carriers_apply(wd[0], station_selection, car_vars))
+        button_back.config(text="Go Back", width=15, command=lambda: MainFrame().start(frame=wd[0]))
+        if sys.platform == "win32":
+            button_apply.config(anchor="w")
+            button_back.config(anchor="w")
+        button_apply.pack(side=LEFT)
+        button_back.pack(side=LEFT)
+        rear_window(wd)
+
+    def database_chg_station(self, frame, station):
+        """ delete the carrier in a station. """
+        if station.get() == "Select a station":
+            station_string = "x"
+        else:
+            station_string = station.get()
+        self.database_delete_carriers(frame, station_string)
+
+    def database_delete_carriers_apply(self, frame, station, car_vars):
+        """ delete carriers from the database. """
+        if station.get() == "Select a station":
+            station_string = "x"
+        else:
+            station_string = station.get()
+
+        del_holder = []
+        for pair in car_vars:
+            if pair[1].get():
+                del_holder.append(pair[0])
+        if len(del_holder) > 0:
+            if messagebox.askokcancel("Delete Carrier Records",
+                                      "Are you sure you want to delete {} carriers, \n"
+                                      "along with all their clock rings and name indexes? \n\n"
+                                      "This action is not reversible.".format(len(del_holder)),
+                                      parent=frame):
                 pb_root = Tk()  # create a window for the progress bar
-                pb_root.title("Deleting Clock Rings from {}".format(stat))
+                pb_root.title("Deleting Carrier Records")
                 titlebar_icon(pb_root)
                 pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
                 pb_label.grid(row=0, column=0, sticky="w")
@@ -2178,556 +2639,128 @@ def database_delete_records(masterframe, frame, time_range, date, end_date, tabl
                 pb.grid(row=0, column=1, sticky="w")
                 pb_text = Label(pb_root, text="", anchor="w")
                 pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
-                steps = len(result)
+                steps = len(del_holder)
                 pb_count = 0
                 pb["maximum"] = steps  # set length of progress bar
                 pb.start()
-                for name in result:
+                for name in del_holder:
                     pb_count += 1
-                    active_station = []
-                    # get all records for the carrier
-                    sql = "SELECT * FROM carriers WHERE carrier_name= '%s' ORDER BY effective_date" % name[0]
-                    result_1 = inquire(sql)
-                    start_search = True
+                    # change text for progress bar
+                    pb_text.config(text="Deleting records for: {}".format(name))
+                    pb_root.update()
+                    pb["value"] = pb_count  # increment progress bar
+                    sql = "DELETE FROM rings3 WHERE carrier_name = '%s'" % name
+                    commit(sql)
+                    sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % name
+                    commit(sql)
+                    sql = "DELETE FROM name_index WHERE kb_name = '%s'" % name
+                    commit(sql)
+                pb.stop()  # stop and destroy the progress bar
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()
+                pb_root.destroy()
+                self.database_delete_carriers(frame, station_string)
+            else:
+                return
+
+    @staticmethod
+    def database_rings_report(frame, station):
+        """ generate a report summary of all clock rings for the station """
+        gross_dates = []  # captures all dates of rings for given station
+        # master_dates = []  # a distinct collection of dates for given station
+        unique_dates = []
+        sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' ORDER BY carrier_name" \
+              % station
+        results = inquire(sql)
+        for name in results:
+            active_station = []
+            # get all records for the carrier
+            sql = "SELECT * FROM carriers WHERE carrier_name= '%s' ORDER BY effective_date" % name[0]
+            result_1 = inquire(sql)
+            start_search = True
+            start = ''
+            end = ''
+            # build the active_station array - find dates where carrier entered/left station
+            for r in result_1:
+                if r[5] == station and start_search:
+                    start = r
+                    start_search = False
+                if r[5] != station and not start_search:
+                    end = r
+                    active_station.append([start, end])
                     start = ''
                     end = ''
-                    # build the active_station array - find dates where carrier entered/left station
-                    for r in result_1:
-                        if r[5] == stat and start_search is True:
-                            start = r
-                            start_search = False
-                        if r[5] != stat and start_search is False:
-                            end = r
-                            active_station.append([start, end])
-                            start = ''
-                            end = ''
-                            start_search = True
-                    if not start_search:
-                        active_station.append([start, end])
-                    for active in active_station:
-                        if active[1] != '':
-                            sql = "DELETE FROM rings3 WHERE rings_date " \
-                                  "BETWEEN '%s' AND '%s'{} AND carrier_name = '%s' " \
-                                      .format(operator) % (active[0][0], active[1][0], name[0])
-                            commit(sql)
-                            # change text for progress bar
-                            pb_text.config(text="Deleting in range rings for: {} - {} through {}"
-                                           .format(name[0], active[0][0], active[1][0]))
-                            pb["value"] = pb_count  # increment progress bar
-                            pb_root.update()
-                        else:
-                            sql = "DELETE FROM rings3 WHERE rings_date >= '%s'{} AND carrier_name = '%s' " \
-                                      .format(operator) % (active[0][0], name[0])
-                            commit(sql)
-                            # change text for progress bar
-                            pb_text.config(text="Deleting in range rings for: {} - {} +".format(name[0], active[0][0]))
-                            pb_root.update()
-                            pb["value"] = pb_count  # increment progress bar
-                pb.stop()  # stop and destroy the progress bar
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()
-                pb_root.destroy()
-            if tab == "name_index":
-                sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s'" \
-                      % stat
-                results = inquire(sql)
-                pb_root = Tk()  # create a window for the progress bar
-                pb_root.title("Deleting Clock Rings from {}".format(stat))
-                titlebar_icon(pb_root)
-                pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
-                pb_label.grid(row=0, column=0, sticky="w")
-                pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-                pb.grid(row=0, column=1, sticky="w")
-                pb_text = Label(pb_root, text="", anchor="w")
-                pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
-                steps = len(results)
-                pb_count = 0
-                pb["maximum"] = steps  # set length of progress bar
-                pb.start()
-                for car in results:
-                    sql = "DELETE FROM name_index WHERE kb_name='%s'" % car[0]
-                    commit(sql)
-                    pb_count += 1
-                    pb_text.config(text="Deleting name index for: {}".format(car[0]))
-                    pb["value"] = pb_count  # increment progress bar
-                    pb_root.update()
-                pb.stop()  # stop and destroy the progress bar
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()
-                pb_root.destroy()
-            if tab == "carriers":
-                # determine operator based on time_range
-                if time_range.get() == "before":
-                    operator = "AND effective_date <= '%s'" % db_date
-                elif time_range.get() == "this_date":
-                    operator = "AND effective_date = '%s'" % db_date
-                elif time_range.get() == "after":
-                    operator = "AND effective_date >= '%s'" % db_date
-                elif time_range.get() == "all":
-                    operator = ""
-                elif time_range.get() == "between":
-                    operator = "AND '%s' <= effective_date <= '%s'" % (db_date, db_end_date)
-                sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' {}" \
-                          .format(operator) % stat
-                results = inquire(sql)
-                pb_root = Tk()  # create a window for the progress bar
-                pb_root.title("Deleting Carrier Records from {}".format(stat))
-                titlebar_icon(pb_root)
-                pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
-                pb_label.grid(row=0, column=0, sticky="w")
-                pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-                pb.grid(row=0, column=1, sticky="w")
-                pb_text = Label(pb_root, text="", anchor="w")
-                pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
-                steps = len(results)
-                pb_count = 0
-                pb["maximum"] = steps  # set length of progress bar
-                pb.start()
-                for car in results:
-                    pb_text.config(text="Deleting clock rings for: {}".format(car[0]))  # change text for progress bar
-                    pb_count += 1
-                    pb["value"] = pb_count  # increment progress bar
-                    pb_root.update()
-                    sql = "SELECT * FROM carriers WHERE  carrier_name = '%s' {}".format(operator) % car[0]
-                    car_ask = inquire(sql)
-                    outside_station = False
-                    for cc in car_ask:  # look for rings where the station doesn't match or out of station
-                        if cc[5] != "out of station" or cc[5] != stat:
-                            outside_station = True
-                    if not outside_station:
-                        for carr in results:
-                            # update all records where station/carrier match to 'out of station'
-                            sql = "UPDATE carriers SET station='%s' WHERE carrier_name ='%s' AND station='%s' {}" \
-                                      .format(operator) % ("out of station", carr[0], stat)
-                            commit(sql)
-                            # find redundancies where two 'out of station' records are adjacent.
-                            sql = "SELECT * FROM carriers WHERE carrier_name ='%s' " \
-                                  "ORDER BY carrier_name, effective_date" % carr[0]
-                            car_results = inquire(sql)
-                            duplicates = []
-                            for i in range(len(car_results)):
-                                if i != len(car_results) - 1:  # if the loop has not reached the end of the list
-                                    # if the name current and next name are the same
-                                    if car_results[i][5] == 'out of station' and \
-                                            car_results[i + 1][5] == 'out of station':
-                                        duplicates.append(i + 1)
-                            for d in duplicates:
-                                sql = "DELETE FROM carriers WHERE effective_date='%s' and carrier_name='%s'" % (
-                                    car_results[d][0], car_results[d][1])
-                                commit(sql)
-                            # find and delete records where a carrier has only 'one out of station' record
-                            sql = "SELECT station FROM carriers WHERE carrier_name = '%s'" \
-                                  % carr[0]
-                            if len(inquire(sql)) == 1:
-                                sql = "DELETE FROM carriers WHERE carrier_name = '%s' AND station = '%s'" \
-                                      % (carr[0], "out of station")
-                                commit(sql)
-                    else:
-                        sql = "DELETE FROM carriers WHERE carrier_name = '%s' {}".format(operator) % car[0]
-                        commit(sql)
-                pb.stop()  # stop and destroy the progress bar
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()
-                pb_root.destroy()
-    messagebox.showinfo("Database Maintenance",
-                        "Success! The database has been cleaned of the specified records.",
-                        parent=frame)
-    frame.destroy()
-    database_maintenance(masterframe)
+                    start_search = True
+            if not start_search:
+                active_station.append([start, end])
+            for active in active_station:
+                if active[1] != '':
+                    sql = "SELECT rings_date FROM rings3 WHERE rings_date " \
+                          "BETWEEN '%s' AND '%s' AND carrier_name = '%s' " \
+                          % (active[0][0], active[1][0], name[0])
+                    the_dates = inquire(sql)
+                    for td in the_dates:
+                        gross_dates.append(td[0])
+                else:
+                    sql = "SELECT rings_date FROM rings3 WHERE rings_date >= '%s' AND carrier_name = '%s' " \
+                          % (active[0][0], name[0])
+                    the_dates = inquire(sql)
+                    for td in the_dates:
+                        gross_dates.append(td[0])
+        for gd in gross_dates:  # get a list of unique dates
+            if gd not in unique_dates:
+                unique_dates.append(gd)
+        unique_dates.sort(reverse=True)  # sort the unique dates in reverse order
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "clock_rings_summary" + "_" + stamp + ".txt"
+        try:
+            report = open(dir_path('report') + filename, "w")
+            report.write("\nClock Rings Summary Report\n\n\n")
+            report.write('   Showing results for:\n')
+            report.write('   Station: {}\n'.format(station))
+            report.write('\n')
+            report.write('{:>4}  {:<26} {:<24}\n'.format("", "Date", "Records Available"))
+            report.write('      --------------------------------------------\n')
+            i = 1
+            for line in unique_dates:
+                report.write('{:>4}  {:<26} {:<24}\n'
+                             .format("", dt_converter(line).strftime("%m/%d/%Y - %a"), gross_dates.count(line)))
+                if i % 3 == 0:
+                    report.write('      --------------------------------------------\n')
+                i += 1
+            report.write('\n')
+            report.write('Total distinct dates for which clock ring records are available: {:<9}\n'.format(i - 1))
+            report.close()
+            if sys.platform == "win32":  # open the text document
+                os.startfile(dir_path('report') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('report') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report failed to generate.",
+                                 parent=frame)
 
-
-def database_reset(masterframe, frame):
-    """ deletes the database and rebuilds it. """
-    if not messagebox.askokcancel("Delete Database",
-                                  "This action will delete your database and all information inside it."
-                                  "This includes carrier information, rings information, settings as "
-                                  "well as any informal c data. The database will be rebuilt and will be "
-                                  "like new. "
-                                  "\n\n This action can not be reversed."
-                                  "\n\n Are you sure you want to proceed?", parent=frame):
+    @staticmethod
+    def clean_rings3_table():
+        """ database maintenance """
+        sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
+        result = inquire(sql)
+        types = ""
+        times = float(0.0)
+        if result:
+            sql = "UPDATE rings3 SET leave_type='%s',leave_time='%s'" \
+                  "WHERE leave_type IS NULL" \
+                  % (types, times)
+            commit(sql)
+            messagebox.showinfo("Clean Rings",
+                                "Rings table has been cleared of NULL values in leave type and leave time columns.")
+        else:
+            messagebox.showinfo("Clean Rings",
+                                "No NULL values in leave type and leave time columns were found in the Rings3 "
+                                "table of the database. No action taken.")
         return
-    path = "kb_sub/mandates.sqlite"
-    if projvar.platform == "macapp":
-        path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
-    if projvar.platform == "winapp":
-        path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
-    if projvar.platform == "py":
-        path = "kb_sub/mandates.sqlite"
-    try:
-        if os.path.exists(path):
-            os.remove(path)
-    except sqlite3.OperationalError:
-        messagebox.showerror("Access Error",
-                             "Klusterbox can not delete the database as it is being used by another "
-                             "application. Close the database in the other application and retry.",
-                             parent=frame)
-    frame.destroy()
-    masterframe.destroy()
-    reset("none")  # reset initial value of globals
-    DataBase().setup()
-    StartUp().start()
-
-
-def database_clean_carriers():
-    """ delete carrier records where station no longer exist """
-    sql = "SELECT DISTINCT station FROM carriers"
-    all_stations = inquire(sql)
-    sql = "SELECT station FROM stations"
-    good_stations = inquire(sql)
-    deceased = [x for x in all_stations if x not in good_stations]
-    pb_root = Tk()  # create a window for the progress bar
-    pb_root.title("Deleting Orphaned Clock Rings")
-    titlebar_icon(pb_root)  # place icon in titlebar
-    pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
-    pb_label.grid(row=0, column=0, sticky="w")
-    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-    pb.grid(row=0, column=1, sticky="w")
-    pb_text = Label(pb_root, text="", anchor="w")
-    pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
-    steps = len(deceased)
-    pb_count = 0
-    pb["maximum"] = steps  # set length of progress bar
-    pb.start()
-    for dead in deceased:
-        sql = "DELETE FROM carriers WHERE station ='%s'" % (dead[0])
-        commit(sql)
-        pb_count += 1
-        pb_text.config(text="Deleting carrier records for: {}".format(dead[0]))
-        pb["value"] = pb_count  # increment progress bar
-        pb_root.update()
-    sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
-    commit(sql)
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    pb_root.destroy()
-
-
-def database_clean_rings():
-    """ cleans the database from carriers who are no longer in the carriers table, but remain in the rings table. """
-    sql = "SELECT DISTINCT carrier_name FROM carriers"
-    carriers_results = inquire(sql)
-    sql = "SELECT DISTINCT carrier_name FROM rings3"
-    rings_results = inquire(sql)
-    deceased = [x for x in rings_results if x not in carriers_results]
-    pb_root = Tk()  # create a window for the progress bar
-    pb_root.title("Deleting Orphaned Clock Rings")
-    titlebar_icon(pb_root)  # place icon in titlebar
-    pb_label = Label(pb_root, text="Running Process: ", anchor="w")  # make label for progress bar
-    pb_label.grid(row=0, column=0, sticky="w")
-    pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-    pb.grid(row=0, column=1, sticky="w")
-    pb_text = Label(pb_root, text="", anchor="w")
-    pb_text.grid(row=1, column=0, columnspan=2, sticky="w")
-    steps = len(deceased)
-    pb_count = 0
-    pb["maximum"] = steps  # set length of progress bar
-    pb.start()
-    for dead in deceased:
-        pb_text.config(text="Deleting clock rings for: {}".format(dead[0]))
-        pb_count += 1
-        pb["value"] = pb_count  # increment progress bar
-        # change text for progress bar
-        pb_root.update()
-        sql = "DELETE FROM rings3 WHERE carrier_name='%s'" % dead
-        commit(sql)
-    pb_text.config(text="Deleting NULL clock rings.")
-    pb_root.update()
-    sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
-    commit(sql)
-    sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_type ='%s'" % ("", 'none', '0.0')
-    commit(sql)
-    pb.stop()  # stop and destroy the progress bar
-    pb_label.destroy()  # destroy the label for the progress bar
-    pb.destroy()
-    pb_root.destroy()
-
-
-def database_maintenance(frame):
-    """ a screen for controlling database maintenance. """
-    wd = front_window(frame)
-    r = 0
-    Label(wd[3], text="Database Maintenance", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=r, sticky="w", columnspan=4)
-    r += 1
-    Label(wd[3], text="").grid(row=r)
-    r += 1
-    Label(wd[3], text="Database Records").grid(row=r, sticky="w", columnspan=4)
-    r += 1
-    Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
-    r += 1
-    # get and display number of records for rings3
-    sql = "SELECT COUNT (*) FROM rings3"
-    results = inquire(sql)
-    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" total records in rings table").grid(row=r, column=1, sticky="w")
-    r += 1
-    # get and display number of records for unique carriers in rings3
-    sql = "SELECT COUNT (DISTINCT carrier_name) FROM rings3"
-    results = inquire(sql)
-    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" distinct carrier names in rings table").grid(row=r, column=1, sticky="w")
-    r += 1
-    # get and display number of records for unique days in rings3
-    sql = "SELECT COUNT (DISTINCT rings_date) FROM rings3"
-    results = inquire(sql)
-    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" distinct days in rings table").grid(row=r, column=1, sticky="w")
-    r += 1
-    # get and display number of records for carriers
-    sql = "SELECT COUNT (*) FROM carriers"
-    results = inquire(sql)
-    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
-    r += 1
-    # get and display number of records for distinct carrier names from carriers
-    sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers"
-    results = inquire(sql)
-    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
-    r += 1
-    # get and display number of records for stations
-    sql = "SELECT COUNT (*) FROM stations"
-    results = inquire(sql)
-    Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" total records in station table (this includes \'out of station\')") \
-        .grid(row=r, column=1, sticky="w")
-    r += 1
-    # find orphaned rings from deceased carriers
-    sql = "SELECT DISTINCT carrier_name FROM carriers"
-    carriers_results = inquire(sql)
-    sql = "SELECT DISTINCT carrier_name FROM rings3"
-    rings_results = inquire(sql)
-    deceased = [x for x in rings_results if x not in carriers_results]
-    Label(wd[3], text=len(deceased), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" \'deceased\' carriers in rings table").grid(row=r, column=1, sticky=W)
-    r += 1
-    if len(deceased) > 0:
-        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
-        r += 1
-        Button(wd[3], text="clean",
-               command=lambda: (database_clean_rings(), wd[0].destroy(), database_maintenance(frame))) \
-            .grid(row=r, column=0, sticky="w")
-        Label(wd[3], text="Delete rings records where carriers no longer exist (recommended)") \
-            .grid(row=r, column=1, sticky="w", columnspan=6)
-        r += 1
-        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
-        r += 1
-    sql = "SELECT DISTINCT station FROM carriers"
-    all_stations = inquire(sql)
-    sql = "SELECT station FROM stations"
-    good_stations = inquire(sql)
-    deceased_cars = [x for x in all_stations if x not in good_stations]
-    Label(wd[3], text=len(deceased_cars), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-    Label(wd[3], text=" \'deceased\' stations in carriers table").grid(row=r, column=1, sticky=W)
-    r += 1
-    if len(deceased_cars) > 0:
-        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
-        r += 1
-        Button(wd[3], text="clean",
-               command=lambda: (database_clean_carriers(), wd[0].destroy(), database_maintenance(frame))) \
-            .grid(row=r, column=0, sticky="w")
-        Label(wd[3], text="Delete carrier records where station no longer exist (recommended)") \
-            .grid(row=r, column=1, sticky="w", columnspan=6)
-        r += 1
-    if projvar.invran_station is None:
-        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
-        r += 1
-        Label(wd[3], text="Database Records, {} Specific".format(projvar.invran_station)) \
-            .grid(row=r, sticky="w", columnspan=4)
-        r += 1
-        Label(wd[3], text="To see results from other stations, change station "
-                          "in the investigation range", fg="grey") \
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
-        r += 1
-        # get and display number of records for carriers
-        sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % projvar.invran_station
-        results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
-        r += 1
-        # get and display number of records for distinct carrier names from carriers
-        sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % projvar.invran_station
-        results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
-        r += 1
-    if "out of station" in projvar.list_of_stations:
-        Label(wd[3], text="").grid(row=r, column=0, sticky="w")
-        r += 1
-        Label(wd[3], text="Database Records, for \"{}\"".format("out of station")) \
-            .grid(row=r, sticky="w", columnspan=4)
-        r += 1
-        Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
-        r += 1
-        # get and display number of records for carriers
-        sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % "out of station"
-        results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
-        r += 1
-        # get and display number of records for distinct carrier names from carriers
-        sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % "out of station"
-        results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
-        r += 1
-        Label(wd[3], text="").grid(row=r)
-        r += 1
-    #  Clock Rings summary
-    rings_frame = Frame(wd[3])
-    rings_frame.grid(row=r, column=0, columnspan=6, sticky=W)
-    rings_station = StringVar(rings_frame)
-    rr = 0
-    Label(rings_frame, text="Clock Rings Summary Report by Station:").grid(row=rr, column=0, columnspan=6, sticky=W)
-    rr += 1
-    Label(rings_frame, text="").grid(row=rr)
-    rr += 1
-    Label(rings_frame, text="Station: ").grid(row=rr, column=0, sticky=W)
-    om_rings = OptionMenu(rings_frame, rings_station, *projvar.list_of_stations)
-    om_rings.config(width=20)
-    if projvar.invran_station is None:
-        present_station = projvar.invran_station
-    else:
-        present_station = "select a station"
-    rings_station.set(present_station)
-    om_rings.grid(row=rr, column=1, sticky=W)
-    Button(rings_frame, text="Report", width=8, command=lambda: database_rings_report(wd[0], rings_station.get())) \
-        .grid(row=rr, column=2, sticky=W, padx=20)
-    rr += 1
-    Label(rings_frame, text="").grid(row=rr)
-    r += 1
-    # declare variables for Delete Database Records
-    clean1_range = StringVar(wd[3])
-    clean1_date = StringVar(wd[3])
-    clean1_table = StringVar(wd[3])
-    clean1_station = StringVar(wd[3])
-    # create frame and widgets for Delete Database Records
-    cleaner_frame1 = Frame(wd[3])
-    cleaner_frame1.grid(row=r, columnspan=6)
-    rr = 0
-    Label(cleaner_frame1, text="Delete Database Records (Remove records from database per given specifications)",
-          anchor="w").grid(row=rr, sticky="w", columnspan=4, column=0)
-    rr += 1
-    Label(cleaner_frame1, text="* format all date fields as mm/dd/yyyy, failure to do so will return an error",
-          anchor="w", fg="grey").grid(row=rr, sticky="w", columnspan=4, column=0)
-    rr += 1
-    Label(cleaner_frame1, text="                                               ").grid(row=rr, column=5)
-    rr += 1
-    Label(cleaner_frame1, text="Delete Records: ", anchor="w").grid(row=rr, sticky="w", column=0)
-    Radiobutton(cleaner_frame1, text="before and on date", variable=clean1_range, value="before",
-                anchor="w").grid(row=rr, sticky="w", column=1)
-    rr += 1
-    Radiobutton(cleaner_frame1, text="entered date only", variable=clean1_range, value="this_date",
-                anchor="w").grid(row=rr, sticky="w", column=1)
-    rr += 1
-    Radiobutton(cleaner_frame1, text="after and on date", variable=clean1_range, value="after",
-                anchor="w").grid(row=rr, sticky="w", column=1)
-    rr += 1
-    Radiobutton(cleaner_frame1, text="all dates", variable=clean1_range, value="all", anchor="w") \
-        .grid(row=rr, sticky="w", column=1)
-    clean1_range.set("after")
-    r += 1
-    # create frame and widgets for Delete Database Records
-    cleaner_frame2 = Frame(wd[3])
-    cleaner_frame2.grid(row=r, columnspan=6, sticky="w")
-    rrr = 0
-    Label(cleaner_frame2, text="date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
-    Entry(cleaner_frame2, textvariable=clean1_date, width=macadj(12, 8), justify='right') \
-        .grid(row=rrr, column=1, sticky="w")
-    Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
-    table_options = ("carriers + index", "carriers", "name index", "clock rings", "all")
-    om1_table = OptionMenu(cleaner_frame2, clean1_table, *table_options)
-    clean1_table.set(table_options[-1])
-    if sys.platform != "darwin":
-        om1_table.config(width=20, anchor="w")
-    else:
-        om1_table.config(width=20)
-    om1_table.grid(row=rrr, column=3, sticky="w")
-    rrr += 1
-    station_options = projvar.list_of_stations[:]  # use splice to make copy of list without creating alias
-    station_options.append("all stations")
-    Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
-    om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
-    clean1_station.set(station_options[-1])
-    if sys.platform != "darwin":
-        om1_station.config(width=20, anchor="w")
-    else:
-        om1_station.config(width=20)
-    om1_station.grid(row=rrr, column=3, sticky="w")
-    Button(cleaner_frame2, text="delete", width=macadj(6, 5),
-           command=lambda: database_delete_records
-           (frame, wd[0], clean1_range, clean1_date, "x", clean1_table, clean1_station)) \
-        .grid(row=rrr, column=4, sticky="w")
-    rrr += 1
-    Label(cleaner_frame2, text="").grid(row=rrr)
-    rrr += 1
-    # declare variables for Delete Database Records
-    clean2_range = StringVar(wd[3])
-    clean2_startdate = StringVar(wd[3])
-    clean2_enddate = StringVar(wd[3])
-    clean2_table = StringVar(wd[3])
-    clean2_station = StringVar(wd[3])
-    rr += 1
-    Label(cleaner_frame2, text="Delete Records within a specified range: ", anchor="w") \
-        .grid(row=rrr, sticky="w", column=0, columnspan=6)
-    rrr += 1
-    Label(cleaner_frame2, text="* format all date fields as mm/dd/yyyy, failure to do so will return an error",
-          anchor="w", fg="grey").grid(row=rrr, sticky="w", columnspan=4)
-    rrr += 1
-    # declare range as "between by default
-    clean2_range.set("between")
-    Label(cleaner_frame2, text="     start date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
-    Entry(cleaner_frame2, textvariable=clean2_startdate, width=macadj(12, 8), justify='right') \
-        .grid(row=rrr, column=1, sticky="w")
-    Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
-    om2_table = OptionMenu(cleaner_frame2, clean2_table, *table_options)
-    clean2_table.set(table_options[-1])
-    if sys.platform != "darwin":
-        om2_table.config(width=20, anchor="w")
-    else:
-        om2_table.config(width=20)
-    om2_table.grid(row=rrr, column=3, sticky="w")
-    rrr += 1
-    Label(cleaner_frame2, text="end date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
-    Entry(cleaner_frame2, textvariable=clean2_enddate, width=macadj(12, 8), justify='right') \
-        .grid(row=rrr, column=1, sticky="w")
-    Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
-    om2_station = OptionMenu(cleaner_frame2, clean2_station, *station_options)
-    clean2_station.set(station_options[-1])
-    if sys.platform != "darwin":
-        om2_station.config(width=20, anchor="w")
-    else:
-        om2_station.config(width=20)
-    om2_station.grid(row=rrr, column=3, sticky="w")
-    Button(cleaner_frame2, text="delete", width=macadj(6, 5),
-           command=lambda: database_delete_records(frame, wd[0], clean2_range, clean2_startdate, clean2_enddate,
-                                                   clean2_table, clean2_station)) \
-        .grid(row=rrr, column=4, sticky="w")
-    rrr += 1
-    Label(cleaner_frame2, text="").grid(row=rrr)
-    rrr += 1
-    Label(cleaner_frame2, text="Reset Database - Delete and Rebuild the Database (all information will be lost)") \
-        .grid(row=rrr, sticky="w", column=0, columnspan=6)
-    rrr += 1
-    Label(cleaner_frame2, text="").grid(row=rrr)
-    rrr += 1
-    Button(cleaner_frame2, text="Reset", width=10, padx=5, fg=macadj("white", "red"), bg=macadj("red", "white"),
-           command=lambda: database_reset(frame, wd[0])) \
-        .grid(row=rrr, column=0, sticky="w")
-    rrr += 1
-    Label(cleaner_frame2, text="").grid(row=rrr)
-    rrr += 1
-    Label(cleaner_frame2, text="").grid(row=rrr)
-    r += 1
-    button = Button(wd[4])
-    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
-    if sys.platform == "win32":  # center the widget text for mac
-        button.config(anchor="w")
-    button.pack(side=LEFT)
-    rear_window(wd)
 
 
 class RptWin:
@@ -2814,26 +2847,6 @@ class RptWin:
             button.config(anchor="w")
         button.pack(side=LEFT)
         win.finish()
-
-
-def clean_rings3_table():
-    """ database maintenance """
-    sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
-    result = inquire(sql)
-    types = ""
-    times = float(0.0)
-    if result:
-        sql = "UPDATE rings3 SET leave_type='%s',leave_time='%s'" \
-              "WHERE leave_type IS NULL" \
-              % (types, times)
-        commit(sql)
-        messagebox.showinfo("Clean Rings",
-                            "Rings table has been cleared of NULL values in leave type and leave time columns.")
-    else:
-        messagebox.showinfo("Clean Rings",
-                            "No NULL values in leave type and leave time columns were found in the Rings3 "
-                            "table of the database. No action taken.")
-    return
 
 
 def ns_config_apply(frame, text_array, color_array):
@@ -6580,8 +6593,8 @@ def apply_station(switch, station, frame):
                                   parent=frame):
             sql = "DELETE FROM stations WHERE station='%s'" % station
             commit(sql)
-            database_clean_carriers()
-            database_clean_rings()
+            DatabaseAdmin().database_clean_carriers()
+            DatabaseAdmin().database_clean_rings()
             if projvar.invran_station == station:
                 reset("none")  # reset initial value of globals
     # access list of stations from database
@@ -8373,7 +8386,8 @@ class MainFrame:
                                  command=lambda: RptWin(self.win.topframe).rpt_find_carriers(projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Clock Rings Summary", 
-                                 command=lambda: database_rings_report(self.win.topframe, projvar.invran_station))
+                                 command=lambda: DatabaseAdmin().database_rings_report(self.win.topframe,
+                                                                                       projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Pay Period Guide Generator", 
                                  command=lambda: Reports(self.win.topframe).pay_period_guide())
@@ -8470,13 +8484,14 @@ class MainFrame:
         management_menu.add_separator()
         management_menu.add_command(label="Database", 
                                     command=lambda: (self.win.topframe.destroy(), 
-                                                     database_maintenance(self.win.topframe)))
+                                                     DatabaseAdmin().run(self.win.topframe)))
         management_menu.add_command(label="Delete Carriers", 
-                                    command=lambda: database_delete_carriers(self.win.topframe, projvar.invran_station))
+                                    command=lambda: DatabaseAdmin().database_delete_carriers(self.win.topframe,
+                                                                                             projvar.invran_station))
         management_menu.add_command(label="Clean Carrier List", 
                                     command=lambda: carrier_list_cleaning(self.win.topframe))
         management_menu.add_command(label="Clean Rings", 
-                                    command=lambda: clean_rings3_table())
+                                    command=lambda: DatabaseAdmin().clean_rings3_table())
         management_menu.add_separator()
         management_menu.add_command(label="Name Index", 
                                     command=lambda: (self.win.topframe.destroy(), name_index_screen()))

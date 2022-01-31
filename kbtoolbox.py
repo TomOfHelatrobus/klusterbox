@@ -164,7 +164,7 @@ class NewWindow:
     def __init__(self, title=""):
         self.root = Tk()
         size_x = projvar.root.winfo_width()
-        size_y = projvar.root.winfo_height()
+        size_y = projvar.root.winfo_height() + 20
         position_x = projvar.root.winfo_x() + 20
         position_y = projvar.root.winfo_y() + 20
         self.root.title("KLUSTERBOX {}".format(title))
