@@ -2849,6 +2849,347 @@ class RptWin:
         win.finish()
 
 
+class Admin:
+    """
+    a class for creating and running screens for configuring klusterbox and adjusting settings.
+    """
+    def __init__(self):
+        pass
+
+    class AboutKlusterbox:
+        """
+        a class for displaying the About Klusterbox screen. Will display the version number, release date, contact
+        information and source code.
+        """
+
+        def __init__(self):
+            self.win = None
+            self.frame = None
+            self.photo = None
+
+        def start(self, frame):
+            """ a master method to run other methods in proper order. """
+            self.frame = frame
+            self.win = MakeWindow()
+            self.win.create(self.frame)
+            self.build()
+            self.button_frame()
+            self.win.finish()
+
+        def build(self):
+            """ fills the screen with widgets. """
+            r = 0  # set row counter
+            if projvar.platform == "macapp":
+                path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources',
+                                    'kb_about.jpg')
+            elif projvar.platform == "winapp":
+                path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
+            else:
+                path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
+            try:
+                self.photo = ImageTk.PhotoImage(Image.open(path))
+                Label(self.win.body, image=self.photo).grid(row=r, column=0, columnspan=10, sticky="w")
+            except (TclError, FileNotFoundError):
+                pass
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            Label(self.win.body, text="Klusterbox", font=macadj("bold", "Helvetica 18"), fg="red", anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            Label(self.win.body, text="version: {}".format(version), anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="release date: {}".format(release_date), anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w",
+                                                                                columnspan=6)
+            r += 1
+            Label(self.win.body, text="Original release: October 2018", anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="comments and criticisms are welcome", anchor=W, fg="red") \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="    tomandsusan4ever@msn.com", anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="    (please put \"klusterbox\" in the subject line)", anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="I've found that some emails get filtered out by the junk folder so", anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="Message me on Facebook Messenger:", anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            kb_link = Label(self.win.body, text="    facebook.com/thomas.weeks.artist", fg="blue", cursor="hand2")
+            kb_link.grid(row=r, columnspan=6, sticky="w")
+            kb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/thomas.weeks.artist"))
+            r += 1
+            Label(self.win.body, text="    720.280.0415", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            Label(self.win.body, text="For the lastest updates on Klusterbox check out the official Klusterbox") \
+                .grid(row=r, columnspan=6, sticky="w")
+            r += 1
+            Label(self.win.body, text="website at:").grid(row=r, columnspan=6, sticky="w")
+            r += 1
+            kb_link = Label(self.win.body, text="    www.klusterbox.com", fg="blue", cursor="hand2")
+            kb_link.grid(row=r, columnspan=6, sticky="w")
+            kb_link.bind("<Button-1>", lambda e: self.callback("http://klusterbox.com"))
+            r += 1
+            Label(self.win.body, text="Also look on Facebook for Klusterbox - Software for NALC Stewards at:") \
+                .grid(row=r, columnspan=6, sticky="w")
+            r += 1
+            fb_link = Label(self.win.body, text="    www.facebook.com/klusterbox", fg="blue", cursor="hand2")
+            fb_link.grid(row=r, columnspan=6, sticky="w")
+            fb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/klusterbox"))
+            r += 1
+            Label(self.win.body, text="Like, Follow and Share!").grid(row=r, columnspan=6, sticky="w")
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            Label(self.win.body, text="Project Documentation", font=macadj("bold", "Helvetica 16"), anchor=W) \
+                .grid(row=r, column=0, sticky="w", columnspan=3)
+            Label(self.win.body, text="                                             ").grid(row=r, column=3)
+            Label(self.win.body, text="                                             ").grid(row=r, column=4)
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("readme.txt")) \
+                .grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="Read Me", anchor=E).grid(row=r, column=1, sticky="w")
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("history.txt")) \
+                .grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="History", anchor=E).grid(row=r, column=1, sticky="w")
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("LICENSE.txt")) \
+                .grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="License", anchor=E).grid(row=r, column=1, sticky="w")
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+            """
+            Enter all modules imported by klusterbox below as part of the sourcecode tuple. All modules must be in the 
+            klusterbox project folder.
+            """
+            sourcecode = ("klusterbox.py",
+                          "projvar.py",
+                          "kbtoolbox.py",
+                          "kbdatabase.py",
+                          "kbreports.py",
+                          "kbspreadsheets.py",
+                          "kbspeedsheets.py",
+                          "kbequitability.py",
+                          "kbcsv_repair.py",
+                          "kbpdfhandling.py",
+                          "kbcsv_reader.py"
+                          )
+            for i in range(len(sourcecode)):
+                Button(self.win.body, text="read", width=macadj(7, 7),
+                       command=lambda source=sourcecode[i]: self.open_docs(source)).grid(row=r, column=0, sticky="w")
+                Label(self.win.body, text="Source Code - {}".format(sourcecode[i]), anchor=E) \
+                    .grid(row=r, column=1, sticky="w")
+                r += 1
+                Label(self.win.body, text="").grid(row=r)
+                r += 1
+            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("requirements.txt")) \
+                .grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
+
+        def button_frame(self):
+            """ builds the buttons on the bottom of the screen. """
+            button = Button(self.win.buttons)
+            button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+            if sys.platform == "win32":
+                button.config(anchor="w")
+            button.pack(side=LEFT)
+
+        def open_docs(self, doc):
+            """ opens docs in the about_klusterbox() function """
+            try:
+                if sys.platform == "win32":
+                    if projvar.platform == "py":
+                        try:
+                            path = doc
+                            os.startfile(path)  # in IDE the files are in the project folder
+                        except FileNotFoundError:
+                            path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', doc)
+                            os.startfile(path)  # in KB legacy the files are in the kb_sub folder
+                    if projvar.platform == "winapp":
+                        path = os.path.join(os.path.sep, os.getcwd(), doc)
+                        os.startfile(path)
+                if sys.platform == "linux":
+                    subprocess.call(doc)
+                if sys.platform == "darwin":
+                    if projvar.platform == "macapp":
+                        path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', doc)
+                        subprocess.call(["open", path])
+                    if projvar.platform == "py":
+                        subprocess.call(["open", doc])
+            except FileNotFoundError:
+                messagebox.showerror("Project Documents",
+                                     "The document was not opened or found.",
+                                     parent=self.win.body)
+
+        @staticmethod
+        def callback(url):
+            """ open hyperlinks at about_klusterbox() """
+            webbrowser.open_new(url)
+
+    class StationIndex:
+        """
+        creates a screen which the user can use to display, change and delete station and station indexes.
+        """
+        def __init__(self):
+            self.win = None  # the window object 
+            self.results = None  # search results from all records in station index.
+            self.frame = []  # rename function: holds topframe
+            self.passframe = []  # rename function: holds the frame name of the station to be renamed
+            self.tacs = []  # rename function: holds the tacs name
+            self.kb = []  # rename function: holds the klusterbox name of the station to be changed.
+            self.newname = []  # rename function: holds the new name of the station.
+            self.rename_button = []  # rename function: holds a button widget
+            self.all_stations = []  # rename function: holds all the stations in the station list except out of station.
+
+        def reinitialize(self):
+            """ re initialize the arrays to empty out any entries previously accumulated. """
+            self.results = None  # search results from all records in station index.
+            self.frame = []  # rename function: holds topframe
+            self.passframe = []  # rename function: holds the frame name of the station to be renamed
+            self.tacs = []  # rename function: holds the tacs name
+            self.kb = []  # rename function: holds the klusterbox name of the station to be changed.
+            self.newname = []  # rename function: holds the new name of the station.
+            self.rename_button = []  # rename function: holds a button widget
+            self.all_stations = []  # rename function: holds all the stations in the station list except out of station.
+
+        def get_all_stations(self):
+            """ this provides a list of stations in the station list, but not in the station index. """
+            sql = "SELECT * FROM stations"
+            results = inquire(sql)
+            for rec in results:
+                self.all_stations.append(rec[0])  # get all stations in database.
+            sql = "SELECT * FROM station_index"
+            self.results = inquire(sql)
+            for rec in self.results:
+                if rec[1] in self.all_stations:
+                    self.all_stations.remove(rec[1])  # remove any station in station index
+            self.all_stations.remove("out of station")  # remove out of station.
+
+        def station_index_mgmt(self, frame):
+            """ creates a screen that allows the user to adjust the station index. """
+            self.reinitialize()
+            self.get_all_stations()  # provides a list of stations in the station list, but not in the station index.
+            self.win = MakeWindow()
+            self.win.create(frame)
+            self.frame = self.win.topframe  # get the topframe for page reloading.
+            g = 0  # a counter for the row
+            Label(self.win.body, text="Station Index Management", font=macadj("bold", "Helvetica 18")) \
+                .grid(row=g, column=0, sticky="w")
+            Label(self.win.body, text="").grid(row=g + 1, column=0)
+            g += 2
+            if len(self.results) == 0:
+                Label(self.win.body, text="There are no stations in the station index")\
+                    .grid(row=g, column=0, sticky="w")
+                g += 1
+            else:
+                header_frame = Frame(self.win.body, width=500)
+                header_frame.grid(row=g, column=0, sticky="w")
+                Label(header_frame, text="TACS Station Name", width=macadj(30, 25), anchor="w") \
+                    .grid(row=0, column=0, sticky="w")
+                Label(header_frame, text="Klusterbox Station Name", width=macadj(30, 25), anchor="w") \
+                    .grid(row=0, column=1, sticky="w")
+                g += 1
+                f = 0  # initialize number for frame
+                frame = []  # initialize array for frame
+                for record in self.results:
+                    self.tacs.append(record[0])
+                    self.kb.append(record[1])
+                    to_add = "station_frame" + str(f)  # give the new frame a name
+                    frame.append(to_add)  # add the frame to the array
+                    frame[f] = Frame(self.win.body, width=500)  # create the frame widget
+                    frame[f].grid(row=g, padx=5, sticky="w")  # grid the widget
+                    self.passframe.append(frame[f])  # use attribute to hold the frame name.
+                    self.newname.append(StringVar(self.win.topframe))
+                    Button(frame[f], text=record[0], width=macadj(30, 25), anchor="w").grid(row=0, column=0)
+                    Button(frame[f], text=record[1], width=macadj(30, 25), anchor="w").grid(row=0, column=1)
+                    to_add = Button(frame[f], text="rename", width=6)
+                    self.rename_button.append(to_add)
+                    self.rename_button[f]['command'] = lambda x=f: self.station_index_rename(x)
+                    self.rename_button[f].grid(row=0, column=2)
+                    delete_button = Button(frame[f], text="delete", width=6,
+                                           command=lambda x=f: self.station_rec_del(x))
+                    delete_button.grid(row=0, column=3)
+                    f += 1
+                    g += 1
+                Label(self.win.body, text="", height=1).grid(row=g)
+                Button(self.win.body, text="Delete All", width="15",
+                       command=lambda: (self.stationindexer_del_all(self.win.topframe))) \
+                    .grid(row=g + 1, column=0, columnspan=3, sticky="e")
+            button = Button(self.win.buttons)
+            button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+            if sys.platform == "win32":
+                button.config(anchor="w")
+            button.pack(side=LEFT)
+            self.win.finish()
+
+        def station_index_rename_apply(self, f):
+            """ rename a station in the station index. """
+            sql = "UPDATE station_index SET kb_station='%s' WHERE tacs_station='%s'" % \
+                  (self.newname[f].get(), self.tacs[f])
+            commit(sql)
+            self.station_index_mgmt(self.frame)
+
+        def station_index_rename(self, f):
+            """ widgets allow the user to select a new name for the kb station from a the stations list. """
+            self.rename_button[f].destroy()
+            Button(self.passframe[f], text=" ", width=6).grid(row=0, column=2)
+            if len(self.all_stations) > 0:
+                Label(self.passframe[f], text="update station name:  ", anchor="e").grid(row=1, column=0, sticky="e")
+                # set up station option menu and variable
+                om_station = OptionMenu(self.passframe[f], self.newname[f], *self.all_stations)
+                om_station.config(width=28, anchor="w")
+                om_station.grid(row=1, column=1)
+                self.newname[f].set(self.kb[f])
+                Button(self.passframe[f], text="rename",
+                       command=lambda: self.station_index_rename_apply(f)) \
+                    .grid(row=1, column=2)
+            else:
+                Label(self.passframe[f], text="No Unassigned Stations Available")\
+                    .grid(row=1, column=0, columnspan=2, sticky="e")
+        
+        def station_rec_del(self, f):
+            """ delete a record from the station index. """
+            sql = "DELETE FROM station_index WHERE tacs_station = '%s' and kb_station='%s'" % \
+                  (self.tacs[f], self.kb[f])
+            commit(sql)
+            self.station_index_mgmt(self.frame)
+
+        def stationindexer_del_all(self, frame):
+            """ deletes everything from the station index. """
+            sql = "DELETE FROM station_index"
+            commit(sql)
+            self.station_index_mgmt(frame)
+
+
 def ns_config_apply(frame, text_array, color_array):
     """ set ns configurations from Non-Scheduled Day Configurations page """
     for t in text_array:
@@ -3176,110 +3517,6 @@ class PdfSplitter:
             button_back.config(anchor="w")
         button_back.pack(side=LEFT)
         self.win.finish()
-
-
-def station_rec_del(frame, tacs, kb):
-    """ delete a record from the station index. """
-    sql = "DELETE FROM station_index WHERE tacs_station = '%s' and kb_station='%s'" % (tacs, kb)
-    commit(sql)
-    frame.destroy()
-    station_index_mgmt("none")
-
-
-def station_index_rename_apply(frame, tacs, newname):
-    """ rename a station in the station index. """
-    sql = "UPDATE station_index SET kb_station='%s' WHERE tacs_station='%s'" % (newname.get(), tacs)
-    commit(sql)
-    station_index_mgmt(frame)
-
-
-def station_index_rename(self, frame, tacs, kb, newname, button, all_stations):
-    """ creates an option menu that allows the user to rename a station in the station index. """
-    button.destroy()
-    Button(frame, text=" ", width=6).grid(row=0, column=2)
-    if len(all_stations) > 0:
-        Label(frame, text="update station name:  ", anchor="e").grid(row=1, column=0, sticky="e")
-        # set up station option menu and variable
-        om_station = OptionMenu(frame, newname, *all_stations)
-        om_station.config(width=28, anchor="w")
-        om_station.grid(row=1, column=1)
-        newname.set(kb)
-        Button(frame, text="rename", command=lambda: station_index_rename_apply(self, tacs, newname)) \
-            .grid(row=1, column=2)
-    else:
-        Label(frame, text="No Unassigned Stations Available").grid(row=1, column=0, columnspan=2, sticky="e")
-
-
-def stationindexer_del_all():
-    """ deletes everything from the station index. """
-    sql = "DELETE FROM station_index"
-    commit(sql)
-    station_index_mgmt("none")
-
-
-def station_index_mgmt(frame):
-    """ creates a screen that allows the user to adjust the station index. """
-    wd = front_window(frame)  # get window objects 0=F,1=S,2=C,3=FF,4=buttons
-    g = 0
-    Label(wd[3], text="Station Index Management", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=g, column=0, sticky="w")
-    Label(wd[3], text="").grid(row=g + 1, column=0)
-    g += 2
-    all_stations = []
-    sql = "SELECT * FROM stations"
-    results = inquire(sql)
-    for rec in results:
-        all_stations.append(rec[0])
-    sql = "SELECT * FROM station_index"
-    results = inquire(sql)
-    for rec in results:
-        if rec[1] in all_stations:
-            all_stations.remove(rec[1])
-    all_stations.remove("out of station")
-    if len(results) == 0:
-        Label(wd[3], text="There are no stations in the station index").grid(row=g, column=0, sticky="w")
-        g += 1
-    else:
-        header_frame = Frame(wd[3], width=500)
-        header_frame.grid(row=g, column=0, sticky="w")
-        Label(header_frame, text="TACS Station Name", width=macadj(30, 25), anchor="w") \
-            .grid(row=0, column=0, sticky="w")
-        Label(header_frame, text="Klusterbox Station Name", width=macadj(30, 25), anchor="w") \
-            .grid(row=0, column=1, sticky="w")
-        g += 1
-        f = 0  # initialize number for frame
-        frame = []  # initialize array for frame
-        si_newname = []
-        rename_button = []
-        for record in results:
-            to_add = "station_frame" + str(f)  # give the new frame a name
-            frame.append(to_add)  # add the frame to the array
-            frame[f] = Frame(wd[3], width=500)  # create the frame widget
-            frame[f].grid(row=g, padx=5, sticky="w")  # grid the widget
-            si_newname.append(StringVar(wd[0]))
-            Button(frame[f], text=record[0], width=macadj(30, 25), anchor="w").grid(row=0, column=0)
-            Button(frame[f], text=record[1], width=macadj(30, 25), anchor="w").grid(row=0, column=1)
-            to_add = Button(frame[f], text="rename", width=6)
-            rename_button.append(to_add)
-            rename_button[f]['command'] =\
-                lambda passframe=frame[f], tacs=record[0], kb=record[1], newname=si_newname[f], \
-                        rbutton = rename_button[f]: station_index_rename(wd[0], passframe, tacs, kb,
-                                                                      newname, rbutton, all_stations)
-            rename_button[f].grid(row=0, column=2)
-            delete_button = Button(frame[f], text="delete", width=6,
-                                   command=lambda tacs=record[0], kb=record[1]: station_rec_del(wd[0], tacs, kb))
-            delete_button.grid(row=0, column=3)
-            f += 1
-            g += 1
-        Label(wd[3], text="", height=1).grid(row=g)
-        Button(wd[3], text="Delete All", width="15", command=lambda: (wd[0].destroy(), stationindexer_del_all())) \
-            .grid(row=g + 1, column=0, columnspan=3, sticky="e")
-    button = Button(wd[4])
-    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
-    if sys.platform == "win32":
-        button.config(anchor="w")
-    button.pack(side=LEFT)
-    rear_window(wd)
 
 
 def apply_nameindexer_list(frame, x):
@@ -5516,203 +5753,6 @@ def remove_file_var(frame, folder):
                                parent=frame)
 
 
-class AboutKlusterbox:
-    """
-    a class for displaying the About Klusterbox screen. Will display the version number, release date, contact
-    information and source code.
-    """
-    def __init__(self):
-        self.win = None
-        self.frame = None
-        self.photo = None
-        
-    def start(self, frame):
-        """ a master method to run other methods in proper order. """
-        self.frame = frame
-        self.win = MakeWindow()
-        self.win.create(self.frame)
-        self.build()
-        self.button_frame()
-        self.win.finish()
-        
-    def build(self):
-        """ fills the screen with widgets. """
-        r = 0  # set row counter
-        if projvar.platform == "macapp":
-            path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', 'kb_about.jpg')
-        elif projvar.platform == "winapp":
-            path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
-        else:
-            path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
-        try:
-            self.photo = ImageTk.PhotoImage(Image.open(path))
-            Label(self.win.body, image=self.photo).grid(row=r, column=0, columnspan=10, sticky="w")
-        except (TclError, FileNotFoundError):
-            pass
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        Label(self.win.body, text="Klusterbox", font=macadj("bold", "Helvetica 18"), fg="red", anchor=W) \
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        Label(self.win.body, text="version: {}".format(version), anchor=W)\
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="release date: {}".format(release_date), anchor=W)\
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="Original release: October 2018", anchor=W)\
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="comments and criticisms are welcome", anchor=W, fg="red") \
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="    tomandsusan4ever@msn.com", anchor=W)\
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="    (please put \"klusterbox\" in the subject line)", anchor=W) \
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="I've found that some emails get filtered out by the junk folder so", anchor=W) \
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="Message me on Facebook Messenger:", anchor=W) \
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        kb_link = Label(self.win.body, text="    facebook.com/thomas.weeks.artist", fg="blue", cursor="hand2")
-        kb_link.grid(row=r, columnspan=6, sticky="w")
-        kb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/thomas.weeks.artist"))
-        r += 1
-        Label(self.win.body, text="    720.280.0415", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        Label(self.win.body, text="For the lastest updates on Klusterbox check out the official Klusterbox") \
-            .grid(row=r, columnspan=6, sticky="w")
-        r += 1
-        Label(self.win.body, text="website at:").grid(row=r, columnspan=6, sticky="w")
-        r += 1
-        kb_link = Label(self.win.body, text="    www.klusterbox.com", fg="blue", cursor="hand2")
-        kb_link.grid(row=r, columnspan=6, sticky="w")
-        kb_link.bind("<Button-1>", lambda e: self.callback("http://klusterbox.com"))
-        r += 1
-        Label(self.win.body, text="Also look on Facebook for Klusterbox - Software for NALC Stewards at:") \
-            .grid(row=r, columnspan=6, sticky="w")
-        r += 1
-        fb_link = Label(self.win.body, text="    www.facebook.com/klusterbox", fg="blue", cursor="hand2")
-        fb_link.grid(row=r, columnspan=6, sticky="w")
-        fb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/klusterbox"))
-        r += 1
-        Label(self.win.body, text="Like, Follow and Share!").grid(row=r, columnspan=6, sticky="w")
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        Label(self.win.body, text="Project Documentation", font=macadj("bold", "Helvetica 16"), anchor=W) \
-            .grid(row=r, column=0, sticky="w", columnspan=3)
-        Label(self.win.body, text="                                             ").grid(row=r, column=3)
-        Label(self.win.body, text="                                             ").grid(row=r, column=4)
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("readme.txt")) \
-            .grid(row=r, column=0, sticky="w")
-        Label(self.win.body, text="Read Me", anchor=E).grid(row=r, column=1, sticky="w")
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("history.txt")) \
-            .grid(row=r, column=0, sticky="w")
-        Label(self.win.body, text="History", anchor=E).grid(row=r, column=1, sticky="w")
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("LICENSE.txt")) \
-            .grid(row=r, column=0, sticky="w")
-        Label(self.win.body, text="License", anchor=E).grid(row=r, column=1, sticky="w")
-        r += 1
-        Label(self.win.body, text="").grid(row=r)
-        r += 1
-        """
-        Enter all modules imported by klusterbox below as part of the sourcecode tuple. All modules must be in the 
-        klusterbox project folder.
-        """
-        sourcecode = ("klusterbox.py",
-                      "projvar.py",
-                      "kbtoolbox.py",
-                      "kbdatabase.py",
-                      "kbreports.py",
-                      "kbspreadsheets.py",
-                      "kbspeedsheets.py",
-                      "kbequitability.py",
-                      "kbcsv_repair.py",
-                      "kbpdfhandling.py",
-                      "kbcsv_reader.py"
-                      )
-        for i in range(len(sourcecode)):
-            Button(self.win.body, text="read", width=macadj(7, 7),
-                   command=lambda source=sourcecode[i]: self.open_docs(source)).grid(row=r, column=0, sticky="w")
-            Label(self.win.body, text="Source Code - {}".format(sourcecode[i]), anchor=E)\
-                .grid(row=r, column=1, sticky="w")
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("requirements.txt")) \
-            .grid(row=r, column=0, sticky="w")
-        Label(self.win.body, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
-
-    def button_frame(self):
-        """ builds the buttons on the bottom of the screen. """
-        button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
-        if sys.platform == "win32":
-            button.config(anchor="w")
-        button.pack(side=LEFT)
-
-    def open_docs(self, doc):
-        """ opens docs in the about_klusterbox() function """
-        try:
-            if sys.platform == "win32":
-                if projvar.platform == "py":
-                    try:
-                        path = doc
-                        os.startfile(path)  # in IDE the files are in the project folder
-                    except FileNotFoundError:
-                        path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', doc)
-                        os.startfile(path)  # in KB legacy the files are in the kb_sub folder
-                if projvar.platform == "winapp":
-                    path = os.path.join(os.path.sep, os.getcwd(), doc)
-                    os.startfile(path)
-            if sys.platform == "linux":
-                subprocess.call(doc)
-            if sys.platform == "darwin":
-                if projvar.platform == "macapp":
-                    path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', doc)
-                    subprocess.call(["open", path])
-                if projvar.platform == "py":
-                    subprocess.call(["open", doc])
-        except FileNotFoundError:
-            messagebox.showerror("Project Documents",
-                                 "The document was not opened or found.",
-                                 parent=self.win.body)
-
-    @staticmethod
-    def callback(url):
-        """ open hyperlinks at about_klusterbox() """
-        webbrowser.open_new(url)
-
-
 class StartUp:
     """
     This class creates a screen which is displayed if there are no stations in the station index. It will show up
@@ -6766,286 +6806,291 @@ def station_list(frame):
         row += 1
     projvar.root.update()
     c.config(scrollregion=c.bbox("all"))
+    
+    
+class MassInput:
+    """
+    creates screen where users can change multiple characteristics for multiple carriers at one time. 
+    """
+    def __init__(self):
+        self.win = None
+        self.array_var = None
+        self.mi_list = None
+        self.mi_nsday = None
+        self.mi_station = None
+        self.mi_route = None
+        self.pass_date = None
+        self.mi_date = None
+        self.mi_sort = None
 
+    def initialize(self):
+        """ initialize all the arrays to empty """
+        self.array_var = []
+        self.mi_list = []
+        self.mi_nsday = []
+        self.mi_station = []
+        self.mi_route = []
+        self.pass_date = IntVar(self.win.body)
+        self.mi_date = StringVar(self.win.body)
+        self.mi_sort = StringVar(self.win.body)
 
-def apply_mi(frame, array_var, ls, ns, station, route, date):
-    """ enter changes from multiple input into database """
-    x = date.get()
-    year = IntVar()
-    month = IntVar()
-    day = IntVar()
-    y = projvar.invran_date_week[x].strftime("%Y").lstrip("0")
-    m = projvar.invran_date_week[x].strftime("%m").lstrip("0")
-    d = projvar.invran_date_week[x].strftime("%d").lstrip("0")
-    year.set(y)
-    month.set(m)
-    day.set(d)
-    sql = "SELECT * FROM ns_configuration"
-    ns_results = inquire(sql)
-    ns_dict = {}  # build dictionary for ns days
-    for r in ns_results:  # build dictionary for rotating ns days
-        ns_dict[r[2]] = r[0]
-    ns_dict["none"] = "none"  # add "none" to dictionary
-    for i in range(len(array_var)):  # loop through all received data
-        if "fixed: " not in ns[i].get():
-            passed_ns = ns[i].get().split("  ")  # break apart the day/color_code
-            ns[i].set(ns_dict[passed_ns[1]])  # match color_code to proper color_code in dict and set
-        else:
-            passed_ns = ns[i].get().split("  ")  # do not subject the fixed to the dictionary
-            ns[i].set(passed_ns[1])
-        # if there is a differance, then put the new record in the database
-        if array_var[i][2] != ls[i].get() or array_var[i][3] != ns[i].get() or array_var[i][5] != station[i].get():
-            apply(year, month, day, array_var[i][1], ls[i], ns[i], route[i], station[i], frame)
-
-
-def mass_input(frame, day, sort):
-    """ creates the mass input screen that allows the user to update the list status, ns day or station for
-    multiple carries. """
-    sql = ""
-    frame.destroy()
-    switch_f7 = Frame(projvar.root)
-    switch_f7.pack()
-    c1 = Canvas(switch_f7)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    button_submit = Button(c1)  # apply and close buttons
-    button_apply = Button(c1)
-    button_back = Button(c1)
-    button_submit.config(text="Submit", width=10, command=lambda:
-        [switch_f7.destroy(), apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route,
-                                       pass_date), MainFrame().start()])
-    button_apply.config(text="Apply", width=10,
-           command=lambda: [apply_mi(switch_f7, array_var, mi_list, mi_nsday, mi_station, mi_route, pass_date),
-                            mass_input(switch_f7, day, sort)])
-    button_back.config(text="Go Back", width=10,
-           command=lambda: MainFrame().start(frame=switch_f7))
-    if sys.platform == "win32":
-        button_submit.config(anchor="w")
-        button_apply.config(anchor="w")
-        button_back.config(anchor="w")
-    button_submit.pack(side=LEFT)
-    button_apply.pack(side=LEFT)
-    button_back.pack(side=LEFT)
-    # link up the canvas and scrollbar
-    s = Scrollbar(switch_f7)
-    c = Canvas(switch_f7, height=800, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    head_f = Frame(c)
-    c.create_window((0, 0), window=head_f, anchor=NW)
-    f = Frame(c)
-    c.create_window((0, 50), window=f, anchor=NW)
-    # set up the option menus to order results by day and sort criteria.
-    mi_date = StringVar()
-    mi_sort = StringVar()
-    opt_day = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
-    opt_sort = ["name", "list", "ns day"]
-    mi_date.set(day)
-    if projvar.invran_weekly_span:  # if investigation range is daily
-        mi_date.set(day)
-        om1 = OptionMenu(head_f, mi_date, *opt_day)
-        om1.config(width="5")
-        om1.grid(row=0, column=0)
-    mi_sort.set(sort)
-    om2 = OptionMenu(head_f, mi_sort, *opt_sort)
-    om2.grid(row=0, column=1)
-    om2.config(width="8")
-    Button(head_f, text="set", width=6, command=lambda: mass_input(switch_f7, mi_date.get(), mi_sort.get())) \
-        .grid(row=0, column=2)
-    # figure out the day and display
-    pass_date = IntVar()
-    if projvar.invran_weekly_span:   # if investigation range is weekly
+    def mass_input(self, frame, day, sort):
+        """ creates the mass input screen that allows the user to update the list status, ns day or station for
+        multiple carries. """
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.initialize()
+        optionframe = Frame(self.win.body)
+        optionframe.grid(row=0, columnspan=10, sticky=W)
+        # set up the option menus to order results by day and sort criteria.
+        opt_day = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+        opt_sort = ["name", "list", "ns day"]
+        self.mi_date.set(day)
+        if projvar.invran_weekly_span:  # if investigation range is daily
+            self.mi_date.set(day)
+            om1 = OptionMenu(optionframe, self.mi_date, *opt_day)  # option menu of days
+            om1.config(width="5")
+            om1.grid(row=0, column=0)
+        self.mi_sort.set(sort)
+        om2 = OptionMenu(optionframe, self.mi_sort, *opt_sort)  # option menu of list statuses
+        om2.grid(row=0, column=1)
+        om2.config(width="8")
+        Button(optionframe, text="set", width=10,   # button to set
+               command=lambda: self.mass_input(self.win.topframe, self.mi_date.get(), self.mi_sort.get())) \
+            .grid(row=0, column=2)
+        # figure out the day and display
+        if projvar.invran_weekly_span:  # if investigation range is weekly
+            for i in range(len(projvar.invran_date_week)):
+                if opt_day[i] == day:
+                    f_date = projvar.invran_date_week[i].strftime("%a - %b %d, %Y")
+                    self.pass_date.set(i)
+                    Label(self.win.body, text="Showing results for {}"
+                          .format(f_date), font=macadj("bold", "Helvetica 18"), justify=LEFT) \
+                        .grid(row=1, column=0, columnspan=10, sticky=W)
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            for i in range(len(opt_day)):
+                if projvar.invran_date.strftime("%a") == opt_day[i]:
+                    f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
+                    self.pass_date.set(i)
+                    Label(self.win.body, text="Showing results for {}"
+                          .format(f_date), font=macadj("bold", "Helvetica 18"), justify=LEFT) \
+                        .grid(row=1, column=0, columnspan=6, sticky=W)
+        # access database
+        sql = ""
         for i in range(len(projvar.invran_date_week)):
             if opt_day[i] == day:
-                f_date = projvar.invran_date_week[i].strftime("%a - %b %d, %Y")
-                pass_date.set(i)
-                Label(f, text="Showing results for {}"
-                      .format(f_date), font=macadj("bold", "Helvetica 18"), justify=LEFT) \
-                    .grid(row=0, column=0, columnspan=4, sticky=W)
-    if not projvar.invran_weekly_span:  # if investigation range is daily
-        for i in range(len(opt_day)):
-            if projvar.invran_date.strftime("%a") == opt_day[i]:
-                f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
-                pass_date.set(i)
-                Label(f, text="Showing results for {}"
-                      .format(f_date), font=macadj("bold", "Helvetica 18"), justify=LEFT) \
-                    .grid(row=0, column=0, columnspan=4, sticky=W)
-    # access database
-    for i in range(len(projvar.invran_date_week)):
-        if opt_day[i] == day:
-            if projvar.invran_weekly_span:  # if investigation range is weekly
-                sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
-                      " FROM carriers WHERE effective_date <= '%s'" \
-                      "ORDER BY carrier_name, effective_date" % (projvar.invran_date_week[i])
-            else:
-                sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
-                      " FROM carriers WHERE effective_date <= '%s'" \
-                      "ORDER BY carrier_name, effective_date" % projvar.invran_date
-    results = inquire(sql)
-    # initialize arrays for data sorting
-    carrier_list = []
-    candidates = []
-    otdl_array = []
-    wal_array = []
-    nl_array = []
-    ptf_array = []
-    aux_array = []
-    yellow_array = []
-    blue_array = []
-    green_array = []
-    brown_array = []
-    red_array = []
-    black_array = []
-    none_array = []
-    # take raw data and sort into appropiate arrays
-    for i in range(len(results)):
-        candidates.append(results[i])  # put name into candidates array
-        jump = "no"  # triggers an analysis of the candidates array
-        if i != len(results) - 1:  # if the loop has not reached the end of the list
-            if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
-                jump = "yes"  # bypasses an analysis of the candidates array
-        if jump == "no":
-            winner = max(candidates, key=itemgetter(0))  # select the most recent record
-            if winner[5] == projvar.invran_station:  # if that record matches the current station...
-                carrier_list.append(winner)  # then insert that record in the carrier list
-                if sort == "list":  # sort carrier list by ot list if selected
-                    if winner[2] == "otdl":
-                        otdl_array.append(winner)
-                    if winner[2] == "wal":
-                        wal_array.append(winner)
-                    if winner[2] == "nl":
-                        nl_array.append(winner)
-                    if winner[2] == "ptf":
-                        ptf_array.append(winner)
-                    if winner[2] == "aux":
-                        aux_array.append(winner)
-                if sort == "ns day":  # sort carrier list by ns day if selected
-                    if winner[3] == "yellow":
-                        yellow_array.append(winner)
-                    if winner[3] == "blue":
-                        blue_array.append(winner)
-                    if winner[3] == "green":
-                        green_array.append(winner)
-                    if winner[3] == "brown":
-                        brown_array.append(winner)
-                    if winner[3] == "red":
-                        red_array.append(winner)
-                    if winner[3] == "black":
-                        black_array.append(winner)
-                    if winner[3] == "none":
-                        none_array.append(winner)
-        del candidates[:]
-    # Display results XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    i = 1
-    array_var = []
-    list_header = ""
-    # set up first header
-    if sort == "name":
-        for car in carrier_list:
-            array_var.append(car)
-        list_header = "carrier list"
-    if sort == "list":
-        array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array
-        if len(nl_array) > 0:
-            list_header = "nl"
-        else:
-            list_header = " "
-    if sort == "ns day":
-        array_var = yellow_array + blue_array + green_array + brown_array + red_array + black_array + none_array
-        if len(yellow_array) > 0:
-            list_header = "yellow"
-        else:
-            list_header = " "
-    Label(f, text=list_header).grid(row=i, column=0)
-    i += 1
-    sql = "SELECT * FROM ns_configuration"
-    ns_results = inquire(sql)
-    ns_dict = {}  # build dictionary for ns days
-    days = ("sat", "mon", "tue", "wed", "thu", "fri")
-    for r in ns_results:  # build dictionary for rotating ns days
-        ns_dict[r[0]] = r[2]
-    for d in days:  # expand dictionary for fixed days
-        ns_dict[d] = "fixed: " + d
-    ns_dict["none"] = "none"  # add "none" to dictionary
-    # intialize arrays for option menus
-    mi_list = []
-    opt_list = "nl", "wal", "otdl", "aux", "ptf"
-    mi_nsday = []
-    nsk = []
-    days = ("sat", "mon", "tue", "wed", "thu", "fri")
-    for each in projvar.ns_code.keys():
-        nsk.append(each)  # make an array of projvar.ns_code keys
-    opt_nsday = []  # make an array of "day / color" options for option menu
-    for each in projvar.ns_code:
-        ns_option = projvar.ns_code[each] + "  " + ns_dict[each]  # make a string for each day/color
-        if each in days:
-            ns_option = "fixed:" + "  " + each  # if the ns day is fixed - make a special string
-        if each == "none":
-            ns_option = "---" + "  " + each  # if the ns day is "none" - make a special string
-        opt_nsday.append(ns_option)
-    mi_station = []
-    mi_route = []
-    count = 0
-    for record in array_var:  # loop to put information on to window
-        # set up color
-        if i & 1:
-            color = "light yellow"
-        else:
-            color = "white"
+                if projvar.invran_weekly_span:  # if investigation range is weekly
+                    sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+                          " FROM carriers WHERE effective_date <= '%s'" \
+                          "ORDER BY carrier_name, effective_date" % (projvar.invran_date_week[i])
+                else:
+                    sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid" \
+                          " FROM carriers WHERE effective_date <= '%s'" \
+                          "ORDER BY carrier_name, effective_date" % projvar.invran_date
+        results = inquire(sql)
+        # initialize arrays for data sorting
+        carrier_list = []
+        candidates = []
+        otdl_array = []
+        wal_array = []
+        nl_array = []
+        ptf_array = []
+        aux_array = []
+        yellow_array = []
+        blue_array = []
+        green_array = []
+        brown_array = []
+        red_array = []
+        black_array = []
+        none_array = []
+        # take raw data and sort into appropiate arrays
+        for i in range(len(results)):
+            candidates.append(results[i])  # put name into candidates array
+            jump = "no"  # triggers an analysis of the candidates array
+            if i != len(results) - 1:  # if the loop has not reached the end of the list
+                if results[i][1] == results[i + 1][1]:  # if the name current and next name are the same
+                    jump = "yes"  # bypasses an analysis of the candidates array
+            if jump == "no":
+                winner = max(candidates, key=itemgetter(0))  # select the most recent record
+                if winner[5] == projvar.invran_station:  # if that record matches the current station...
+                    carrier_list.append(winner)  # then insert that record in the carrier list
+                    if sort == "list":  # sort carrier list by ot list if selected
+                        if winner[2] == "otdl":
+                            otdl_array.append(winner)
+                        if winner[2] == "wal":
+                            wal_array.append(winner)
+                        if winner[2] == "nl":
+                            nl_array.append(winner)
+                        if winner[2] == "ptf":
+                            ptf_array.append(winner)
+                        if winner[2] == "aux":
+                            aux_array.append(winner)
+                    if sort == "ns day":  # sort carrier list by ns day if selected
+                        if winner[3] == "yellow":
+                            yellow_array.append(winner)
+                        if winner[3] == "blue":
+                            blue_array.append(winner)
+                        if winner[3] == "green":
+                            green_array.append(winner)
+                        if winner[3] == "brown":
+                            brown_array.append(winner)
+                        if winner[3] == "red":
+                            red_array.append(winner)
+                        if winner[3] == "black":
+                            black_array.append(winner)
+                        if winner[3] == "none":
+                            none_array.append(winner)
+            del candidates[:]
+        # Display results XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        i = 4
+        list_header = ""
+        # set up first header
+        if sort == "name":
+            for car in carrier_list:
+                self.array_var.append(car)
+            list_header = "carrier list"
         if sort == "list":
-            if list_header != record[2]:
-                list_header = record[2]
-                Label(f, text=list_header).grid(row=i, column=0)
-                i += 1
+            self.array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array
+            if len(nl_array) > 0:
+                list_header = "nl"
+            else:
+                list_header = " "
         if sort == "ns day":
-            if list_header != record[3]:
-                list_header = record[3]
-                Label(f, text=list_header).grid(row=i, column=0)
-                i += 1
-        # set up carrier name button and variable
-        Button(f, text=record[1], width=macadj(24, 20), anchor="w", bg=color, bd=0).grid(row=i, column=0)
-        # set up list status option menu and variable
-        mi_list.append(StringVar(f))
-        om_list = OptionMenu(f, mi_list[count], *opt_list)  # configuration below
-        om_list.grid(row=i, column=1, ipadx=0)
-        mi_list[count].set(record[2])
-        # set up ns day option menu and variable
-        mi_nsday.append(StringVar(f))
-        om_nsday = OptionMenu(f, mi_nsday[count], *opt_nsday)  # configuration below
-        om_nsday.grid(row=i, column=2)
-        ns_index = nsk.index(record[3])
-        mi_nsday[count].set(opt_nsday[ns_index])
-        # set up station option menu and variable
-        mi_station.append(StringVar(f))
-        om_station = OptionMenu(f, mi_station[count], *projvar.list_of_stations)  # configuration below
-        om_station.grid(row=i, column=3)
-        mi_station[count].set(record[5])
-        # adjust optionmenu configuration by platform
-        if sys.platform == "darwin":
-            om_list.config(width=4, bg=color)
-            om_nsday.config(width=9, bg=color)
-            om_station.config(width=18, bg=color)
-        else:
-            om_list.config(width=5, anchor="w", bg=color, relief='ridge', bd=0)
-            om_nsday.config(width=10, anchor="w", bg=color, relief='ridge', bd=0)
-            om_station.config(width=28, anchor="w", bg=color, relief='ridge', bd=0)
-        # set up route variable - not visible but passed along with other variables
-        mi_route.append(StringVar(f))
-        mi_route[count].set(record[4])
-        count += 1
+            self.array_var = yellow_array + blue_array + green_array + brown_array + red_array + black_array + \
+                             none_array
+            if len(yellow_array) > 0:
+                list_header = "yellow"
+            else:
+                list_header = " "
+        Label(self.win.body, text=list_header).grid(row=i, column=0)
         i += 1
-    del carrier_list[:]
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
+        sql = "SELECT * FROM ns_configuration"
+        ns_results = inquire(sql)
+        ns_dict = {}  # build dictionary for ns days
+        days = ("sat", "mon", "tue", "wed", "thu", "fri")
+        for r in ns_results:  # build dictionary for rotating ns days
+            ns_dict[r[0]] = r[2]
+        for d in days:  # expand dictionary for fixed days
+            ns_dict[d] = "fixed: " + d
+        ns_dict["none"] = "none"  # add "none" to dictionary
+        # intialize arrays for option menus
+        opt_list = "nl", "wal", "otdl", "aux", "ptf"
+        nsk = []
+        days = ("sat", "mon", "tue", "wed", "thu", "fri")
+        for each in projvar.ns_code.keys():
+            nsk.append(each)  # make an array of projvar.ns_code keys
+        opt_nsday = []  # make an array of "day / color" options for option menu
+        for each in projvar.ns_code:
+            ns_option = projvar.ns_code[each] + "  " + ns_dict[each]  # make a string for each day/color
+            if each in days:
+                ns_option = "fixed:" + "  " + each  # if the ns day is fixed - make a special string
+            if each == "none":
+                ns_option = "---" + "  " + each  # if the ns day is "none" - make a special string
+            opt_nsday.append(ns_option)
+        count = 0
+        for record in self.array_var:  # loop to put information on to window
+            # set up color
+            if i & 1:
+                color = "light yellow"
+            else:
+                color = "white"
+            if sort == "list":
+                if list_header != record[2]:
+                    list_header = record[2]
+                    Label(self.win.body, text=list_header).grid(row=i, column=0)
+                    i += 1
+            if sort == "ns day":
+                if list_header != record[3]:
+                    list_header = record[3]
+                    Label(self.win.body, text=list_header).grid(row=i, column=0)
+                    i += 1
+            # set up carrier name button and variable
+            Button(self.win.body, text=record[1], width=macadj(24, 20), anchor="w", bg=color, bd=0)\
+                .grid(row=i, column=0)
+            # set up list status option menu and variable
+            self.mi_list.append(StringVar(self.win.body))
+            om_list = OptionMenu(self.win.body, self.mi_list[count], *opt_list)  # configuration below
+            om_list.grid(row=i, column=1, ipadx=0)
+            self.mi_list[count].set(record[2])
+            # set up ns day option menu and variable
+            self.mi_nsday.append(StringVar(self.win.body))
+            om_nsday = OptionMenu(self.win.body, self.mi_nsday[count], *opt_nsday)  # configuration below
+            om_nsday.grid(row=i, column=2)
+            ns_index = nsk.index(record[3])
+            self.mi_nsday[count].set(opt_nsday[ns_index])
+            # set up station option menu and variable
+            self.mi_station.append(StringVar(self.win.body))
+            # configuration below
+            om_station = OptionMenu(self.win.body, self.mi_station[count], *projvar.list_of_stations)
+            om_station.grid(row=i, column=3)
+            self.mi_station[count].set(record[5])
+            # adjust optionmenu configuration by platform
+            if sys.platform == "darwin":
+                om_list.config(width=4, bg=color)
+                om_nsday.config(width=9, bg=color)
+                om_station.config(width=18, bg=color)
+            else:
+                om_list.config(width=5, anchor="w", bg=color, relief='ridge', bd=0)
+                om_nsday.config(width=10, anchor="w", bg=color, relief='ridge', bd=0)
+                om_station.config(width=28, anchor="w", bg=color, relief='ridge', bd=0)
+            # set up route variable - not visible but passed along with other variables
+            self.mi_route.append(StringVar(self.win.body))
+            self.mi_route[count].set(record[4])
+            count += 1
+            i += 1
+        del carrier_list[:]
+        self.build_buttons()
+        self.win.finish()
+
+    def build_buttons(self):
+        """ build the buttons on the bottom of the page """
+        button_submit = Button(self.win.buttons, text="Submit", width=15, command=lambda: self.apply_mi(goback=True))
+        button_apply = Button(self.win.buttons, text="Apply", width=15, command=lambda: self.apply_mi())
+        button_back = Button(self.win.buttons, text="Go Back", width=15,
+                             command=lambda: MainFrame().start(self.win.topframe))
+
+        if sys.platform == "win32":
+            button_submit.config(anchor="w")
+            button_apply.config(anchor="w")
+            button_back.config(anchor="w")
+        button_submit.pack(side=LEFT)
+        button_apply.pack(side=LEFT)
+        button_back.pack(side=LEFT)
+
+    def apply_mi(self, goback=False):
+        """ enter changes from multiple input into database """
+        x = self.pass_date.get()
+        year = IntVar()
+        month = IntVar()
+        day = IntVar()
+        y = projvar.invran_date_week[x].strftime("%Y").lstrip("0")
+        m = projvar.invran_date_week[x].strftime("%m").lstrip("0")
+        d = projvar.invran_date_week[x].strftime("%d").lstrip("0")
+        year.set(y)
+        month.set(m)
+        day.set(d)
+        sql = "SELECT * FROM ns_configuration"
+        ns_results = inquire(sql)
+        ns_dict = {}  # build dictionary for ns days
+        for r in ns_results:  # build dictionary for rotating ns days
+            ns_dict[r[2]] = r[0]
+        ns_dict["none"] = "none"  # add "none" to dictionary
+        for i in range(len(self.array_var)):  # loop through all received data
+            if "fixed: " not in self.mi_nsday[i].get():
+                passed_ns = self.mi_nsday[i].get().split("  ")  # break apart the day/color_code
+                self.mi_nsday[i].set(ns_dict[passed_ns[1]])  # match color_code to proper color_code in dict and set
+            else:
+                passed_ns = self.mi_nsday[i].get().split("  ")  # do not subject the fixed to the dictionary
+                self.mi_nsday[i].set(passed_ns[1])
+            # if there is a differance, then put the new record in the database
+            if self.array_var[i][2] != self.mi_list[i].get() or self.array_var[i][3] != self.mi_nsday[i].get() \
+                    or self.array_var[i][5] != self.mi_station[i].get():
+                apply(year, month, day, self.array_var[i][1], self.mi_list[i], self.mi_nsday[i], self.mi_route[i],
+                      self.mi_station[i], self.win.body)
+        if goback:
+            MainFrame().start(self.win.topframe)
+        else:
+            self.mass_input(self.win.topframe, self.mi_date.get(), self.mi_sort.get())
 
 
 def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, frame):
@@ -8320,7 +8365,7 @@ class MainFrame:
         basic_menu.add_separator()
         basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(self.win.topframe))
         basic_menu.add_command(label="Multiple Input", 
-                               command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss))
+                               command=lambda dd="Sat", ss="name": MassInput().mass_input(self.win.topframe, dd, ss))
         basic_menu.add_command(label="Mandates Spreadsheet",
                                command=lambda r_rings="x": ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",
@@ -8342,7 +8387,8 @@ class MainFrame:
         basic_menu.add_command(label="Informal C", command=lambda: InformalC().informalc(None))
         basic_menu.add_separator()
         basic_menu.add_command(label="Location", command=lambda: Messenger(self.win.topframe).location_klusterbox())
-        basic_menu.add_command(label="About Klusterbox", command=lambda: AboutKlusterbox().start(self.win.topframe))
+        basic_menu.add_command(label="About Klusterbox",
+                               command=lambda: Admin().AboutKlusterbox().start(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="View Out of Station",
                                command=lambda: self.make_globals(self.start_year.get(), self.start_month.get(),
@@ -8495,7 +8541,8 @@ class MainFrame:
         management_menu.add_separator()
         management_menu.add_command(label="Name Index", 
                                     command=lambda: (self.win.topframe.destroy(), name_index_screen()))
-        management_menu.add_command(label="Station Index", command=lambda: station_index_mgmt(self.win.topframe))
+        management_menu.add_command(label="Station Index",
+                                    command=lambda: Admin().StationIndex().station_index_mgmt(self.win.topframe))
         menubar.add_cascade(label="Management", menu=management_menu)
         projvar.root.config(menu=menubar)
         
@@ -8505,7 +8552,7 @@ class MainFrame:
             Button(self.win.buttons, text="New Carrier", command=lambda: input_carriers(self.win.topframe),
                    width=macadj(13, 13)).pack(side=LEFT)
             Button(self.win.buttons, text="Multi Input",
-                   command=lambda dd="Sat", ss="name": mass_input(self.win.topframe, dd, ss),
+                   command=lambda dd="Sat", ss="name": MassInput().mass_input(self.win.topframe, dd, ss),
                    width=macadj(13, 13)).pack(side=LEFT)
             Button(self.win.buttons, text="Auto Data Entry", command=lambda: AutoDataEntry().run(self.win.topframe),
                    width=macadj(12, 12)).pack(side=LEFT)
