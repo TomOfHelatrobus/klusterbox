@@ -118,6 +118,15 @@ class MakeWindow:
         self.body = Frame(self.c)
         self.buttons = Canvas(self.topframe)  # button bar
 
+    def __repr__(self):
+        """ call with print(repr(MakeWindow())) """
+        return 'MakeWindow(), frame:{}'.format(self.topframe)
+
+    def __str__(self):
+        """ call with: print(str(MakeWindow()))"""
+        return "MakeWindow(): Creates a tkinter frame object with a scrollbar, body and a canvas " \
+               "for buttons on the bottom."
+
     def create(self, frame):
         """ call this method to build the window. If a frame is passed, it will be destroyed """
         if frame is not None:
@@ -357,7 +366,7 @@ def set_globals(s_year, s_mo, s_day, i_range, station, frame):
 
 
 class CarrierRecSet:
-    """ Sets up a tkinter page with buttons on the bottom """
+    """ Gets the clock rings for a carrier within a specified range. """
     def __init__(self, carrier, start, end, station):
         self.carrier = carrier
         self.start = start
@@ -369,7 +378,7 @@ class CarrierRecSet:
             self.range = "week"
 
     def get(self):
-        """ Sets up a tkinter page with buttons on the bottom """
+        """ Gets the clock rings for a carrier within a specified range. """
         if self.range == "day":
             sql = "SELECT MAX(effective_date), carrier_name, list_status, ns_day, route_s, station " \
                   "FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s' " \
@@ -965,15 +974,17 @@ class Convert:
 
     def empty_not_zero(self):
         """ returns an empty string for any value equal to zero """
-        if self.data == "0":
+        if self.data in ("0", "0.0", ".0", ".00", ""):
             return ""
-        if self.data == "0.0":
+        if self.data is None:
             return ""
         return self.data
 
     def auto_not_zero(self):
         """ returns an empty string for any value equal to zero """
         if self.data in ("0", "0.0", ".0", ".00", ""):
+            return "auto"
+        if self.data is None:
             return "auto"
         return self.data
 
@@ -1340,6 +1351,47 @@ class SpeedSettings:
         self.min_alpha = int(results[17][0])
         self.min_abc = int(results[18][0])
         self.speedcell_ns_rotate_mode = Convert(results[19][0]).str_to_bool()
+
+
+class DateChecker:
+    """
+    class for checking dates which are selected from option menus for the day and month and a entry widget for the
+    year. The frame is also included so that a messagebox can show errors.
+    """
+    def __init__(self, frame, month, day, year):
+        self.frame = frame
+        self.year = year.get()
+        self.month = month.get()
+        self.day = day.get()
+
+    def check_int(self):
+        """ returns true if a number is an integer."""
+        if not isint(self.year):
+            messagebox.showerror("Date Input Error",
+                                 "The entry for the year may contain only whole numbers.",
+                                 parent=self.frame)
+            return False
+        return True
+
+    def check_year(self):
+        """ check to see if the year is in range and that the date is valid. """
+        if self.year > 9999 or self.year < 1000:
+            messagebox.showerror("Year Input Error",
+                                 "Year must be a value between 1000 and 9999.",
+                                 parent=self.frame)
+            return False
+        return True
+
+    def try_date(self):
+        """ uses try except to test if the data is valid. Will return a datetime object or False. """
+        try:
+            date = datetime(self.year, self.month, self.day)
+            return date
+        except ValueError:
+            messagebox.showerror("Invalid Date",
+                                 "The date entered is not a valid date.",
+                                 parent=self.frame)
+            return False
 
 
 class NameChecker:

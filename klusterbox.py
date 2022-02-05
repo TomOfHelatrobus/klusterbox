@@ -17,7 +17,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
     find_pp, front_window, rear_window, gen_carrier_list, Quarter, RingTimeChecker, set_globals, \
-    SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName
+    SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -31,7 +31,7 @@ from kbinformalc import InformalC
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # Standard Libraries
 from tkinter import messagebox, filedialog, ttk, BooleanVar, BOTH, BOTTOM, Button, Canvas, Checkbutton, \
-    DISABLED, E, Entry, FALSE, Frame, IntVar, Label, LEFT, mainloop, Menu, NW, OptionMenu, Radiobutton, \
+    DISABLED, E, Entry, FALSE, Frame, IntVar, Label, LEFT, Menu, NW, OptionMenu, Radiobutton, \
     RIDGE, RIGHT, Scrollbar, StringVar, TclError, Tk, W
 from datetime import datetime, timedelta
 import sqlite3
@@ -48,6 +48,10 @@ from threading import Thread  # run load workbook while progress bar runs
 from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
 from openpyxl import load_workbook
+
+__author__ = "Thomas Weeks"
+__author_email__ = "tomandsusan4ever@msn.com"
+
 # version variables
 version = "4.006"
 release_date = "Jan 18, 2022"  # format is Jan 1, 2022
@@ -83,269 +87,6 @@ class ProgressBarIn:
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
-
-
-class RefusalWin:
-    """ create a window for refusals for otdl equitability """
-    def __init__(self):
-        self.frame = None
-        self.win = None
-        self.row = 0
-        self.carrier_name = ""
-        self.startdate = datetime(1, 1, 1)
-        self.enddate = datetime(1, 1, 1)
-        self.station = ""
-        self.time_vars = []  # a list of stringvars of refusal times
-        self.type_vars = []  # a list of stringvars of refusal types/indicators.
-        self.ref_dates = []  # a list of datetime objects corrosponding to refusal times and types
-        self.displaydate = []  # a list of strings providing the date of the refusals
-        self.refset = []  # a list of refusals for the quarter
-        self.onrec_time = []  # a list of the refusal time in the database
-        self.onrec_type = []  # a list of the refusal type/indicator in the database
-        self.onrec_displaydate = []
-        self.status_update = None
-
-    def create(self, frame, carrier, startdate, enddate, station):
-        """ a master method for running other methods in proper order. """
-        self.frame = frame
-        self.carrier_name = carrier
-        self.startdate = startdate
-        self.enddate = enddate
-        self.station = station
-        self.win = MakeWindow()
-        self.win.create(self.frame)
-        self.get_refset()
-        self.setup_vars_and_stringvars()
-        self.build_header()
-        self.build()
-        self.build_bottom()
-        self.buttons_frame()
-        self.win.finish()
-
-    def get_refset(self):
-        """ get refusals from database """
-        sql = "SELECT * FROM refusals WHERE refusal_date between '%s' and '%s' and carrier_name = '%s' " \
-              "ORDER BY refusal_date" % (self.startdate, self.enddate, self.carrier_name)
-        self.refset = inquire(sql)
-
-    def setup_vars_and_stringvars(self):
-        """ set up the string vars """
-        i = 0
-        date = self.startdate  # this will be the first date
-        while date != self.enddate + timedelta(days=1):  # for each date in the quarter
-            self.time_vars.append(StringVar(self.win.body))  # create a stringvar for time
-            self.type_vars.append(StringVar(self.win.body))  # create a stringvar for type
-            self.ref_dates.append(date)  # create a list of datetime objs corrosponding to the time/type vars
-            displaydate = date.strftime("%m") + "/" + date.strftime("%d")  # make a string of date eg 07/29
-            self.displaydate.append(displaydate)  # create a list of dates as string corrosponding to time/type vars
-            self.onrec_time.append("")  # create the onrec time array
-            self.onrec_type.append("")  # create the onrec type array
-            for line in self.refset:  # loop through refset for refusals on that date
-                if dt_converter(line[0]) == date:  # if there is a match
-                    self.type_vars[i].set(line[2])  # set the stringvar for type
-                    self.time_vars[i].set(line[3])  # set the stringvar for time
-                    self.onrec_type[i] = line[2]  # change the onrec type to type from refset
-                    self.onrec_time[i] = line[3]  # change the onrec time to time from refset
-                    # create list of dates with records in the database as a string date eg 07/29
-                    self.onrec_displaydate.append(dt_converter(line[0]).strftime("%m") + "/" + date.strftime("%d"))
-            date += timedelta(days=1)
-            i += 1  # increment the counter
-
-    def start_column(self):
-        """ returns the column position of the startdate """
-        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-        i = 0
-        for day in days:  # loop through tuple of days
-            if self.startdate.strftime("%A") == day:  # if the startdate matches the day
-                return i  # return the index of the tuple
-            i += 3  # increment the counter
-
-    def build_header(self):
-        """ build the screen header """
-        Label(self.win.body, text="Refusals: {}".format(self.carrier_name),
-              font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, column=0, sticky="w", columnspan=27)
-        self.row += 1
-        Label(self.win.body, text="").grid(row=self.row)
-        self.row += 1
-        Label(self.win.body, text="Investigation Range: {} though {}"
-              .format(self.startdate.strftime("%m/%d/%Y"), self.enddate.strftime("%m/%d/%Y")), fg="red")\
-            .grid(row=self.row, columnspan=macadj(20, 27), sticky="w")
-        self.row += 1
-        Label(self.win.body, text="Station: {}".format(self.station)) \
-            .grid(row=self.row, columnspan=macadj(20, 27), sticky="w")
-        self.row += 1
-        text = "Fill in the Refusal Indicator (optional) in the small field and any Refusal " \
-               "Times in the large field. "
-        Label(self.win.body, text=text, anchor="e", justify=LEFT).grid(row=self.row, columnspan=macadj(20, 27))
-        self.row += 1
-        Label(self.win.body, text="").grid(row=self.row)
-        self.row += 1
-        column = 0
-        days = ("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri")
-        for day in days:
-            Label(self.win.body, width=macadj(7, 3), text=day, anchor="w", fg="Blue")\
-                .grid(row=self.row, column=column+1, columnspan=3, sticky="w")
-            column += 3
-        self.row += 1
-
-    def build(self):
-        """ build labels and entry fields for refusals and refusal indicators. """
-        column = self.start_column()
-        for i in range(len(self.time_vars)):
-            Label(self.win.body, width=macadj(2, 0), text="").grid(row=self.row, column=column)  # blank column
-            column += 1
-            Label(self.win.body, width=macadj(7, 4), text=self.displaydate[i], fg="Gray", anchor="w")\
-                .grid(row=self.row, column=column, columnspan=2, sticky="w")  # display date
-            Entry(self.win.body, width=macadj(2, 1), textvariable=self.type_vars[i])\
-                .grid(row=self.row+1, column=column, sticky="w")  # entry field for type
-            column += 1
-            Entry(self.win.body, width=macadj(5, 4), textvariable=self.time_vars[i])\
-                .grid(row=self.row+1, column=column, sticky="w")  # entry field for time
-            column += 1
-            if column >= 21:  # if the row is full
-                column = 0  # reset column position to begining
-                self.row += 2  # and start a new row
-
-    def build_bottom(self):
-        """ builds label for status update at the bottom of the screen. """
-        for _ in range(3):
-            self.row += 1
-            Label(self.win.body, text="").grid(row=self.row)
-
-    def buttons_frame(self):
-        """ builds buttons on the bottom of the screen. """
-        button = Button(self.win.buttons)
-        button.config(text="Submit", width=macadj(20, 21),
-                      command=lambda: self.apply(True))  # apply and do no return to main screen
-        if sys.platform == "win32":
-            button.config(anchor="w")
-        button.pack(side=LEFT)
-
-        button = Button(self.win.buttons)
-        button.config(text="Apply", width=macadj(20, 21),
-                      command=lambda: self.apply(False))  # apply and do no return to main screen
-        if sys.platform == "win32":
-            button.config(anchor="w")
-        button.pack(side=LEFT)
-
-        button = Button(self.win.buttons)
-        button.config(text="Go Back", width=macadj(20, 21),
-                      command=lambda: OtEquitability()
-                      .create_from_refusals(self.win.topframe, self.enddate, self.station))
-        if sys.platform == "win32":
-            button.config(anchor="w")
-        button.pack(side=LEFT)
-
-        self.status_update = Label(self.win.buttons, text="", fg="red")
-        self.status_update.pack(side=LEFT)
-
-    def apply(self, home):
-        """ loop through all stringvars and check for errors """
-        for i in range(len(self.type_vars)):
-            if not self.checktypes(i):  # check the refusal indicator
-                return  # return if there is an error
-            if not self.checktimes(i):  # check the refusal time
-                return  # return if there is an error
-        # if all checks pass - input/update/dalete the refusals database table
-        for i in range(len(self.type_vars)):
-            time_var = self.time_vars[i].get().strip()
-            if not self.match_type(i) or not self.match_time(i):
-                if self.displaydate[i] not in self.onrec_displaydate:  # if there is no record with that date
-                    self.insert(i)
-                if self.displaydate[i] in self.onrec_displaydate:  # if there is a record with that date
-                    if not time_var:  # if the time is blank
-                        self.delete(i)  # delete the record
-                    else:  # if there is a time
-                        self.update(i)  # update the record
-        if home:  # return to the OT Preference screen
-            OtEquitability().create_from_refusals(self.win.topframe, self.enddate, self.station)
-        else:  # create a new object and recreate the window
-            RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate, self.station)
-
-    def checktypes(self, i):
-        """ checks the refusal indicator to make sure it is propely formatted. """
-        type_var = self.type_vars[i].get().strip()
-        time_var = self.time_vars[i].get().strip()
-        if RefusalTypeChecker(type_var).is_empty():
-            return True
-        if not RefusalTypeChecker(type_var).is_one():
-            messagebox.showerror("Refusal Tracking",
-                                 "The Refusal indicator for {} must be only one character".format(self.displaydate[i]),
-                                 parent=self.win.body)
-            return False
-        if not RefusalTypeChecker(type_var).is_letter():
-            messagebox.showerror("Refusal Tracking",
-                                 "The Refusal indicator for {} must be a letter".format(self.displaydate[i]),
-                                 parent=self.win.body)
-            return False
-        if type_var and not time_var:
-            messagebox.showerror("Refusal Tracking",
-                                 "The refusal indicator for {} is not accompanied with a refusal time."
-                                 .format(self.displaydate[i]),
-                                 parent=self.win.body)
-        return True
-
-    def checktimes(self, i):
-        """ checks leave times for proper formatting. """
-        time_var = self.time_vars[i].get().strip()
-        if RingTimeChecker(time_var).check_for_zeros():  # if blank or zero, skip all other checks
-            return True
-        if not RingTimeChecker(time_var).check_numeric():
-            text = "The Refusal time for {} must be a numeric value.".format(self.displaydate[i])
-            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
-            return False
-        if not RingTimeChecker(time_var).over_24():
-            text = "The Refusal time for {} must be less than 24.".format(self.displaydate[i])
-            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
-            return False
-        if not RingTimeChecker(time_var).less_than_zero():
-            text = "The Refusal time for {} must be greater than or equal to 0.".format(self.displaydate[i])
-            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
-            return False
-        if not RingTimeChecker(time_var).count_decimals_place():
-            text = "The Refusal time for {} must not have more than 2 decimal places.".format(self.displaydate[i])
-            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
-            return False
-        return True
-
-    def match_type(self, i):
-        """ check if the newly inputed type matchs the type in the database """
-        type_var = self.type_vars[i].get().strip()  # the newly inputed type
-        onrec = self.onrec_type[i]  # the type on record in the database
-        if type_var == onrec:
-            return True
-        return False
-
-    def match_time(self, i):
-        """ check if the newly inputed time matchs the time in the database """
-        time_var = self.time_vars[i].get().strip()  # the newly inputed time
-        onrec = self.onrec_time[i]  # the time on record in the database
-        if time_var == onrec:
-            return True
-        return False
-
-    def insert(self, i):
-        """ # insert a new record into the dbase """
-        type_var = self.type_vars[i].get().strip()
-        time_var = Convert(self.time_vars[i].get().strip()).hundredths()
-        sql = "INSERT INTO Refusals (refusal_date, carrier_name, refusal_type, refusal_time) " \
-              "VALUES('%s', '%s', '%s', '%s')" % (self.ref_dates[i], self.carrier_name, type_var, time_var)
-        commit(sql)
-
-    def update(self, i):
-        """ update an existing record in the dbase """
-        type_var = self.type_vars[i].get().strip()
-        time_var = Convert(self.time_vars[i].get().strip()).hundredths()
-        sql = "UPDATE Refusals SET refusal_type = '%s', refusal_time = '%s' WHERE refusal_date = '%s' " \
-              "and carrier_name = '%s'" % (type_var, time_var, self.ref_dates[i], self.carrier_name)
-        commit(sql)
-
-    def delete(self, i):
-        """ delete the record from the dbase """
-        sql = "DELETE FROM Refusals WHERE refusal_date = '%s' and carrier_name = '%s'" \
-              % (self.ref_dates[i], self.carrier_name)
-        commit(sql)
 
 
 class OtDistribution:
@@ -1145,256 +886,267 @@ class OtEquitability:
         self.status_update.pack(side=LEFT)
 
 
-class SpeedConfigGui:
-    """
-    builds a screen that allows the user to configure Speedsheets.
-    """
-    def __init__(self, frame):
-        self.frame = frame
-        self.win = MakeWindow()
-        self.ns_mode = StringVar(self.win.body)
-        self.abc_breakdown = StringVar(self.win.body)  # create stringvars
-        self.min_empid = StringVar(self.win.body)
-        self.min_alpha = StringVar(self.win.body)
-        self.min_abc = StringVar(self.win.body)
-        self.status_update = Label(self.win.buttons, text="", fg="red")
+class RefusalWin:
+    """ create a window for refusals for otdl equitability """
+    def __init__(self):
+        self.frame = None
+        self.win = None
+        self.row = 0
+        self.carrier_name = ""
+        self.startdate = datetime(1, 1, 1)
+        self.enddate = datetime(1, 1, 1)
+        self.station = ""
+        self.time_vars = []  # a list of stringvars of refusal times
+        self.type_vars = []  # a list of stringvars of refusal types/indicators.
+        self.ref_dates = []  # a list of datetime objects corrosponding to refusal times and types
+        self.displaydate = []  # a list of strings providing the date of the refusals
+        self.refset = []  # a list of refusals for the quarter
+        self.onrec_time = []  # a list of the refusal time in the database
+        self.onrec_type = []  # a list of the refusal type/indicator in the database
+        self.onrec_displaydate = []
+        self.status_update = None
 
-    def create(self):
-        """ builds the widgets that fill the page. """
+    def create(self, frame, carrier, startdate, enddate, station):
+        """ a master method for running other methods in proper order. """
+        self.frame = frame
+        self.carrier_name = carrier
+        self.startdate = startdate
+        self.enddate = enddate
+        self.station = station
+        self.win = MakeWindow()
         self.win.create(self.frame)
-        Label(self.win.body, text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=0, sticky="w", columnspan=4)
-        Label(self.win.body, text=" ").grid(row=1, column=0)
-        self.set_stringvars()
-        Label(self.win.body, text="NS Day Preferred Mode: ", width=macadj(40, 30), anchor="w") \
-            .grid(row=3, column=0, ipady=5, sticky="w")
-        ns_pref = OptionMenu(self.win.body, self.ns_mode, "rotating", "fixed")
-        ns_pref.config(width=macadj(9, 9))
-        if sys.platform == "win32":
-            ns_pref.config(anchor="w")
-        ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
-        Button(self.win.body, width=5, text="change",
-               command=lambda: self.apply_ns_mode()).grid(row=3, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for SpeedSheets", width=macadj(30, 30), anchor="w") \
-            .grid(row=4, column=0, ipady=5, sticky="w")
-        Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=macadj(40, 30), anchor="w") \
-            .grid(row=5, column=0, ipady=5, sticky="w")
-        opt_breakdown = OptionMenu(self.win.body, self.abc_breakdown, "True", "False")
-        opt_breakdown.config(width=macadj(9, 9))
-        if sys.platform == "win32":
-            opt_breakdown.config(anchor="w")
-        opt_breakdown.grid(row=5, column=1, columnspan=2, sticky="w", padx=4)
-        Button(self.win.body, width=5, text="change",
-               command=lambda: self.apply_abc_breakdown()).grid(row=5, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Employee ID tab", width=macadj(40, 30), anchor="w") \
-            .grid(row=6, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_empid).grid(row=6, column=1, padx=4)
-        Button(self.win.body, width=5, text="change",
-               command=lambda: self.apply_min_empid()).grid(row=6, column=2, padx=4)
-        Button(self.win.body, width=5, text="info",
-               command=lambda: self.info("min_spd_empid")) \
-            .grid(row=6, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Alphabetically tab", width=macadj(40, 30), anchor="w") \
-            .grid(row=7, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_alpha).grid(row=7, column=1, padx=4)
-        Button(self.win.body, width=5, text="change",
-               command=lambda: self.apply_min_alpha()).grid(row=7, column=2, padx=4)
-        Button(self.win.body, width=5, text="info",
-               command=lambda: self.info("min_spd_alpha")) \
-            .grid(row=7, column=3, padx=4)
-        Label(self.win.body, text="Minimum rows for Alphabetical breakdown tabs", width=macadj(40, 35), anchor="w") \
-            .grid(row=8, column=0, ipady=5, sticky="w")
-        Entry(self.win.body, width=5, textvariable=self.min_abc).grid(row=8, column=1, padx=4)
-        Button(self.win.body, width=5, text="change",
-               command=lambda: self.apply_min_abc()) \
-            .grid(row=8, column=2, padx=4)
-        Button(self.win.body, width=5, text="info", command=lambda: self.info("min_spd_abc")) \
-            .grid(row=8, column=3, padx=4)
-        dash_line = "________________________________________________________________________________________"
-        if sys.platform == "darwin":
-            dash_line = "__________________________________________________________________"
-        Label(self.win.body,
-              text=dash_line, pady=5).grid(row=9, columnspan=5, sticky="w")
-        Label(self.win.body, text="Restore Defaults").grid(row=10, column=0, ipady=5, sticky="w")
-        Button(self.win.body, width=5, text="set",
-               command=lambda: self.preset_default()).grid(row=10, column=3)
-        Label(self.win.body, text="High Settings").grid(row=11, column=0, ipady=5, sticky="w")
-        Button(self.win.body, width=5, text="set",
-               command=lambda: self.preset_high()).grid(row=11, column=3)
-        Label(self.win.body, text="Low Settings").grid(row=12, column=0, ipady=5, sticky="w")
-        Button(self.win.body, width=5, text="set",
-               command=lambda: self.preset_low()).grid(row=12, column=3)
-        self.win.fill(11, 20)  # fill the bottom of the window for scrolling
+        self.get_refset()
+        self.setup_vars_and_stringvars()
+        self.build_header()
+        self.build()
+        self.build_bottom()
         self.buttons_frame()
+        self.win.finish()
+
+    def get_refset(self):
+        """ get refusals from database """
+        sql = "SELECT * FROM refusals WHERE refusal_date between '%s' and '%s' and carrier_name = '%s' " \
+              "ORDER BY refusal_date" % (self.startdate, self.enddate, self.carrier_name)
+        self.refset = inquire(sql)
+
+    def setup_vars_and_stringvars(self):
+        """ set up the string vars """
+        i = 0
+        date = self.startdate  # this will be the first date
+        while date != self.enddate + timedelta(days=1):  # for each date in the quarter
+            self.time_vars.append(StringVar(self.win.body))  # create a stringvar for time
+            self.type_vars.append(StringVar(self.win.body))  # create a stringvar for type
+            self.ref_dates.append(date)  # create a list of datetime objs corrosponding to the time/type vars
+            displaydate = date.strftime("%m") + "/" + date.strftime("%d")  # make a string of date eg 07/29
+            self.displaydate.append(displaydate)  # create a list of dates as string corrosponding to time/type vars
+            self.onrec_time.append("")  # create the onrec time array
+            self.onrec_type.append("")  # create the onrec type array
+            for line in self.refset:  # loop through refset for refusals on that date
+                if dt_converter(line[0]) == date:  # if there is a match
+                    self.type_vars[i].set(line[2])  # set the stringvar for type
+                    self.time_vars[i].set(line[3])  # set the stringvar for time
+                    self.onrec_type[i] = line[2]  # change the onrec type to type from refset
+                    self.onrec_time[i] = line[3]  # change the onrec time to time from refset
+                    # create list of dates with records in the database as a string date eg 07/29
+                    self.onrec_displaydate.append(dt_converter(line[0]).strftime("%m") + "/" + date.strftime("%d"))
+            date += timedelta(days=1)
+            i += 1  # increment the counter
+
+    def start_column(self):
+        """ returns the column position of the startdate """
+        days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        i = 0
+        for day in days:  # loop through tuple of days
+            if self.startdate.strftime("%A") == day:  # if the startdate matches the day
+                return i  # return the index of the tuple
+            i += 3  # increment the counter
+
+    def build_header(self):
+        """ build the screen header """
+        Label(self.win.body, text="Refusals: {}".format(self.carrier_name),
+              font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=self.row, column=0, sticky="w", columnspan=27)
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row)
+        self.row += 1
+        Label(self.win.body, text="Investigation Range: {} though {}"
+              .format(self.startdate.strftime("%m/%d/%Y"), self.enddate.strftime("%m/%d/%Y")), fg="red")\
+            .grid(row=self.row, columnspan=macadj(20, 27), sticky="w")
+        self.row += 1
+        Label(self.win.body, text="Station: {}".format(self.station)) \
+            .grid(row=self.row, columnspan=macadj(20, 27), sticky="w")
+        self.row += 1
+        text = "Fill in the Refusal Indicator (optional) in the small field and any Refusal " \
+               "Times in the large field. "
+        Label(self.win.body, text=text, anchor="e", justify=LEFT).grid(row=self.row, columnspan=macadj(20, 27))
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row)
+        self.row += 1
+        column = 0
+        days = ("Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri")
+        for day in days:
+            Label(self.win.body, width=macadj(7, 3), text=day, anchor="w", fg="Blue")\
+                .grid(row=self.row, column=column+1, columnspan=3, sticky="w")
+            column += 3
+        self.row += 1
+
+    def build(self):
+        """ build labels and entry fields for refusals and refusal indicators. """
+        column = self.start_column()
+        for i in range(len(self.time_vars)):
+            Label(self.win.body, width=macadj(2, 0), text="").grid(row=self.row, column=column)  # blank column
+            column += 1
+            Label(self.win.body, width=macadj(7, 4), text=self.displaydate[i], fg="Gray", anchor="w")\
+                .grid(row=self.row, column=column, columnspan=2, sticky="w")  # display date
+            Entry(self.win.body, width=macadj(2, 1), textvariable=self.type_vars[i])\
+                .grid(row=self.row+1, column=column, sticky="w")  # entry field for type
+            column += 1
+            Entry(self.win.body, width=macadj(5, 4), textvariable=self.time_vars[i])\
+                .grid(row=self.row+1, column=column, sticky="w")  # entry field for time
+            column += 1
+            if column >= 21:  # if the row is full
+                column = 0  # reset column position to begining
+                self.row += 2  # and start a new row
+
+    def build_bottom(self):
+        """ builds label for status update at the bottom of the screen. """
+        for _ in range(3):
+            self.row += 1
+            Label(self.win.body, text="").grid(row=self.row)
 
     def buttons_frame(self):
-        """ builds the buttons and status update at the bottom of the page. """
+        """ builds buttons on the bottom of the screen. """
         button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        button.config(text="Submit", width=macadj(20, 21),
+                      command=lambda: self.apply(True))  # apply and do no return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
+
+        button = Button(self.win.buttons)
+        button.config(text="Apply", width=macadj(20, 21),
+                      command=lambda: self.apply(False))  # apply and do no return to main screen
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=macadj(20, 21),
+                      command=lambda: OtEquitability()
+                      .create_from_refusals(self.win.topframe, self.enddate, self.station))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+
+        self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
-        self.win.finish()
 
-    def apply_ns_mode(self):
-        """ applies change to ns preference mode. """
-        if self.ns_mode.get() == "rotating":
-            value = True
-        else:
-            value = False
-        msg = "NS Day Preferred Mode updated: {}".format(self.ns_mode.get())
-        self.commit_to_base(value, "speedcell_ns_rotate_mode", msg)
+    def apply(self, home):
+        """ loop through all stringvars and check for errors """
+        for i in range(len(self.type_vars)):
+            if not self.checktypes(i):  # check the refusal indicator
+                return  # return if there is an error
+            if not self.checktimes(i):  # check the refusal time
+                return  # return if there is an error
+        # if all checks pass - input/update/dalete the refusals database table
+        for i in range(len(self.type_vars)):
+            time_var = self.time_vars[i].get().strip()
+            if not self.match_type(i) or not self.match_time(i):
+                if self.displaydate[i] not in self.onrec_displaydate:  # if there is no record with that date
+                    self.insert(i)
+                if self.displaydate[i] in self.onrec_displaydate:  # if there is a record with that date
+                    if not time_var:  # if the time is blank
+                        self.delete(i)  # delete the record
+                    else:  # if there is a time
+                        self.update(i)  # update the record
+        if home:  # return to the OT Preference screen
+            OtEquitability().create_from_refusals(self.win.topframe, self.enddate, self.station)
+        else:  # create a new object and recreate the window
+            RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate, self.station)
 
-    def apply_abc_breakdown(self):
-        """ appplies change to abc breakdown preference - True/False. """
-        msg = "Alphabetical Breakdown (multiple tabs) updated: {}".format(self.abc_breakdown.get())
-        self.commit_to_base(self.abc_breakdown.get(), "abc_breakdown", msg)
-
-    def apply_min_empid(self):
-        """ applies changes to minimum rows for the employee id speedsheet. """
-        if self.check(self.min_empid.get()) is None:
-            msg = "Minimum rows for Employee ID tab updated: {}".format(self.min_empid.get())
-            self.commit_to_base(self.min_empid.get(), "min_spd_empid", msg)
-
-    def apply_min_alpha(self):
-        """ applies changes to minimum rows for alphabetical speedsheets. """
-        if self.check(self.min_alpha.get()) is None:
-            msg = "Minimum rows for Alphabetically tab updated: {}".format(self.min_alpha.get())
-            self.commit_to_base(self.min_alpha.get(), "min_spd_alpha", msg)
-
-    def apply_min_abc(self):
-        """ applies changes to minimum rows for alphabetical breakdown speedsheets. """
-        if self.check(self.min_abc.get()) is None:
-            if self.check_abc(self.min_abc.get()) is None:
-                msg = "Minimum rows for Alphabetical breakdown tabs updated: {}".format(self.min_abc.get())
-                self.commit_to_base(self.min_abc.get(), "min_spd_abc", msg)
-
-    def commit_to_base(self, value, setting, msg):
-        """ commits to tolerances table. """
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % \
-              (value, setting)
-        commit(sql)
-        self.set_stringvars()
-        self.status_update.config(text="{}".format(msg))
-
-    def check(self, value):
-        """ check values for minimum rows """
-        if not isint(value):
-            text = "You must enter a number with no decimals. "
-            messagebox.showerror("Tolerance value entry error",
-                                 text,
-                                 parent=self.win.topframe)
+    def checktypes(self, i):
+        """ checks the refusal indicator to make sure it is propely formatted. """
+        type_var = self.type_vars[i].get().strip()
+        time_var = self.time_vars[i].get().strip()
+        if RefusalTypeChecker(type_var).is_empty():
+            return True
+        if not RefusalTypeChecker(type_var).is_one():
+            messagebox.showerror("Refusal Tracking",
+                                 "The Refusal indicator for {} must be only one character".format(self.displaydate[i]),
+                                 parent=self.win.body)
             return False
-        if value.strip() == "":
-            text = "You must enter a numeric value for tolerances"
-            messagebox.showerror("Tolerance value entry error",
-                                 text,
-                                 parent=self.win.topframe)
+        if not RefusalTypeChecker(type_var).is_letter():
+            messagebox.showerror("Refusal Tracking",
+                                 "The Refusal indicator for {} must be a letter".format(self.displaydate[i]),
+                                 parent=self.win.body)
             return False
-        if float(value) < 5:
-            text = "Values must be equal to or greater than five."
-            messagebox.showerror("Tolerance value entry error",
-                                 text,
-                                 parent=self.win.topframe)
+        if type_var and not time_var:
+            messagebox.showerror("Refusal Tracking",
+                                 "The refusal indicator for {} is not accompanied with a refusal time."
+                                 .format(self.displaydate[i]),
+                                 parent=self.win.body)
+        return True
 
+    def checktimes(self, i):
+        """ checks leave times for proper formatting. """
+        time_var = self.time_vars[i].get().strip()
+        if RingTimeChecker(time_var).check_for_zeros():  # if blank or zero, skip all other checks
+            return True
+        if not RingTimeChecker(time_var).check_numeric():
+            text = "The Refusal time for {} must be a numeric value.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
             return False
-        if float(value) > 500:
-            text = "You must enter a value less five hundred."
-            messagebox.showerror("Tolerance value entry error",
-                                 text,
-                                 parent=self.win.topframe)
+        if not RingTimeChecker(time_var).over_24():
+            text = "The Refusal time for {} must be less than 24.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
             return False
-
-    def check_abc(self, value):
-        """ checks the arg to make sure it is less than 50. """
-        if float(value) > 50:
-            text = "You must enter a value less than fifty."
-            messagebox.showerror("Tolerance value entry error",
-                                 text,
-                                 parent=self.win.topframe)
+        if not RingTimeChecker(time_var).less_than_zero():
+            text = "The Refusal time for {} must be greater than or equal to 0.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
             return False
+        if not RingTimeChecker(time_var).count_decimals_place():
+            text = "The Refusal time for {} must not have more than 2 decimal places.".format(self.displaydate[i])
+            messagebox.showerror("Refusal Tracking", text, parent=self.win.topframe)
+            return False
+        return True
 
-    def preset_default(self):
-        """ sets the normal defaults. """
-        empid = "50"
-        alpha = "50"
-        abc = "10"
-        self.preset_to_base(self, empid, alpha, abc)
-        self.status_update.config(text="Default Minimum Row Settings Restored")
+    def match_type(self, i):
+        """ check if the newly inputed type matchs the type in the database """
+        type_var = self.type_vars[i].get().strip()  # the newly inputed type
+        onrec = self.onrec_type[i]  # the type on record in the database
+        if type_var == onrec:
+            return True
+        return False
 
-    def preset_high(self):
-        """ a high setting for defaults. """
-        empid = "150"
-        alpha = "150"
-        abc = "40"
-        self.preset_to_base(self, empid, alpha, abc)
-        self.status_update.config(text="High Minimum Row Settings Enabled")
+    def match_time(self, i):
+        """ check if the newly inputed time matchs the time in the database """
+        time_var = self.time_vars[i].get().strip()  # the newly inputed time
+        onrec = self.onrec_time[i]  # the time on record in the database
+        if time_var == onrec:
+            return True
+        return False
 
-    def preset_low(self):
-        """ a low setting for defaults. """
-        empid = "10"
-        alpha = "10"
-        abc = "5"
-        self.preset_to_base(self, empid, alpha, abc)
-        self.status_update.config(text="Low Minimum Row Settings Enabled")
-
-    @staticmethod
-    def preset_to_base(self, empid, alpha, abc):
-        """ abc breakdown is false in all cases """
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
+    def insert(self, i):
+        """ # insert a new record into the dbase """
+        type_var = self.type_vars[i].get().strip()
+        time_var = Convert(self.time_vars[i].get().strip()).hundredths()
+        sql = "INSERT INTO Refusals (refusal_date, carrier_name, refusal_type, refusal_time) " \
+              "VALUES('%s', '%s', '%s', '%s')" % (self.ref_dates[i], self.carrier_name, type_var, time_var)
         commit(sql)
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (empid, "min_spd_empid")
+
+    def update(self, i):
+        """ update an existing record in the dbase """
+        type_var = self.type_vars[i].get().strip()
+        time_var = Convert(self.time_vars[i].get().strip()).hundredths()
+        sql = "UPDATE Refusals SET refusal_type = '%s', refusal_time = '%s' WHERE refusal_date = '%s' " \
+              "and carrier_name = '%s'" % (type_var, time_var, self.ref_dates[i], self.carrier_name)
         commit(sql)
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (alpha, "min_spd_alpha")
+
+    def delete(self, i):
+        """ delete the record from the dbase """
+        sql = "DELETE FROM Refusals WHERE refusal_date = '%s' and carrier_name = '%s'" \
+              % (self.ref_dates[i], self.carrier_name)
         commit(sql)
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (abc, "min_spd_abc")
-        commit(sql)
-        self.set_stringvars()
-
-    def set_stringvars(self):
-        """ gets settings and sets stringvars. """
-        setting = SpeedSettings()  # retrieve settings from tolerance table in dbase
-        if setting.speedcell_ns_rotate_mode:
-            self.ns_mode.set("rotating")
-        else:
-            self.ns_mode.set("fixed")
-        self.abc_breakdown.set(str(setting.abc_breakdown))  # convert to str, else you get a 0 or 1
-        self.min_empid.set(setting.min_empid)
-        self.min_alpha.set(setting.min_alpha)
-        self.min_abc.set(setting.min_abc)
-
-    def info(self, switch):
-        """ controls messages to messagebox. """
-        text = ""
-        if switch == "min_spd_empid":
-            text = "Sets the minimum number of rows for the " \
-                   "Employee Id tab of the All Inclusive Speedsheet. \n\n" \
-                   "Enter a value between 5 and 500"
-        if switch == "min_spd_alpha":
-            text = "Sets the minimum number of rows for the " \
-                   "Alphabetical tab of the All Inclusive Speedsheet. \n\n" \
-                   "Enter a value between 5 and 500"
-        if switch == "min_spd_abc":
-            text = "Sets the minimum number of rows for the " \
-                   "Alphabetical breakdown tabs of the All Inclusive Speedsheet. \n\n" \
-                   "Enter a value between 5 and 50"
-        messagebox.showinfo("SpeedSheet Minimum Rows", text, parent=self.win.topframe)
-
-
-class SpeedLoadThread(Thread):
-    """ use multithreading to load workbook while progress bar runs """
-    def __init__(self, path):
-        Thread.__init__(self)
-        self.path = path
-        self.workbook = ""
-
-    def run(self):
-        """ runs the speedsheet loading. """
-        global pb_flag  # this will signal when the thread has ended to end the progress bar
-        wb = load_workbook(self.path)  # load xlsx doc with openpyxl
-        self.workbook = wb
-        pb_flag = False
 
 
 class SpeedWorkBookGet:
@@ -1442,6 +1194,21 @@ class SpeedWorkBookGet:
             wb.join()  # wait for loading workbook to finish
             pb.stop()  # stop the progress bar and destroy the object
             SpeedSheetCheck(frame, wb.workbook, file_path, interject).check()  # check the speedsheet
+
+
+class SpeedLoadThread(Thread):
+    """ use multithreading to load workbook while progress bar runs """
+    def __init__(self, path):
+        Thread.__init__(self)
+        self.path = path
+        self.workbook = ""
+
+    def run(self):
+        """ runs the speedsheet loading. """
+        global pb_flag  # this will signal when the thread has ended to end the progress bar
+        wb = load_workbook(self.path)  # load xlsx doc with openpyxl
+        self.workbook = wb
+        pb_flag = False
 
 
 class SpeedSheetCheck:
@@ -1677,183 +1444,6 @@ class SpeedSheetCheck:
             subprocess.call(["xdg-open", 'kb_sub/report/' + self.filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + self.filename])
-
-
-class GenConfig:
-    """
-    This class sets up the GUI Configuration screen used for setting mouse wheel orientation, investigation range
-    display mode, overtime rings limiter, and tour rings display.
-    """
-    def __init__(self, frame):
-        self.frame = frame
-        self.win = None
-        self.wheel_selection = None  # stringvar
-        self.invran_mode = None  # stringvar
-        self.ot_rings_limiter = None  # stringvar
-        self.tourrings_var = None  # stringvar
-        self.tourrings = None  # True to show BT/ET rings, False to hide
-        self.rings_limiter = None  # ot rings limiter status from tolerance table
-        self.invran_result = None  # investigation range mode from tolerance table
-        self.row = 0
-        self.status_update = None  # a label widget for status report
-
-    def create(self):
-        """ this is a master method for calling other methods in the class in sequence. """
-        self.get_settings()
-        self.get_window_object()
-        self.get_stringvars()
-        self.build()
-        self.button_frame()
-        self.win.fill(self.row + 1, 25)
-        self.win.finish()
-
-    def get_settings(self):
-        """ get records from the database and define variables. """
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
-        results = inquire(sql)
-        projvar.mousewheel = int(results[0][0])
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
-        results = inquire(sql)
-        self.invran_result = results[0][0]
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
-        results = inquire(sql)
-        rings_limiter = results[0][0]
-        self.rings_limiter = Convert(rings_limiter).bool_to_onoff()  # convert the bool to on or off
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "tourrings"
-        results = inquire(sql)
-        tourrings = results[0][0]
-        self.tourrings = Convert(tourrings).bool_to_onoff()  # convert the bool to on or off
-
-    def get_window_object(self):
-        """ create the window object and define self.win """
-        self.win = MakeWindow()
-        self.win.create(self.frame)
-
-    def get_stringvars(self):
-        """ create the stringvars """
-        self.wheel_selection = StringVar(self.win.body)
-        self.invran_mode = StringVar(self.win.body)
-        self.ot_rings_limiter = StringVar(self.win.body)
-        self.tourrings_var = StringVar(self.win.body)
-
-    def build(self):
-        """ build the screens """
-        Label(self.win.body, text="General Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, sticky="w", columnspan=4)
-        self.row += 1
-        Label(self.win.body, text=" ").grid(row=self.row, column=0)
-        self.row += 1
-        Label(self.win.body, text="Interface Configurations", anchor="w",
-              fg="Blue").grid(row=self.row, column=0, sticky="w")
-        self.row += 1
-        Label(self.win.body, text="________________________________"
-                                  "________________________________", pady=5)\
-            .grid(row=self.row, column=0, columnspan=4)
-        self.row += 1
-        # mousewheel scrolling direction
-        Label(self.win.body, text="Mouse Wheel Scrolling:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
-        om_wheel = OptionMenu(self.win.body, self.wheel_selection, "natural", "reverse")  # option menu configuration
-        om_wheel.config(width=7)
-        om_wheel.grid(row=self.row, column=1)
-        if projvar.mousewheel == 1:
-            self.wheel_selection.set("natural")
-        else:
-            self.wheel_selection.set("reverse")
-        Button(self.win.body, text="set", width=7, command=lambda: self.apply_mousewheel()).grid(row=self.row, column=2)
-        self.row += 1
-        Label(self.win.body, text=" ").grid(row=self.row, column=0)
-        self.row += 1
-        # investigation range mode
-        Label(self.win.body, text="Investigation Range Mode:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
-        om_invran_mode = OptionMenu(self.win.body, self.invran_mode, "original", "simple", "no labels")
-        om_invran_mode.config(width=7)
-        om_invran_mode.grid(row=self.row, column=1)
-        self.invran_mode.set(self.invran_result)
-        Button(self.win.body, text="set", width=7,
-               command=lambda: self.apply_invran_mode()).grid(row=self.row, column=2)
-        self.row += 1
-        Label(self.win.body, text=" ").grid(row=self.row, column=0)
-        self.row += 1
-
-        # overtime rings limiter
-        Label(self.win.body, text="Overtime Rings Limiter:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
-        om_rings = OptionMenu(self.win.body, self.ot_rings_limiter, "on", "off")  # option menu configuration below
-        om_rings.config(width=7)
-        om_rings.grid(row=self.row, column=1)
-        self.ot_rings_limiter.set(self.rings_limiter)
-        Button(self.win.body, text="set", width=7,
-               command=lambda: self.apply_rings_limiter()).grid(row=self.row, column=2)
-        self.row += 1
-        Label(self.win.body, text=" ").grid(row=self.row, column=0)
-        self.row += 1
-
-        # tourrings - show bt et rings
-        Label(self.win.body, text="Expanded Clock Rings", anchor="w",
-              fg="Blue").grid(row=self.row, column=0, sticky="w")
-        self.row += 1
-        Label(self.win.body, text="______________________________"
-                                  "__________________________________", pady=5)\
-            .grid(row=self.row, column=0, columnspan=4)
-        self.row += 1
-        Label(self.win.body, text="Show BT/ET Rings:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
-        om_tourrings = OptionMenu(self.win.body, self.tourrings_var, "on", "off")  # option menu configuration below
-        om_tourrings.config(width=7)
-        om_tourrings.grid(row=self.row, column=1)
-        self.tourrings_var.set(self.tourrings)
-        Button(self.win.body, text="set", width=7,
-               command=lambda: self.apply_tourrings()).grid(row=self.row, column=2)
-
-    def button_frame(self):
-        """ Display buttons and status update message """
-        button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
-        if sys.platform == "win32":
-            button.config(anchor="w")
-        button.pack(side=LEFT)
-        self.status_update = Label(self.win.buttons, text="", fg="red")
-        self.status_update.pack(side=LEFT)
-
-    def apply_rings_limiter(self):
-        """ apply the ot rings limiter """
-        if self.ot_rings_limiter.get() == "on":
-            rings_limiter = int(1)
-        else:
-            rings_limiter = int(0)
-        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (rings_limiter, "ot_rings_limiter")
-        commit(sql)
-        msg = "Overtime Rings Limiter updated: {}".format(self.ot_rings_limiter.get())
-        self.status_update.config(text="{}".format(msg))
-
-    def apply_invran_mode(self):
-        """ apply investigation range mode. """
-        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (self.invran_mode.get(), "invran_mode")
-        commit(sql)
-        msg = "Investigation Range mode updated: {}".format(self.invran_mode.get())
-        self.status_update.config(text="{}".format(msg))
-
-    def apply_mousewheel(self):
-        """ apply mouse wheel configuration """
-        if self.wheel_selection.get() == "natural":
-            wheel_multiple = int(1)
-            projvar.mousewheel = int(1)  # sets the project variable
-        else:  # if the self.wheel_selection.get() == "reverse"
-            wheel_multiple = int(-1)
-            projvar.mousewheel = int(-1)  # sets the project variable
-        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (wheel_multiple, "mousewheel")
-        commit(sql)
-        msg = "Mousescroll direction updated: {}".format(self.wheel_selection.get())
-        self.status_update.config(text="{}".format(msg))
-
-    def apply_tourrings(self):
-        """ apply tour rings """
-        if self.tourrings_var.get() == "on":  # convert tourrings to boolean values
-            tourrings = int(1)
-        else:
-            tourrings = int(0)
-        sql = "UPDATE tolerances SET tolerance='%s' WHERE category='%s'" % (tourrings, "tourrings")
-        commit(sql)
-        msg = "Show BT/ET rings updated: {}".format(self.tourrings_var.get())
-        self.status_update.config(text="{}".format(msg))
 
 
 class DatabaseAdmin:
@@ -2849,551 +2439,6 @@ class RptWin:
         win.finish()
 
 
-class Admin:
-    """
-    a class for creating and running screens for configuring klusterbox and adjusting settings.
-    """
-    def __init__(self):
-        pass
-
-    class AboutKlusterbox:
-        """
-        a class for displaying the About Klusterbox screen. Will display the version number, release date, contact
-        information and source code.
-        """
-
-        def __init__(self):
-            self.win = None
-            self.frame = None
-            self.photo = None
-
-        def start(self, frame):
-            """ a master method to run other methods in proper order. """
-            self.frame = frame
-            self.win = MakeWindow()
-            self.win.create(self.frame)
-            self.build()
-            self.button_frame()
-            self.win.finish()
-
-        def build(self):
-            """ fills the screen with widgets. """
-            r = 0  # set row counter
-            if projvar.platform == "macapp":
-                path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources',
-                                    'kb_about.jpg')
-            elif projvar.platform == "winapp":
-                path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
-            else:
-                path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
-            try:
-                self.photo = ImageTk.PhotoImage(Image.open(path))
-                Label(self.win.body, image=self.photo).grid(row=r, column=0, columnspan=10, sticky="w")
-            except (TclError, FileNotFoundError):
-                pass
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            Label(self.win.body, text="Klusterbox", font=macadj("bold", "Helvetica 18"), fg="red", anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            Label(self.win.body, text="version: {}".format(version), anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="release date: {}".format(release_date), anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w",
-                                                                                columnspan=6)
-            r += 1
-            Label(self.win.body, text="Original release: October 2018", anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="comments and criticisms are welcome", anchor=W, fg="red") \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="    tomandsusan4ever@msn.com", anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="    (please put \"klusterbox\" in the subject line)", anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="I've found that some emails get filtered out by the junk folder so", anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="Message me on Facebook Messenger:", anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            kb_link = Label(self.win.body, text="    facebook.com/thomas.weeks.artist", fg="blue", cursor="hand2")
-            kb_link.grid(row=r, columnspan=6, sticky="w")
-            kb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/thomas.weeks.artist"))
-            r += 1
-            Label(self.win.body, text="    720.280.0415", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            Label(self.win.body, text="For the lastest updates on Klusterbox check out the official Klusterbox") \
-                .grid(row=r, columnspan=6, sticky="w")
-            r += 1
-            Label(self.win.body, text="website at:").grid(row=r, columnspan=6, sticky="w")
-            r += 1
-            kb_link = Label(self.win.body, text="    www.klusterbox.com", fg="blue", cursor="hand2")
-            kb_link.grid(row=r, columnspan=6, sticky="w")
-            kb_link.bind("<Button-1>", lambda e: self.callback("http://klusterbox.com"))
-            r += 1
-            Label(self.win.body, text="Also look on Facebook for Klusterbox - Software for NALC Stewards at:") \
-                .grid(row=r, columnspan=6, sticky="w")
-            r += 1
-            fb_link = Label(self.win.body, text="    www.facebook.com/klusterbox", fg="blue", cursor="hand2")
-            fb_link.grid(row=r, columnspan=6, sticky="w")
-            fb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/klusterbox"))
-            r += 1
-            Label(self.win.body, text="Like, Follow and Share!").grid(row=r, columnspan=6, sticky="w")
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            Label(self.win.body, text="Project Documentation", font=macadj("bold", "Helvetica 16"), anchor=W) \
-                .grid(row=r, column=0, sticky="w", columnspan=3)
-            Label(self.win.body, text="                                             ").grid(row=r, column=3)
-            Label(self.win.body, text="                                             ").grid(row=r, column=4)
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("readme.txt")) \
-                .grid(row=r, column=0, sticky="w")
-            Label(self.win.body, text="Read Me", anchor=E).grid(row=r, column=1, sticky="w")
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("history.txt")) \
-                .grid(row=r, column=0, sticky="w")
-            Label(self.win.body, text="History", anchor=E).grid(row=r, column=1, sticky="w")
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("LICENSE.txt")) \
-                .grid(row=r, column=0, sticky="w")
-            Label(self.win.body, text="License", anchor=E).grid(row=r, column=1, sticky="w")
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
-            """
-            Enter all modules imported by klusterbox below as part of the sourcecode tuple. All modules must be in the 
-            klusterbox project folder.
-            """
-            sourcecode = ("klusterbox.py",
-                          "projvar.py",
-                          "kbtoolbox.py",
-                          "kbdatabase.py",
-                          "kbreports.py",
-                          "kbspreadsheets.py",
-                          "kbspeedsheets.py",
-                          "kbequitability.py",
-                          "kbcsv_repair.py",
-                          "kbpdfhandling.py",
-                          "kbcsv_reader.py"
-                          )
-            for i in range(len(sourcecode)):
-                Button(self.win.body, text="read", width=macadj(7, 7),
-                       command=lambda source=sourcecode[i]: self.open_docs(source)).grid(row=r, column=0, sticky="w")
-                Label(self.win.body, text="Source Code - {}".format(sourcecode[i]), anchor=E) \
-                    .grid(row=r, column=1, sticky="w")
-                r += 1
-                Label(self.win.body, text="").grid(row=r)
-                r += 1
-            Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("requirements.txt")) \
-                .grid(row=r, column=0, sticky="w")
-            Label(self.win.body, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
-
-        def button_frame(self):
-            """ builds the buttons on the bottom of the screen. """
-            button = Button(self.win.buttons)
-            button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
-            if sys.platform == "win32":
-                button.config(anchor="w")
-            button.pack(side=LEFT)
-
-        def open_docs(self, doc):
-            """ opens docs in the about_klusterbox() function """
-            try:
-                if sys.platform == "win32":
-                    if projvar.platform == "py":
-                        try:
-                            path = doc
-                            os.startfile(path)  # in IDE the files are in the project folder
-                        except FileNotFoundError:
-                            path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', doc)
-                            os.startfile(path)  # in KB legacy the files are in the kb_sub folder
-                    if projvar.platform == "winapp":
-                        path = os.path.join(os.path.sep, os.getcwd(), doc)
-                        os.startfile(path)
-                if sys.platform == "linux":
-                    subprocess.call(doc)
-                if sys.platform == "darwin":
-                    if projvar.platform == "macapp":
-                        path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', doc)
-                        subprocess.call(["open", path])
-                    if projvar.platform == "py":
-                        subprocess.call(["open", doc])
-            except FileNotFoundError:
-                messagebox.showerror("Project Documents",
-                                     "The document was not opened or found.",
-                                     parent=self.win.body)
-
-        @staticmethod
-        def callback(url):
-            """ open hyperlinks at about_klusterbox() """
-            webbrowser.open_new(url)
-
-    class StationIndex:
-        """
-        creates a screen which the user can use to display, change and delete station and station indexes.
-        """
-        def __init__(self):
-            self.win = None  # the window object 
-            self.results = None  # search results from all records in station index.
-            self.frame = []  # rename function: holds topframe
-            self.passframe = []  # rename function: holds the frame name of the station to be renamed
-            self.tacs = []  # rename function: holds the tacs name
-            self.kb = []  # rename function: holds the klusterbox name of the station to be changed.
-            self.newname = []  # rename function: holds the new name of the station.
-            self.rename_button = []  # rename function: holds a button widget
-            self.all_stations = []  # rename function: holds all the stations in the station list except out of station.
-
-        def reinitialize(self):
-            """ re initialize the arrays to empty out any entries previously accumulated. """
-            self.results = None  # search results from all records in station index.
-            self.frame = []  # rename function: holds topframe
-            self.passframe = []  # rename function: holds the frame name of the station to be renamed
-            self.tacs = []  # rename function: holds the tacs name
-            self.kb = []  # rename function: holds the klusterbox name of the station to be changed.
-            self.newname = []  # rename function: holds the new name of the station.
-            self.rename_button = []  # rename function: holds a button widget
-            self.all_stations = []  # rename function: holds all the stations in the station list except out of station.
-
-        def get_all_stations(self):
-            """ this provides a list of stations in the station list, but not in the station index. """
-            sql = "SELECT * FROM stations"
-            results = inquire(sql)
-            for rec in results:
-                self.all_stations.append(rec[0])  # get all stations in database.
-            sql = "SELECT * FROM station_index"
-            self.results = inquire(sql)
-            for rec in self.results:
-                if rec[1] in self.all_stations:
-                    self.all_stations.remove(rec[1])  # remove any station in station index
-            self.all_stations.remove("out of station")  # remove out of station.
-
-        def station_index_mgmt(self, frame):
-            """ creates a screen that allows the user to adjust the station index. """
-            self.reinitialize()
-            self.get_all_stations()  # provides a list of stations in the station list, but not in the station index.
-            self.win = MakeWindow()
-            self.win.create(frame)
-            self.frame = self.win.topframe  # get the topframe for page reloading.
-            g = 0  # a counter for the row
-            Label(self.win.body, text="Station Index Management", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=g, column=0, sticky="w")
-            Label(self.win.body, text="").grid(row=g + 1, column=0)
-            g += 2
-            if len(self.results) == 0:
-                Label(self.win.body, text="There are no stations in the station index")\
-                    .grid(row=g, column=0, sticky="w")
-                g += 1
-            else:
-                header_frame = Frame(self.win.body, width=500)
-                header_frame.grid(row=g, column=0, sticky="w")
-                Label(header_frame, text="TACS Station Name", width=macadj(30, 25), anchor="w") \
-                    .grid(row=0, column=0, sticky="w")
-                Label(header_frame, text="Klusterbox Station Name", width=macadj(30, 25), anchor="w") \
-                    .grid(row=0, column=1, sticky="w")
-                g += 1
-                f = 0  # initialize number for frame
-                frame = []  # initialize array for frame
-                for record in self.results:
-                    self.tacs.append(record[0])
-                    self.kb.append(record[1])
-                    to_add = "station_frame" + str(f)  # give the new frame a name
-                    frame.append(to_add)  # add the frame to the array
-                    frame[f] = Frame(self.win.body, width=500)  # create the frame widget
-                    frame[f].grid(row=g, padx=5, sticky="w")  # grid the widget
-                    self.passframe.append(frame[f])  # use attribute to hold the frame name.
-                    self.newname.append(StringVar(self.win.topframe))
-                    Button(frame[f], text=record[0], width=macadj(30, 25), anchor="w").grid(row=0, column=0)
-                    Button(frame[f], text=record[1], width=macadj(30, 25), anchor="w").grid(row=0, column=1)
-                    to_add = Button(frame[f], text="rename", width=6)
-                    self.rename_button.append(to_add)
-                    self.rename_button[f]['command'] = lambda x=f: self.station_index_rename(x)
-                    self.rename_button[f].grid(row=0, column=2)
-                    delete_button = Button(frame[f], text="delete", width=6,
-                                           command=lambda x=f: self.station_rec_del(x))
-                    delete_button.grid(row=0, column=3)
-                    f += 1
-                    g += 1
-                Label(self.win.body, text="", height=1).grid(row=g)
-                Button(self.win.body, text="Delete All", width="15",
-                       command=lambda: (self.stationindexer_del_all(self.win.topframe))) \
-                    .grid(row=g + 1, column=0, columnspan=3, sticky="e")
-            button = Button(self.win.buttons)
-            button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
-            if sys.platform == "win32":
-                button.config(anchor="w")
-            button.pack(side=LEFT)
-            self.win.finish()
-
-        def station_index_rename_apply(self, f):
-            """ rename a station in the station index. """
-            sql = "UPDATE station_index SET kb_station='%s' WHERE tacs_station='%s'" % \
-                  (self.newname[f].get(), self.tacs[f])
-            commit(sql)
-            self.station_index_mgmt(self.frame)
-
-        def station_index_rename(self, f):
-            """ widgets allow the user to select a new name for the kb station from a the stations list. """
-            self.rename_button[f].destroy()
-            Button(self.passframe[f], text=" ", width=6).grid(row=0, column=2)
-            if len(self.all_stations) > 0:
-                Label(self.passframe[f], text="update station name:  ", anchor="e").grid(row=1, column=0, sticky="e")
-                # set up station option menu and variable
-                om_station = OptionMenu(self.passframe[f], self.newname[f], *self.all_stations)
-                om_station.config(width=28, anchor="w")
-                om_station.grid(row=1, column=1)
-                self.newname[f].set(self.kb[f])
-                Button(self.passframe[f], text="rename",
-                       command=lambda: self.station_index_rename_apply(f)) \
-                    .grid(row=1, column=2)
-            else:
-                Label(self.passframe[f], text="No Unassigned Stations Available")\
-                    .grid(row=1, column=0, columnspan=2, sticky="e")
-        
-        def station_rec_del(self, f):
-            """ delete a record from the station index. """
-            sql = "DELETE FROM station_index WHERE tacs_station = '%s' and kb_station='%s'" % \
-                  (self.tacs[f], self.kb[f])
-            commit(sql)
-            self.station_index_mgmt(self.frame)
-
-        def stationindexer_del_all(self, frame):
-            """ deletes everything from the station index. """
-            sql = "DELETE FROM station_index"
-            commit(sql)
-            self.station_index_mgmt(frame)
-
-
-def ns_config_apply(frame, text_array, color_array):
-    """ set ns configurations from Non-Scheduled Day Configurations page """
-    for t in text_array:
-        if len(t.get()) > 6:
-            messagebox.showerror("Non_Scheduled Day Configuration",
-                                 "Names must not be longer than 6 characters.",
-                                 parent=frame)
-            return
-        if len(t.get()) < 1:
-            messagebox.showerror("Non_Scheduled Day Configuration",
-                                 "Names must not be shorter than 1 character.",
-                                 parent=frame)
-            return
-    color = ("yellow", "blue", "green", "brown", "red", "black")
-    for i in range(6):
-        sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (text_array[i].get(), color[i])
-        commit(sql)
-        sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (color_array[i].get(), color[i])
-        commit(sql)
-    ns_config(frame)
-
-
-def ns_config_reset(frame):
-    """ reset ns day configurations from Non-Scheduled Day Configurations page """
-    fill = ("gold", "navy", "forest green", "saddle brown", "red3", "gray10")
-    color = ("yellow", "blue", "green", "brown", "red", "black")
-    for i in range(6):
-        sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (color[i], color[i])
-        commit(sql)
-        sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (fill[i], color[i])
-        commit(sql)
-    ns_config(frame)
-
-
-def ns_config(frame):
-    """ generate Non-Scheduled Day Configurations page to configure ns day settings """
-    if projvar.invran_day is None:
-        messagebox.showerror("Non-Scheduled Day Configurations",
-                             "You must set the Investigation Range before changing the NS Day Configurations.",
-                             parent=frame)
-        return
-    sql = "SELECT * FROM ns_configuration"
-    result = inquire(sql)
-    wd = front_window(frame)
-    Label(wd[3], text="Non-Scheduled Day Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=0, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=1, column=0)
-    Label(wd[3], text="Change Configuration").grid(row=2, sticky="w", columnspan=4)
-    f_date = projvar.invran_date_week[0].strftime("%a - %b %d, %Y")
-    end_f_date = projvar.invran_date_week[6].strftime("%a - %b %d, %Y")
-    Label(wd[3], text="Investigation Range: {0} through {1}".format(f_date, end_f_date),
-          foreground="red").grid(row=3, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text="Pay Period: {0}".format(projvar.pay_period),
-          foreground="red").grid(row=4, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=5, column=0, sticky="w", columnspan=4)
-    Label(wd[3], text="Day", foreground="grey").grid(row=6, column=0, sticky="w")  # column headers
-    Label(wd[3], text="Name", foreground="grey").grid(row=6, column=1, sticky="w")
-    Label(wd[3], text="Color", foreground="grey").grid(row=6, column=2, sticky="w")
-    Label(wd[3], text="Default", foreground="grey").grid(row=6, column=3, sticky="w")
-    yellow_text = StringVar(wd[3])  # declare variables
-    blue_text = StringVar(wd[3])
-    green_text = StringVar(wd[3])
-    brown_text = StringVar(wd[3])
-    red_text = StringVar(wd[3])
-    black_text = StringVar(wd[3])
-    text_array = [yellow_text, blue_text, green_text, brown_text, red_text, black_text]
-    color_array = (
-        "black", "blue", "brown", "brown4", "dark green", "deep pink", "forest green", "gold", "gray10", "green",
-        "navy", "orange", "purple", "red", "red3", "saddle brown", "yellow", "yellow2")
-    yellow_color = StringVar(wd[3])
-    blue_color = StringVar(wd[3])
-    green_color = StringVar(wd[3])
-    brown_color = StringVar(wd[3])
-    red_color = StringVar(wd[3])
-    black_color = StringVar(wd[3])
-    fill_array = [yellow_color, blue_color, green_color, brown_color, red_color, black_color]
-    Label(wd[3], text="{}".format(projvar.ns_code['yellow'])).grid(row=7, column=0, sticky="w")  # yellow row
-    Entry(wd[3], textvariable=yellow_text, width=10).grid(row=7, column=1, sticky="w")
-    yellow_text.set(result[0][2])
-    om_yellow = OptionMenu(wd[3], yellow_color, *color_array)
-    yellow_color.set(result[0][1])
-    om_yellow.config(width=13, anchor="w")
-    om_yellow.grid(row=7, column=2, sticky="w")
-    Label(wd[3], text="yellow").grid(row=7, column=3, sticky="w")
-    Label(wd[3], text="{}".format(projvar.ns_code['blue'])).grid(row=8, column=0, sticky="w")  # blue row
-    Entry(wd[3], textvariable=blue_text, width=10).grid(row=8, column=1, sticky="w")
-    blue_text.set(result[1][2])
-    om_blue = OptionMenu(wd[3], blue_color, *color_array)
-    blue_color.set(result[1][1])
-    om_blue.config(width=13, anchor="w")
-    om_blue.grid(row=8, column=2, sticky="w")
-    Label(wd[3], text="blue").grid(row=8, column=3, sticky="w")
-    Label(wd[3], text="{}".format(projvar.ns_code['green'])).grid(row=9, column=0, sticky="w")  # green row
-    Entry(wd[3], textvariable=green_text, width=10).grid(row=9, column=1, sticky="w")
-    green_text.set(result[2][2])
-    om_green = OptionMenu(wd[3], green_color, *color_array)
-    green_color.set(result[2][1])
-    om_green.config(width=13, anchor="w")
-    om_green.grid(row=9, column=2, sticky="w")
-    Label(wd[3], text="green").grid(row=9, column=3, sticky="w")
-    Label(wd[3], text="{}".format(projvar.ns_code['brown'])).grid(row=10, column=0, sticky="w")  # brown row
-    Entry(wd[3], textvariable=brown_text, width=10).grid(row=10, column=1, sticky="w")
-    brown_text.set(result[3][2])
-    om_brown = OptionMenu(wd[3], brown_color, *color_array)
-    brown_color.set(result[3][1])
-    om_brown.config(width=13, anchor="w")
-    om_brown.grid(row=10, column=2, sticky="w")
-    Label(wd[3], text="brown").grid(row=10, column=3, sticky="w")
-    Label(wd[3], text="{}".format(projvar.ns_code['red'])).grid(row=11, column=0, sticky="w")  # red row
-    Entry(wd[3], textvariable=red_text, width=10).grid(row=11, column=1, sticky="w")
-    red_text.set(result[4][2])
-    om_red = OptionMenu(wd[3], red_color, *color_array)
-    red_color.set(result[4][1])
-    om_red.config(width=13, anchor="w")
-    om_red.grid(row=11, column=2, sticky="w")
-    Label(wd[3], text="red").grid(row=11, column=3, sticky="w")
-    Label(wd[3], text="{}".format(projvar.ns_code['black'])).grid(row=12, column=0, sticky="w")  # black row
-    Entry(wd[3], textvariable=black_text, width=10).grid(row=12, column=1, sticky="w")
-    black_text.set(result[5][2])
-    om_black = OptionMenu(wd[3], black_color, *color_array)
-    black_color.set(result[5][1])
-    om_black.config(width=13, anchor="w")
-    om_black.grid(row=12, column=2, sticky="w")
-    Label(wd[3], text="black").grid(row=12, column=3, sticky="w")
-    Label(wd[3], text=" ").grid(row=13)
-    Button(wd[3], text="set", width=10, command=lambda: ns_config_apply(wd[0], text_array, fill_array)) \
-        .grid(row=14, column=3)
-    Label(wd[3], text=" ").grid(row=15)
-    Label(wd[3], text="Restore Defaults").grid(row=16)
-    Button(wd[3], text="reset", width=10, command=lambda: ns_config_reset(wd[0])).grid(row=17, column=3)
-    button_back = Button(wd[4])
-    button_back.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
-    if sys.platform == "win32":
-        button_back.config(anchor="w")
-    button_back.pack(side=LEFT)
-    rear_window(wd)
-
-
-def pdf_converter_settings_apply(frame, error, raw, txt):
-    """ updates the settings for the pdf converter. """
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (error.get(), "pdf_error_rpt")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (raw.get(), "pdf_raw_rpt")
-    commit(sql)
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (txt.get(), "pdf_text_reader")
-    commit(sql)
-    pdf_converter_settings(frame)
-
-
-def pdf_converter_settings(frame):
-    """ a screen for updating the pdf converter settings. """
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
-    result = inquire(sql)
-    wd = front_window(frame)
-    Label(wd[3], text="PDF Converter Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=0, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=1, column=0)
-    Label(wd[3], text="Generate Reports for PDF Converter").grid(row=2, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=3, column=0)
-    Label(wd[3], text="Error Report", width=15, anchor="w").grid(row=4, column=0, sticky="w")
-    error_selection = StringVar(wd[3])
-    om_error = OptionMenu(wd[3], error_selection, "on", "off")  # option menu configuration below
-    om_error.grid(row=4, column=1)
-    error_selection.set(result[0][0])
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_raw_rpt"
-    result = inquire(sql)
-    Label(wd[3], text="Raw Output Report", width=15, anchor="w").grid(row=5, column=0, sticky="w")
-    raw_selection = StringVar(wd[3])
-    om_raw = OptionMenu(wd[3], raw_selection, "on", "off")  # option menu configuration below
-    om_raw.grid(row=5, column=1)
-    raw_selection.set(result[0][0])
-    Label(wd[3], text=" ").grid(row=6, column=0)
-    # allow user to read from a text file to bypass the pdfminer
-    Label(wd[3], text="Generate Reports from Text file").grid(row=7, sticky="w", columnspan=4)
-    Label(wd[3], text="     (where a text file of pdfminer output has been generated)") \
-        .grid(row=8, sticky="w", columnspan=4)
-    Label(wd[3], text=" ").grid(row=9, column=0)
-    sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_text_reader"
-    result = inquire(sql)
-    Label(wd[3], text="Read from txt file", width=15, anchor="w").grid(row=10, column=0, sticky="w")
-    txt_selection = StringVar(wd[3])
-    om_txt = OptionMenu(wd[3], txt_selection, "on", "off")
-    om_txt.grid(row=10, column=1)  # option menu configuration below
-    txt_selection.set(result[0][0])
-    Label(wd[3], text=" ").grid(row=11, column=0)
-    if sys.platform == "darwin":  # option menu configuration
-        om_error.config(width=5)
-        om_raw.config(width=5)
-        om_txt.config(width=5)
-    else:
-        om_error.config(width=5, anchor="w")
-        om_raw.config(width=5, anchor="w")
-        om_txt.config(width=5, anchor="w")
-    Button(wd[3], text="set", width=10, command=lambda:
-    pdf_converter_settings_apply(wd[0], error_selection, raw_selection, txt_selection)) \
-        .grid(row=12, column=2)
-    button = Button(wd[4])
-    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
-    if sys.platform == "win32":
-        button.config(anchor="w")
-    button.pack(side=LEFT)
-    rear_window(wd)
-
-
 class PdfSplitter:
     """
     The PDF Splitter. Builds a screen that allows the user to split a PDF.
@@ -3517,56 +2562,6 @@ class PdfSplitter:
             button_back.config(anchor="w")
         button_back.pack(side=LEFT)
         self.win.finish()
-
-
-def apply_nameindexer_list(frame, x):
-    """ deletes a carrier/record from the name index. """
-    sql = "DELETE FROM name_index WHERE emp_id = '%s'" % x
-    commit(sql)
-    frame.destroy()
-    name_index_screen()
-
-
-def del_all_nameindexer(frame):
-    """ deletes everything from the name index. """
-    sql = "DELETE FROM name_index"
-    commit(sql)
-    frame.destroy()
-    name_index_screen()
-
-
-def name_index_screen():
-    """ creates a screen which shows all records in the name index. """
-    sql = "SELECT * FROM name_index ORDER BY tacs_name"
-    results = inquire(sql)
-    wd = front_window("none")  # get window objects
-    x = 0
-    if len(results) == 0:
-        Label(wd[3], text="The Name Index is empty").grid(row=0, column=x)
-    else:
-        Label(wd[3], text="Name Index Management", font=macadj("bold", "Helvetica 18")) \
-            .grid(row=x, column=0, sticky="w", columnspan=2)  # page header
-        x += 1
-        Label(wd[3], text="").grid(row=x, column=0, sticky="w")
-        x += 1
-        Label(wd[3], text="TACS Name").grid(row=x, column=1, sticky="w")  # column headers
-        Label(wd[3], text="Klusterbox Name").grid(row=x, column=2, sticky="w")
-        Label(wd[3], text="Emp ID").grid(row=x, column=3, sticky="w")
-        x += 1
-        for item in results:  # loop for names in the index
-            Label(wd[3], text=str(x - 2), anchor="w").grid(row=x, column=0)
-            Button(wd[3], text=" " + item[0], anchor="w", width=20, relief=RIDGE).grid(row=x, column=1)
-            Button(wd[3], text=" " + item[1], anchor="w", width=20, relief=RIDGE).grid(row=x, column=2)
-            Button(wd[3], text=" " + item[2], anchor="w", width=8, relief=RIDGE).grid(row=x, column=3)
-            Button(wd[3], text="delete", anchor="w", width=5, relief=RIDGE, command=lambda xx=item[2]:
-                apply_nameindexer_list(wd[0], xx)).grid(row=x, column=4)
-            x += 1
-        Button(wd[3], text="Delete All", width="15", command=lambda: del_all_nameindexer(wd[0])) \
-            .grid(row=x, column=0, columnspan=5, sticky="e")
-    Button(wd[4], text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0])).pack(side=LEFT)
-    wd[0].update()
-    wd[2].config(scrollregion=wd[2].bbox("all"))
-    mainloop()
 
 
 class AutoDataEntry:
@@ -5911,152 +4906,500 @@ def carrier_list_cleaning(frame):
     del duplicates[:]
 
 
-def data_mods_codes_delete(frame, to_delete):
-    """ method of deleting operation numbers which are ignored by the automatic data entry """
-    sql = "DELETE FROM skippers WHERE code='%s'" % to_delete[0]
-    commit(sql)
-    auto_data_entry_settings(frame)
+class GenConfig:
+    """
+    This class sets up the GUI Configuration screen used for setting mouse wheel orientation, investigation range
+    display mode, overtime rings limiter, and tour rings display.
+    """
+    def __init__(self, frame):
+        self.frame = frame
+        self.win = None
+        self.wheel_selection = None  # stringvar
+        self.invran_mode = None  # stringvar
+        self.ot_rings_limiter = None  # stringvar
+        self.tourrings_var = None  # stringvar
+        self.tourrings = None  # True to show BT/ET rings, False to hide
+        self.rings_limiter = None  # ot rings limiter status from tolerance table
+        self.invran_result = None  # investigation range mode from tolerance table
+        self.row = 0
+        self.status_update = None  # a label widget for status report
 
+    def create(self):
+        """ this is a master method for calling other methods in the class in sequence. """
+        self.get_settings()
+        self.get_window_object()
+        self.get_stringvars()
+        self.build()
+        self.button_frame()
+        self.win.fill(self.row + 1, 25)
+        self.win.finish()
 
-def data_mods_codes_add(frame, code, description):
-    """ checks and enters operation codes skipped by ADE. """
-    sql = "SELECT code FROM skippers"
-    results = inquire(sql)
-    existing_codes = []
-    for item in results:
-        existing_codes.append(item[0])
-    prohibited_codes = ('721', '722')
-    if code.get() in prohibited_codes:
-        messagebox.showerror("Data Entry Error",
-                             "It is prohibited to exclude code {}"
-                             .format(code.get(),
-                                     parent=frame))
-        return
-    if code.get() in existing_codes:
-        messagebox.showerror("Data Entry Error",
-                             "This code had already been entered.",
-                             parent=frame)
-        return
-    if code.get().isdigit() == FALSE:
-        messagebox.showerror("Data Entry Error",
-                             "TACS code must contain only numbers.",
-                             parent=frame)
-        return
-    if len(code.get()) > 3 or len(code.get()) < 3:
-        messagebox.showerror("Data Entry Error",
-                             "TACS code must be 3 digits long.",
-                             parent=frame)
-        return
-    if len(description.get()) > 39:
-        messagebox.showerror("Data Enty Error",
-                             "Please limit description to less than 40 characters.",
-                             parent=frame)
-        return
-    sql = "INSERT INTO skippers(code,description) VALUES('%s','%s')" % (code.get(), description.get())
-    commit(sql)
-    auto_data_entry_settings(frame)
+    def get_settings(self):
+        """ get records from the database and define variables. """
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
+        results = inquire(sql)
+        projvar.mousewheel = int(results[0][0])
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
+        results = inquire(sql)
+        self.invran_result = results[0][0]
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
+        results = inquire(sql)
+        rings_limiter = results[0][0]
+        self.rings_limiter = Convert(rings_limiter).bool_to_onoff()  # convert the bool to on or off
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "tourrings"
+        results = inquire(sql)
+        tourrings = results[0][0]
+        self.tourrings = Convert(tourrings).bool_to_onoff()  # convert the bool to on or off
 
+    def get_window_object(self):
+        """ create the window object and define self.win """
+        self.win = MakeWindow()
+        self.win.create(self.frame)
 
-def data_mods_codes_default(frame):
-    """ resets the defaults operation codes skipped by ADE. """
-    sql = "DELETE FROM skippers"
-    commit(sql)
-    # put records in the skippers table
-    skip_these = [["354", "stand by"], ["613", "stewards time"], ["743", "route maintenance"]]
-    for rec in skip_these:
-        sql = "INSERT OR IGNORE INTO skippers(code, description) VALUES ('%s','%s')" % (rec[0], rec[1])
+    def get_stringvars(self):
+        """ create the stringvars """
+        self.wheel_selection = StringVar(self.win.body)
+        self.invran_mode = StringVar(self.win.body)
+        self.ot_rings_limiter = StringVar(self.win.body)
+        self.tourrings_var = StringVar(self.win.body)
+
+    def build(self):
+        """ build the screens """
+        Label(self.win.body, text="General Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=self.row, sticky="w", columnspan=4)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        text = macadj("Interface Configurations __________________________________",
+                      "Interface Configurations __________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=self.row, column=0, columnspan=4, sticky="w")
+        self.row += 1
+        # mousewheel scrolling direction
+        Label(self.win.body, text="Mouse Wheel Scrolling:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_wheel = OptionMenu(self.win.body, self.wheel_selection, "natural", "reverse")  # option menu configuration
+        om_wheel.config(width=7)
+        om_wheel.grid(row=self.row, column=1)
+        if projvar.mousewheel == 1:
+            self.wheel_selection.set("natural")
+        else:
+            self.wheel_selection.set("reverse")
+        Button(self.win.body, text="set", width=7, command=lambda: self.apply_mousewheel()).grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        # investigation range mode
+        Label(self.win.body, text="Investigation Range Mode:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_invran_mode = OptionMenu(self.win.body, self.invran_mode, "original", "simple", "no labels")
+        om_invran_mode.config(width=7)
+        om_invran_mode.grid(row=self.row, column=1)
+        self.invran_mode.set(self.invran_result)
+        Button(self.win.body, text="set", width=7,
+               command=lambda: self.apply_invran_mode()).grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+
+        # overtime rings limiter
+        Label(self.win.body, text="Overtime Rings Limiter:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_rings = OptionMenu(self.win.body, self.ot_rings_limiter, "on", "off")  # option menu configuration below
+        om_rings.config(width=7)
+        om_rings.grid(row=self.row, column=1)
+        self.ot_rings_limiter.set(self.rings_limiter)
+        Button(self.win.body, text="set", width=7,
+               command=lambda: self.apply_rings_limiter()).grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+
+        # tourrings - show bt et rings
+        text = macadj("Expanded Clock Rings ____________________________________",
+                      "Expanded Clock Rings ________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=self.row, column=0, columnspan=4, sticky="w")
+        self.row += 1
+        Label(self.win.body, text="Show BT/ET Rings:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_tourrings = OptionMenu(self.win.body, self.tourrings_var, "on", "off")  # option menu configuration below
+        om_tourrings.config(width=7)
+        om_tourrings.grid(row=self.row, column=1)
+        self.tourrings_var.set(self.tourrings)
+        Button(self.win.body, text="set", width=7,
+               command=lambda: self.apply_tourrings()).grid(row=self.row, column=2)
+
+    def button_frame(self):
+        """ Display buttons and status update message """
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.status_update.pack(side=LEFT)
+
+    def apply_rings_limiter(self):
+        """ apply the ot rings limiter """
+        if self.ot_rings_limiter.get() == "on":
+            rings_limiter = int(1)
+        else:
+            rings_limiter = int(0)
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (rings_limiter, "ot_rings_limiter")
         commit(sql)
-    auto_data_entry_settings(frame)
+        msg = "Overtime Rings Limiter updated: {}".format(self.ot_rings_limiter.get())
+        self.status_update.config(text="{}".format(msg))
+
+    def apply_invran_mode(self):
+        """ apply investigation range mode. """
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (self.invran_mode.get(), "invran_mode")
+        commit(sql)
+        msg = "Investigation Range mode updated: {}".format(self.invran_mode.get())
+        self.status_update.config(text="{}".format(msg))
+
+    def apply_mousewheel(self):
+        """ apply mouse wheel configuration """
+        if self.wheel_selection.get() == "natural":
+            wheel_multiple = int(1)
+            projvar.mousewheel = int(1)  # sets the project variable
+        else:  # if the self.wheel_selection.get() == "reverse"
+            wheel_multiple = int(-1)
+            projvar.mousewheel = int(-1)  # sets the project variable
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (wheel_multiple, "mousewheel")
+        commit(sql)
+        msg = "Mousescroll direction updated: {}".format(self.wheel_selection.get())
+        self.status_update.config(text="{}".format(msg))
+
+    def apply_tourrings(self):
+        """ apply tour rings """
+        if self.tourrings_var.get() == "on":  # convert tourrings to boolean values
+            tourrings = int(1)
+        else:
+            tourrings = int(0)
+        sql = "UPDATE tolerances SET tolerance='%s' WHERE category='%s'" % (tourrings, "tourrings")
+        commit(sql)
+        msg = "Show BT/ET rings updated: {}".format(self.tourrings_var.get())
+        self.status_update.config(text="{}".format(msg))
 
 
-def apply_auto_ns_structure(frame, ns_structure):
-    """ method of updating the ns day preference for the ADE. """
-    sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
-    commit(sql)
-    messagebox.showinfo("Settings Updated",
-                        "Auto Data Entry settings have been updated.",
-                        parent=frame)
+class StationList:
+    """
+    creates a window for users to view, change, rename and delete stations from the station list.
+    """
+
+    def __init__(self):
+        self.win = None
+
+    def station_list(self, frame):
+        """
+        creates a screen that allows the user to add stations.
+        """
+        self.win = MakeWindow()
+        self.win.create(frame)
+        frame.destroy()
+        gobackbutton = Button(self.win.buttons)
+        gobackbutton.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            gobackbutton.config(anchor="w")
+        gobackbutton.pack(side=LEFT)
+        # link up the canvas and scrollbar
+        # page title
+        row = 0
+        Label(self.win.body, text="Manage Station List", font=macadj("Arial 12", "Helvetica 18")) \
+            .grid(row=row, columnspan=2, sticky="w")
+        row += 1
+        Label(self.win.body, text="").grid(row=row)
+        row += 1
+        # enter new stations
+        new_name = StringVar(self.win.body)
+        text = macadj("Enter New Station __________________________________",
+                      "Enter New Station ______________________")
+        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=3, sticky="w")
+        row += 1
+        e = Entry(self.win.body, width=35, textvariable=new_name)
+        e.grid(row=row, column=0, sticky="w")
+        new_name.set("")
+        Button(self.win.body, width=5, anchor="w", text="ENTER",
+               command=lambda: self.apply_station("enter", new_name)). \
+            grid(row=row, column=1, sticky="w")
+        row += 1
+        Label(self.win.body, text="").grid(row=row)
+        row += 1
+        # list current list of stations and delete buttons.
+        sql = "SELECT * FROM stations ORDER BY station"
+        results = inquire(sql)
+        text = macadj("List Of Stations _____________________________________",
+                      "List Of Stations _______________________")
+        Label(self.win.body, text=text, fg="blue", pady=5).grid(row=row, columnspan=3, sticky="w")
+        row += 1
+        for record in results:
+            Button(self.win.body, text=record[0], width=30, anchor="w").grid(row=row, column=0, sticky="w")
+            Button(self.win.body, text="delete",
+                   command=lambda x=record[0]: self.apply_station("delete", x)) \
+                .grid(row=row, column=1, sticky="w")
+            row += 1
+
+        if len(results) > 1:
+            Label(self.win.body, text="").grid(row=row)
+            row += 1
+            # change names of stations
+            text = macadj("Change Station Name ______________________________",
+                          "Change Station Name __________________")
+            Label(self.win.body, text=text, fg="blue").grid(row=row, column=0, columnspan=3, sticky="w")
+            row += 1
+            all_stations = []
+            for rec in results:
+                all_stations.append(rec[0])
+            if "out of station" in all_stations:
+                all_stations.remove("out of station")
+            old_station = StringVar(self.win.body)
+            om = OptionMenu(self.win.body, old_station, *all_stations)
+            om.config(width="35")
+            om.grid(row=row, column=0, sticky="w", columnspan=2)
+            row += 1
+            old_station.set("select a station")
+            Label(self.win.body, text="enter a new name:").grid(row=row, column=0, sticky="w")
+            row += 1
+            new_station = StringVar(self.win.body)
+            Entry(self.win.body, textvariable=new_station, width="35").grid(row=row, column=0, sticky="w")
+            new_station.set("enter a new station name")
+            Button(self.win.body, text="update", command=lambda: self.station_update_apply(old_station, new_station)) \
+                .grid(row=row, column=1, sticky="w")
+            row += 1
+        # find and display list of unique stations
+        Label(self.win.body, text="").grid(row=row)
+        row += 1
+        text = macadj("List Of Stations _____________________________________",
+                      "List Of Stations ________________________")
+        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=3, sticky="w")
+        row += 1
+        Label(self.win.body, text="(referenced in carrier database)", pady=5) \
+            .grid(row=row, columnspan=3, sticky="w")
+        row += 1
+        unique_station = []
+        sql = "SELECT * FROM carriers"
+        results = inquire(sql)
+        for name in results:
+            if name[5] not in unique_station:
+                unique_station.append(name[5])
+        unique_station = sorted(unique_station, key=str.lower)
+        count = 1
+        for ss in unique_station:
+            Label(self.win.body, text="{}.  {}".format(count, ss)).grid(row=row, columnspan=2, sticky="w")
+            count += 1
+            row += 1
+        self.win.finish()
+
+    def apply_station(self, switch, station):
+        """ checks and enters stations into the station table. """
+        if switch == "enter":
+            if station.get().strip() == "" or station.get().strip() == "x":
+                messagebox.showerror("Prohibited Action",
+                                     "You can not enter a blank entry for a station.",
+                                     parent=self.win.body)
+                return
+            if station.get() in projvar.list_of_stations:
+                messagebox.showerror("Prohibited Action",
+                                     "That station is already in the list of stations.",
+                                     parent=self.win.body)
+                return
+        if switch == "enter":
+            sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
+            commit(sql)
+            projvar.list_of_stations.append(station.get())
+        if switch == "delete":
+            if station == "out of station":
+                text = "You can not delete the \"out of station\" listing."
+                messagebox.showerror("Action not allowed", text, parent=self.win.body)
+                return
+            if messagebox.askokcancel("Delete Station",
+                                      "Are you sure you want to delete {}? \n"
+                                      "The station will be deleted and maintenance actions will\n"
+                                      "clean any orphan carriers, clock rings and indexes from\n"
+                                      "database. This can not be reversed.".format(station),
+                                      parent=self.win.body):
+                sql = "DELETE FROM stations WHERE station='%s'" % station
+                commit(sql)
+                DatabaseAdmin().database_clean_carriers()
+                DatabaseAdmin().database_clean_rings()
+                if projvar.invran_station == station:
+                    reset("none")  # reset initial value of globals
+        # access list of stations from database
+        sql = "SELECT * FROM stations ORDER BY station"
+        results = inquire(sql)
+        # define and populate list of stations variable
+        del projvar.list_of_stations[:]
+        for stat in results:
+            projvar.list_of_stations.append(stat[0])
+        self.station_list(self.win.topframe)
+
+    def station_update_apply(self, old_station, new_station):
+        """ change the name of a station. """
+        if old_station.get() == "select a station":
+            messagebox.showerror("Prohibited Action",
+                                 "Please select a station.",
+                                 parent=self.win.body)
+            return
+        if new_station.get().strip() == "" or \
+                new_station.get() == "enter a new station name" or \
+                new_station.get().strip() == "x":
+            messagebox.showerror("Prohibited Action",
+                                 "You can not enter a blank entry for a station.",
+                                 parent=self.win.body)
+            return
+        if projvar.invran_station == old_station.get():
+            reset("none")  # reset initial value of globals
+        go_ahead = True
+        duplicate = False
+        if new_station.get() in projvar.list_of_stations:
+            go_ahead = messagebox.askokcancel("Duplicate Detected",
+                                              "This station already exist in the list of stations. "
+                                              "If you proceed, all records for {} will be merged with "
+                                              "records from {}. Do you want to proceed?"
+                                              .format(old_station.get(), new_station.get()),
+                                              parent=self.win.body)
+            duplicate = True
+        if duplicate and go_ahead:
+            sql = "DELETE FROM stations WHERE station='%s'" % old_station.get()
+            commit(sql)
+            projvar.list_of_stations.remove(new_station.get())
+        if go_ahead:
+            sql = "UPDATE stations SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
+            commit(sql)
+            sql = "UPDATE carriers SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
+            commit(sql)
+            sql = "UPDATE station_index SET kb_station='%s' WHERE kb_station='%s'" % \
+                  (new_station.get(), old_station.get())
+            commit(sql)
+            """ update the the project variable for list of stations: """
+            projvar.list_of_stations.append(new_station.get())  # add the new station name
+            projvar.list_of_stations.remove(old_station.get())  # remove the old station name
+            self.station_list(self.win.topframe)
+        if not go_ahead:
+            return
 
 
-def auto_data_entry_settings(frame):
-    """ creates window that allows the user to adjust the settings for the ADE. """
-    i = None
-    win = MakeWindow()
-    win.create(frame)
-    r = 0
-    Label(win.body, text="Auto Data Entry Settings", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=r, column=0, sticky="w", columnspan=4)
-    r += 1
-    Label(win.body, text="").grid(row=r, column=1)
-    r += 1
-    Label(win.body, text="NS Day Structure Preference", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=r, column=0, columnspan=4, sticky="w")
-    r += 1
-    ns_structure = StringVar(win.body)
-    sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
-    result = inquire(sql)
-    Radiobutton(win.body, text="rotation", variable=ns_structure, value="rotation") \
-        .grid(row=r, column=1, sticky="e")
-    Radiobutton(win.body, text="fixed", variable=ns_structure, value="fixed") \
-        .grid(row=r, column=2, sticky="w")
-    ns_structure.set(result[0][0])
-    r += 1
-    Button(win.body, text="Set", width=5, command=lambda: apply_auto_ns_structure(win.topframe, ns_structure)) \
-        .grid(row=r, column=3)
-    r += 1
-    Label(win.body, text="List of TACS MODS Codes", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=r, column=0, columnspan=4, sticky="w")
-    r += 1
-    Label(win.body, text="(to exclude from Auto Data Entry moves).") \
-        .grid(row=r, column=0, columnspan=4, sticky="w")
-    r += 1
-    Label(win.body, text="code", fg="grey", anchor="w") \
-        .grid(row=r, column=0)
-    Label(win.body, text="description", fg="grey", anchor="w") \
-        .grid(row=r, column=1, columnspan=2)
-    sql = "SELECT * FROM skippers"
-    results = inquire(sql)
-    r += 1
-    if len(results) > 0:
-        for i in range(len(results)):
-            Button(win.body, text=results[i][0], anchor="w", width=5) \
-                .grid(row=i + r, column=0)  # display code
-            Button(win.body, text=results[i][1], anchor="w", width=30) \
-                .grid(row=i + r, column=1, columnspan=2)  # display description
-            Button(win.body, text="delete", command=lambda x=i: data_mods_codes_delete(win.topframe, results[x])) \
-                .grid(row=i + r, column=3)
-    else:
-        Label(win.body, text="No Exceptions Listed.", anchor="w") \
-            .grid(row=r, column=0, sticky="w", columnspan=3)
-        i = 1
-    r += i
-    r += 1
-    Label(win.body, text="").grid(row=r, column=2)
-    r += 1
-    Label(win.body, text="Add New Code", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=r, column=0, columnspan=3, sticky="w")  # add new code labels
-    r += 1
-    new_code = StringVar(win.body)
-    new_descp = StringVar(win.body)
-    Label(win.body, text="code", fg="grey", anchor="w").grid(row=r, column=0)
-    Label(win.body, text="description", fg="grey", anchor="w").grid(row=r, column=1, columnspan=2)
-    r += 1
-    Entry(win.body, textvariable=new_code, width=6).grid(row=r, column=0)  # add new code
-    Entry(win.body, textvariable=new_descp, width=35).grid(row=r, column=1, columnspan=2)
-    Button(win.body, text="Add", width=5, command=lambda: data_mods_codes_add(win.topframe, new_code, new_descp)) \
-        .grid(row=r, column=3)
-    r += 1
-    Label(win.body, text="").grid(row=r, column=0)
-    r += 1
-    Label(win.body, text="Restore Defaults").grid(row=r, column=1, columnspan=2, sticky="e")
-    Button(win.body, text="Set", width=5, command=lambda: data_mods_codes_default(win.topframe)).grid(row=r, column=3)
-    r += 1
-    Label(win.body, text="").grid(row=r, column=0)
-    r += 1
-    Button(win.buttons, text="Go Back", width=20, command=lambda: (MainFrame().start(frame=win.topframe))) \
-        .grid(row=0, column=0, sticky="w")
-    win.finish()
-    # rear_window(wd)
+class Tolerances:
+    """
+    creates a screen where the user can view, change and reset defaults on tolerances.
+    """
+    def __init__(self):
+        self.win = None
+        self.msg = ""
+
+    def tolerances(self, frame):
+        """ creatses a screen where the user can change tolerances. """
+        self.win = MakeWindow()
+        self.win.create(frame)
+        # page contents
+        sql = "SELECT * FROM tolerances"
+        results = inquire(sql)
+        ot_own_rt = StringVar(self.win.body)
+        ot_tol = StringVar(self.win.body)
+        av_tol = StringVar(self.win.body)
+        Label(self.win.body, text="Tolerances", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        Label(self.win.body, text=" ").grid(row=1, column=0, columnspan=4, sticky="w")
+        Label(self.win.body, text="Overtime on own route", width=20, anchor="w") \
+            .grid(row=2, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=ot_own_rt).grid(row=2, column=1, padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_tolerance(ot_own_rt.get(), "ot_own_rt")) \
+            .grid(row=2, column=2, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("OT_own_route")) \
+            .grid(row=2, column=3, padx=4)
+        Label(self.win.body, text="Overtime off own route").grid(row=3, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=ot_tol).grid(row=3, column=1)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_tolerance(ot_tol.get(), "ot_tol")) \
+            .grid(row=3, column=2)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("OT_off_route")) \
+            .grid(row=3, column=3)
+        Label(self.win.body, text="Availability tolerance").grid(row=4, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=av_tol).grid(row=4, column=1)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_tolerance(av_tol.get(), "av_tol")) \
+            .grid(row=4, column=2)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("availability")) \
+            .grid(row=4, column=3)
+        dashes = ""
+        dashcount = 59
+        if sys.platform == "darwin":
+            dashcount = 47
+        for _ in range(dashcount):
+            dashes += "_"
+        Label(self.win.body, text=dashes, pady=5, fg="blue").grid(row=5, columnspan=4, sticky="w")
+        Label(self.win.body, text="Recommended settings").grid(row=6, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.tolerance_presets("default")).grid(row=6, column=2)
+        Label(self.win.body, text="Set tolerances to zero").grid(row=7, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.tolerance_presets("zero")).grid(row=7, column=2)
+        ot_own_rt.set(results[0][2])
+        ot_tol.set(results[1][2])
+        av_tol.set(results[2][2])
+        # the bottom button
+        gobackbutton = Button(self.win.buttons, text="Go Back", width=20,
+                              command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            gobackbutton.config(anchor="w")
+        gobackbutton.pack(side=LEFT)
+        Label(self.win.buttons, text=self.msg, fg="red").pack(side=LEFT)
+        self.win.finish()
+
+    def apply_tolerance(self, tolerance, tolerance_type):
+        """ checks tolerances. """
+        "ot_own_rt"
+        "ot_tol"
+        "av_tol"
+        tol_dict = {"ot_own_rt": "overtime on own route", "ot_tol": "non-otdl overtime",
+                    "av_tol": "otdl/aux availability"}
+        if not isfloat(tolerance):
+            text = "You must enter a number."
+            messagebox.showerror("Tolerance value entry error", text, parent=self.win.body)
+            return
+        if tolerance.strip() == "":
+            text = "You must enter a numeric value for tolerances"
+            messagebox.showerror("Tolerance value entry error", text, parent=self.win.body)
+            return
+        if float(tolerance) < 0:
+            text = "Values must be equal to or greater than zero."
+            messagebox.showerror("Tolerance value entry error", text, parent=self.win.body)
+            return
+        if float(tolerance) > 1:
+            text = "You must enter a value less than one."
+            messagebox.showerror("Tolerance value entry error", text, parent=self.win.body)
+            return
+        if float(tolerance) < 1:
+            number = tolerance.split('.')
+            if len(number) == 2:
+                if len(number[1]) > 2:
+                    text = "Value cannot exceed two decimal places."
+                    messagebox.showerror("Tolerance value entry error", text, parent=self.win.body)
+            else:
+                if len(number[0]) > 2:
+                    text = "Value cannot exceed two decimal places."
+                    messagebox.showerror("Tolerance value entry error", text, parent=self.win.body)
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (tolerance, tolerance_type)
+        commit(sql)
+        self.msg = "Tolerance for {} has been updated to {}.".format(tol_dict[tolerance_type], tolerance)
+        self.tolerances(self.win.topframe)
+
+    def tolerance_presets(self, order):
+        """ defines defaults for tolerances. """
+        num = None
+        if order == "default":
+            num = ".25"
+            self.msg = "Default tolerance settings have been restored."
+        if order == "zero":
+            num = "0"
+            self.msg = "No tolerances. All values have been set to zero."
+        types = ("ot_own_rt", "ot_tol", "av_tol")
+        for t in types:
+            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num, t)
+            commit(sql)
+
+        self.tolerances(self.win.topframe)
 
 
 class SpreadsheetConfig:
@@ -6175,10 +5518,15 @@ class SpreadsheetConfig:
     def build(self):
         """ fills the window with widgets. """
         row = 0
-        Label(self.win.body, text="Improper Mandate Spreadsheet Configuration", 
+        Label(self.win.body, text="Spreadsheet Settings",
               font=macadj("bold", "Helvetica 18"), anchor="w").grid(row=row, sticky="w", columnspan=4)
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+        text = macadj("Improper Mandate Spreadsheets _____________________________________",
+                      "Improper Mandate Spreadsheets _____________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
         Label(self.win.body, text="Minimum rows for No List Carriers", width=30, anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
@@ -6241,11 +5589,10 @@ class SpreadsheetConfig:
         # Display header for 12 and 60 Hour Violations Spread Sheet
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
-        Label(self.win.body, text="12 and 60 Hour Violations Spreadsheet Settings",
-              font=macadj("bold", "Helvetica 18")) \
-            .grid(row=row, column=0, sticky="w", columnspan=4)
-        row += 1
-        Label(self.win.body, text="").grid(row=row, column=0)
+        text = macadj("12 and 60 Hour Violations Spreadsheets ______________________________",
+                      "12 and 60 Hour Violations Spreadsheets ______________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
         # Display widgets for 12 and 60 Hour Violations Spread Sheet
         Label(self.win.body, text="Minimum rows for Over Max", width=30, anchor="w") \
@@ -6259,11 +5606,10 @@ class SpreadsheetConfig:
         row += 1
 
         # Display header for OTDL Equitability Spread Sheet
-        Label(self.win.body, text="OTDL Equitability Spreadsheet Settings",
-              font=macadj("bold", "Helvetica 18")) \
-            .grid(row=row, column=0, sticky="w", columnspan=4)
-        row += 1
-        Label(self.win.body, text="").grid(row=row, column=0)
+        text = macadj("OTDL Equitability Spreadsheets _______________________________________",
+                      "OTDL Equitability Spreadsheets _______________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
         # Display widgets for OTDL Equitability Spread Sheet
         Label(self.win.body, text="Minimum rows for OTDL Equitability", width=30, anchor="w") \
@@ -6284,13 +5630,11 @@ class SpreadsheetConfig:
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
-
         # Display header for Overtime Distribution Spread Sheet
-        Label(self.win.body, text="Overtime Distribution Spreadsheet Settings",
-              font=macadj("bold", "Helvetica 18")) \
-            .grid(row=row, column=0, sticky="w", columnspan=4)
-        row += 1
-        Label(self.win.body, text="").grid(row=row, column=0)
+        text = macadj("Overtime Distribution Spreadsheets __________________________________",
+                      "Overtime Distribution Spreadsheets __________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
         # Display widgets for Overtime Distribution Spread Sheet
         Label(self.win.body, text="Minimum rows for Overtime Distribution", width=30, anchor="w") \
@@ -6313,12 +5657,12 @@ class SpreadsheetConfig:
 
         row += 1
         dashes = ""
-        dashcount = 71
+        dashcount = 72
         if sys.platform == "darwin":
             dashcount = 55
         for i in range(dashcount):
             dashes += "_"
-        Label(self.win.body, text=dashes, pady=5).grid(row=row, columnspan=4, sticky="w")
+        Label(self.win.body, text=dashes, pady=5, fg="blue").grid(row=row, columnspan=4, sticky="w")
         row += 1
         Label(self.win.body, text="Restore Defaults").grid(row=row, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("default")) \
@@ -6478,336 +5822,1065 @@ class SpreadsheetConfig:
         self.report_counter = 0
 
 
-def apply_tolerance(frame, tolerance, tolerance_type):
-    """ checks tolerances. """
-    if not isfloat(tolerance):
-        text = "You must enter a number."
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
-        return
-    if tolerance.strip() == "":
-        text = "You must enter a numeric value for tolerances"
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
-        return
-    if float(tolerance) < 0:
-        text = "Values must be equal to or greater than zero."
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
-        return
-    if float(tolerance) > 1:
-        text = "You must enter a value less than one."
-        messagebox.showerror("Tolerance value entry error", text, parent=frame)
-        return
-    if float(tolerance) < 1:
-        number = tolerance.split('.')
-        if len(number) == 2:
-            if len(number[1]) > 2:
-                text = "Value cannot exceed two decimal places."
-                messagebox.showerror("Tolerance value entry error", text, parent=frame)
-        else:
-            if len(number[0]) > 2:
-                text = "Value cannot exceed two decimal places."
-                messagebox.showerror("Tolerance value entry error", text, parent=frame)
-    sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (tolerance, tolerance_type)
-    commit(sql)
-    tolerances(frame)
+class NsConfig:
+    """
+    creates a screen that allows the user to view and customize ns day settings in a manner that is appropiate
+    to a station or branch.
+    """
+    def __init__(self):
+        self.win = None
 
-
-def tolerance_presets(frame, order):
-    """ defines defaults for tolerances. """
-    num = None
-    if order == "default":
-        num = ".25"
-    if order == "zero":
-        num = "0"
-    types = ("ot_own_rt", "ot_tol", "av_tol")
-    for t in types:
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num, t)
-        commit(sql)
-    tolerances(frame)
-
-
-def tolerances(frame):
-    """ creatses a screen where the user can change tolerances. """
-    frame.destroy()
-    f = Frame(projvar.root)
-    f.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(f)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    # apply and close buttons
-    button = Button(c1)
-    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=f))
-    if sys.platform == "win32":
-        button.config(anchor="w")
-    button.pack(side=LEFT)
-    # link up the canvas and scrollbar
-    s = Scrollbar(f)
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    ff = Frame(c)
-    c.create_window((0, 0), window=ff, anchor=NW)
-    # page contents
-    sql = "SELECT * FROM tolerances"
-    results = inquire(sql)
-    ot_own_rt = StringVar(ff)
-    ot_tol = StringVar(ff)
-    av_tol = StringVar(ff)
-    Label(ff, text="Tolerances", font=macadj("bold", "Helvetica 18"), anchor="w") \
-        .grid(row=0, column=0, columnspan=4, sticky="w")
-    Label(ff, text=" ").grid(row=1, column=0, columnspan=4, sticky="w")
-    Label(ff, text="Overtime on own route", width=20, anchor="w") \
-        .grid(row=2, column=0, ipady=5, sticky="w")
-    Entry(ff, width=5, textvariable=ot_own_rt).grid(row=2, column=1, padx=4)
-    Button(ff, width=5, text="change", command=lambda: apply_tolerance(f, ot_own_rt.get(), "ot_own_rt")) \
-        .grid(row=2, column=2, padx=4)
-    Button(ff, width=5, text="info", command=lambda: Messenger(f).tolerance_info("OT_own_route")) \
-        .grid(row=2, column=3, padx=4)
-    Label(ff, text="Overtime off own route").grid(row=3, column=0, ipady=5, sticky="w")
-    Entry(ff, width=5, textvariable=ot_tol).grid(row=3, column=1)
-    Button(ff, width=5, text="change", command=lambda: apply_tolerance(f, ot_tol.get(), "ot_tol")) \
-        .grid(row=3, column=2)
-    Button(ff, width=5, text="info", command=lambda: Messenger(f).tolerance_info("OT_off_route")) \
-        .grid(row=3, column=3)
-    Label(ff, text="Availability tolerance").grid(row=4, column=0, ipady=5, sticky="w")
-    Entry(ff, width=5, textvariable=av_tol).grid(row=4, column=1)
-    Button(ff, width=5, text="change", command=lambda: apply_tolerance(f, av_tol.get(), "av_tol")) \
-        .grid(row=4, column=2)
-    Button(ff, width=5, text="info", command=lambda: Messenger(f).tolerance_info("availability")) \
-        .grid(row=4, column=3)
-    dashes = ""
-    dashcount = 59
-    if sys.platform == "darwin":
-        dashcount = 47
-    for _ in range(dashcount):
-        dashes += "_"
-    Label(ff, text=dashes, pady=5).grid(row=5, columnspan=4, sticky="w")
-    Label(ff, text="Recommended settings").grid(row=6, column=0, ipady=5, sticky="w")
-    Button(ff, width=5, text="set", command=lambda: tolerance_presets(f, "default")) \
-        .grid(row=6, column=2)
-    Label(ff, text="Set tolerances to zero").grid(row=7, column=0, ipady=5, sticky="w")
-    Button(ff, width=5, text="set", command=lambda: tolerance_presets(f, "zero")) \
-        .grid(row=7, column=2)
-    ot_own_rt.set(results[0][2])
-    ot_tol.set(results[1][2])
-    av_tol.set(results[2][2])
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
-
-
-def apply_station(switch, station, frame):
-    """ checks and enters stations into the station table. """
-    if switch == "enter":
-        if station.get().strip() == "" or station.get().strip() == "x":
-            messagebox.showerror("Prohibited Action",
-                                 "You can not enter a blank entry for a station.",
+    def ns_config(self, frame):
+        """ generate Non-Scheduled Day Configurations page to configure ns day settings """
+        if projvar.invran_day is None:
+            messagebox.showerror("Non-Scheduled Day Configurations",
+                                 "You must set the Investigation Range before changing the NS Day Configurations.",
                                  parent=frame)
             return
-        if station.get() in projvar.list_of_stations:
-            messagebox.showerror("Prohibited Action",
-                                 "That station is already in the list of stations.",
-                                 parent=frame)
-            return
-    if switch == "enter":
-        sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
-        commit(sql)
-        projvar.list_of_stations.append(station.get())
-    if switch == "delete":
-        if station == "out of station":
-            text = "You can not delete the \"out of station\" listing."
-            messagebox.showerror("Action not allowed", text, parent=frame)
-            return
-        if messagebox.askokcancel("Delete Station",
-                                  "Are you sure you want to delete {}? \n"
-                                  "The station will be deleted and maintenance actions will\n"
-                                  "clean any orphan carriers, clock rings and indexes from\n"
-                                  "database. This can not be reversed.".format(station),
-                                  parent=frame):
-            sql = "DELETE FROM stations WHERE station='%s'" % station
+        sql = "SELECT * FROM ns_configuration"
+        result = inquire(sql)
+        self.win = MakeWindow()
+        self.win.create(frame)
+        Label(self.win.body, text="Non-Scheduled Day Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=0, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=1, column=0)
+        text = macadj("Change Configuration ________________________________________________",
+                      "Change Configuration ________________________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=2, column=0, columnspan=4, sticky="w")
+        # Label(self.win.body, text="Change Configuration").grid(row=2, sticky="w", columnspan=4)
+        f_date = projvar.invran_date_week[0].strftime("%a - %b %d, %Y")
+        end_f_date = projvar.invran_date_week[6].strftime("%a - %b %d, %Y")
+        Label(self.win.body, text="Investigation Range: {0} through {1}".format(f_date, end_f_date),
+              foreground="red").grid(row=3, column=0, sticky="w", columnspan=4)
+        Label(self.win.body, text="Pay Period: {0}".format(projvar.pay_period),
+              foreground="red").grid(row=4, column=0, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=5, column=0, sticky="w", columnspan=4)
+        Label(self.win.body, text="Day", foreground="grey").grid(row=6, column=0, sticky="w")  # column headers
+        Label(self.win.body, text="Name", foreground="grey").grid(row=6, column=1, sticky="w")
+        Label(self.win.body, text="Color", foreground="grey").grid(row=6, column=2, sticky="w")
+        Label(self.win.body, text="Default", foreground="grey").grid(row=6, column=3, sticky="w")
+        yellow_text = StringVar(self.win.body)  # declare variables
+        blue_text = StringVar(self.win.body)
+        green_text = StringVar(self.win.body)
+        brown_text = StringVar(self.win.body)
+        red_text = StringVar(self.win.body)
+        black_text = StringVar(self.win.body)
+        text_array = [yellow_text, blue_text, green_text, brown_text, red_text, black_text]
+        color_array = (
+            "black", "blue", "brown", "brown4", "dark green", "deep pink", "forest green", "gold", "gray10", "green",
+            "navy", "orange", "purple", "red", "red3", "saddle brown", "yellow", "yellow2")
+        yellow_color = StringVar(self.win.body)
+        blue_color = StringVar(self.win.body)
+        green_color = StringVar(self.win.body)
+        brown_color = StringVar(self.win.body)
+        red_color = StringVar(self.win.body)
+        black_color = StringVar(self.win.body)
+        fill_array = [yellow_color, blue_color, green_color, brown_color, red_color, black_color]
+        Label(self.win.body, text="{}".format(projvar.ns_code['yellow']))\
+            .grid(row=7, column=0, sticky="w")  # yellow row
+        Entry(self.win.body, textvariable=yellow_text, width=10).grid(row=7, column=1, sticky="w")
+        yellow_text.set(result[0][2])
+        om_yellow = OptionMenu(self.win.body, yellow_color, *color_array)
+        yellow_color.set(result[0][1])
+        om_yellow.config(width=13, anchor="w")
+        om_yellow.grid(row=7, column=2, sticky="w")
+        Label(self.win.body, text="yellow").grid(row=7, column=3, sticky="w")
+        Label(self.win.body, text="{}".format(projvar.ns_code['blue'])).grid(row=8, column=0, sticky="w")  # blue row
+        Entry(self.win.body, textvariable=blue_text, width=10).grid(row=8, column=1, sticky="w")
+        blue_text.set(result[1][2])
+        om_blue = OptionMenu(self.win.body, blue_color, *color_array)
+        blue_color.set(result[1][1])
+        om_blue.config(width=13, anchor="w")
+        om_blue.grid(row=8, column=2, sticky="w")
+        Label(self.win.body, text="blue").grid(row=8, column=3, sticky="w")
+        Label(self.win.body, text="{}".format(projvar.ns_code['green'])).grid(row=9, column=0, sticky="w")  # green row
+        Entry(self.win.body, textvariable=green_text, width=10).grid(row=9, column=1, sticky="w")
+        green_text.set(result[2][2])
+        om_green = OptionMenu(self.win.body, green_color, *color_array)
+        green_color.set(result[2][1])
+        om_green.config(width=13, anchor="w")
+        om_green.grid(row=9, column=2, sticky="w")
+        Label(self.win.body, text="green").grid(row=9, column=3, sticky="w")
+        Label(self.win.body, text="{}".format(projvar.ns_code['brown'])).grid(row=10, column=0, sticky="w")  # brown row
+        Entry(self.win.body, textvariable=brown_text, width=10).grid(row=10, column=1, sticky="w")
+        brown_text.set(result[3][2])
+        om_brown = OptionMenu(self.win.body, brown_color, *color_array)
+        brown_color.set(result[3][1])
+        om_brown.config(width=13, anchor="w")
+        om_brown.grid(row=10, column=2, sticky="w")
+        Label(self.win.body, text="brown").grid(row=10, column=3, sticky="w")
+        Label(self.win.body, text="{}".format(projvar.ns_code['red'])).grid(row=11, column=0, sticky="w")  # red row
+        Entry(self.win.body, textvariable=red_text, width=10).grid(row=11, column=1, sticky="w")
+        red_text.set(result[4][2])
+        om_red = OptionMenu(self.win.body, red_color, *color_array)
+        red_color.set(result[4][1])
+        om_red.config(width=13, anchor="w")
+        om_red.grid(row=11, column=2, sticky="w")
+        Label(self.win.body, text="red").grid(row=11, column=3, sticky="w")
+        Label(self.win.body, text="{}".format(projvar.ns_code['black'])).grid(row=12, column=0, sticky="w")  # black row
+        Entry(self.win.body, textvariable=black_text, width=10).grid(row=12, column=1, sticky="w")
+        black_text.set(result[5][2])
+        om_black = OptionMenu(self.win.body, black_color, *color_array)
+        black_color.set(result[5][1])
+        om_black.config(width=13, anchor="w")
+        om_black.grid(row=12, column=2, sticky="w")
+        Label(self.win.body, text="black").grid(row=12, column=3, sticky="w")
+        Label(self.win.body, text=" ").grid(row=13)
+        Button(self.win.body, text="set", width=10, command=lambda: self.ns_config_apply(text_array, fill_array)) \
+            .grid(row=14, column=3)
+        Label(self.win.body, text=" ").grid(row=15)
+        text = macadj("Restore Defaults ______________________________________________________",
+                      "Restore Defaults ______________________________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=16, column=0, columnspan=4, sticky="w")
+        # Label(self.win.body, text="Restore Defaults").grid(row=16)
+        Button(self.win.body, text="reset", width=10, command=lambda: self.ns_config_reset()).grid(row=17, column=3)
+        button_back = Button(self.win.buttons)
+        button_back.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button_back.config(anchor="w")
+        button_back.pack(side=LEFT)
+        self.win.finish()
+
+    def ns_config_apply(self, text_array, color_array):
+        """ set ns configurations from Non-Scheduled Day Configurations page """
+        for t in text_array:
+            if len(t.get()) > 6:
+                messagebox.showerror("Non_Scheduled Day Configuration",
+                                     "Names must not be longer than 6 characters.",
+                                     parent=self.win.body)
+                return
+            if len(t.get()) < 1:
+                messagebox.showerror("Non_Scheduled Day Configuration",
+                                     "Names must not be shorter than 1 character.",
+                                     parent=self.win.body)
+                return
+        color = ("yellow", "blue", "green", "brown", "red", "black")
+        for i in range(6):
+            sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (text_array[i].get(), color[i])
             commit(sql)
-            DatabaseAdmin().database_clean_carriers()
-            DatabaseAdmin().database_clean_rings()
-            if projvar.invran_station == station:
-                reset("none")  # reset initial value of globals
-    # access list of stations from database
-    sql = "SELECT * FROM stations ORDER BY station"
-    results = inquire(sql)
-    # define and populate list of stations variable
-    del projvar.list_of_stations[:]
-    for stat in results:
-        projvar.list_of_stations.append(stat[0])
-    station_list(frame)
+            sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (color_array[i].get(), color[i])
+            commit(sql)
+        self.ns_config(self.win.topframe)
+
+    def ns_config_reset(self):
+        """ reset ns day configurations from Non-Scheduled Day Configurations page """
+        fill = ("gold", "navy", "forest green", "saddle brown", "red3", "gray10")
+        color = ("yellow", "blue", "green", "brown", "red", "black")
+        for i in range(6):
+            sql = "UPDATE ns_configuration SET custom_name ='%s' WHERE ns_name = '%s'" % (color[i], color[i])
+            commit(sql)
+            sql = "UPDATE ns_configuration SET fill_color ='%s' WHERE ns_name = '%s'" % (fill[i], color[i])
+            commit(sql)
+        self.ns_config(self.win.topframe)
 
 
-def station_update_apply(frame, old_station, new_station):
-    """ change the name of a station. """
-    if old_station.get() == "select a station":
-        messagebox.showerror("Prohibited Action",
-                             "Please select a station.",
-                             parent=frame)
-        return
-    if new_station.get().strip() == "" or \
-            new_station.get() == "enter a new station name" or \
-            new_station.get().strip() == "x":
-        messagebox.showerror("Prohibited Action",
-                             "You can not enter a blank entry for a station.",
-                             parent=frame)
-        return
-    if projvar.invran_station == old_station.get():
-        reset("none")  # reset initial value of globals
-    go_ahead = True
-    duplicate = False
-    if new_station.get() in projvar.list_of_stations:
-        go_ahead = messagebox.askokcancel("Duplicate Detected",
-                                          "This station already exist in the list of stations. "
-                                          "If you proceed, all records for {} will be merged with "
-                                          "records from {}. Do you want to proceed?"
-                                          .format(old_station.get(), new_station.get()),
-                                          parent=frame)
-        duplicate = True
-    if duplicate and go_ahead:
-        sql = "DELETE FROM stations WHERE station='%s'" % old_station.get()
-        commit(sql)
-        projvar.list_of_stations.remove(new_station.get())
-    if go_ahead:
-        sql = "UPDATE stations SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
-        commit(sql)
-        sql = "UPDATE carriers SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
-        commit(sql)
-        sql = "UPDATE station_index SET kb_station='%s' WHERE kb_station='%s'" % (new_station.get(), old_station.get())
-        commit(sql)
-        projvar.list_of_stations.append(new_station.get())
-        projvar.list_of_stations.remove(old_station.get())
-        station_list(frame)
-    if not go_ahead:
-        return
-
-
-def station_list(frame):
+class SpeedConfig:
     """
-    creates a screen that allows the user to add stations.
+    builds a screen that allows the user to configure Speedsheets.
     """
-    frame.destroy()
-    f = Frame(projvar.root)
-    f.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(f)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    button = Button(c1)
-    button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=f))
-    if sys.platform == "win32":
-        button.config(anchor="w")
-    button.pack(side=LEFT)
-    # link up the canvas and scrollbar
-    s = Scrollbar(f)
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    ff = Frame(c)
-    c.create_window((0, 0), window=ff, anchor=NW)
-    # page title
-    row = 0
-    Label(ff, text="Manage Station List", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=row, columnspan=2, sticky="w")
-    row += 1
-    Label(ff, text="____________________________________________________", pady=5). \
-        grid(row=row, columnspan=2, sticky="w")
-    row += 1
-    # enter new stations
-    new_name = StringVar(ff)
-    Label(ff, text="Enter New Station", pady=5, font=macadj("bold", "Helvetica 18")) \
-        .grid(row=row, columnspan=2, sticky="w")
-    row += 1
-    e = Entry(ff, width=35, textvariable=new_name)
-    e.grid(row=row, column=0, sticky="w")
-    new_name.set("")
-    Button(ff, width=5, anchor="w", text="ENTER", command=lambda: apply_station("enter", new_name, f)). \
-        grid(row=row, column=1, sticky="w")
-    row += 1
-    Label(ff, text="____________________________________________________", pady=5). \
-        grid(row=row, columnspan=2, sticky="w")
-    row += 1
-    # list current list of stations and delete buttons.
-    sql = "SELECT * FROM stations ORDER BY station"
-    results = inquire(sql)
-    Label(ff, text="List Of Stations", font=macadj("bold", "Helvetica 18"), pady=5) \
-        .grid(row=row, columnspan=2, sticky="w")
-    row += 1
-    for record in results:
-        Button(ff, text=record[0], width=30, anchor="w").grid(row=row, column=0, sticky="w")
-        Button(ff, text="delete", command=lambda x=record[0]: apply_station("delete", x, f)) \
-            .grid(row=row, column=1, sticky="w")
-        row += 1
-    Label(ff, text="____________________________________________________", pady=5). \
-        grid(row=row, columnspan=2, sticky="w")
-    row += 1
-    if len(results) > 1:
-        # change names of stations
-        Label(ff, text="Change Station Name", font=macadj("bold", "Helvetica 18")) \
-            .grid(row=row, column=0, sticky="w")
-        row += 1
-        all_stations = []
+    def __init__(self, frame):
+        self.frame = frame
+        self.win = MakeWindow()
+        self.ns_mode = StringVar(self.win.body)
+        self.abc_breakdown = StringVar(self.win.body)  # create stringvars
+        self.min_empid = StringVar(self.win.body)
+        self.min_alpha = StringVar(self.win.body)
+        self.min_abc = StringVar(self.win.body)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+
+    def create(self):
+        """ builds the widgets that fill the page. """
+        self.win.create(self.frame)
+        Label(self.win.body, text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=0, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=1, column=0)
+        self.set_stringvars()
+        Label(self.win.body, text="NS Day Preferred Mode: ", width=macadj(40, 30), anchor="w") \
+            .grid(row=3, column=0, ipady=5, sticky="w")
+        ns_pref = OptionMenu(self.win.body, self.ns_mode, "rotating", "fixed")
+        ns_pref.config(width=macadj(9, 9))
+        if sys.platform == "win32":
+            ns_pref.config(anchor="w")
+        ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_ns_mode()).grid(row=3, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for SpeedSheets", width=macadj(30, 30), anchor="w") \
+            .grid(row=4, column=0, ipady=5, sticky="w")
+        Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=macadj(40, 30), anchor="w") \
+            .grid(row=5, column=0, ipady=5, sticky="w")
+        opt_breakdown = OptionMenu(self.win.body, self.abc_breakdown, "True", "False")
+        opt_breakdown.config(width=macadj(9, 9))
+        if sys.platform == "win32":
+            opt_breakdown.config(anchor="w")
+        opt_breakdown.grid(row=5, column=1, columnspan=2, sticky="w", padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_abc_breakdown()).grid(row=5, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for Employee ID tab", width=macadj(40, 30), anchor="w") \
+            .grid(row=6, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_empid).grid(row=6, column=1, padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_min_empid()).grid(row=6, column=2, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: self.info("min_spd_empid")) \
+            .grid(row=6, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for Alphabetically tab", width=macadj(40, 30), anchor="w") \
+            .grid(row=7, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_alpha).grid(row=7, column=1, padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_min_alpha()).grid(row=7, column=2, padx=4)
+        Button(self.win.body, width=5, text="info",
+               command=lambda: self.info("min_spd_alpha")) \
+            .grid(row=7, column=3, padx=4)
+        Label(self.win.body, text="Minimum rows for Alphabetical breakdown tabs", width=macadj(40, 35), anchor="w") \
+            .grid(row=8, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min_abc).grid(row=8, column=1, padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_min_abc()) \
+            .grid(row=8, column=2, padx=4)
+        Button(self.win.body, width=5, text="info", command=lambda: self.info("min_spd_abc")) \
+            .grid(row=8, column=3, padx=4)
+        text = macadj("________________________________________________________________________________________",
+                      "__________________________________________________________________")
+        Label(self.win.body,
+              text=text, pady=5, fg="blue").grid(row=9, columnspan=5, sticky="w")
+        Label(self.win.body, text="Restore Defaults").grid(row=10, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.preset_default()).grid(row=10, column=3)
+        Label(self.win.body, text="High Settings").grid(row=11, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.preset_high()).grid(row=11, column=3)
+        Label(self.win.body, text="Low Settings").grid(row=12, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.preset_low()).grid(row=12, column=3)
+        self.win.fill(11, 20)  # fill the bottom of the window for scrolling
+        self.buttons_frame()
+
+    def buttons_frame(self):
+        """ builds the buttons and status update at the bottom of the page. """
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update.pack(side=LEFT)
+        self.win.finish()
+
+    def apply_ns_mode(self):
+        """ applies change to ns preference mode. """
+        if self.ns_mode.get() == "rotating":
+            value = True
+        else:
+            value = False
+        msg = "NS Day Preferred Mode updated: {}".format(self.ns_mode.get())
+        self.commit_to_base(value, "speedcell_ns_rotate_mode", msg)
+
+    def apply_abc_breakdown(self):
+        """ appplies change to abc breakdown preference - True/False. """
+        msg = "Alphabetical Breakdown (multiple tabs) updated: {}".format(self.abc_breakdown.get())
+        self.commit_to_base(self.abc_breakdown.get(), "abc_breakdown", msg)
+
+    def apply_min_empid(self):
+        """ applies changes to minimum rows for the employee id speedsheet. """
+        if self.check(self.min_empid.get()) is None:
+            msg = "Minimum rows for Employee ID tab updated: {}".format(self.min_empid.get())
+            self.commit_to_base(self.min_empid.get(), "min_spd_empid", msg)
+
+    def apply_min_alpha(self):
+        """ applies changes to minimum rows for alphabetical speedsheets. """
+        if self.check(self.min_alpha.get()) is None:
+            msg = "Minimum rows for Alphabetically tab updated: {}".format(self.min_alpha.get())
+            self.commit_to_base(self.min_alpha.get(), "min_spd_alpha", msg)
+
+    def apply_min_abc(self):
+        """ applies changes to minimum rows for alphabetical breakdown speedsheets. """
+        if self.check(self.min_abc.get()) is None:
+            if self.check_abc(self.min_abc.get()) is None:
+                msg = "Minimum rows for Alphabetical breakdown tabs updated: {}".format(self.min_abc.get())
+                self.commit_to_base(self.min_abc.get(), "min_spd_abc", msg)
+
+    def commit_to_base(self, value, setting, msg):
+        """ commits to tolerances table. """
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % \
+              (value, setting)
+        commit(sql)
+        self.set_stringvars()
+        self.status_update.config(text="{}".format(msg))
+
+    def check(self, value):
+        """ check values for minimum rows """
+        if not isint(value):
+            text = "You must enter a number with no decimals. "
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=self.win.topframe)
+            return False
+        if value.strip() == "":
+            text = "You must enter a numeric value for tolerances"
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=self.win.topframe)
+            return False
+        if float(value) < 5:
+            text = "Values must be equal to or greater than five."
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=self.win.topframe)
+
+            return False
+        if float(value) > 500:
+            text = "You must enter a value less five hundred."
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=self.win.topframe)
+            return False
+
+    def check_abc(self, value):
+        """ checks the arg to make sure it is less than 50. """
+        if float(value) > 50:
+            text = "You must enter a value less than fifty."
+            messagebox.showerror("Tolerance value entry error",
+                                 text,
+                                 parent=self.win.topframe)
+            return False
+
+    def preset_default(self):
+        """ sets the normal defaults. """
+        empid = "50"
+        alpha = "50"
+        abc = "10"
+        self.preset_to_base(self, empid, alpha, abc)
+        self.status_update.config(text="Default Minimum Row Settings Restored")
+
+    def preset_high(self):
+        """ a high setting for defaults. """
+        empid = "150"
+        alpha = "150"
+        abc = "40"
+        self.preset_to_base(self, empid, alpha, abc)
+        self.status_update.config(text="High Minimum Row Settings Enabled")
+
+    def preset_low(self):
+        """ a low setting for defaults. """
+        empid = "10"
+        alpha = "10"
+        abc = "5"
+        self.preset_to_base(self, empid, alpha, abc)
+        self.status_update.config(text="Low Minimum Row Settings Enabled")
+
+    @staticmethod
+    def preset_to_base(self, empid, alpha, abc):
+        """ abc breakdown is false in all cases """
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
+        commit(sql)
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (empid, "min_spd_empid")
+        commit(sql)
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (alpha, "min_spd_alpha")
+        commit(sql)
+        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (abc, "min_spd_abc")
+        commit(sql)
+        self.set_stringvars()
+
+    def set_stringvars(self):
+        """ gets settings and sets stringvars. """
+        setting = SpeedSettings()  # retrieve settings from tolerance table in dbase
+        if setting.speedcell_ns_rotate_mode:
+            self.ns_mode.set("rotating")
+        else:
+            self.ns_mode.set("fixed")
+        self.abc_breakdown.set(str(setting.abc_breakdown))  # convert to str, else you get a 0 or 1
+        self.min_empid.set(setting.min_empid)
+        self.min_alpha.set(setting.min_alpha)
+        self.min_abc.set(setting.min_abc)
+
+    def info(self, switch):
+        """ controls messages to messagebox. """
+        text = ""
+        if switch == "min_spd_empid":
+            text = "Sets the minimum number of rows for the " \
+                   "Employee Id tab of the All Inclusive Speedsheet. \n\n" \
+                   "Enter a value between 5 and 500"
+        if switch == "min_spd_alpha":
+            text = "Sets the minimum number of rows for the " \
+                   "Alphabetical tab of the All Inclusive Speedsheet. \n\n" \
+                   "Enter a value between 5 and 500"
+        if switch == "min_spd_abc":
+            text = "Sets the minimum number of rows for the " \
+                   "Alphabetical breakdown tabs of the All Inclusive Speedsheet. \n\n" \
+                   "Enter a value between 5 and 50"
+        messagebox.showinfo("SpeedSheet Minimum Rows", text, parent=self.win.topframe)
+
+
+class AdeSettings:
+    """
+    allows the user to view, change and customized the Automatic Data Entry (ADE) settings.
+    """
+
+    def __init__(self):
+        self.win = None
+
+    def start(self, frame):
+        """ creates window that allows the user to adjust the settings for the ADE. """
+        i = None
+        self.win = MakeWindow()
+        self.win.create(frame)
+        r = 0
+        Label(self.win.body, text="Auto Data Entry Settings", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=r, column=0, sticky="w", columnspan=4)
+        r += 1
+        Label(self.win.body, text="").grid(row=r, column=1)
+        r += 1
+        text = macadj("NS Day Structure Preference ________________________________",
+                      "NS Day Structure Preference ________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=r, column=0, columnspan=4, sticky="w")
+        r += 1
+        ns_structure = StringVar(self.win.body)
+        sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
+        result = inquire(sql)
+        Radiobutton(self.win.body, text="rotation", variable=ns_structure, value="rotation") \
+            .grid(row=r, column=1, sticky="e")
+        Radiobutton(self.win.body, text="fixed", variable=ns_structure, value="fixed") \
+            .grid(row=r, column=2, sticky="w")
+        ns_structure.set(result[0][0])
+        r += 1
+        Button(self.win.body, text="Set", width=5, command=lambda: self.ns_structure(ns_structure)) \
+            .grid(row=r, column=3)
+        r += 1
+        Label(self.win.body, text="").grid(row=r, column=1)
+        r += 1
+        text = macadj("List of TACS MODS Codes __________________________________",
+                      "List of TACS MODS Codes __________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=r, column=0, columnspan=4, sticky="w")
+        r += 1
+        Label(self.win.body, text="(to exclude from Auto Data Entry moves).") \
+            .grid(row=r, column=0, columnspan=4, sticky="w")
+        r += 1
+        Label(self.win.body, text="code", fg="grey", anchor="w") \
+            .grid(row=r, column=0)
+        Label(self.win.body, text="description", fg="grey", anchor="w") \
+            .grid(row=r, column=1, columnspan=2)
+        sql = "SELECT * FROM skippers"
+        results = inquire(sql)
+        r += 1
+        if len(results) > 0:
+            for i in range(len(results)):
+                Button(self.win.body, text=results[i][0], anchor="w", width=5) \
+                    .grid(row=i + r, column=0)  # display code
+                Button(self.win.body, text=results[i][1], anchor="w", width=30) \
+                    .grid(row=i + r, column=1, columnspan=2)  # display description
+                Button(self.win.body, text="delete",
+                       command=lambda x=i: self.codes_delete(results[x])) \
+                    .grid(row=i + r, column=3)
+        else:
+            Label(self.win.body, text="No Exceptions Listed.", anchor="w") \
+                .grid(row=r, column=0, sticky="w", columnspan=3)
+            i = 1
+        r += i
+        r += 1
+        Label(self.win.body, text="").grid(row=r, column=2)
+        r += 1
+        text = macadj("Add New Code _____________________________________________",
+                      "Add New Code _____________________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=r, column=0, columnspan=4, sticky="w")
+        r += 1
+        new_code = StringVar(self.win.body)
+        new_descp = StringVar(self.win.body)
+        Label(self.win.body, text="code", fg="grey", anchor="w").grid(row=r, column=0)
+        Label(self.win.body, text="description", fg="grey", anchor="w").grid(row=r, column=1, columnspan=2)
+        r += 1
+        Entry(self.win.body, textvariable=new_code, width=6).grid(row=r, column=0)  # add new code
+        Entry(self.win.body, textvariable=new_descp, width=35).grid(row=r, column=1, columnspan=2)
+        Button(self.win.body, text="Add", width=5, 
+               command=lambda: self.codes_add(new_code, new_descp)) \
+            .grid(row=r, column=3)
+        r += 1
+        Label(self.win.body, text="").grid(row=r, column=0)
+        r += 1
+        Label(self.win.body, text="Restore Defaults").grid(row=r, column=1, columnspan=2, sticky="e")
+        Button(self.win.body, text="Set", width=5, 
+               command=lambda: self.codes_default()).grid(row=r, column=3)
+        r += 1
+        Label(self.win.body, text="").grid(row=r, column=0)
+        r += 1
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+
+        self.win.finish()
+
+    def ns_structure(self, ns_structure):
+        """ method of updating the ns day preference for the ADE. """
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (ns_structure.get(), "ns_auto_pref")
+        commit(sql)
+        messagebox.showinfo("Settings Updated",
+                            "Auto Data Entry settings have been updated.",
+                            parent=self.win.body)
+
+    def codes_delete(self, to_delete):
+        """ method of deleting operation numbers which are ignored by the automatic data entry """
+        sql = "DELETE FROM skippers WHERE code='%s'" % to_delete[0]
+        commit(sql)
+        self.start(self.win.topframe)
+
+    def codes_add(self, code, description):
+        """ checks and enters operation codes skipped by ADE. """
+        sql = "SELECT code FROM skippers"
+        results = inquire(sql)
+        existing_codes = []
+        for item in results:
+            existing_codes.append(item[0])
+        prohibited_codes = ('721', '722')
+        if code.get() in prohibited_codes:
+            messagebox.showerror("Data Entry Error",
+                                 "It is prohibited to exclude code {}"
+                                 .format(code.get(),
+                                         parent=self.win.body))
+            return
+        if code.get() in existing_codes:
+            messagebox.showerror("Data Entry Error",
+                                 "This code had already been entered.",
+                                 parent=self.win.body)
+            return
+        if code.get().isdigit() == FALSE:
+            messagebox.showerror("Data Entry Error",
+                                 "TACS code must contain only numbers.",
+                                 parent=self.win.body)
+            return
+        if len(code.get()) > 3 or len(code.get()) < 3:
+            messagebox.showerror("Data Entry Error",
+                                 "TACS code must be 3 digits long.",
+                                 parent=self.win.body)
+            return
+        if len(description.get()) > 39:
+            messagebox.showerror("Data Enty Error",
+                                 "Please limit description to less than 40 characters.",
+                                 parent=self.win.body)
+            return
+        sql = "INSERT INTO skippers(code,description) VALUES('%s','%s')" % (code.get(), description.get())
+        commit(sql)
+        self.start(self.win.topframe)
+
+    def codes_default(self):
+        """ resets the defaults operation codes skipped by ADE. """
+        sql = "DELETE FROM skippers"
+        commit(sql)
+        # put records in the skippers table
+        skip_these = [["354", "stand by"], ["613", "stewards time"], ["743", "route maintenance"]]
+        for rec in skip_these:
+            sql = "INSERT OR IGNORE INTO skippers(code, description) VALUES ('%s','%s')" % (rec[0], rec[1])
+            commit(sql)
+        self.start(self.win.topframe)
+
+
+class PdfConvertConfig:
+    """
+    creates a screen where the user can view and configure the pdf converter
+    """
+    def __init__(self):
+        self.win = None
+        self.errorrpt = None
+        self.rawrpt = None
+        self.txtreader = None
+        self.msg = ""
+
+    def start(self, frame):
+        """ a screen for updating the pdf converter settings. """
+        sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
+        result = inquire(sql)
+        self.errorrpt = result[0][0]
+        self.win = MakeWindow()
+        self.win.create(frame)
+        Label(self.win.body, text="PDF Converter Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=0, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ").grid(row=1, column=0)
+        # Label(self.win.body, text="Generate Reports for PDF Converter").grid(row=2, sticky="w", columnspan=4)
+        text = macadj("Generate Reports for PDF Converter __________________________",
+                      "Generate Reports for PDF Converter __________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=2, column=0, columnspan=4, sticky="w")
+        # Label(self.win.body, text=" ").grid(row=3, column=0)
+        Label(self.win.body, text="Error Report", width=33, anchor="w").grid(row=4, column=0, sticky="w")
+        error_selection = StringVar(self.win.body)
+        om_error = OptionMenu(self.win.body, error_selection, "on", "off")  # option menu configuration below
+        om_error.grid(row=4, column=1)
+        error_selection.set(result[0][0])
+        sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_raw_rpt"
+        result = inquire(sql)
+        self.rawrpt = result[0][0]
+        Label(self.win.body, text="Raw Output Report", width=15, anchor="w")\
+            .grid(row=5, column=0, sticky="w")
+        raw_selection = StringVar(self.win.body)
+        om_raw = OptionMenu(self.win.body, raw_selection, "on", "off")  # option menu configuration below
+        om_raw.grid(row=5, column=1)
+        raw_selection.set(result[0][0])
+        Label(self.win.body, text=" ").grid(row=6, column=0)
+        # allow user to read from a text file to bypass the pdfminer
+        text = macadj("Generate Reports from Text File ______________________________",
+                      "Generate Reports from Text File ______________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=7, column=0, columnspan=4, sticky="w")
+        Label(self.win.body, text="     (where a text file of pdfminer output has been generated)") \
+            .grid(row=8, sticky="w", columnspan=4)
+        # Label(self.win.body, text=" ").grid(row=9, column=0)
+        sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_text_reader"
+        result = inquire(sql)
+        self.txtreader = result[0][0]
+        Label(self.win.body, text="Read from txt file", width=15, anchor="w").grid(row=10, column=0, sticky="w")
+        txt_selection = StringVar(self.win.body)
+        om_txt = OptionMenu(self.win.body, txt_selection, "on", "off")
+        om_txt.grid(row=10, column=1)  # option menu configuration below
+        txt_selection.set(result[0][0])
+        Label(self.win.body, text=" ").grid(row=11, column=0)
+        if sys.platform == "darwin":  # option menu configuration
+            om_error.config(width=5)
+            om_raw.config(width=5)
+            om_txt.config(width=5)
+        else:
+            om_error.config(width=5, anchor="w")
+            om_raw.config(width=5, anchor="w")
+            om_txt.config(width=5, anchor="w")
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=15, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        button = Button(self.win.buttons)
+        button.config(text="Apply", width=15, command=lambda: self.apply(error_selection, raw_selection, txt_selection))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        Label(self.win.buttons, text=self.msg, fg="red").pack(side=LEFT)
+        self.win.finish()
+
+    def apply(self, error, raw, txt):
+        """ updates the settings for the pdf converter. """
+        update_counter = 0
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (error.get(), "pdf_error_rpt")
+        if self.errorrpt != error.get():
+            commit(sql)
+            update_counter += 1
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (raw.get(), "pdf_raw_rpt")
+        if self.rawrpt != raw.get():
+            commit(sql)
+            update_counter += 1
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (txt.get(), "pdf_text_reader")
+        if self.txtreader != txt.get():
+            commit(sql)
+            update_counter += 1
+        self.get_msg(update_counter)
+        self.start(self.win.topframe)
+
+    def get_msg(self, counter):
+        """ update the message on the button bar at the bottom of the screen when records are added."""
+        if not counter:
+            self.msg = "No Records Updated."
+        elif counter == 1:
+            self.msg = "One Record Updated."
+        elif counter == 2:
+            self.msg = "Two Records Updated."
+        else:
+            self.msg = "All Records Updated. "
+
+
+class NameIndex:
+    """
+    This creates a screen the user can use to view carrier names as they appear in tacs and klusterbox as well as the
+    employee id numbers which are used by Auto Data Entry and Speedsheets.
+    """
+
+    def __init__(self):
+        self.win = None
+
+    def name_index_screen(self, frame):
+        """ creates a screen which shows all records in the name index. """
+        sql = "SELECT * FROM name_index ORDER BY tacs_name"
+        results = inquire(sql)
+        # wd = front_window("none")  # get window objects
+        self.win = MakeWindow()
+        self.win.create(frame)
+        x = 0
+        if len(results) == 0:
+            Label(self.win.body, text="The Name Index is empty").grid(row=0, column=x)
+        else:
+            Label(self.win.body, text="Name Index Management", font=macadj("bold", "Helvetica 18")) \
+                .grid(row=x, column=0, sticky="w", columnspan=2)  # page header
+            x += 1
+            Label(self.win.body, text="").grid(row=x, column=0, sticky="w")
+            x += 1
+            Label(self.win.body, text="TACS Name").grid(row=x, column=1, sticky="w")  # column headers
+            Label(self.win.body, text="Klusterbox Name").grid(row=x, column=2, sticky="w")
+            Label(self.win.body, text="Emp ID").grid(row=x, column=3, sticky="w")
+            x += 1
+            for item in results:  # loop for names in the index
+                Label(self.win.body, text=str(x - 2), anchor="w").grid(row=x, column=0)
+                Button(self.win.body, text=" " + item[0], anchor="w", width=20, relief=RIDGE).grid(row=x, column=1)
+                Button(self.win.body, text=" " + item[1], anchor="w", width=20, relief=RIDGE).grid(row=x, column=2)
+                Button(self.win.body, text=" " + item[2], anchor="w", width=8, relief=RIDGE).grid(row=x, column=3)
+                Button(self.win.body, text="delete", anchor="w", width=5, relief=RIDGE, command=lambda xx=item[2]:
+                self.apply_nameindexer_list(xx)).grid(row=x, column=4)
+                x += 1
+            Button(self.win.body, text="Delete All", width="15",
+                   command=lambda: self.del_all_nameindexer()) \
+                .grid(row=x, column=0, columnspan=5, sticky="e")
+        Button(self.win.buttons, text="Go Back", width=20,
+               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
+        self.win.finish()
+
+    def apply_nameindexer_list(self, x):
+        """ deletes a carrier/record from the name index. """
+        sql = "DELETE FROM name_index WHERE emp_id = '%s'" % x
+        commit(sql)
+        self.name_index_screen(self.win.topframe)
+
+    def del_all_nameindexer(self):
+        """ deletes everything from the name index. """
+        sql = "DELETE FROM name_index"
+        commit(sql)
+        self.name_index_screen(self.win.topframe)
+
+
+class StationIndex:
+    """
+    creates a screen which the user can use to display, change and delete station and station indexes.
+    """
+
+    def __init__(self):
+        self.win = None  # the window object
+        self.results = None  # search results from all records in station index.
+        self.frame = []  # rename function: holds topframe
+        self.passframe = []  # rename function: holds the frame name of the station to be renamed
+        self.tacs = []  # rename function: holds the tacs name
+        self.kb = []  # rename function: holds the klusterbox name of the station to be changed.
+        self.newname = []  # rename function: holds the new name of the station.
+        self.rename_button = []  # rename function: holds a button widget
+        self.all_stations = []  # rename function: holds all the stations in the station list except out of station.
+
+    def reinitialize(self):
+        """ re initialize the arrays to empty out any entries previously accumulated. """
+        self.results = None  # search results from all records in station index.
+        self.frame = []  # rename function: holds topframe
+        self.passframe = []  # rename function: holds the frame name of the station to be renamed
+        self.tacs = []  # rename function: holds the tacs name
+        self.kb = []  # rename function: holds the klusterbox name of the station to be changed.
+        self.newname = []  # rename function: holds the new name of the station.
+        self.rename_button = []  # rename function: holds a button widget
+        self.all_stations = []  # rename function: holds all the stations in the station list except out of station.
+
+    def get_all_stations(self):
+        """ this provides a list of stations in the station list, but not in the station index. """
+        sql = "SELECT * FROM stations"
+        results = inquire(sql)
         for rec in results:
-            all_stations.append(rec[0])
-        if "out of station" in all_stations:
-            all_stations.remove("out of station")
-        old_station = StringVar(ff)
-        om = OptionMenu(ff, old_station, *all_stations)
-        om.config(width="35")
-        om.grid(row=row, column=0, sticky="w", columnspan=2)
-        row += 1
-        old_station.set("select a station")
-        Label(ff, text="enter a new name:").grid(row=row, column=0, sticky="w")
-        row += 1
-        new_station = StringVar(ff)
-        Entry(ff, textvariable=new_station, width="30").grid(row=row, column=0, sticky="w")
-        new_station.set("enter a new station name")
-        Button(ff, text="update", command=lambda: station_update_apply(f, old_station, new_station)) \
-            .grid(row=row, column=1, sticky="w")
-        row += 1
-        Label(ff, text="____________________________________________________", pady=5). \
-            grid(row=row, columnspan=2, sticky="w")
-        row += 1
-    # find and display list of unique stations
-    Label(ff, text="List Of Stations", pady=5, font=macadj("bold", "Helvetica 18")) \
-        .grid(row=row, columnspan=3, sticky="w")
-    row += 1
-    Label(ff, text="(referenced in carrier database)", pady=5) \
-        .grid(row=row, columnspan=3, sticky="w")
-    row += 1
-    unique_station = []
-    sql = "SELECT * FROM carriers"
-    results = inquire(sql)
-    for name in results:
-        if name[5] not in unique_station:
-            unique_station.append(name[5])
-    unique_station = sorted(unique_station, key=str.lower)
-    count = 1
-    for ss in unique_station:
-        Label(ff, text="{}.  {}".format(count, ss)).grid(row=row, columnspan=2, sticky="w")
-        count += 1
-        row += 1
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
-    
-    
+            self.all_stations.append(rec[0])  # get all stations in database.
+        sql = "SELECT * FROM station_index"
+        self.results = inquire(sql)
+        for rec in self.results:
+            if rec[1] in self.all_stations:
+                self.all_stations.remove(rec[1])  # remove any station in station index
+        self.all_stations.remove("out of station")  # remove out of station.
+
+    def station_index_mgmt(self, frame):
+        """ creates a screen that allows the user to adjust the station index. """
+        self.reinitialize()
+        self.get_all_stations()  # provides a list of stations in the station list, but not in the station index.
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.frame = self.win.topframe  # get the topframe for page reloading.
+        g = 0  # a counter for the row
+        Label(self.win.body, text="Station Index Management", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=g, column=0, sticky="w")
+        Label(self.win.body, text="").grid(row=g + 1, column=0)
+        g += 2
+        if len(self.results) == 0:
+            Label(self.win.body, text="There are no stations in the station index") \
+                .grid(row=g, column=0, sticky="w")
+            g += 1
+        else:
+            header_frame = Frame(self.win.body, width=500)
+            header_frame.grid(row=g, column=0, sticky="w")
+            Label(header_frame, text="TACS Station Name", width=macadj(30, 25), anchor="w") \
+                .grid(row=0, column=0, sticky="w")
+            Label(header_frame, text="Klusterbox Station Name", width=macadj(30, 25), anchor="w") \
+                .grid(row=0, column=1, sticky="w")
+            g += 1
+            f = 0  # initialize number for frame
+            frame = []  # initialize array for frame
+            for record in self.results:
+                self.tacs.append(record[0])
+                self.kb.append(record[1])
+                to_add = "station_frame" + str(f)  # give the new frame a name
+                frame.append(to_add)  # add the frame to the array
+                frame[f] = Frame(self.win.body, width=500)  # create the frame widget
+                frame[f].grid(row=g, padx=5, sticky="w")  # grid the widget
+                self.passframe.append(frame[f])  # use attribute to hold the frame name.
+                self.newname.append(StringVar(self.win.topframe))
+                Button(frame[f], text=record[0], width=macadj(30, 25), anchor="w").grid(row=0, column=0)
+                Button(frame[f], text=record[1], width=macadj(30, 25), anchor="w").grid(row=0, column=1)
+                to_add = Button(frame[f], text="rename", width=6)
+                self.rename_button.append(to_add)
+                self.rename_button[f]['command'] = lambda x=f: self.station_index_rename(x)
+                self.rename_button[f].grid(row=0, column=2)
+                delete_button = Button(frame[f], text="delete", width=6,
+                                       command=lambda x=f: self.station_rec_del(x))
+                delete_button.grid(row=0, column=3)
+                f += 1
+                g += 1
+            Label(self.win.body, text="", height=1).grid(row=g)
+            Button(self.win.body, text="Delete All", width="15",
+                   command=lambda: (self.stationindexer_del_all(self.win.topframe))) \
+                .grid(row=g + 1, column=0, columnspan=3, sticky="e")
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.win.finish()
+
+    def station_index_rename_apply(self, f):
+        """ rename a station in the station index. """
+        sql = "UPDATE station_index SET kb_station='%s' WHERE tacs_station='%s'" % \
+              (self.newname[f].get(), self.tacs[f])
+        commit(sql)
+        self.station_index_mgmt(self.frame)
+
+    def station_index_rename(self, f):
+        """ widgets allow the user to select a new name for the kb station from a the stations list. """
+        self.rename_button[f].destroy()
+        Button(self.passframe[f], text=" ", width=6).grid(row=0, column=2)
+        if len(self.all_stations) > 0:
+            Label(self.passframe[f], text="update station name:  ", anchor="e").grid(row=1, column=0, sticky="e")
+            # set up station option menu and variable
+            om_station = OptionMenu(self.passframe[f], self.newname[f], *self.all_stations)
+            om_station.config(width=28, anchor="w")
+            om_station.grid(row=1, column=1)
+            self.newname[f].set(self.kb[f])
+            Button(self.passframe[f], text="rename",
+                   command=lambda: self.station_index_rename_apply(f)) \
+                .grid(row=1, column=2)
+        else:
+            Label(self.passframe[f], text="No Unassigned Stations Available") \
+                .grid(row=1, column=0, columnspan=2, sticky="e")
+
+    def station_rec_del(self, f):
+        """ delete a record from the station index. """
+        sql = "DELETE FROM station_index WHERE tacs_station = '%s' and kb_station='%s'" % \
+              (self.tacs[f], self.kb[f])
+        commit(sql)
+        self.station_index_mgmt(self.frame)
+
+    def stationindexer_del_all(self, frame):
+        """ deletes everything from the station index. """
+        sql = "DELETE FROM station_index"
+        commit(sql)
+        self.station_index_mgmt(frame)
+
+
+class AboutKlusterbox:
+    """
+    a class for displaying the About Klusterbox screen. Will display the version number, release date, contact
+    information and source code.
+    """
+
+    def __init__(self):
+        self.win = None
+        self.frame = None
+        self.photo = None
+
+    def start(self, frame):
+        """ a master method to run other methods in proper order. """
+        self.frame = frame
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+        self.build()
+        self.button_frame()
+        self.win.finish()
+
+    def build(self):
+        """ fills the screen with widgets. """
+        r = 0  # set row counter
+        if projvar.platform == "macapp":
+            path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources',
+                                'kb_about.jpg')
+        elif projvar.platform == "winapp":
+            path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
+        else:
+            path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
+        try:
+            self.photo = ImageTk.PhotoImage(Image.open(path))
+            Label(self.win.body, image=self.photo).grid(row=r, column=0, columnspan=10, sticky="w")
+        except (TclError, FileNotFoundError):
+            pass
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="Klusterbox", font=macadj("bold", "Helvetica 18"), fg="red", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="version: {}".format(version), anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="release date: {}".format(release_date), anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w",
+                                                                            columnspan=6)
+        r += 1
+        Label(self.win.body, text="Original release: October 2018", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="comments and criticisms are welcome", anchor=W, fg="red") \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="    tomandsusan4ever@msn.com", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="    (please put \"klusterbox\" in the subject line)", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="I've found that some emails get filtered out by the junk folder so", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="Message me on Facebook Messenger:", anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        kb_link = Label(self.win.body, text="    facebook.com/thomas.weeks.artist", fg="blue", cursor="hand2")
+        kb_link.grid(row=r, columnspan=6, sticky="w")
+        kb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/thomas.weeks.artist"))
+        r += 1
+        Label(self.win.body, text="    720.280.0415", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="For the lastest updates on Klusterbox check out the official Klusterbox") \
+            .grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        Label(self.win.body, text="website at:").grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        kb_link = Label(self.win.body, text="    www.klusterbox.com", fg="blue", cursor="hand2")
+        kb_link.grid(row=r, columnspan=6, sticky="w")
+        kb_link.bind("<Button-1>", lambda e: self.callback("http://klusterbox.com"))
+        r += 1
+        Label(self.win.body, text="Also look on Facebook for Klusterbox - Software for NALC Stewards at:") \
+            .grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        fb_link = Label(self.win.body, text="    www.facebook.com/klusterbox", fg="blue", cursor="hand2")
+        fb_link.grid(row=r, columnspan=6, sticky="w")
+        fb_link.bind("<Button-1>", lambda e: self.callback("http://www.facebook.com/klusterbox"))
+        r += 1
+        Label(self.win.body, text="Like, Follow and Share!").grid(row=r, columnspan=6, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Label(self.win.body, text="Project Documentation", font=macadj("bold", "Helvetica 16"), anchor=W) \
+            .grid(row=r, column=0, sticky="w", columnspan=3)
+        Label(self.win.body, text="                                             ").grid(row=r, column=3)
+        Label(self.win.body, text="                                             ").grid(row=r, column=4)
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("readme.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="Read Me", anchor=E).grid(row=r, column=1, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("history.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="History", anchor=E).grid(row=r, column=1, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("LICENSE.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="License", anchor=E).grid(row=r, column=1, sticky="w")
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        """
+        Enter all modules imported by klusterbox below as part of the sourcecode tuple. All modules must be in the 
+        klusterbox project folder.
+        """
+        sourcecode = ("klusterbox.py",
+                      "projvar.py",
+                      "kbtoolbox.py",
+                      "kbdatabase.py",
+                      "kbreports.py",
+                      "kbspreadsheets.py",
+                      "kbspeedsheets.py",
+                      "kbequitability.py",
+                      "kbcsv_repair.py",
+                      "kbpdfhandling.py",
+                      "kbcsv_reader.py"
+                      )
+        for i in range(len(sourcecode)):
+            Button(self.win.body, text="read", width=macadj(7, 7),
+                   command=lambda source=sourcecode[i]: self.open_docs(source)).grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="Source Code - {}".format(sourcecode[i]), anchor=E) \
+                .grid(row=r, column=1, sticky="w")
+            r += 1
+            Label(self.win.body, text="").grid(row=r)
+            r += 1
+        Button(self.win.body, text="read", width=macadj(7, 7), command=lambda: self.open_docs("requirements.txt")) \
+            .grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="python requirements", anchor=E).grid(row=r, column=1, sticky="w")
+
+    def button_frame(self):
+        """ builds the buttons on the bottom of the screen. """
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+
+    def open_docs(self, doc):
+        """ opens docs in the about_klusterbox() function """
+        try:
+            if sys.platform == "win32":
+                if projvar.platform == "py":
+                    try:
+                        path = doc
+                        os.startfile(path)  # in IDE the files are in the project folder
+                    except FileNotFoundError:
+                        path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', doc)
+                        os.startfile(path)  # in KB legacy the files are in the kb_sub folder
+                if projvar.platform == "winapp":
+                    path = os.path.join(os.path.sep, os.getcwd(), doc)
+                    os.startfile(path)
+            if sys.platform == "linux":
+                subprocess.call(doc)
+            if sys.platform == "darwin":
+                if projvar.platform == "macapp":
+                    path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', doc)
+                    subprocess.call(["open", path])
+                if projvar.platform == "py":
+                    subprocess.call(["open", doc])
+        except FileNotFoundError:
+            messagebox.showerror("Project Documents",
+                                 "The document was not opened or found.",
+                                 parent=self.win.body)
+
+    @staticmethod
+    def callback(url):
+        """ open hyperlinks at about_klusterbox() """
+        webbrowser.open_new(url)
+
+
 class MassInput:
     """
     creates screen where users can change multiple characteristics for multiple carriers at one time. 
@@ -7736,295 +7809,343 @@ def edit_carrier(e_name):
         button_back.config(width=16)
     button_apply.pack(side=LEFT)
     button_back.pack(side=LEFT)
+    
 
+class CarrierInput:
+    """
+    provides screens for users to view carrier characteristics, add, edit and delete. 
+    """
+    def __init__(self):
+        self.win = None
+        self.ns_dict = None
+        self.ns_color_dict = None
+        # set up vars
+        self.month = None
+        self.day = None
+        self.year = None
+        self.name = None
+        self.fname = None
+        self.ls = None
+        self.ns = None
+        self.route = None
+        self.station = None
 
-def nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, frame):
-    """ executes to check then enter in new carrier information into the database. """
-    if year.get() > 9999 or year.get() < 1000:
-        messagebox.showerror("Year Input Error", "Year must be between 1000 and 9999", parent=frame)
-        return
-    try:
-        date = datetime(year.get(), month.get(), day.get())
-    except ValueError:
-        messagebox.showerror("Invalid Date",
-                             "Date entered is not valid",
-                             parent=frame)
-        return
-    carrier = nc_name.get().strip().lower() + ", " + nc_fname.get().strip().lower()
-    if len(nc_name.get()) > 30 or len(nc_fname.get()) > 12:
-        messagebox.showerror("Name input error",
-                             "Names must not exceed 30 characters."
-                             "First names must not exceed 12 characters",
-                             parent=frame)
-        return
-    if len(nc_name.get()) < 1:
-        messagebox.showerror("Name input error",
-                             "You must enter a name.",
-                             parent=frame)
-        return
-    if len(nc_fname.get()) < 1:
-        messagebox.showerror("Name input error",
-                             "You must enter a first initial or name.",
-                             parent=frame)
-        return
-    if len(nc_fname.get()) > 1:
-        answer = messagebox.askyesno("Caution",
-                                     "It is recommended that you use only the first initial of the first"
-                                     "name unless it is necessary to create a unique identifier, such as"
-                                     "when you have two identical names that must be distinguished."
-                                     "Do you want to proceed?",
-                                     parent=frame)
-        if not answer:
+    def initialize_vars(self):
+        """ initialize the variables """
+        self.year = IntVar(self.win.body)  # define variables for date
+        self.month = IntVar(self.win.body)
+        self.day = IntVar(self.win.body)
+        self.name = StringVar(self.win.body)
+        self.fname = StringVar(self.win.body)
+        self.ls = StringVar(self.win.body)
+        self.route = StringVar(self.win.body)
+        self.ns = StringVar(self.win.body)
+        self.station = StringVar(self.win.body)
+
+    def set_new_vars(self):
+        """ set the vars for new carrier entries. """
+        self.year.set(projvar.invran_year)
+        self.month.set(projvar.invran_month)
+        self.day.set(projvar.invran_day)
+        self.name.set("")
+        self.fname.set("")
+        self.ls.set(value="nl")
+        self.route.set("")
+        self.ns.set("none")
+        self.station.set(projvar.invran_station)  # default value
+
+    def get_nsdicts(self):
+        """ get ns day color configurations """ 
+        sql = "SELECT * FROM ns_configuration"
+        ns_results = inquire(sql)
+        self.ns_dict = {}  # build dictionary for ns days
+        self.ns_color_dict = {}
+        days = ("sat", "mon", "tue", "wed", "thu", "fri")
+        for r in ns_results:  # build dictionary for rotating ns days
+            self.ns_dict[r[0]] = r[2]
+            self.ns_color_dict[r[0]] = r[1]  # build dictionary for ns fill colors
+        for d in days:  # expand dictionary for fixed days
+            self.ns_dict[d] = "fixed: " + d
+            self.ns_color_dict[d] = "teal"
+        self.ns_dict["none"] = "none"  # add "none" to dictionary
+        self.ns_color_dict["none"] = "teal"
+
+    def new_carriers(self, frame):
+        """ window for inputting new carriers """
+        self.get_nsdicts()
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.initialize_vars()
+        self.set_new_vars()
+        self.title()
+        self.date()
+        self.get_name()
+        self.list_status()
+        self.nsday()
+        self.get_route()
+        self.get_station()
+        self.buttons()
+        self.win.finish()
+
+    def title(self):
+        """ set the title for new carrier input"""
+        title_f = Frame(self.win.body)
+        text = "Enter New Carrier"
+        Label(title_f, text=text, font=macadj("bold", "Helvetica 18")).grid(row=0, column=0, columnspan=4)
+        title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
+
+    def date(self):
+        """ set up the date widgets. """
+        date_frame = Frame(self.win.body)  # define frame
+        date_frame.grid(row=1, sticky=W, pady=5)  # put frame on grid
+        text = macadj("Effective Date _______________________________",
+                      "Effective Date _______________________________")
+        Label(date_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=20, sticky="w")
+        Label(date_frame, text="Month", fg=macadj("grey", "white"), anchor="w").grid(row=1, column=0)
+        Label(date_frame, text="Day", fg=macadj("grey", "white"), anchor="w").grid(row=1, column=1)
+        Label(date_frame, text="Year", fg=macadj("grey", "white"), anchor="w").grid(row=1, column=2)
+        Label(date_frame, text="          ").grid(row=1, column=3)
+        om_month = OptionMenu(date_frame, self.month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
+        om_month.config(width=2)
+        om_month.grid(row=2, column=0, sticky=W)
+        om_day = OptionMenu(date_frame, self.day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
+                            "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28",
+                            "29", "30", "31")
+        om_day.config(width=2)
+        om_day.grid(row=2, column=1, sticky=W)
+        Label(date_frame, text="          ").grid(row=2, column=3)
+        Entry(date_frame, width=6, textvariable=self.year).grid(row=2, column=2, sticky=W)
+
+    def get_name(self):
+        """ enter the carrier's name"""
+        name_frame = Frame(self.win.body, pady=2)
+        name_frame.grid(row=2, sticky=W, pady=5)
+        text = macadj("Carrier Name _______________________________",
+                      "Carrier Name _______________________________")
+        Label(name_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+        Label(name_frame, text=" Last Name: ", width=22, anchor="w", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
+        Label(name_frame, text=" 1st Initial ", width=7, anchor="w", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white")).grid(row=1, column=1, sticky=W)
+        Entry(name_frame, width=macadj(27, 22), textvariable=self.name).grid(row=2, column=0, sticky=W)
+        Entry(name_frame, width=macadj(8, 6), textvariable=self.fname).grid(row=2, column=1, sticky=W)
+
+    def list_status(self):
+        """ set up the list status """
+        list_frame = Frame(self.win.body, pady=5)
+        list_frame.grid(row=3, sticky=W, pady=5)
+        text = macadj("List Status ________________________________",
+                      "List Status ________________________________")
+        Label(list_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+
+        Radiobutton(list_frame, text="OTDL", variable=self.ls, value='otdl', justify=LEFT) \
+            .grid(row=1, column=0, sticky=W)
+        Radiobutton(list_frame, text="Work Assignment", variable=self.ls, value='wal', justify=LEFT) \
+            .grid(row=1, column=1, sticky=W)
+        Radiobutton(list_frame, text="No List", variable=self.ls, value='nl', justify=LEFT) \
+            .grid(row=2, column=0, sticky=W)
+        Radiobutton(list_frame, text="Auxiliary", variable=self.ls, value='aux', justify=LEFT) \
+            .grid(row=2, column=1, sticky=W)
+        Radiobutton(list_frame, text="Part Time Flex", variable=self.ls, value='ptf', justify=LEFT) \
+            .grid(row=3, column=1, sticky=W)
+
+    def nsday(self):
+        """ set up the ns day"""
+        ns_frame = Frame(self.win.body, pady=5)
+        ns_frame.grid(row=4, sticky=W, pady=5)
+        text = macadj("Non Scheduled Day ________________________",
+                      "Non Scheduled Day ________________________")
+        Label(ns_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+        # Label(ns_frame, width=30, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
+        #       fg=macadj("black", "white")).grid(row=0, column=0, sticky=W, columnspan=2)
+
+        Radiobutton(ns_frame, text="{}:   yellow".format(projvar.ns_code['yellow']), variable=self.ns, value="yellow",
+                    indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"), selectcolor=self.ns_color_dict["yellow"]).grid(row=1, column=0)
+        Radiobutton(ns_frame, text="{}:   blue".format(projvar.ns_code['blue']), variable=self.ns, value="blue",
+                    indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"), selectcolor=self.ns_color_dict["blue"]).grid(row=2, column=0)
+        Radiobutton(ns_frame, text="{}:   green".format(projvar.ns_code['green']), variable=self.ns, value="green",
+                    indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"), selectcolor=self.ns_color_dict["green"]).grid(row=3, column=0)
+        Radiobutton(ns_frame, text="{}:   brown".format(projvar.ns_code['brown']), variable=self.ns, value="brown",
+                    indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"), selectcolor=self.ns_color_dict["brown"]).grid(row=1, column=1)
+        Radiobutton(ns_frame, text="{}:   red".format(projvar.ns_code['red']), variable=self.ns, value="red",
+                    indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"), selectcolor=self.ns_color_dict["red"]).grid(row=2, column=1)
+        Radiobutton(ns_frame, text="{}:   black".format(projvar.ns_code['black']), variable=self.ns, value="black",
+                    indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"), selectcolor=self.ns_color_dict["black"]).grid(row=3, column=1)
+        Label(ns_frame, text=" Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
+        Radiobutton(ns_frame, text="none", variable=self.ns, value="none", indicatoron=macadj(0, 1),
+                    width=15, anchor="w") \
+            .grid(row=4, column=1)
+        Radiobutton(ns_frame, text="none", variable=self.ns, value="none", indicatoron=macadj(0, 1),
+                    width=15, bg=macadj("grey", "white"), fg=macadj("white", "black"),
+                    selectcolor=self.ns_color_dict["none"], anchor="w").grid(row=4, column=1)
+        Radiobutton(ns_frame, text="Sat:   fixed", variable=self.ns, value="sat", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"),
+                    selectcolor=self.ns_color_dict["sat"], indicatoron=macadj(0, 1), width=15,
+                    anchor="w").grid(row=5, column=0)
+        Radiobutton(ns_frame, text="Mon:   fixed", variable=self.ns, value="mon", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"),
+                    selectcolor=self.ns_color_dict["mon"], indicatoron=macadj(0, 1),
+                    width=15, anchor="w").grid(row=5, column=1)
+        Radiobutton(ns_frame, text="Tue:   fixed", variable=self.ns, value="tue", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"),
+                    selectcolor=self.ns_color_dict["tue"], indicatoron=macadj(0, 1),
+                    width=15, anchor="w").grid(row=6, column=0)
+        Radiobutton(ns_frame, text="Wed:   fixed", variable=self.ns, value="wed", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"),
+                    selectcolor=self.ns_color_dict["wed"], indicatoron=macadj(0, 1),
+                    width=15, anchor="w").grid(row=6, column=1)
+        Radiobutton(ns_frame, text="Thu:   fixed", variable=self.ns, value="thu", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"),
+                    selectcolor=self.ns_color_dict["thu"], indicatoron=macadj(0, 1),
+                    width=15, anchor="w").grid(row=7, column=0)
+        Radiobutton(ns_frame, text="Fri:   fixed", variable=self.ns, value="fri", bg=macadj("grey", "white"),
+                    fg=macadj("white", "black"),
+                    selectcolor=self.ns_color_dict["fri"], indicatoron=macadj(0, 1),
+                    width=15, anchor="w").grid(row=7, column=1)
+
+    def get_route(self):
+        """ set route entry field """
+        route_frame = Frame(self.win.body, pady=2)
+        route_frame.grid(row=5, sticky=W)
+        text = macadj("Route ______________________________________",
+                      "Route ______________________________________")
+        Label(route_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+        Label(route_frame, text=" Route/s", width=30, anchor="w", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
+
+        Entry(route_frame, width=macadj(37, 29), textvariable=self.route).grid(row=1, column=0, sticky=W)
+
+    def get_station(self):
+        """ set station option menu"""
+        station_frame = Frame(self.win.body, pady=5)
+        station_frame.grid(row=6, sticky=W, pady=5)
+        text = macadj("Station ____________________________________",
+                      "Station ____________________________________")
+        Label(station_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+        
+        om_stat = OptionMenu(station_frame, self.station, *projvar.list_of_stations)
+        om_stat.config(width=macadj(30, 22))
+        om_stat.grid(row=1, column=0, sticky=W)
+
+    def buttons(self):
+        """ define and display the buttons on the bottom of the screen. """
+        button_apply = Button(self.win.buttons)  # buttons at bottom of screen
+        button_back = Button(self.win.buttons)
+        button_apply.config(text="Apply", command=lambda: self.nc_apply())
+        button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button_apply.config(anchor="w", width=15)
+            button_back.config(anchor="w", width=15)
+        else:
+            button_apply.config(width=16)
+            button_back.config(width=16)
+        button_apply.pack(side=LEFT)
+        button_back.pack(side=LEFT)
+
+    def nc_apply(self):
+        """ executes to check then enter in new carrier information into the database. """
+        checkdate = DateChecker(self.win.body, self.month.get(), self.day.get(), self.year.get())
+        if not checkdate.check_int():
             return
-    nc_route_list = nc_route.get().split("/")
-    if len(nc_route.get()) > 29:
-        messagebox.showerror("Route number input error",
-                             "There can be no more than five routes per carrier "
-                             "(for T6 carriers).\n Routes numbers four or five digits long.\n"
-                             "If there are multiple routes, route numbers must be separated by "
-                             "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                             "commas or empty spaces",
-                             parent=frame)
-        return
-    for item in nc_route_list:
-        item = item.strip()
-        if item != "":
-            if len(item) < 4 or len(item) > 5:
-                messagebox.showerror("Route number input error",
-                                     "Routes numbers must be four or five digits long.\n"
-                                     "If there are multiple routes, route numbers must be separated by "
-                                     "the \"/\" character. For example: 1001/1015/10124/10224/0972. Do not use "
-                                     "commas or empty spaces",
-                                     parent=frame)
+        if not checkdate.checkyear():
+            return
+        date = self.check_date()
+        if not date:  # if the checks returned False, then return.
+            return
+        carrier = self.name.get().strip().lower() + ", " + self.fname.get().strip().lower()
+        if len(self.name.get()) > 30 or len(self.fname.get()) > 12:
+            messagebox.showerror("Name input error",
+                                 "Names must not exceed 30 characters."
+                                 "First names must not exceed 12 characters",
+                                 parent=self.win.topframe)
+            return
+        if len(self.name.get()) < 1:
+            messagebox.showerror("Name input error",
+                                 "You must enter a name.",
+                                 parent=self.win.topframe)
+            return
+        if len(self.fname.get()) < 1:
+            messagebox.showerror("Name input error",
+                                 "You must enter a first initial or name.",
+                                 parent=self.win.topframe)
+            return
+        if len(self.fname.get()) > 1:
+            answer = messagebox.askyesno("Caution",
+                                         "It is recommended that you use only the first initial of the first"
+                                         "name unless it is necessary to create a unique identifier, such as"
+                                         "when you have two identical names that must be distinguished."
+                                         "Do you want to proceed?",
+                                         parent=self.win.topframe)
+            if not answer:
                 return
-        if item.isdigit() == FALSE and item != "":
+        nc_route_list = self.route.get().split("/")
+        if len(self.route.get()) > 29:
             messagebox.showerror("Route number input error",
-                                 "Route numbers must be numbers and can not contain "
-                                 "letters",
-                                 parent=frame)
+                                 "There can be no more than five routes per carrier "
+                                 "(for T6 carriers).\n Routes numbers four or five digits long.\n"
+                                 "If there are multiple routes, route numbers must be separated by "
+                                 "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
+                                 "commas or empty spaces",
+                                 parent=self.win.topframe)
             return
-    route_input = Handler(nc_route.get()).routes_adj()  # call routes adj to shorten routes that don't need 5 digits
-    if route_input == "0000":
-        route_input = ""
-    # check to see if new carrier name is already in carrier table
-    match = False
-    sql = "SELECT carrier_name, effective_date FROM carriers"
-    results = inquire(sql)
-    name_set = set()
-    for x in results:
-        name_set.add(x[0])
-    sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
-          " VALUES('%s','%s','%s','%s','%s','%s')" \
-          % (date, carrier, nc_ls.get(), nc_ns.get(), route_input, nc_station.get())
-    if carrier in name_set:
-        ok = messagebox.askokcancel("New Carrier Input Warning",
-                                    "This carrier name is already in the database.\n"
-                                    "Did you want to proceed?",
-                                    parent=frame)
-        if ok:
-            for pair in results:
-                if pair[0] == carrier and pair[1] == str(datetime(year.get(), month.get(), day.get(), 00, 00, 00)):
-                    messagebox.showwarning("New Carrier - Prohibited Action",
-                                           "There is a pre existing record for this carrier on this day.\n"
-                                           "You can not update that record using this window.\n"
-                                           "To edit/ delete this record, return to the main page and press\n"
-                                           "\"edit\" to the right of the carrier's name. ",
-                                           parent=frame)
-                    match = True
-        if not ok:
-            match = True
-    if not match:
-        commit(sql)
-    MainFrame().start(frame=frame)
-
-
-def input_carriers(frame):
-    """ window for inputting new carriers """
-    # get ns day color configurations
-    sql = "SELECT * FROM ns_configuration"
-    ns_results = inquire(sql)
-    ns_dict = {}  # build dictionary for ns days
-    ns_color_dict = {}
-    days = ("sat", "mon", "tue", "wed", "thu", "fri")
-    for r in ns_results:  # build dictionary for rotating ns days
-        ns_dict[r[0]] = r[2]
-        ns_color_dict[r[0]] = r[1]  # build dictionary for ns fill colors
-    for d in days:  # expand dictionary for fixed days
-        ns_dict[d] = "fixed: " + d
-        ns_color_dict[d] = "teal"
-    ns_dict["none"] = "none"  # add "none" to dictionary
-    ns_color_dict["none"] = "teal"
-    frame.destroy()
-    switch_f6 = Frame(projvar.root)
-    switch_f6.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(switch_f6)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    button_apply = Button(c1)  # buttons at bottom of screen
-    button_back = Button(c1)
-    button_apply.config(text="Apply", command=lambda:
-        (nc_apply(year, month, day, nc_name, nc_fname, nc_ls, nc_ns, nc_route, nc_station, switch_f6)))
-    button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=switch_f6))
-    if sys.platform == "win32":
-        button_apply.config(anchor="w", width=15)
-        button_back.config(anchor="w", width=15)
-    else:
-        button_apply.config(width=16)
-        button_back.config(width=16)
-    button_apply.pack(side=LEFT)
-    button_back.pack(side=LEFT)
-    # set up variable for scrollbar and canvas
-    s = Scrollbar(switch_f6)
-    c = Canvas(switch_f6, width=1600)
-    # link up the canvas and scrollbar
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    nc_f = Frame(c)
-    c.create_window((0, 0), window=nc_f, anchor=NW)
-    # page title
-    title_f = Frame(nc_f)
-    Label(title_f, text="Enter New Carrier", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=0, columnspan=4)
-    title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
-    # date
-    date_frame = Frame(nc_f)  # define frame
-    year = IntVar(date_frame)  # define variables for date
-    month = IntVar(date_frame)
-    day = IntVar(date_frame)
-    month.set(projvar.invran_month)  # set values for variables
-    day.set(projvar.invran_day)
-    year.set(projvar.invran_year)
-    Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30,
-          anchor="w").grid(row=0, column=0, sticky=W, columnspan=30)  # date label
-    om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
-    om_month.config(width=2)
-    om_month.grid(row=1, column=0, sticky=W)
-    om_day = OptionMenu(date_frame, day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
-                        "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29",
-                        "30", "31")
-    om_day.config(width=2)
-    om_day.grid(row=1, column=1, sticky=W)
-    Entry(date_frame, width=6, textvariable=year).grid(row=1, column=2, sticky=W)
-    date_frame.grid(row=1, sticky=W, pady=5)  # put frame on grid
-    # carrier name:
-    name_frame = Frame(nc_f, pady=2)
-    Label(name_frame, text=" Last Name: ", width=22, anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white")).grid(row=0, column=0, sticky=W)
-    Label(name_frame, text=" 1st Initial ", width=7, anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white")).grid(row=0, column=1, sticky=W)
-    nc_name = StringVar(nc_f)
-    nc_fname = StringVar(nc_f)
-    Entry(name_frame, width=macadj(27, 22), textvariable=nc_name).grid(row=1, column=0, sticky=W)
-    Entry(name_frame, width=macadj(8, 6), textvariable=nc_fname).grid(row=1, column=1, sticky=W)
-    name_frame.grid(row=2, sticky=W, pady=5)
-    # list status
-    list_frame = Frame(nc_f, bd=1, relief=RIDGE, pady=5)
-    Label(list_frame, width=30, text=" List Status", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white")).grid(row=0, column=0, sticky=W, columnspan=2)
-    nc_ls = StringVar(list_frame)
-    nc_ls.set(value="nl")
-    Radiobutton(list_frame, text="OTDL", variable=nc_ls, value='otdl', justify=LEFT) \
-        .grid(row=1, column=0, sticky=W)
-    Radiobutton(list_frame, text="Work Assignment", variable=nc_ls, value='wal', justify=LEFT) \
-        .grid(row=1, column=1, sticky=W)
-    Radiobutton(list_frame, text="No List", variable=nc_ls, value='nl', justify=LEFT) \
-        .grid(row=2, column=0, sticky=W)
-    Radiobutton(list_frame, text="Auxiliary", variable=nc_ls, value='aux', justify=LEFT) \
-        .grid(row=2, column=1, sticky=W)
-    Radiobutton(list_frame, text="Part Time Flex", variable=nc_ls, value='ptf', justify=LEFT) \
-        .grid(row=3, column=1, sticky=W)
-    list_frame.grid(row=3, sticky=W, pady=5)
-    # set non scheduled day
-    ns_frame = Frame(nc_f, pady=5)
-    Label(ns_frame, width=30, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white")).grid(row=0, column=0, sticky=W, columnspan=2)
-    nc_ns = StringVar(ns_frame)
-    nc_ns.set("none")
-    Radiobutton(ns_frame, text="{}:   yellow".format(projvar.ns_code['yellow']), variable=nc_ns, value="yellow",
-                indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["yellow"]).grid(row=1, column=0)
-    Radiobutton(ns_frame, text="{}:   blue".format(projvar.ns_code['blue']), variable=nc_ns, value="blue",
-                indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["blue"]).grid(row=2, column=0)
-    Radiobutton(ns_frame, text="{}:   green".format(projvar.ns_code['green']), variable=nc_ns, value="green",
-                indicatoron=macadj(0, 1),
-                width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["green"]).grid(row=3, column=0)
-    Radiobutton(ns_frame, text="{}:   brown".format(projvar.ns_code['brown']), variable=nc_ns, value="brown",
-                indicatoron=macadj(0, 1),
-                width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["brown"]).grid(row=1, column=1)
-    Radiobutton(ns_frame, text="{}:   red".format(projvar.ns_code['red']), variable=nc_ns, value="red",
-                indicatoron=macadj(0, 1), width=15,
-                anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["red"]).grid(row=2, column=1)
-    Radiobutton(ns_frame, text="{}:   black".format(projvar.ns_code['black']), variable=nc_ns, value="black",
-                indicatoron=macadj(0, 1),
-                width=15, anchor="w", bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["black"]).grid(row=3, column=1)
-    Label(ns_frame, text=" Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
-    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none", indicatoron=macadj(0, 1),
-                width=15, anchor="w") \
-        .grid(row=4, column=1)
-    Radiobutton(ns_frame, text="none", variable=nc_ns, value="none",
-                indicatoron=macadj(0, 1), width=15, bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["none"], anchor="w").grid(row=4, column=1)
-    Radiobutton(ns_frame, text="Sat:   fixed", variable=nc_ns, value="sat", bg=macadj("grey", "white"),
-                fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["sat"], indicatoron=macadj(0, 1),
-                width=15, anchor="w").grid(row=5, column=0)
-    Radiobutton(ns_frame, text="Mon:   fixed", variable=nc_ns, value="mon", bg=macadj("grey", "white"),
-                fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["mon"], indicatoron=macadj(0, 1),
-                width=15, anchor="w").grid(row=5, column=1)
-    Radiobutton(ns_frame, text="Tue:   fixed", variable=nc_ns, value="tue", bg=macadj("grey", "white"),
-                fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["tue"], indicatoron=macadj(0, 1),
-                width=15, anchor="w").grid(row=6, column=0)
-    Radiobutton(ns_frame, text="Wed:   fixed", variable=nc_ns, value="wed", bg=macadj("grey", "white"),
-                fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["wed"], indicatoron=macadj(0, 1),
-                width=15, anchor="w").grid(row=6, column=1)
-    Radiobutton(ns_frame, text="Thu:   fixed", variable=nc_ns, value="thu", bg=macadj("grey", "white"),
-                fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["thu"], indicatoron=macadj(0, 1),
-                width=15, anchor="w").grid(row=7, column=0)
-    Radiobutton(ns_frame, text="Fri:   fixed", variable=nc_ns, value="fri", bg=macadj("grey", "white"),
-                fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["fri"], indicatoron=macadj(0, 1),
-                width=15, anchor="w").grid(row=7, column=1)
-    ns_frame.grid(row=4, sticky=W, pady=5)
-    # set route entry field
-    route_frame = Frame(nc_f, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text=" Route/s", width=30, anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white")).grid(row=0, column=0, sticky=W)
-    nc_route = StringVar(route_frame)
-    nc_route.set("")
-    Entry(route_frame, width=macadj(37, 29), textvariable=nc_route).grid(row=1, column=0, sticky=W)
-    route_frame.grid(row=5, sticky=W)
-    # set station option menu
-    station_frame = Frame(nc_f, pady=5)
-    Label(station_frame, text="Station", width=5, anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white")) \
-        .grid(row=0, column=0, sticky=W)
-    nc_station = StringVar(station_frame)
-    nc_station.set(projvar.invran_station)  # default value
-    om_stat = OptionMenu(station_frame, nc_station, *projvar.list_of_stations)
-    om_stat.config(width=macadj(24, 22))
-    om_stat.grid(row=0, column=1, sticky=W)
-    station_frame.grid(row=6, sticky=W, pady=5)
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
+        for item in nc_route_list:
+            item = item.strip()
+            if item != "":
+                if len(item) < 4 or len(item) > 5:
+                    messagebox.showerror("Route number input error",
+                                         "Routes numbers must be four or five digits long.\n"
+                                         "If there are multiple routes, route numbers must be separated by "
+                                         "the \"/\" character. For example: 1001/1015/10124/10224/0972. Do not use "
+                                         "commas or empty spaces",
+                                         parent=self.win.topframe)
+                    return
+            if item.isdigit() == FALSE and item != "":
+                messagebox.showerror("Route number input error",
+                                     "Route numbers must be numbers and can not contain "
+                                     "letters",
+                                     parent=self.win.topframe)
+                return
+        # call routes adj to shorten routes that don't need 5 digits
+        route_input = Handler(self.route.get()).routes_adj()
+        if route_input == "0000":
+            route_input = ""
+        # check to see if new carrier name is already in carrier table
+        match = False
+        sql = "SELECT carrier_name, effective_date FROM carriers"
+        results = inquire(sql)
+        name_set = set()
+        for x in results:
+            name_set.add(x[0])
+        sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+              " VALUES('%s','%s','%s','%s','%s','%s')" \
+              % (date, carrier, self.ls.get(), self.ns.get(), route_input, self.station.get())
+        if carrier in name_set:
+            ok = messagebox.askokcancel("New Carrier Input Warning",
+                                        "This carrier name is already in the database.\n"
+                                        "Did you want to proceed?",
+                                        parent=self.win.topframe)
+            if ok:
+                for pair in results:
+                    if pair[0] == carrier and \
+                            pair[1] == str(datetime(self.year.get(), self.month.get(), self.day.get(), 00, 00, 00)):
+                        messagebox.showwarning("New Carrier - Prohibited Action",
+                                               "There is a pre existing record for this carrier on this day.\n"
+                                               "You can not update that record using this window.\n"
+                                               "To edit/ delete this record, return to the main page and press\n"
+                                               "\"edit\" to the right of the carrier's name. ",
+                                               parent=self.win.topframe)
+                        match = True
+            if not ok:
+                match = True
+        if not match:
+            commit(sql)
+        MainFrame().start(frame=self.win.topframe)
 
 
 def reset(frame):
@@ -8112,7 +8233,6 @@ class MainFrame:
 
     def get_carrierlist(self):
         """ call CarrierList to get Carrier Rec Set """
-        # get carrier list
         self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
     def set_investigation_vars(self):
@@ -8363,7 +8483,7 @@ class MainFrame:
         basic_menu = Menu(menubar, tearoff=0)
         basic_menu.add_command(label="Save All", command=lambda: save_all(self.win.topframe))
         basic_menu.add_separator()
-        basic_menu.add_command(label="New Carrier", command=lambda: input_carriers(self.win.topframe))
+        basic_menu.add_command(label="New Carrier", command=lambda: CarrierInput().new_carriers(self.win.topframe))
         basic_menu.add_command(label="Multiple Input", 
                                command=lambda dd="Sat", ss="name": MassInput().mass_input(self.win.topframe, dd, ss))
         basic_menu.add_command(label="Mandates Spreadsheet",
@@ -8388,7 +8508,7 @@ class MainFrame:
         basic_menu.add_separator()
         basic_menu.add_command(label="Location", command=lambda: Messenger(self.win.topframe).location_klusterbox())
         basic_menu.add_command(label="About Klusterbox",
-                               command=lambda: Admin().AboutKlusterbox().start(self.win.topframe))
+                               command=lambda: AboutKlusterbox().start(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="View Out of Station",
                                command=lambda: self.make_globals(self.start_year.get(), self.start_month.get(),
@@ -8513,20 +8633,22 @@ class MainFrame:
         management_menu.add_command(label="General Configurations",
                                     command=lambda: GenConfig(self.win.topframe).create())
         management_menu.add_separator()
-        management_menu.add_command(label="List of Stations", command=lambda: station_list(self.win.topframe))
-        management_menu.add_command(label="Tolerances", command=lambda: tolerances(self.win.topframe))
+        management_menu.add_command(label="List of Stations",
+                                    command=lambda: StationList().station_list(self.win.topframe))
+        management_menu.add_command(label="Tolerances", command=lambda: Tolerances().tolerances(self.win.topframe))
         management_menu.add_command(label="Spreadsheet Settings",
                                     command=lambda: SpreadsheetConfig().start(self.win.topframe))
-        management_menu.add_command(label="NS Day Configurations", command=lambda: ns_config(self.win.topframe))
+        management_menu.add_command(label="NS Day Configurations",
+                                    command=lambda: NsConfig().ns_config(self.win.topframe))
         if projvar.invran_day is None:
             management_menu.entryconfig(5, state=DISABLED)
         management_menu.add_command(label="Speedsheet Settings", 
-                                    command=lambda: SpeedConfigGui(self.win.topframe).create())
+                                    command=lambda: SpeedConfig(self.win.topframe).create())
         management_menu.add_separator()
         management_menu.add_command(label="Auto Data Entry Settings", 
-                                    command=lambda: auto_data_entry_settings(self.win.topframe))
+                                    command=lambda: AdeSettings().start(self.win.topframe))
         management_menu.add_command(label="PDF Converter Settings", 
-                                    command=lambda: pdf_converter_settings(self.win.topframe))
+                                    command=lambda: PdfConvertConfig().start(self.win.topframe))
         management_menu.add_separator()
         management_menu.add_command(label="Database", 
                                     command=lambda: (self.win.topframe.destroy(), 
@@ -8540,16 +8662,16 @@ class MainFrame:
                                     command=lambda: DatabaseAdmin().clean_rings3_table())
         management_menu.add_separator()
         management_menu.add_command(label="Name Index", 
-                                    command=lambda: (self.win.topframe.destroy(), name_index_screen()))
+                                    command=lambda: NameIndex().name_index_screen(self.win.topframe))
         management_menu.add_command(label="Station Index",
-                                    command=lambda: Admin().StationIndex().station_index_mgmt(self.win.topframe))
+                                    command=lambda: StationIndex().station_index_mgmt(self.win.topframe))
         menubar.add_cascade(label="Management", menu=management_menu)
         projvar.root.config(menu=menubar)
         
     def bottom_of_frame(self):
         """ configure buttons on the bottom of the frame """
         if projvar.invran_day is not None:
-            Button(self.win.buttons, text="New Carrier", command=lambda: input_carriers(self.win.topframe),
+            Button(self.win.buttons, text="New Carrier", command=lambda: CarrierInput().new_carriers(self.win.topframe),
                    width=macadj(13, 13)).pack(side=LEFT)
             Button(self.win.buttons, text="Multi Input",
                    command=lambda dd="Sat", ss="name": MassInput().mass_input(self.win.topframe, dd, ss),

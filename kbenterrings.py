@@ -272,11 +272,11 @@ class EnterRings:
                 self.totals[i].set(now_total)  # set the starting value for total
                 colcount += 1
                 # BT - begin tour
-                if "tourrings" in widgetlist:
-                    self.begintour.append(StringVar(frame[i]))  # append stringvar to bt array
+                self.begintour.append(StringVar(frame[i]))  # append stringvar to bt array
+                self.begintour[i].set(now_bt)  # set the starting value for BT
+                if "tourrings" in widgetlist:  # only display if show BT/ET is configured.
                     Entry(frame[i], width=macadj(ww, 4), textvariable=self.begintour[i]) \
                         .grid(row=grid_i, column=colcount)
-                    self.begintour[i].set(now_bt)  # set the starting value for BT
                     colcount += 1
                 # Moves
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
@@ -294,11 +294,11 @@ class EnterRings:
                 self.rss[i].set(now_rs)  # set the starting value for RS
                 colcount += 1
                 # ET - end tour
-                if "tourrings" in widgetlist:
-                    self.endtour.append(StringVar(frame[i]))  # append stringvar to bt array
+                self.endtour.append(StringVar(frame[i]))  # append stringvar to et array
+                self.endtour[i].set(now_et)  # set the starting value for ET
+                if "tourrings" in widgetlist:  # only display if show BT/ET is configured.
                     Entry(frame[i], width=macadj(ww, 4), textvariable=self.endtour[i]) \
                         .grid(row=grid_i, column=colcount)
-                    self.endtour[i].set(now_et)  # set the starting value for ET
                     colcount += 1
                 # Codes/Notes
                 self.codes.append(StringVar(frame[i]))  # code entry widget
@@ -705,9 +705,9 @@ class EnterRings:
             if et == "" or et == "auto":
                 total = self.totals[i].get().strip()
                 bt = str(self.begintour[i].get()).strip()
-                autotime = ""
-                if total and bt:
-                    autotime = self.auto_endtour(total, bt)
+                autotime = ""  # convert empty string or "auto" to empty string.
+                if total and bt:  # if 5200 and bt both exist, then calculate the automated end tour.
+                    autotime = self.auto_endtour(total, bt)  # returns the automated end tour time.
                 self.addrings[i].append(autotime)  # if variable is zero or empty, add an empty string to addrings
                 continue  # skip other checks
             if RingTimeChecker(et).check_for_zeros():
