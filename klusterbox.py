@@ -17,7 +17,8 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
     find_pp, front_window, rear_window, gen_carrier_list, Quarter, RingTimeChecker, set_globals, \
-    SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker
+    SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
+    RouteChecker
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -30,9 +31,9 @@ from kbinformalc import InformalC
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # Standard Libraries
-from tkinter import messagebox, filedialog, ttk, BooleanVar, BOTH, BOTTOM, Button, Canvas, Checkbutton, \
-    DISABLED, E, Entry, FALSE, Frame, IntVar, Label, LEFT, Menu, NW, OptionMenu, Radiobutton, \
-    RIDGE, RIGHT, Scrollbar, StringVar, TclError, Tk, W
+from tkinter import messagebox, filedialog, ttk, BooleanVar, Button, Checkbutton, \
+    DISABLED, E, Entry, FALSE, Frame, IntVar, Label, LEFT, Menu, OptionMenu, Radiobutton, \
+    RIDGE, StringVar, TclError, Tk, W
 from datetime import datetime, timedelta
 import sqlite3
 from operator import itemgetter
@@ -7166,69 +7167,6 @@ class MassInput:
             self.mass_input(self.win.topframe, self.mi_date.get(), self.mi_sort.get())
 
 
-def apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, frame):
-    """ executes when the carrier information is updated. """
-    if year.get() > 9999:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
-        return
-    if year.get() < 1:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
-        return
-    try:
-        date = datetime(year.get(), month.get(), day.get())
-    except ValueError:
-        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
-        return
-    route_list = route.get().split("/")
-    if len(route.get()) > 29:
-        messagebox.showerror("Route number input error",
-                             "There can be no more than five routes per carrier "
-                             "(for T6 carriers).\n Routes numbers must be 4 or 5 digits long.\n"
-                             "If there are multiple routes, route numbers must be separated by "
-                             "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                             "commas or empty spaces",
-                             parent=frame)
-        return
-    for item in route_list:
-        item = item.strip()
-        if item != "":
-            if len(item) < 4 or len(item) > 5:
-                messagebox.showerror("Route number input error",
-                                     'Routes numbers must be four or five digits long.\n'
-                                     'If there are multiple routes, route numbers must be separated by '
-                                     'the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use '
-                                     'commas or empty spaces',
-                                     parent=frame)
-                return
-        if item.isdigit() == FALSE and item != "":
-            messagebox.showerror("Route number input error",
-                                 "Route numbers must be numbers and can not contain "
-                                 "letters",
-                                 parent=frame)
-            return
-    route_input = Handler(route.get()).routes_adj()  # call routes adj to shorten routes that don't need 5 digits
-    if route_input == "0000":
-        route_input = ""
-    sql = "UPDATE carriers SET effective_date='%s',list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
-          "WHERE rowid = '%s'" % \
-          (date, ls.get(), ns.get(), route_input, station.get(), rowid)
-    commit(sql)
-    frame.destroy()
-    edit_carrier(name)
-
-
-def delete_carrier(name):
-    """ executes when a carrier is deleted. """
-    sql = "DELETE FROM carriers WHERE rowid = '%s'" % name[6]
-    commit(sql)
-    sql = "SELECT carrier_name FROM carriers WHERE carrier_name = '%s'" % name[1]
-    results = inquire(sql)
-    if len(results) > 0:
-        edit_carrier(name[1])
-    else:
-        MainFrame().start()
-
-
 def apply(year, month, day, c_name, ls, ns, route, station, frame):
     """ executes to enter carrier information into the database """
     if year.get() > 9999:
@@ -7311,511 +7249,13 @@ def apply_2(date, carrier, ls, ns, route, station, frame):
     return True
 
 
-def name_change(name, c_name, frame):
-    """ executes to change the name of a carrier after checks """
-    c_name = c_name.get().strip().lower()
-    if messagebox.askokcancel("Name Change",
-                              "This will change the name {} to {} in all records. "
-                              "Are you sure?".format(name, c_name),
-                              parent=frame):
-        if len(c_name) > 42:
-            messagebox.showerror("Name input error", "Names must not exceed 42 characters.", parent=frame)
-            return
-        if len(c_name) < 1:
-            messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
-            return
-        sql = "SELECT kb_name FROM name_index WHERE kb_name = '%s'" % c_name
-        result = inquire(sql)
-        if result:
-            messagebox.showerror("Name input error", "This name is already being used for another carrier.",
-                                 parent=frame)
-            return
-        sql = "SELECT carrier_name FROM carriers WHERE carrier_name = '%s'" % c_name
-        result = inquire(sql)
-        if result:
-            messagebox.showerror("Name input error", "This name is already being used for another carrier.",
-                                 parent=frame)
-            return
-        sql = "UPDATE carriers SET carrier_name = '%s' WHERE carrier_name = '%s'" % (c_name, name)
-        commit(sql)
-        sql = "UPDATE rings3 SET carrier_name = '%s' WHERE carrier_name = '%s'" % (c_name, name)
-        commit(sql)
-        sql = "SELECT kb_name FROM name_index WHERE kb_name = '%s'" % name
-        result = inquire(sql)
-        if result:
-            sql = "UPDATE name_index SET kb_name = '%s' WHERE kb_name = '%s'" % (c_name, name)
-            commit(sql)
-        MainFrame().start(frame=frame)
-
-
-def purge_carrier(frame, carrier):
-    """ executes to delete all carrier records along with rings and name index from the database. """
-    if not messagebox.askokcancel("Delete Carrier",
-                                  "This will delete the carrier and all records associated with "
-                                  "this carrier, including rings and name index.\n\n"
-                                  "If this carrier has left the station, quit, been fired or retired "
-                                  "you should change station to \"out of station\" and not delete. \n\n"
-                                  "This can not be reversed.",
-                                  parent=frame):
-        return
-    sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % carrier
-    commit(sql)
-    sql = "DELETE FROM rings3 WHERE carrier_name= '%s'" % carrier
-    commit(sql)
-    sql = "DELETE FROM name_index WHERE kb_name = '%s'" % carrier
-    commit(sql)
-    MainFrame().start(frame=frame)
-
-
-def update_carrier(a):
-    """ builds a screen used to update carrier records """
-    sql = "SELECT * FROM ns_configuration"
-    ns_results = inquire(sql)
-    ns_dict = {}  # build dictionary for ns days
-    ns_color_dict = {}
-    days = ("sat", "mon", "tue", "wed", "thu", "fri")
-    for r in ns_results:  # build dictionary for rotating ns days
-        ns_dict[r[0]] = r[2]
-        ns_color_dict[r[0]] = r[1]  # build dictionary for ns fill colors
-    for d in days:  # expand dictionary for fixed days
-        ns_dict[d] = "fixed: " + d
-        ns_color_dict[d] = "teal"
-    ns_dict["none"] = "none"  # add "none" to dictionary
-    ns_color_dict["none"] = "teal"
-    switch_f4 = Frame(projvar.root)
-    switch_f4.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(switch_f4)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    # define scrollbar and canvas
-    s = Scrollbar(switch_f4)
-    c = Canvas(switch_f4, width=1600)
-    # link up the canvas and scrollbar
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    f = Frame(c)
-    c.create_window((0, 0), window=f, anchor=NW)
-    # page title
-    title_f = Frame(f)
-    Label(title_f, text="Update Carrier Information", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=0, columnspan=4)
-    title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
-    # date
-    date_frame = Frame(f)  # define frame
-    year = IntVar(date_frame)  # define variables for date
-    month = IntVar(date_frame)
-    day = IntVar(date_frame)
-    # pre set values for date
-    month.set(int(a[0][5:7]))
-    day.set(int(a[0][8:10]))
-    year.set(int(a[0][:4]))
-    Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30, anchor="w") \
-        .grid(row=0, column=0, sticky=W, columnspan=30)  # date label
-    om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
-    om_month.config(width=2)
-    om_month.grid(row=1, column=0, sticky=W)
-    om_day = OptionMenu(date_frame, day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
-                        "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29",
-                        "30", "31")
-    om_day.config(width=2)
-    om_day.grid(row=1, column=1, sticky=W)
-    Entry(date_frame, width=6, textvariable=year).grid(row=1, column=2, sticky=W)
-    date_frame.grid(row=1, sticky=W, pady=5)  # put frame on grid
-    # carrier name
-    name_frame = Frame(f, pady=2)
-    name = StringVar(name_frame)
-    name = a[1]  # name value if name is not changed
-    Label(name_frame, text=" Carrier Name: ", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W)
-    Label(name_frame, text="{}".format(a[1].lower()), anchor="w", width=37).grid(row=1, column=0, sticky=W)
-    name_frame.grid(row=2, sticky=W, pady=5)
-    # list status
-    list_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame, text=" List Status", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
-    ls = StringVar(list_frame)
-    ls.set(value=a[2])
-    Radiobutton(list_frame, text="OTDL", variable=ls, value='otdl', justify=LEFT) \
-        .grid(row=1, column=0, sticky=W)
-    Radiobutton(list_frame, text="Work Assignment", variable=ls, value='wal', justify=LEFT) \
-        .grid(row=1, column=1, sticky=W)
-    Radiobutton(list_frame, text="No List", variable=ls, value='nl', justify=LEFT) \
-        .grid(row=2, column=0, sticky=W)
-    Radiobutton(list_frame, text="Auxiliary", variable=ls, value='aux', justify=LEFT) \
-        .grid(row=2, column=1, sticky=W)
-    Radiobutton(list_frame, text="Part Time Flex", variable=ls, value="ptf", justify=LEFT) \
-        .grid(row=3, column=1, sticky=W)
-    list_frame.grid(row=3, sticky=W, pady=5)
-    # set non scheduled day
-    ns_frame = Frame(f, pady=2)
-    Label(ns_frame, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
-    ns = StringVar(ns_frame)
-    ns.set(a[3])
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["yellow"])\
-        .grid(row=1, column=0)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['blue'], ns_results[1][2]), variable=ns, value="blue",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["blue"]) \
-        .grid(row=1, column=1)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['green'], ns_results[2][2]), variable=ns, value="green",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["green"]) \
-        .grid(row=2, column=0)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['brown'], ns_results[3][2]), variable=ns, value="brown",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["brown"]) \
-        .grid(row=2, column=1)
-    Radiobutton(ns_frame, text="{}:   {}".format(projvar.ns_code['red'], ns_results[4][2]), variable=ns, value="red",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["red"]) \
-        .grid(row=3, column=0)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['black'], ns_results[5][2]), variable=ns, value="black",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["black"]) \
-        .grid(row=3, column=1)
-    Label(ns_frame, text=" Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
-    Radiobutton(ns_frame, text="none", variable=ns, value="none", indicatoron=macadj(0, 1), width=15,
-                bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["none"], anchor="w") \
-        .grid(row=4, column=1)
-    Radiobutton(ns_frame, text="Sat:   fixed", variable=ns, value="sat",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["sat"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=5, column=0)
-    Radiobutton(ns_frame, text="Mon:   fixed", variable=ns, value="mon",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["mon"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=5, column=1)
-    Radiobutton(ns_frame, text="Tue:   fixed", variable=ns, value="tue",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["tue"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=6, column=0)
-    Radiobutton(ns_frame, text="Wed:   fixed", variable=ns, value="wed",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["wed"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=6, column=1)
-    Radiobutton(ns_frame, text="Thu:   fixed", variable=ns, value="thu",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["thu"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=7, column=0)
-    Radiobutton(ns_frame, text="Fri:   fixed", variable=ns, value="fri",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["fri"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=7, column=1)
-    ns_frame.grid(row=4, sticky=W, pady=5)
-    # set route entry field
-    route_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text=" Route/s", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W)
-    route = StringVar(route_frame)
-    route.set(a[4])
-    Entry(route_frame, width=macadj(37, 29), textvariable=route).grid(row=1, column=0, sticky=W)
-    route_frame.grid(row=5, sticky=W, pady=5)
-    # set station option menu
-    station_frame = Frame(f, pady=2)
-    Label(station_frame, text="Station", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=5).grid(row=0, column=0, sticky=W)
-    station = StringVar(station_frame)
-    station.set(a[5])  # default value
-    om_stat = OptionMenu(station_frame, station, *projvar.list_of_stations)
-    om_stat.config(width=macadj("24", "22"))
-    om_stat.grid(row=0, column=1, sticky=W)
-    station_frame.grid(row=6, sticky=W, pady=5)
-    # set rowid
-    rowid = StringVar(f)
-    rowid = a[6]
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
-    # apply and close buttons
-    button_apply = Button(c1)  # buttons at bottom of screen
-    button_back = Button(c1)
-    button_apply.config(text="Apply", command=lambda:
-        apply_update_carrier(year, month, day, name, ls, ns, route, station, rowid, switch_f4))
-    button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=switch_f4))
-    if sys.platform == "win32":
-        button_apply.config(anchor="w", width=15)
-        button_back.config(anchor="w", width=15)
-    else:
-        button_apply.config(width=16)
-        button_back.config(width=16)
-    button_apply.pack(side=LEFT)
-    button_back.pack(side=LEFT)
-
-
-def edit_carrier(e_name):
-    """ builds a screen for editing carrier information """
-    sql = "SELECT effective_date, carrier_name, list_status, ns_day,route_s, station, rowid" \
-          " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % e_name
-    results = inquire(sql)
-    sql = "SELECT * FROM ns_configuration"
-    ns_results = inquire(sql)
-    ns_dict = {}  # build dictionary for ns days
-    ns_color_dict = {}
-    days = ("sat", "mon", "tue", "wed", "thu", "fri")
-    for r in ns_results:  # build dictionary for rotating ns days
-        ns_dict[r[0]] = r[2]
-        ns_color_dict[r[0]] = r[1]  # build dictionary for ns fill colors
-    for d in days:  # expand dictionary for fixed days
-        ns_dict[d] = "fixed: " + d
-        ns_color_dict[d] = "teal"
-    ns_dict["none"] = "none"  # add "none" to dictionary
-    ns_color_dict["none"] = "teal"
-    switch_f3 = Frame(projvar.root)
-    switch_f3.pack(fill=BOTH, side=LEFT)
-    c1 = Canvas(switch_f3)
-    c1.pack(fill=BOTH, side=BOTTOM)
-    # define scrollbar and canvas
-    s = Scrollbar(switch_f3)
-    c = Canvas(switch_f3, width=1600)
-    # link up the canvas and scrollbar
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH, pady=10, padx=20)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    f = Frame(c)
-    c.create_window((0, 0), window=f, anchor=NW)
-    # page title
-    title_f = Frame(f)
-    Label(title_f, text="Edit Carrier Information", font=macadj("bold", "Helvetica 18")) \
-        .grid(row=0, column=0, columnspan=4)
-    title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
-    # current date
-    year = IntVar(f)
-    month = IntVar(f)
-    day = IntVar(f)
-    # pre set values for date
-    month.set(projvar.invran_month)
-    day.set(projvar.invran_day)
-    year.set(projvar.invran_year)
-    # define frame
-    date_frame = Frame(f)
-    Label(date_frame, text=" Date (month/day/year):", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
-          width=30, anchor="w").grid(row=0, column=0, sticky=W, columnspan=30)  # date label
-    om_month = OptionMenu(date_frame, month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
-    om_month.config(width=2)
-    om_month.grid(row=1, column=0, sticky=W)  # option menu for month
-    om_day = OptionMenu(date_frame, day, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
-                        "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30",
-                        "31")
-    om_day.config(width=2)
-    om_day.grid(row=1, column=1, sticky=W)  # option menu for day
-    Entry(date_frame, width=6, textvariable=year).grid(row=1, column=2, sticky=W)  # entry field for year
-    date_frame.grid(row=1, column=0, sticky=W, pady=5)  # put frame on grid
-    # carrier name
-    name_frame = Frame(f, pady=2)
-    c_name = StringVar(name_frame)
-    name = StringVar(name_frame)
-    name = e_name  # name value if name is not changed
-    c_name.set(e_name)  # name value for name changes
-    Label(name_frame, text=" Carrier Name: {}".format(e_name), anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30).grid(row=0, column=0, columnspan=4, sticky=W)
-    Entry(name_frame, width=macadj(37, 29), textvariable=c_name).grid(row=1, column=0, columnspan=4, sticky=W)
-    Label(name_frame, text="Change Name: ").grid(row=2, column=0, sticky=W)
-    Button(name_frame, width=7, text="update", command=lambda: name_change(name, c_name, switch_f3)) \
-        .grid(row=2, column=1, sticky=W, pady=6)
-    name_frame.grid(row=2, sticky=W, pady=5)
-    # list status
-    list_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(list_frame, text=" List Status", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"), width=30).grid(row=0, column=0, sticky=W, columnspan=2)
-    ls = StringVar(list_frame)
-    ls.set(results[0][2])
-    Radiobutton(list_frame, text="OTDL", variable=ls, value='otdl', justify=LEFT) \
-        .grid(row=1, column=0, sticky=W)
-    Radiobutton(list_frame, text="Work Assignment", variable=ls, value='wal', justify=LEFT) \
-        .grid(row=1, column=1, sticky=W)
-    Radiobutton(list_frame, text="No List", variable=ls, value='nl', justify=LEFT) \
-        .grid(row=2, column=0, sticky=W)
-    Radiobutton(list_frame, text="Auxiliary", variable=ls, value='aux', justify=LEFT) \
-        .grid(row=2, column=1, sticky=W)
-    Radiobutton(list_frame, text="Part Time Flex", variable=ls, value="ptf", justify=LEFT) \
-        .grid(row=3, column=1, sticky=W)
-    list_frame.grid(row=3, sticky=W, pady=5)
-    # set non scheduled day
-    ns_frame = Frame(f, pady=2)
-    Label(ns_frame, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"),
-          width=30).grid(row=0, column=0, sticky=W, columnspan=2)
-    ns = StringVar(ns_frame)
-    ns.set(results[0][3])
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['yellow'], ns_results[0][2]), variable=ns, value="yellow",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["yellow"]) \
-        .grid(row=1, column=0)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['blue'], ns_results[1][2]), variable=ns, value="blue",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["blue"]) \
-        .grid(row=1, column=1)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['green'], ns_results[2][2]), variable=ns, value="green",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["green"]) \
-        .grid(row=2, column=0)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['brown'], ns_results[3][2]), variable=ns, value="brown",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["brown"]) \
-        .grid(row=2, column=1)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['red'], ns_results[4][2]), variable=ns, value="red",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["red"]) \
-        .grid(row=3, column=0)
-    Radiobutton(ns_frame, text="{}:   {}"
-                .format(projvar.ns_code['black'], ns_results[5][2]), variable=ns, value="black",
-                indicatoron=macadj(0, 1), width=15, anchor="w",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["black"]) \
-        .grid(row=3, column=1)
-    Label(ns_frame, text=" Fixed:", anchor="w").grid(row=4, column=0, sticky="w")
-    Radiobutton(ns_frame, text="none", variable=ns, value="none", indicatoron=macadj(0, 1), width=15,
-                bg=macadj("grey", "white"), fg=macadj("white", "black"),
-                selectcolor=ns_color_dict["none"], anchor="w") \
-        .grid(row=4, column=1)
-    Radiobutton(ns_frame, text="Sat:   fixed", variable=ns, value="sat",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["sat"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=5, column=0)
-    Radiobutton(ns_frame, text="Mon:   fixed", variable=ns, value="mon",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["mon"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=5, column=1)
-    Radiobutton(ns_frame, text="Tue:   fixed", variable=ns, value="tue",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["tue"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=6, column=0)
-    Radiobutton(ns_frame, text="Wed:   fixed", variable=ns, value="wed",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["wed"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=6, column=1)
-    Radiobutton(ns_frame, text="Thu:   fixed", variable=ns, value="thu",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["thu"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=7, column=0)
-    Radiobutton(ns_frame, text="Fri:   fixed", variable=ns, value="fri",
-                bg=macadj("grey", "white"), fg=macadj("white", "black"), selectcolor=ns_color_dict["fri"],
-                indicatoron=macadj(0, 1), width=15, anchor="w") \
-        .grid(row=7, column=1)
-    ns_frame.grid(row=4, sticky=W, pady=5)
-    # set route entry field
-    route_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(route_frame, text=" Route/s", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
-          width=30).grid(row=0, column=0, sticky=W)
-    route = StringVar(route_frame)
-    route.set(results[0][4])
-    Entry(route_frame, width=macadj(37, 29), textvariable=route).grid(row=1, column=0, sticky=W)
-    route_frame.grid(row=5, sticky=W, pady=5)
-    # set station option menu
-    station_frame = Frame(f, pady=2)
-    Label(station_frame, text="Station", anchor="w", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
-          width=5).grid(row=0, column=0, sticky=W)
-    station = StringVar(station_frame)
-    station.set(results[0][5])  # default value
-    om_stat = OptionMenu(station_frame, station, *projvar.list_of_stations)
-    om_stat.config(width=macadj("24", "22"))
-    om_stat.grid(row=0, column=1, sticky=W)
-    # Label(station_frame, text=" ").grid(row=1)
-    station_frame.grid(row=6, sticky=W, pady=5)
-    #  delete button
-    delete_frame = Frame(f, bd=1, relief=RIDGE, pady=2)
-    Label(delete_frame, text=" Delete All", anchor="w", background=macadj("gray95", "grey"),
-          fg=macadj("black", "white"),
-          width=macadj(8, 10)).grid(row=0, column=0, sticky=W)
-    Label(delete_frame, text="Delete carrier and all associated records. ", anchor="w") \
-        .grid(row=1, column=0, sticky=W)
-    Button(delete_frame, text="Delete", width=15,
-           bg=macadj("red3", "white"), fg=macadj("white", "red"),
-           command=lambda: purge_carrier(switch_f3, e_name)).grid(row=3, column=0, sticky=W, padx=8)
-    delete_frame.grid(row=7, sticky=W, pady=5)
-    report_frame = Frame(f, padx=2, )
-    Label(report_frame, text="Status Change Report: ", anchor="w").grid(row=0, column=0, sticky=W, columnspan=4)
-    Label(report_frame, text="Generate Report: ", anchor="w").grid(row=1, column=0, sticky=W)
-    Button(report_frame, text="Report", width=10, command=lambda: Reports(switch_f3).rpt_carrier_history(e_name)) \
-        .grid(row=1, column=1, sticky=W, padx=10)
-    report_frame.grid(row=8, sticky=W, pady=5)
-    Label(f, text="").grid(row=9)
-    #   History of status changes
-    history_frame = Frame(f, pady=2)
-    row_line = 0
-    Label(history_frame, text=" Status Change History", anchor="w", font=macadj("bold", "Helvetica 18"),
-          background=macadj("gray95", "grey"), fg=macadj("black", "white"), width=30) \
-        .grid(row=row_line, column=0, sticky=W, columnspan=4)
-    row_line += 1
-    for line in results:
-        con_date = datetime.strptime(line[0], "%Y-%m-%d %H:%M:%S")  # convert str to datetime obj.
-        Label(history_frame, width=25, text="date: {}".format(str(con_date.strftime("%b %d, %Y"))), anchor="w") \
-            .grid(row=row_line, column=0, sticky=W, columnspan=4)
-        row_line += 1
-        Label(history_frame, width=25, text="list status: {}".format(line[2]), anchor="w") \
-            .grid(row=row_line, column=0, sticky=W, columnspan=4)
-        row_line += 1
-        Label(history_frame, width=25, text="ns day: {}".format(ns_dict[line[3]]), anchor="w") \
-            .grid(row=row_line, column=0, sticky=W, columnspan=4)
-        row_line += 1
-        Label(history_frame, width=35, text="route: {}".format(line[4]), anchor="w") \
-            .grid(row=row_line, column=0, sticky=W, columnspan=4)
-        row_line += 1
-        Label(history_frame, width=25, text="station: {}".format(line[5]), anchor="w") \
-            .grid(row=row_line, column=0, sticky=W, columnspan=4)
-        row_line += 1
-        Button(history_frame, width=14, text="edit", anchor="w",
-               command=lambda x=line: [switch_f3.destroy(), update_carrier(x)]) \
-            .grid(row=row_line, column=0, sticky=W, )
-        Button(history_frame, width=14, text="delete", anchor="w",
-               command=lambda x=line: [switch_f3.destroy(), delete_carrier(x)]) \
-            .grid(row=row_line, column=1, sticky=W)
-        Label(history_frame, text="                             ").grid(row=row_line, column=2, sticky=W)
-        row_line += 1
-    history_frame.grid(row=9, sticky=W, pady=5)
-    projvar.root.update()
-    c.config(scrollregion=c.bbox("all"))
-    button_apply = Button(c1)  # buttons at bottom of screen
-    button_back = Button(c1)
-    button_apply.config(text="Apply", command=lambda: [apply(year, month, day, name, ls, ns, route, station, switch_f3),
-                            MainFrame().start(frame=switch_f3)])
-    button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=switch_f3))
-    if sys.platform == "win32":
-        button_apply.config(anchor="w", width=15)
-        button_back.config(anchor="w", width=15)
-    else:
-        button_apply.config(width=16)
-        button_back.config(width=16)
-    button_apply.pack(side=LEFT)
-    button_back.pack(side=LEFT)
-    
-
 class CarrierInput:
     """
     provides screens for users to view carrier characteristics, add, edit and delete. 
     """
     def __init__(self):
+        self.input_type = None  # 3 types: new, edit, update
+        self.carrier = ""  # a string for the carrier's name used only in edit and update
         self.win = None
         self.ns_dict = None
         self.ns_color_dict = None
@@ -7823,20 +7263,35 @@ class CarrierInput:
         self.month = None
         self.day = None
         self.year = None
-        self.name = None
-        self.fname = None
+        self.name = None  # last name only or full name with first initial
+        self.fname = None   # first initial (only used with new input type)
         self.ls = None
         self.ns = None
         self.route = None
         self.station = None
+        # onrecs - Carrier information on record and already in the database, used only for edit and update
+        self.onrecs = None
+        self.onrec_ls = None
+        self.onrec_ns = None
+        self.onrec_route = None
+        self.onrec_station = None
+        self.name_set = []  # get a list of carrier names for new carriers and name changes (edit).
+        # new carrier specific
+        self.carrier_set = []  # get a list of carriers and effective dates for new carriers.
+        # edit carrier specific
+        self.chg_name = None
+        self.status = ""  # status message.
+        # update carrier specific
+        self.rowid = None
 
     def initialize_vars(self):
         """ initialize the variables """
-        self.year = IntVar(self.win.body)  # define variables for date
+        self.year = StringVar(self.win.body)  # define variables for date
         self.month = IntVar(self.win.body)
         self.day = IntVar(self.win.body)
-        self.name = StringVar(self.win.body)
-        self.fname = StringVar(self.win.body)
+        self.name = StringVar(self.win.body)  # can be last name or full name
+        self.fname = StringVar(self.win.body)  # used only for new carriers
+        self.chg_name = StringVar(self.win.body)  # used only for edit carriers
         self.ls = StringVar(self.win.body)
         self.route = StringVar(self.win.body)
         self.ns = StringVar(self.win.body)
@@ -7844,15 +7299,49 @@ class CarrierInput:
 
     def set_new_vars(self):
         """ set the vars for new carrier entries. """
-        self.year.set(projvar.invran_year)
+        self.year.set(projvar.invran_year)  # dates are set to the investigation range.
         self.month.set(projvar.invran_month)
         self.day.set(projvar.invran_day)
-        self.name.set("")
+        self.name.set("")   # all other information is blank
         self.fname.set("")
-        self.ls.set(value="nl")
+        self.ls.set(value="nl")  # default is 'no list'
         self.route.set("")
-        self.ns.set("none")
+        self.ns.set("none")  # default non schedule day is none
         self.station.set(projvar.invran_station)  # default value
+
+    def get_onrecs(self):
+        """ get the record for the carrier during the investigation range. """
+        sql = "SELECT effective_date, carrier_name, list_status, ns_day, route_s, station, rowid" \
+              " FROM carriers WHERE carrier_name = '%s' ORDER BY effective_date DESC" % self.carrier
+        self.onrecs = inquire(sql)  # used for status change history
+        self.onrec_ls = self.onrecs[0][2]  # used to set stringvars
+        self.onrec_ns = self.onrecs[0][3]
+        self.onrec_route = self.onrecs[0][4]
+        self.onrec_station = self.onrecs[0][5]
+
+    def set_edit_vars(self):
+        """ set the vars for an existing carrier. """
+        self.year.set(projvar.invran_year)  # dates are set to the investigation range.
+        self.month.set(projvar.invran_month)
+        self.day.set(projvar.invran_day)
+        self.name.set(self.carrier)   # set the to carrier name
+        self.chg_name.set(self.carrier)
+        self.ls.set(self.onrec_ls)  # default is 'no list'
+        self.route.set(self.onrec_route)
+        self.ns.set(self.onrec_ns)  # default non schedule day is none
+        self.station.set(self.onrec_station)  # default value
+        
+    def set_update_vars(self, onrecs):
+        """ set the vars for updating a carrier record. """
+        self.year.set(int(onrecs[0][:4]))  # dates are set value passed from on recs.
+        self.month.set(int(onrecs[0][5:7]))
+        self.day.set(int(onrecs[0][8:10]))
+        self.name.set(onrecs[1])  # set the to carrier name
+        self.chg_name.set(self.carrier)
+        self.ls.set(onrecs[2])  # value=onrec[2]
+        self.route.set(onrecs[4])
+        self.ns.set(onrecs[3])
+        self.station.set(onrecs[5])
 
     def get_nsdicts(self):
         """ get ns day color configurations """ 
@@ -7870,8 +7359,27 @@ class CarrierInput:
         self.ns_dict["none"] = "none"  # add "none" to dictionary
         self.ns_color_dict["none"] = "teal"
 
+    def restart_new_carriers(self, frame):
+        """ reinitialize and restart New Carrier when the user hits Apply. """
+        self.ns_dict = None
+        self.ns_color_dict = None
+        # set up vars
+        self.month = None
+        self.day = None
+        self.year = None
+        self.name = None
+        self.fname = None
+        self.ls = None
+        self.ns = None
+        self.route = None
+        self.station = None
+        self.name_set = []  # get a list of carrier names for new carriers
+        self.carrier_set = []  # get a list of carriers and effective dates for new carriers.
+        self.new_carriers(frame)  # restart the new carriers method.
+
     def new_carriers(self, frame):
         """ window for inputting new carriers """
+        self.input_type = "new"
         self.get_nsdicts()
         self.win = MakeWindow()
         self.win.create(frame)
@@ -7887,10 +7395,90 @@ class CarrierInput:
         self.buttons()
         self.win.finish()
 
+    def restart_edit_carriers(self, frame, carrier):
+        """ reinitialize and restart edit carriers when user changes name/ hits apply"""
+        self.ns_dict = None
+        self.ns_color_dict = None
+        # set up vars
+        self.month = None
+        self.day = None
+        self.year = None
+        self.name = None  # last name only or full name with first initial
+        self.ls = None
+        self.ns = None
+        self.route = None
+        self.station = None
+        # onrecs - Carrier information on record and already in the database, used only for edit and update
+        self.onrec_ls = None
+        self.onrec_ns = None
+        self.onrec_route = None
+        self.onrec_station = None
+        self.name_set = []  # get a list of carrier names for new carriers and name changes (edit).
+        # edit carrier specific
+        self.chg_name = None
+        self.edit_carriers(frame, carrier)  # restart the edit carriers method.
+
+    def edit_carriers(self, frame, carrier):
+        """ window for editing existing carriers - creating new records for a carrier. """
+        self.input_type = "edit"
+        self.carrier = carrier
+        self.get_nsdicts()
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.initialize_vars()
+        self.get_onrecs()  # get the information on record for the carrier
+        self.set_edit_vars()  # set the string/int vars for the carrier
+        self.title()
+        self.date()
+        self.get_name()
+        self.list_status()
+        self.nsday()
+        self.get_route()
+        self.get_station()
+        self.delete_button()
+        self.reports()
+        self.status_history()
+        self.buttons()
+        self.win.finish()
+        
+    def update_carrier(self, frame, onrec):
+        """ window of updating existing carrier records. """
+        self.input_type = "update"
+        self.rowid = onrec[6]  # the row id of the record to be updated.
+        self.get_nsdicts()
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.set_update_vars(onrec)  # set the string/int vars to values passed in onrec
+        self.title()
+        self.date()
+        self.get_name()
+        self.list_status()
+        self.nsday()
+        self.get_route()
+        self.get_station()
+        self.buttons()
+        self.win.finish()
+
+        """
+        month.set(int(a[0][5:7]))
+        day.set(int(a[0][8:10]))
+        year.set(int(a[0][:4]))
+        name = a[1]  # name value if name is not changed
+        ls.set(value=a[2])
+        ns.set(a[3])
+        route.set(a[4])
+        station.set(a[5])  # default value
+        rowid = a[6]
+        """
+
     def title(self):
         """ set the title for new carrier input"""
         title_f = Frame(self.win.body)
-        text = "Enter New Carrier"
+        text = "Enter New Carrier"  # default for new input type.
+        if self.input_type == "edit":
+            text = "Edit Carrier Information"
+        if self.input_type == "update":
+            text = "Update Carrier Record"
         Label(title_f, text=text, font=macadj("bold", "Helvetica 18")).grid(row=0, column=0, columnspan=4)
         title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
 
@@ -7923,12 +7511,26 @@ class CarrierInput:
         text = macadj("Carrier Name _______________________________",
                       "Carrier Name _______________________________")
         Label(name_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
-        Label(name_frame, text=" Last Name: ", width=22, anchor="w", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
-        Label(name_frame, text=" 1st Initial ", width=7, anchor="w", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white")).grid(row=1, column=1, sticky=W)
-        Entry(name_frame, width=macadj(27, 22), textvariable=self.name).grid(row=2, column=0, sticky=W)
-        Entry(name_frame, width=macadj(8, 6), textvariable=self.fname).grid(row=2, column=1, sticky=W)
+        if self.input_type == "new":
+            Label(name_frame, text=" Last Name: ", width=22, anchor="w", background=macadj("gray95", "grey"),
+                  fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
+            Label(name_frame, text=" 1st Initial ", width=7, anchor="w", background=macadj("gray95", "grey"),
+                  fg=macadj("black", "white")).grid(row=1, column=1, sticky=W)
+            Entry(name_frame, width=macadj(27, 22), textvariable=self.name).grid(row=2, column=0, sticky=W)
+            Entry(name_frame, width=macadj(8, 6), textvariable=self.fname).grid(row=2, column=1, sticky=W)
+        if self.input_type == "edit":
+            Label(name_frame, text=" Carrier Name: {}".format(self.carrier), anchor="w",
+                  background=macadj("gray95", "grey"), fg=macadj("black", "white"), width=30)\
+                .grid(row=1, column=0, columnspan=4, sticky=W)
+            Entry(name_frame, width=macadj(37, 29), textvariable=self.chg_name)\
+                .grid(row=2, column=0, columnspan=4, sticky=W)
+            Label(name_frame, text="Change Name: ").grid(row=3, column=0, sticky=W)
+            Button(name_frame, width=7, text="Update",
+                   command=lambda: self.name_change()).grid(row=3, column=1, sticky=W, pady=6)
+        if self.input_type == "update":
+            Label(name_frame, text=self.carrier, anchor="w",
+                  background=macadj("gray95", "grey"), fg=macadj("black", "white"), width=30) \
+                .grid(row=1, column=0, columnspan=4, sticky=W)
 
     def list_status(self):
         """ set up the list status """
@@ -7956,9 +7558,6 @@ class CarrierInput:
         text = macadj("Non Scheduled Day ________________________",
                       "Non Scheduled Day ________________________")
         Label(ns_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
-        # Label(ns_frame, width=30, text=" Non Scheduled Day", anchor="w", background=macadj("gray95", "grey"),
-        #       fg=macadj("black", "white")).grid(row=0, column=0, sticky=W, columnspan=2)
-
         Radiobutton(ns_frame, text="{}:   yellow".format(projvar.ns_code['yellow']), variable=self.ns, value="yellow",
                     indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
                     fg=macadj("white", "black"), selectcolor=self.ns_color_dict["yellow"]).grid(row=1, column=0)
@@ -8013,139 +7612,353 @@ class CarrierInput:
         """ set route entry field """
         route_frame = Frame(self.win.body, pady=2)
         route_frame.grid(row=5, sticky=W)
-        text = macadj("Route ______________________________________",
+        text = macadj("Route _______________________________________",
                       "Route ______________________________________")
         Label(route_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
         Label(route_frame, text=" Route/s", width=30, anchor="w", background=macadj("gray95", "grey"),
               fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
-
         Entry(route_frame, width=macadj(37, 29), textvariable=self.route).grid(row=1, column=0, sticky=W)
 
     def get_station(self):
         """ set station option menu"""
         station_frame = Frame(self.win.body, pady=5)
         station_frame.grid(row=6, sticky=W, pady=5)
-        text = macadj("Station ____________________________________",
+        text = macadj("Station _____________________________________",
                       "Station ____________________________________")
         Label(station_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
-        
         om_stat = OptionMenu(station_frame, self.station, *projvar.list_of_stations)
         om_stat.config(width=macadj(30, 22))
         om_stat.grid(row=1, column=0, sticky=W)
 
+    def delete_button(self):
+        """ delete button - allows user to delete all records of the carrier. """
+        delete_frame = Frame(self.win.body, pady=5)
+        delete_frame.grid(row=7, sticky=W, pady=5)
+        text = macadj("Delete Carrier ______________________________",
+                      "Delete Carrier _____________________________")
+        Label(delete_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+        Label(delete_frame, text="Delete carrier and all associated records. ", anchor="w") \
+            .grid(row=1, column=0, columnspan=3, sticky=W)
+        Button(delete_frame, text="Delete", width=15,
+               bg=macadj("red3", "white"), fg=macadj("white", "red"),
+               command=lambda: self.purge_carrier()).grid(row=3, column=0, sticky=W, padx=8)
+        delete_frame.grid(row=7, sticky=W, pady=5)
+
+    def reports(self):
+        """ create a button that allows the user to view all the carrier's records. """
+        report_frame = Frame(self.win.body, pady=5)
+        report_frame.grid(row=8, sticky=W, pady=5)
+        text = macadj("Status Change Report _______________________",
+                      "Status Change Report _______________________")
+        Label(report_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+        Label(report_frame, text="Generate Report: ", anchor="w").grid(row=1, column=0, sticky=W)
+        Button(report_frame, text="Report", width=10,
+               command=lambda: Reports(self.win.topframe).rpt_carrier_history(self.carrier)) \
+            .grid(row=1, column=1, sticky=W, padx=10)
+
+    def status_history(self):
+        """ History of status changes """
+        history_frame = Frame(self.win.body, pady=5)
+        history_frame.grid(row=9, sticky=W, pady=5)
+        text = macadj("Status Change History ______________________",
+                      "Status Change History ______________________")
+        Label(history_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
+        row_line = 1
+        for line in self.onrecs:
+            con_date = datetime.strptime(line[0], "%Y-%m-%d %H:%M:%S")  # convert str to datetime obj.
+            Label(history_frame, width=25, text="date: {}".format(str(con_date.strftime("%b %d, %Y"))), anchor="w") \
+                .grid(row=row_line, column=0, sticky=W, columnspan=4)
+            row_line += 1
+            Label(history_frame, width=25, text="list status: {}".format(line[2]), anchor="w") \
+                .grid(row=row_line, column=0, sticky=W, columnspan=4)
+            row_line += 1
+            Label(history_frame, width=25, text="ns day: {}".format(self.ns_dict[line[3]]), anchor="w") \
+                .grid(row=row_line, column=0, sticky=W, columnspan=4)
+            row_line += 1
+            Label(history_frame, width=35, text="route: {}".format(line[4]), anchor="w") \
+                .grid(row=row_line, column=0, sticky=W, columnspan=4)
+            row_line += 1
+            Label(history_frame, width=25, text="station: {}".format(line[5]), anchor="w") \
+                .grid(row=row_line, column=0, sticky=W, columnspan=4)
+            row_line += 1
+            Button(history_frame, width=14, text="edit", anchor="w",
+                   command=lambda rec=line: self.update_carrier(self.win.topframe, rec)) \
+                .grid(row=row_line, column=0, sticky=W, )
+            Button(history_frame, width=14, text="delete", anchor="w",
+                   command=lambda rec=line: self.delete_rec(rec)) \
+                .grid(row=row_line, column=1, sticky=W)
+            Label(history_frame, text="                             ").grid(row=row_line, column=2, sticky=W)
+            row_line += 1
+        history_frame.grid(row=9, sticky=W, pady=5)
+
     def buttons(self):
         """ define and display the buttons on the bottom of the screen. """
-        button_apply = Button(self.win.buttons)  # buttons at bottom of screen
+        button_submit = Button(self.win.buttons)  # buttons at bottom of screen
+        button_apply = Button(self.win.buttons)
         button_back = Button(self.win.buttons)
-        button_apply.config(text="Apply", command=lambda: self.nc_apply())
+        if self.input_type == "new":
+            button_submit.config(text="Submit", command=lambda: self.nc_apply(goback=True))
+            button_apply.config(text="Apply", command=lambda: self.nc_apply())
+        if self.input_type == "edit":
+            button_submit.config(text="Submit", command=lambda: self.ec_apply(goback=True))
+            button_apply.config(text="Apply", command=lambda: self.ec_apply())
         button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=self.win.topframe))
+        if self.input_type == "update":
+            button_submit.config(text="Submit", command=lambda: self.update_apply(goback=True))
+            button_apply.config(text="Apply", command=lambda: self.update_apply())
+            button_back.config(text="Go Back",
+                               command=lambda: self.restart_edit_carriers(self.win.topframe, self.carrier))
         if sys.platform == "win32":
-            button_apply.config(anchor="w", width=15)
-            button_back.config(anchor="w", width=15)
+            button_submit.config(anchor="w", width=10)
+            button_apply.config(anchor="w", width=10)
+            button_back.config(anchor="w", width=10)
         else:
-            button_apply.config(width=16)
-            button_back.config(width=16)
+            button_submit.config(width=11)
+            button_apply.config(width=11)
+            button_back.config(width=11)
+        button_submit.pack(side=LEFT)
         button_apply.pack(side=LEFT)
         button_back.pack(side=LEFT)
+        Label(self.win.buttons, text=self.status, fg="red").pack(side=LEFT)
 
-    def nc_apply(self):
+    def nc_apply(self, goback=False):
         """ executes to check then enter in new carrier information into the database. """
+        if not self.check_date():  # check the date
+            return
+        adddate = str(datetime(int(self.year.get()), self.month.get(), self.day.get(), 00, 00, 00))
+        # check the carrier name
+        addname = self.join_names()  # join the last name and first initial
+        if not addname:  # if method returns False then return.
+            return  # join name returns a name or False.
+        self.get_name_set()  # get a list of carriers in the carriers table.
+        if addname in self.name_set:  # if the name is already in the carriers table...
+            if not messagebox.askokcancel("New Carrier Input Warning",
+                                   "This carrier name is already in the database.\n"
+                                   "Did you want to proceed? \n"
+                                   "Pressing Ok will create a new record for an existing carrier. ",
+                                   parent=self.win.topframe):
+                return
+        for pair in self.carrier_set:
+            if pair[0] == addname and pair[1] == adddate:
+                messagebox.showwarning("New Carrier - Prohibited Action",
+                                       "There is a pre existing record for this carrier on this day.\n"
+                                       "You can not update that record using this window.\n"
+                                       "To edit/ delete this record, return to the main page and press\n"
+                                       "\"edit\" to the right of the carrier's name. ",
+                                       parent=self.win.topframe)
+                return
+        if not self.check_route():  # check the carrier route
+            return
+        addroute = Handler(self.route.get()).routes_adj()  # convert 5 digit route numbers to 4 digits.
+        if addroute == "0000":  # convert route 0000 to empty string.
+            addroute = ""
+        sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+              " VALUES('%s','%s','%s','%s','%s','%s')" \
+              % (adddate, addname, self.ls.get(), self.ns.get(), addroute, self.station.get())
+        commit(sql)
+        self.status = "{} was added.".format(addname)
+        if goback:
+            MainFrame().start(frame=self.win.topframe)
+        else:
+            self.restart_new_carriers(self.win.topframe)
+
+    def ec_apply(self, goback=False):
+        """ executes to check then enter a new carrier record into the database. """
+        if not self.check_date():  # check the date
+            return
+        adddate = str(datetime(int(self.year.get()), self.month.get(), self.day.get(), 00, 00, 00))
+        if not self.check_route():  # check the carrier route
+            return
+        addroute = Handler(self.route.get()).routes_adj()  # convert 5 digit route numbers to 4 digits.
+        if addroute == "0000":  # convert route 0000 to empty string.
+            addroute = ""
+        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
+              "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" % \
+              (self.carrier, adddate)
+        results = inquire(sql)
+        if len(results) == 0:
+            sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                  " VALUES('%s','%s','%s','%s','%s','%s')" % \
+                  (adddate, self.carrier, self.ls.get(), self.ns.get(), addroute, self.station.get())
+            commit(sql)
+            self.status = "Carrier record added."
+        elif len(results) == 1:
+            sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
+                  "WHERE effective_date = '%s' and carrier_name = '%s'" % \
+                  (self.ls.get(), self.ns.get(), addroute, self.station.get(), adddate, self.carrier)
+            commit(sql)
+            self.status = "Carrier record updated."
+        elif len(results) > 1:
+            sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % \
+                  (adddate, self.carrier)
+            commit(sql)
+            sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                  " VALUES('%s','%s','%s','%s','%s','%s')" \
+                  % (adddate, self.carrier, self.ls.get(), self.ns.get(), addroute, self.station.get())
+            commit(sql)
+            self.status = "Carrier record updated. "
+        if goback:
+            MainFrame().start(frame=self.win.topframe)
+        else:
+            self.restart_edit_carriers(self.win.topframe, self.carrier)
+
+    def update_apply(self, goback=False):
+        """ checks and then updates a record for a carrier. """
+        if not self.check_date():  # check the date
+            return
+        adddate = str(datetime(int(self.year.get()), self.month.get(), self.day.get(), 00, 00, 00))
+        if not self.check_route():  # check the carrier route
+            return
+        addroute = Handler(self.route.get()).routes_adj()  # convert 5 digit route numbers to 4 digits.
+        if addroute == "0000":  # convert route 0000 to empty string.
+            addroute = ""
+        sql = "UPDATE carriers SET effective_date='%s',list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
+              "WHERE rowid = '%s'" % \
+              (adddate, self.ls.get(), self.ns.get(), addroute, self.station.get(), self.rowid)
+        commit(sql)
+        self.status = "Carrier record updated. "
+        if goback:
+            MainFrame().start(frame=self.win.topframe)
+        else:
+            self.restart_edit_carriers(self.win.topframe, self.carrier)
+
+    def check_date(self):
+        """ checks dates for months and days from option menus and years with entry widgets. """
         checkdate = DateChecker(self.win.body, self.month.get(), self.day.get(), self.year.get())
-        if not checkdate.check_int():
-            return
-        if not checkdate.checkyear():
-            return
-        date = self.check_date()
-        if not date:  # if the checks returned False, then return.
-            return
-        carrier = self.name.get().strip().lower() + ", " + self.fname.get().strip().lower()
-        if len(self.name.get()) > 30 or len(self.fname.get()) > 12:
-            messagebox.showerror("Name input error",
-                                 "Names must not exceed 30 characters."
-                                 "First names must not exceed 12 characters",
-                                 parent=self.win.topframe)
-            return
+        if not checkdate.check_int():  # check that the year is an integer.
+            return False
+        if not checkdate.check_year():  # check that the year is within an acceptable range.
+            return False
+        if not checkdate.try_date():  # if the checks returned False, then return.
+            return False
+        return True
+
+    def join_names(self):
+        """ check and join last name and first initial."""
         if len(self.name.get()) < 1:
             messagebox.showerror("Name input error",
                                  "You must enter a name.",
                                  parent=self.win.topframe)
-            return
+            return False
         if len(self.fname.get()) < 1:
             messagebox.showerror("Name input error",
                                  "You must enter a first initial or name.",
                                  parent=self.win.topframe)
-            return
+            return False
         if len(self.fname.get()) > 1:
-            answer = messagebox.askyesno("Caution",
+            if not messagebox.askyesno("Caution",
                                          "It is recommended that you use only the first initial of the first"
                                          "name unless it is necessary to create a unique identifier, such as"
                                          "when you have two identical names that must be distinguished."
                                          "Do you want to proceed?",
-                                         parent=self.win.topframe)
-            if not answer:
-                return
-        nc_route_list = self.route.get().split("/")
-        if len(self.route.get()) > 29:
-            messagebox.showerror("Route number input error",
-                                 "There can be no more than five routes per carrier "
-                                 "(for T6 carriers).\n Routes numbers four or five digits long.\n"
-                                 "If there are multiple routes, route numbers must be separated by "
-                                 "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                                 "commas or empty spaces",
+                                         parent=self.win.topframe):
+                return False
+
+        name = self.name.get().strip() + ", " + self.fname.get().strip()
+        checkname = NameChecker(name, frame=self.win.body)  # run checks in the toolbox
+        if not checkname.check_characters():  # make sure only letters and special characters are in name.
+            return False
+        if not checkname.check_length():  # if the length is no more than 28 characters.
+            return False
+        return self.name.get().strip().lower() + ", " + self.fname.get().strip().lower()
+
+    def get_name_set(self):
+        """ get a distinct list of carrier names from the carriers table. """
+        sql = "SELECT carrier_name, effective_date FROM carriers"
+        result = inquire(sql)
+        for x in result:
+            self.carrier_set.append([x[0], x[1]])  # add the carrier name and effective date
+            self.name_set.append(x[0])  # add the carrier name to the name set.
+
+    def check_route(self):
+        """ check the route. return True if the route is blank. """
+        checkroute = RouteChecker(self.route.get(), frame=self.win.topframe)
+        if checkroute.is_empty():  # if the route is an empty string, return True.
+            return True
+        if not checkroute.check_numeric():
+            return False
+        if not checkroute.check_array():
+            return False
+        if not checkroute.check_length():
+            return False
+        return True
+
+    def name_change(self):
+        """ change the name of the carrier in the Edit input type """
+        c_name = self.chg_name.get()  # get name from the stringvar
+        if len(c_name) < 1:
+            messagebox.showerror("Change Name Error",
+                                 "You must enter a name.",
                                  parent=self.win.topframe)
             return
-        for item in nc_route_list:
-            item = item.strip()
-            if item != "":
-                if len(item) < 4 or len(item) > 5:
-                    messagebox.showerror("Route number input error",
-                                         "Routes numbers must be four or five digits long.\n"
-                                         "If there are multiple routes, route numbers must be separated by "
-                                         "the \"/\" character. For example: 1001/1015/10124/10224/0972. Do not use "
-                                         "commas or empty spaces",
-                                         parent=self.win.topframe)
-                    return
-            if item.isdigit() == FALSE and item != "":
-                messagebox.showerror("Route number input error",
-                                     "Route numbers must be numbers and can not contain "
-                                     "letters",
-                                     parent=self.win.topframe)
+        checkname = NameChecker(c_name, frame=self.win.body)  # run checks in the toolbox
+        if not checkname.check_characters():  # make sure only letters and special characters are in name.
+            return
+        if not checkname.check_length():  # if the length is no more than 28 characters.
+            return
+        if not checkname.check_comma():  # if there is no comma in the name - there must be one
+            return
+        if not checkname.check_initial():  # checks for more than one character in first initial place
+            if not messagebox.askokcancel("Change Name Warning",
+                                          "It is recommended that first initials only consist of one "
+                                          "letter unless adding more is necessary to creating a unique name. \n"
+                                          "Do you want to proceed?",
+                                          parent=self.win.topframe):
                 return
-        # call routes adj to shorten routes that don't need 5 digits
-        route_input = Handler(self.route.get()).routes_adj()
-        if route_input == "0000":
-            route_input = ""
-        # check to see if new carrier name is already in carrier table
-        match = False
-        sql = "SELECT carrier_name, effective_date FROM carriers"
-        results = inquire(sql)
-        name_set = set()
-        for x in results:
-            name_set.add(x[0])
-        sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
-              " VALUES('%s','%s','%s','%s','%s','%s')" \
-              % (date, carrier, self.ls.get(), self.ns.get(), route_input, self.station.get())
-        if carrier in name_set:
-            ok = messagebox.askokcancel("New Carrier Input Warning",
-                                        "This carrier name is already in the database.\n"
-                                        "Did you want to proceed?",
-                                        parent=self.win.topframe)
-            if ok:
-                for pair in results:
-                    if pair[0] == carrier and \
-                            pair[1] == str(datetime(self.year.get(), self.month.get(), self.day.get(), 00, 00, 00)):
-                        messagebox.showwarning("New Carrier - Prohibited Action",
-                                               "There is a pre existing record for this carrier on this day.\n"
-                                               "You can not update that record using this window.\n"
-                                               "To edit/ delete this record, return to the main page and press\n"
-                                               "\"edit\" to the right of the carrier's name. ",
-                                               parent=self.win.topframe)
-                        match = True
-            if not ok:
-                match = True
-        if not match:
+        c_name = c_name.strip().lower()  # strip out any whitespace and convert to all lowercase.
+        self.get_name_set()  # get a list of carriers in the carriers table.
+        if c_name in self.name_set:  # if the name is already in the carriers table...
+            messagebox.showerror("Change Name Error",
+                                 "This carrier name is already in the database.\n"
+                                 "You can not change the carrier's name to a name that is already being used.",
+                                 parent=self.win.topframe)
+            return
+        if not messagebox.askokcancel("Name Change",
+                                  "This will change the name {} to {} in all records. "
+                                  "Are you sure?".format(self.carrier, self.chg_name.get()),
+                                  parent=self.win.topframe):
+            return
+        sql = "UPDATE carriers SET carrier_name = '%s' WHERE carrier_name = '%s'" % (c_name, self.carrier)
+        commit(sql)
+        sql = "UPDATE rings3 SET carrier_name = '%s' WHERE carrier_name = '%s'" % (c_name, self.carrier)
+        commit(sql)
+        sql = "SELECT kb_name FROM name_index WHERE kb_name = '%s'" % self.carrier
+        result = inquire(sql)
+        if result:
+            sql = "UPDATE name_index SET kb_name = '%s' WHERE kb_name = '%s'" % (c_name, self.carrier)
             commit(sql)
+        self.status = "Carrier name change applied."
+        self.restart_edit_carriers(self.win.topframe, c_name)
+
+    def purge_carrier(self):
+        """ executes to delete all carrier records along with rings and name index from the database. """
+        if not messagebox.askokcancel("Delete Carrier",
+                                      "This will delete the carrier and all records associated with "
+                                      "this carrier, including rings and name index.\n\n"
+                                      "If this carrier has left the station, quit, been fired or retired "
+                                      "you should change station to \"out of station\" and not delete. \n\n"
+                                      "This can not be reversed.",
+                                      parent=self.win.topframe):
+            return
+        sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % self.carrier
+        commit(sql)
+        sql = "DELETE FROM rings3 WHERE carrier_name= '%s'" % self.carrier
+        commit(sql)
+        sql = "DELETE FROM name_index WHERE kb_name = '%s'" % self.carrier
+        commit(sql)
         MainFrame().start(frame=self.win.topframe)
+
+    def delete_rec(self, onrec):
+        """ executes when a carrier is deleted. """
+        sql = "DELETE FROM carriers WHERE rowid = '%s'" % onrec[6]
+        commit(sql)
+        sql = "SELECT carrier_name FROM carriers WHERE carrier_name = '%s'" % onrec[1]
+        results = inquire(sql)
+        if len(results) > 0:
+            self.status = "Carrier record deleted. "
+            self.restart_edit_carriers(self.win.topframe, onrec[1])
+        else:
+            MainFrame().start(frame=self.win.topframe)
 
 
 def reset(frame):
@@ -8450,8 +8263,11 @@ class MainFrame:
                     Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
                     Button(self.main_frame, text=rec[1], width=macadj(25, 23), bg=color, anchor="w",
                            command=lambda x=rec: EnterRings(x[1]).start()).grid(row=r, column=1)
+                    # Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
+                    #        command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
+                    #     .grid(row=r, column=5)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
-                           command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
+                           command=lambda x=rec[1]: CarrierInput().edit_carriers(self.win.topframe, x)) \
                         .grid(row=r, column=5)
                     ii += 1
                 else:  # display non first rows of carrier recs

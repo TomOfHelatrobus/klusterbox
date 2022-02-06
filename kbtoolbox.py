@@ -1356,13 +1356,14 @@ class SpeedSettings:
 class DateChecker:
     """
     class for checking dates which are selected from option menus for the day and month and a entry widget for the
-    year. The frame is also included so that a messagebox can show errors.
+    year. The <var name>.get() should be passed, so that get() does not need to be used in the class. The frame
+    is also included so that a messagebox can show errors.
     """
     def __init__(self, frame, month, day, year):
         self.frame = frame
-        self.year = year.get()
-        self.month = month.get()
-        self.day = day.get()
+        self.year = year
+        self.month = month
+        self.day = day
 
     def check_int(self):
         """ returns true if a number is an integer."""
@@ -1375,7 +1376,7 @@ class DateChecker:
 
     def check_year(self):
         """ check to see if the year is in range and that the date is valid. """
-        if self.year > 9999 or self.year < 1000:
+        if int(self.year) > 9999 or int(self.year) < 1000:
             messagebox.showerror("Year Input Error",
                                  "Year must be a value between 1000 and 9999.",
                                  parent=self.frame)
@@ -1385,7 +1386,7 @@ class DateChecker:
     def try_date(self):
         """ uses try except to test if the data is valid. Will return a datetime object or False. """
         try:
-            date = datetime(self.year, self.month, self.day)
+            date = datetime(int(self.year), self.month, self.day)
             return date
         except ValueError:
             messagebox.showerror("Invalid Date",
@@ -1396,10 +1397,12 @@ class DateChecker:
 
 class NameChecker:
     """
-    class for checking name strings.
+    class for checking name strings. If a frame arguement is passed, the the methods will produce
+    messageboxes to show errors.
     """
-    def __init__(self, name):
+    def __init__(self, name, frame=None):
         self.name = name.lower()
+        self.frame = frame
 
     def check_characters(self):
         """ checks if characters in name are in approved tuple """
@@ -1408,6 +1411,11 @@ class NameChecker:
                         "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "-", "'", ".", ","):
                 pass
             else:
+                if self.frame:
+                    messagebox.showerror("Name Checker",
+                                         "The carrier name can only consist of letters and special characters: "
+                                         "dashes, apostrophes, periods or commas and blank spaces.",
+                                         parent=self.frame)
                 return False
         return True
 
@@ -1416,6 +1424,11 @@ class NameChecker:
         if len(self.name) < 29:
             return True
         else:
+            if self.frame:
+                messagebox.showerror("Name Checker",
+                                     "Names must be 28 characters or less. This includes the last name, comma and "
+                                     "first initial. ",
+                                     parent=self.frame)
             return False
 
     def check_comma(self):
@@ -1424,10 +1437,14 @@ class NameChecker:
         if len(s_name) == 2:
             return True
         else:
+            if self.frame:
+                messagebox.showerror("Name Checker",
+                                     "Names can contain only one comma. ",
+                                     parent=self.frame)
             return False
 
     def check_initial(self):
-        """ checks if theres is an initial in the variable """
+        """ checks if there is an initial in the variable """
         s_name = self.name.split(",")
         if len(s_name) > 1:
             if len(s_name[1].strip()) == 1:
@@ -1438,11 +1455,12 @@ class NameChecker:
 
 class RouteChecker:
     """
-    class for checking the route strings
+    class for checking the route strings. if the frame is passed, the methods will produce messageboxes.
     """
-    def __init__(self, route):
+    def __init__(self, route, frame=None):
         self.route = route
         self.routearray = self.route.split("/")
+        self.frame = frame
 
     def is_empty(self):
         """ returns True for empty strings"""
@@ -1456,6 +1474,10 @@ class RouteChecker:
             return True
         for r in self.routearray:
             if not r.isnumeric():
+                if self.frame:
+                    messagebox.showerror("Route Checker",
+                                         "The route number must be a number.",
+                                         parent=self.frame)
                 return False
         return True
 
@@ -1466,6 +1488,11 @@ class RouteChecker:
         elif len(self.routearray) == 5:
             return True
         else:
+            if self.frame:
+                messagebox.showerror("Route Checker",
+                                     "There can only be one or five routes listed. Regular carriers have one route."
+                                     "Floaters (carrier technicians) have 5 routes.",
+                                     parent=self.frame)
             return False
 
     def check_length(self):
@@ -1474,6 +1501,10 @@ class RouteChecker:
             return True
         for r in self.routearray:
             if len(r) < 4 or len(r) > 5:
+                if self.frame:
+                    messagebox.showerror("Route Checker",
+                                         "The route numbers must have four or five digits.",
+                                         parent=self.frame)
                 return False
         return True
 
@@ -1490,6 +1521,10 @@ class RouteChecker:
         try:
             self.route = int(self.route)
         except ValueError:
+            if self.frame:
+                messagebox.showerror("Route Checker",
+                                     "The route number can only include numbers.",
+                                     parent=self.frame)
             return False
 
     def check_all(self):
