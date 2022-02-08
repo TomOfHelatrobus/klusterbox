@@ -234,135 +234,111 @@ class NewWindow:
         Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
-def front_window(frame):
-    """ Sets up a tkinter page with buttons on the bottom"""
-    if frame != "none":
-        frame.destroy()  # close out the previous frame
-    f = Frame(projvar.root)  # create new frame
-    f.pack(fill=BOTH, side=LEFT)
-    buttons = Canvas(f)  # button bar
-    buttons.pack(fill=BOTH, side=BOTTOM)
-    # link up the canvas and scrollbar
-    s = Scrollbar(f)
-    c = Canvas(f, width=1600)
-    s.pack(side=RIGHT, fill=BOTH)
-    c.pack(side=LEFT, fill=BOTH)
-    s.configure(command=c.yview, orient="vertical")
-    c.configure(yscrollcommand=s.set)
-    # link the mousewheel - implementation varies by platform
-    if sys.platform == "win32":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-    elif sys.platform == "darwin":
-        c.bind_all('<MouseWheel>', lambda event: c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-    elif sys.platform == "linux":
-        c.bind_all('<Button-4>', lambda event: c.yview('scroll', -1, 'units'))
-        c.bind_all('<Button-5>', lambda event: c.yview('scroll', 1, 'units'))
-    # create the frame inside the canvas
-    ff = Frame(c)
-    c.create_window((0, 0), window=ff, anchor=NW)
-    return f, s, c, ff, buttons
-    # page contents - then call rear_window(wd)
+class Globals:
+    """ this class sets and resets the project variables called projvars which can be found in projvar.py """
 
-
-def rear_window(wd):
-    """ This closes the window created by front_window() """
-    projvar.root.update()
-    wd[2].config(scrollregion=wd[2].bbox("all"))
-    try:
-        mainloop()
-    except KeyboardInterrupt:
-        projvar.root.destroy()
-
-
-def set_globals(s_year, s_mo, s_day, i_range, station, frame):
-    """ checks and sets globals """
-    projvar.invran_weekly_span = i_range
-    if station == "undefined":
-        messagebox.showerror("Investigation station setting",
-                             'Please select a station.',
-                             parent=frame)
-        return
-    # error check for valid date
-    try:
-        date = datetime(int(s_year), int(s_mo), int(s_day))
-    except ValueError:
-        messagebox.showerror("Investigation date/range",
-                             'The date entered is not valid.',
-                             parent=frame)
-        return
-    projvar.invran_date = date
-    wkdy_name = date.strftime("%a")
-    while wkdy_name != "Sat":  # while date enter is not a saturday
-        date -= timedelta(days=1)  # walk back the date until it is a saturday
+    @staticmethod
+    def set(s_year, s_mo, s_day, i_range, station, frame):
+        """ checks and sets globals """
+        projvar.invran_weekly_span = i_range
+        if station == "undefined":
+            messagebox.showerror("Investigation station setting",
+                                 'Please select a station.',
+                                 parent=frame)
+            return
+        # error check for valid date
+        try:
+            date = datetime(int(s_year), int(s_mo), int(s_day))
+        except ValueError:
+            messagebox.showerror("Investigation date/range",
+                                 'The date entered is not valid.',
+                                 parent=frame)
+            return
+        projvar.invran_date = date
         wkdy_name = date.strftime("%a")
-    sat_range = date  # sat range = sat or the sat most prior
-    projvar.pay_period = pp_by_date(sat_range)
-    projvar.invran_year = int(date.strftime("%Y"))  # format that sat to form the global
-    projvar.invran_month = int(date.strftime("%m"))
-    projvar.invran_day = int(date.strftime("%d"))
-    del projvar.invran_date_week[:]  # empty out the array for the global date variable
-    d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
-    # set the projvar.invran_date_week variable
-    projvar.invran_date_week.append(d)
-    for i in range(6):
-        d += timedelta(days=1)
+        while wkdy_name != "Sat":  # while date enter is not a saturday
+            date -= timedelta(days=1)  # walk back the date until it is a saturday
+            wkdy_name = date.strftime("%a")
+        sat_range = date  # sat range = sat or the sat most prior
+        projvar.pay_period = pp_by_date(sat_range)
+        projvar.invran_year = int(date.strftime("%Y"))  # format that sat to form the global
+        projvar.invran_month = int(date.strftime("%m"))
+        projvar.invran_day = int(date.strftime("%d"))
+        del projvar.invran_date_week[:]  # empty out the array for the global date variable
+        d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
+        # set the projvar.invran_date_week variable
         projvar.invran_date_week.append(d)
-    # define color sequence tuple
-    pat = ("blue", "green", "brown", "red", "black", "yellow")
-    # calculate the n/s day of sat/first day of investigation range
-    end_date = sat_range + timedelta(days=-1)
-    cdate = datetime(2017, 1, 7)
-    x = 0
-    if sat_range > cdate:
-        while cdate < end_date:
-            if x > 0:
-                x -= 1
-                cdate += timedelta(days=7)
-            else:
-                x = 5
-                cdate += timedelta(days=7)
-    else:
-        # IN REVERSE
-        while cdate > sat_range:
-            if x < 5:
-                x += 1
-                cdate -= timedelta(days=7)
-            else:
-                x = 0
-                cdate -= timedelta(days=7)
-    # find ns day for each day in range
-    date = sat_range
-    projvar.ns_code = {}
-    for i in range(7):
-        if i == 0:
-            projvar.ns_code[pat[x]] = date.strftime("%a")
-            date += timedelta(days=1)
-        elif i == 1:
-            date += timedelta(days=1)
-            if x > 4:
-                x = 0
-            else:
-                x += 1
+        for i in range(6):
+            d += timedelta(days=1)
+            projvar.invran_date_week.append(d)
+        # define color sequence tuple
+        pat = ("blue", "green", "brown", "red", "black", "yellow")
+        # calculate the n/s day of sat/first day of investigation range
+        end_date = sat_range + timedelta(days=-1)
+        cdate = datetime(2017, 1, 7)
+        x = 0
+        if sat_range > cdate:
+            while cdate < end_date:
+                if x > 0:
+                    x -= 1
+                    cdate += timedelta(days=7)
+                else:
+                    x = 5
+                    cdate += timedelta(days=7)
         else:
-            projvar.ns_code[pat[x]] = date.strftime("%a")
-            date += timedelta(days=1)
-            if x > 4:
-                x = 0
+            # IN REVERSE
+            while cdate > sat_range:
+                if x < 5:
+                    x += 1
+                    cdate -= timedelta(days=7)
+                else:
+                    x = 0
+                    cdate -= timedelta(days=7)
+        # find ns day for each day in range
+        date = sat_range
+        projvar.ns_code = {}
+        for i in range(7):
+            if i == 0:
+                projvar.ns_code[pat[x]] = date.strftime("%a")
+                date += timedelta(days=1)
+            elif i == 1:
+                date += timedelta(days=1)
+                if x > 4:
+                    x = 0
+                else:
+                    x += 1
             else:
-                x += 1
-    projvar.ns_code["none"] = "  "
-    if not i_range:  # if investigation range is one day
-        projvar.invran_year = int(s_year)
-        projvar.invran_month = int(s_mo)
-        projvar.invran_day = int(s_day)
-        projvar.invran_day = int(s_day)
-    projvar.ns_code["sat"] = "Sat"
-    projvar.ns_code["mon"] = "Mon"
-    projvar.ns_code["tue"] = "Tue"
-    projvar.ns_code["wed"] = "Wed"
-    projvar.ns_code["thu"] = "Thu"
-    projvar.ns_code["fri"] = "Fri"
-    projvar.invran_station = station
+                projvar.ns_code[pat[x]] = date.strftime("%a")
+                date += timedelta(days=1)
+                if x > 4:
+                    x = 0
+                else:
+                    x += 1
+        projvar.ns_code["none"] = "  "
+        if not i_range:  # if investigation range is one day
+            projvar.invran_year = int(s_year)
+            projvar.invran_month = int(s_mo)
+            projvar.invran_day = int(s_day)
+            projvar.invran_day = int(s_day)
+        projvar.ns_code["sat"] = "Sat"
+        projvar.ns_code["mon"] = "Mon"
+        projvar.ns_code["tue"] = "Tue"
+        projvar.ns_code["wed"] = "Wed"
+        projvar.ns_code["thu"] = "Thu"
+        projvar.ns_code["fri"] = "Fri"
+        projvar.invran_station = station
+
+    @staticmethod
+    def reset():
+        """ reset initial value of globals """
+        projvar.invran_year = None
+        projvar.invran_month = None
+        projvar.invran_day = None
+        projvar.invran_weekly_span = None  # default is weekly investigation range
+        projvar.invran_station = None
+        projvar.invran_date_week = []
+        projvar.invran_date = None
+        projvar.ns_code = {}
 
 
 class CarrierRecSet:
@@ -677,36 +653,52 @@ class NsDayDict:
         return code_ns
 
 
-def dir_path(dirr):
+def dir_path(dir_):
     """ create needed directories if they don't exist and return the appropriate path """
-    path = ""
+    path_ = ""
     if sys.platform == "darwin":
         if projvar.platform == "macapp":
             if not os.path.isdir(os.path.expanduser("~") + '/Documents'):
                 os.makedirs(os.path.expanduser("~") + '/Documents')
             if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox'):
                 os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox')
-            if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dirr):
-                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dirr)
-            path = os.path.expanduser("~") + '/Documents/klusterbox/' + dirr + '/'
+            if not os.path.isdir(os.path.expanduser("~") + '/Documents/klusterbox/' + dir_):
+                os.makedirs(os.path.expanduser("~") + '/Documents/klusterbox/' + dir_)
+            path_ = os.path.expanduser("~") + '/Documents/klusterbox/' + dir_ + '/'
         else:
-            if not os.path.isdir('kb_sub/' + dirr):
-                os.makedirs(('kb_sub/' + dirr))
-            path = 'kb_sub/' + dirr + '/'
+            if not os.path.isdir('kb_sub/' + dir_):
+                os.makedirs(('kb_sub/' + dir_))
+            path_ = 'kb_sub/' + dir_ + '/'
     if sys.platform == "win32":
         if projvar.platform == "winapp":
             if not os.path.isdir(os.path.expanduser("~") + '\\Documents'):
                 os.makedirs(os.path.expanduser("~") + '\\Documents')
             if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox'):
                 os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox')
-            if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr):
-                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr)
-            path = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dirr + '\\'
+            if not os.path.isdir(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir_):
+                os.makedirs(os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir_)
+            path_ = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir_ + '\\'
         else:
-            if not os.path.isdir('kb_sub\\' + dirr):
-                os.makedirs(('kb_sub\\' + dirr))
-            path = 'kb_sub\\' + dirr + '\\'
-    return path
+            if not os.path.isdir('kb_sub\\' + dir_):
+                os.makedirs(('kb_sub\\' + dir_))
+            path_ = 'kb_sub\\' + dir_ + '\\'
+    return path_
+
+
+def check_path(dir_):
+    """ gets a path to check if a path exist. """
+    path_ = ""
+    if sys.platform == "darwin":
+        if projvar.platform == "macapp":
+            path_ = os.path.expanduser("~") + '/Documents/klusterbox/' + dir_ + '/'
+        else:
+            path_ = 'kb_sub/' + dir_ + '/'
+    if sys.platform == "win32":
+        if projvar.platform == "winapp":
+            path_ = os.path.expanduser("~") + '\\Documents\\klusterbox\\' + dir_ + '\\'
+        else:
+            path_ = 'kb_sub\\' + dir_ + '\\'
+    return path_
 
 
 def pp_by_date(sat_range):
@@ -1134,6 +1126,12 @@ class Handler:
         separator = "/"  # convert the array into a string
         return separator.join(new_array)  # and return
 
+    def route_zeros_to_empty(self):
+        """ only applies to full time unassigned carriers who have no route """
+        if self.data == "0000" or self.data == "00000":  # if the route is all zeros
+            return ""  # return empty string
+        return self.data
+
 
 def isfloat(value):
     """ returns True if arg is a float """
@@ -1476,7 +1474,9 @@ class RouteChecker:
             if not r.isnumeric():
                 if self.frame:
                     messagebox.showerror("Route Checker",
-                                         "The route number must be a number.",
+                                         "The route number must be a number. The \'/\' character is "
+                                         "allowed to separate the routes of a route string. No other "
+                                         "characters can be accepted. ",
                                          parent=self.frame)
                 return False
         return True
@@ -1503,7 +1503,10 @@ class RouteChecker:
             if len(r) < 4 or len(r) > 5:
                 if self.frame:
                     messagebox.showerror("Route Checker",
-                                         "The route numbers must have four or five digits.",
+                                         "Routes numbers must be four or five digits long.\n"
+                                         "If there are multiple routes, route numbers must be separated by "
+                                         "the \'/\' character. For example: 1001/1015/10124/10224/0972. "
+                                         "Do not use commas or empty spaces",
                                          parent=self.frame)
                 return False
         return True

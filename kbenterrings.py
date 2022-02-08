@@ -4,9 +4,11 @@ information.
 """
 
 # custom modules
-from kbtoolbox import *
+import projvar
+from kbtoolbox import commit, inquire, CarrierRecSet, Convert, Handler, macadj, MovesChecker, NewWindow, Rings, \
+    RingTimeChecker, RouteChecker
 # Standard Libraries
-from tkinter import *
+from tkinter import Button, Entry, OptionMenu, StringVar, Frame, Label, LEFT
 from tkinter import messagebox
 
 

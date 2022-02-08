@@ -4,8 +4,12 @@ This file contains libraries for OT Equitability and OT Distribution classes. Th
 distribution of overtime and mandates among non list carriers.
 """
 # custom modules
-from kbtoolbox import *
+import projvar
+from kbtoolbox import commit, inquire, CarrierList, Convert, datetime, dir_path, Handler, Moves, Overtime, \
+    ProgressBarDe, Quarter
 from tkinter import messagebox
+from datetime import timedelta
+import sys
 import os
 import subprocess
 # Spreadsheet Libraries

@@ -13,10 +13,10 @@ This version of Klusterbox is being released under the GNU General Public Licens
 # custom modules
 import projvar
 from kbreports import Reports, Messenger
-from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, gen_ns_dict, \
+from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, check_path, gen_ns_dict, \
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
-    find_pp, front_window, rear_window, gen_carrier_list, Quarter, RingTimeChecker, set_globals, \
+    find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
     RouteChecker
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
@@ -835,7 +835,7 @@ class OtEquitability:
             if update:
                 updates += 1
         if home:
-            MainFrame().start(self.win.topframe)
+            MainFrame().start(frame=self.win.topframe)
         else:
             self.status_report(updates)
             self.reset_onrecs_and_vars()
@@ -1164,8 +1164,8 @@ class SpeedWorkBookGet:
 
     def get_file(self):
         """ returns the file path if there is one. else no selection/invalid selection. """
-        path = self.get_filepath()
-        file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.xlsx")])
+        path_ = self.get_filepath()
+        file_path = filedialog.askopenfilename(initialdir=path_, filetypes=[("Excel files", "*.xlsx")])
         if file_path[-5:].lower() == ".xlsx":
             return file_path
         elif file_path == "":
@@ -1199,15 +1199,15 @@ class SpeedWorkBookGet:
 
 class SpeedLoadThread(Thread):
     """ use multithreading to load workbook while progress bar runs """
-    def __init__(self, path):
+    def __init__(self, path_):
         Thread.__init__(self)
-        self.path = path
+        self.path_ = path_
         self.workbook = ""
 
     def run(self):
         """ runs the speedsheet loading. """
         global pb_flag  # this will signal when the thread has ended to end the progress bar
-        wb = load_workbook(self.path)  # load xlsx doc with openpyxl
+        wb = load_workbook(self.path_)  # load xlsx doc with openpyxl
         self.workbook = wb
         pb_flag = False
 
@@ -1216,10 +1216,10 @@ class SpeedSheetCheck:
     """
     this class checks the speedsheet. sends rows to speedcarriercheck and speedringcheck.
     """
-    def __init__(self, frame, wb, path, interject):
+    def __init__(self, frame, wb, path_, interject):
         self.frame = frame
         self.wb = wb
-        self.path = path
+        self.path_ = path_
         self.interject = interject  # True = add to database/ False = pre-check
         self.carrier_count = 0
         self.rings_count = 0
@@ -1268,8 +1268,7 @@ class SpeedSheetCheck:
                 self.checking()
                 self.reporter()
                 date_array = Convert(self.start_date).datetime_separation()  # get the date to reset globals
-                # set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, self.frame)
-                set_globals(date_array[0], date_array[1], date_array[2], self.i_range, self.station, "None")
+                Globals().set(date_array[0], date_array[1], date_array[2], self.i_range, self.station, "None")
                 MainFrame().start(frame=self.frame)
             else:
                 self.pb.delete()  # stop and destroy progress bar
@@ -1338,7 +1337,7 @@ class SpeedSheetCheck:
     def start_reporter(self):
         """ starts the report. """
         self.report.write("\nSpeedSheet Pre-Check Report \n")
-        self.report.write(">>> {}\n".format(self.path))
+        self.report.write(">>> {}\n".format(self.path_))
 
     def row_count(self):
         """ get a count of all rows for all sheets - need for progress bar """
@@ -1452,56 +1451,57 @@ class DatabaseAdmin:
     a class for the management of the database.
     """
     def __init__(self):
-        pass
+        self.win = None
 
     def run(self, frame):
         """ a screen for controlling database maintenance. """
-        wd = front_window(frame)
+        self.win = MakeWindow()
+        self.win.create(frame)
         r = 0
-        Label(wd[3], text="Database Maintenance", font=macadj("bold", "Helvetica 18"), anchor="w") \
+        Label(self.win.body, text="Database Maintenance", font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=r, sticky="w", columnspan=4)
         r += 1
-        Label(wd[3], text="").grid(row=r)
+        Label(self.win.body, text="").grid(row=r)
         r += 1
-        Label(wd[3], text="Database Records").grid(row=r, sticky="w", columnspan=4)
+        Label(self.win.body, text="Database Records").grid(row=r, sticky="w", columnspan=4)
         r += 1
-        Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+        Label(self.win.body, text="                    ").grid(row=r, column=0, sticky="w")
         r += 1
         # get and display number of records for rings3
         sql = "SELECT COUNT (*) FROM rings3"
         results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" total records in rings table").grid(row=r, column=1, sticky="w")
+        Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" total records in rings table").grid(row=r, column=1, sticky="w")
         r += 1
         # get and display number of records for unique carriers in rings3
         sql = "SELECT COUNT (DISTINCT carrier_name) FROM rings3"
         results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" distinct carrier names in rings table").grid(row=r, column=1, sticky="w")
+        Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" distinct carrier names in rings table").grid(row=r, column=1, sticky="w")
         r += 1
         # get and display number of records for unique days in rings3
         sql = "SELECT COUNT (DISTINCT rings_date) FROM rings3"
         results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" distinct days in rings table").grid(row=r, column=1, sticky="w")
+        Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" distinct days in rings table").grid(row=r, column=1, sticky="w")
         r += 1
         # get and display number of records for carriers
         sql = "SELECT COUNT (*) FROM carriers"
         results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
+        Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" total records in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
         # get and display number of records for distinct carrier names from carriers
         sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers"
         results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
+        Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
         # get and display number of records for stations
         sql = "SELECT COUNT (*) FROM stations"
         results = inquire(sql)
-        Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" total records in station table (this includes \'out of station\')") \
+        Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" total records in station table (this includes \'out of station\')") \
             .grid(row=r, column=1, sticky="w")
         r += 1
         # find orphaned rings from deceased carriers
@@ -1510,85 +1510,85 @@ class DatabaseAdmin:
         sql = "SELECT DISTINCT carrier_name FROM rings3"
         rings_results = inquire(sql)
         deceased = [x for x in rings_results if x not in carriers_results]
-        Label(wd[3], text=len(deceased), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" \'deceased\' carriers in rings table").grid(row=r, column=1, sticky=W)
+        Label(self.win.body, text=len(deceased), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" \'deceased\' carriers in rings table").grid(row=r, column=1, sticky=W)
         r += 1
         if len(deceased) > 0:
-            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="").grid(row=r, column=0, sticky="w")
             r += 1
-            Button(wd[3], text="clean",
-                   command=lambda: (self.database_clean_rings(), wd[0].destroy(), self.run(frame))) \
+            Button(self.win.body, text="clean",
+                   command=lambda: (self.database_clean_rings(), self.run(self.win.topframe))) \
                 .grid(row=r, column=0, sticky="w")
-            Label(wd[3], text="Delete rings records where carriers no longer exist (recommended)") \
+            Label(self.win.body, text="Delete rings records where carriers no longer exist (recommended)") \
                 .grid(row=r, column=1, sticky="w", columnspan=6)
             r += 1
-            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="").grid(row=r, column=0, sticky="w")
             r += 1
         sql = "SELECT DISTINCT station FROM carriers"
         all_stations = inquire(sql)
         sql = "SELECT station FROM stations"
         good_stations = inquire(sql)
         deceased_cars = [x for x in all_stations if x not in good_stations]
-        Label(wd[3], text=len(deceased_cars), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-        Label(wd[3], text=" \'deceased\' stations in carriers table").grid(row=r, column=1, sticky=W)
+        Label(self.win.body, text=len(deceased_cars), anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+        Label(self.win.body, text=" \'deceased\' stations in carriers table").grid(row=r, column=1, sticky=W)
         r += 1
         if len(deceased_cars) > 0:
-            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="").grid(row=r, column=0, sticky="w")
             r += 1
-            Button(wd[3], text="clean",
-                   command=lambda: (self.database_clean_carriers(), wd[0].destroy(), self.run(frame))) \
+            Button(self.win.body, text="clean",
+                   command=lambda: (self.database_clean_carriers(), self.run(self.win.topframe))) \
                 .grid(row=r, column=0, sticky="w")
-            Label(wd[3], text="Delete carrier records where station no longer exist (recommended)") \
+            Label(self.win.body, text="Delete carrier records where station no longer exist (recommended)") \
                 .grid(row=r, column=1, sticky="w", columnspan=6)
             r += 1
         if projvar.invran_station is None:
-            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="").grid(row=r, column=0, sticky="w")
             r += 1
-            Label(wd[3], text="Database Records, {} Specific".format(projvar.invran_station)) \
+            Label(self.win.body, text="Database Records, {} Specific".format(projvar.invran_station)) \
                 .grid(row=r, sticky="w", columnspan=4)
             r += 1
-            Label(wd[3], text="To see results from other stations, change station "
+            Label(self.win.body, text="To see results from other stations, change station "
                               "in the investigation range", fg="grey") \
                 .grid(row=r, column=0, sticky="w", columnspan=6)
             r += 1
-            Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="                    ").grid(row=r, column=0, sticky="w")
             r += 1
             # get and display number of records for carriers
             sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % projvar.invran_station
             results = inquire(sql)
-            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-            Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
+            Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(self.win.body, text=" total records in carriers table").grid(row=r, column=1, sticky=W)
             r += 1
             # get and display number of records for distinct carrier names from carriers
             sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % projvar.invran_station
             results = inquire(sql)
-            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-            Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
+            Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(self.win.body, text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
             r += 1
         if "out of station" in projvar.list_of_stations:
-            Label(wd[3], text="").grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="").grid(row=r, column=0, sticky="w")
             r += 1
-            Label(wd[3], text="Database Records, for \"{}\"".format("out of station")) \
+            Label(self.win.body, text="Database Records, for \"{}\"".format("out of station")) \
                 .grid(row=r, sticky="w", columnspan=4)
             r += 1
-            Label(wd[3], text="                    ").grid(row=r, column=0, sticky="w")
+            Label(self.win.body, text="                    ").grid(row=r, column=0, sticky="w")
             r += 1
             # get and display number of records for carriers
             sql = "SELECT COUNT (*) FROM carriers WHERE station = '%s'" % "out of station"
             results = inquire(sql)
-            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-            Label(wd[3], text=" total records in carriers table").grid(row=r, column=1, sticky=W)
+            Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(self.win.body, text=" total records in carriers table").grid(row=r, column=1, sticky=W)
             r += 1
             # get and display number of records for distinct carrier names from carriers
             sql = "SELECT COUNT (DISTINCT carrier_name) FROM carriers WHERE station = '%s'" % "out of station"
             results = inquire(sql)
-            Label(wd[3], text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
-            Label(wd[3], text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
+            Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
+            Label(self.win.body, text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
             r += 1
-            Label(wd[3], text="").grid(row=r)
+            Label(self.win.body, text="").grid(row=r)
             r += 1
         #  Clock Rings summary
-        rings_frame = Frame(wd[3])
+        rings_frame = Frame(self.win.body)
         rings_frame.grid(row=r, column=0, columnspan=6, sticky=W)
         rings_station = StringVar(rings_frame)
         rr = 0
@@ -1606,18 +1606,18 @@ class DatabaseAdmin:
         rings_station.set(present_station)
         om_rings.grid(row=rr, column=1, sticky=W)
         Button(rings_frame, text="Report", width=8,
-               command=lambda: self.database_rings_report(wd[0], rings_station.get())) \
+               command=lambda: self.database_rings_report(self.win.topframe, rings_station.get())) \
             .grid(row=rr, column=2, sticky=W, padx=20)
         rr += 1
         Label(rings_frame, text="").grid(row=rr)
         r += 1
         # declare variables for Delete Database Records
-        clean1_range = StringVar(wd[3])
-        clean1_date = StringVar(wd[3])
-        clean1_table = StringVar(wd[3])
-        clean1_station = StringVar(wd[3])
+        clean1_range = StringVar(self.win.body)
+        clean1_date = StringVar(self.win.body)
+        clean1_table = StringVar(self.win.body)
+        clean1_station = StringVar(self.win.body)
         # create frame and widgets for Delete Database Records
-        cleaner_frame1 = Frame(wd[3])
+        cleaner_frame1 = Frame(self.win.body)
         cleaner_frame1.grid(row=r, columnspan=6)
         rr = 0
         Label(cleaner_frame1, text="Delete Database Records (Remove records from database per given specifications)",
@@ -1643,7 +1643,7 @@ class DatabaseAdmin:
         clean1_range.set("after")
         r += 1
         # create frame and widgets for Delete Database Records
-        cleaner_frame2 = Frame(wd[3])
+        cleaner_frame2 = Frame(self.win.body)
         cleaner_frame2.grid(row=r, columnspan=6, sticky="w")
         rrr = 0
         Label(cleaner_frame2, text="date* ", anchor="e").grid(row=rrr, column=0, sticky="e")
@@ -1671,17 +1671,17 @@ class DatabaseAdmin:
         om1_station.grid(row=rrr, column=3, sticky="w")
         Button(cleaner_frame2, text="delete", width=macadj(6, 5),
                command=lambda: self.database_delete_records
-               (frame, wd[0], clean1_range, clean1_date, "x", clean1_table, clean1_station)) \
+               (frame, self.win.topframe, clean1_range, clean1_date, "x", clean1_table, clean1_station)) \
             .grid(row=rrr, column=4, sticky="w")
         rrr += 1
         Label(cleaner_frame2, text="").grid(row=rrr)
         rrr += 1
         # declare variables for Delete Database Records
-        clean2_range = StringVar(wd[3])
-        clean2_startdate = StringVar(wd[3])
-        clean2_enddate = StringVar(wd[3])
-        clean2_table = StringVar(wd[3])
-        clean2_station = StringVar(wd[3])
+        clean2_range = StringVar(self.win.body)
+        clean2_startdate = StringVar(self.win.body)
+        clean2_enddate = StringVar(self.win.body)
+        clean2_table = StringVar(self.win.body)
+        clean2_station = StringVar(self.win.body)
         rr += 1
         Label(cleaner_frame2, text="Delete Records within a specified range: ", anchor="w") \
             .grid(row=rrr, sticky="w", column=0, columnspan=6)
@@ -1715,7 +1715,7 @@ class DatabaseAdmin:
             om2_station.config(width=20)
         om2_station.grid(row=rrr, column=3, sticky="w")
         Button(cleaner_frame2, text="delete", width=macadj(6, 5),
-               command=lambda: self.database_delete_records(frame, wd[0], clean2_range, clean2_startdate,
+               command=lambda: self.database_delete_records(frame, self.win.topframe, clean2_range, clean2_startdate,
                                                             clean2_enddate, clean2_table, clean2_station)) \
             .grid(row=rrr, column=4, sticky="w")
         rrr += 1
@@ -1727,19 +1727,19 @@ class DatabaseAdmin:
         Label(cleaner_frame2, text="").grid(row=rrr)
         rrr += 1
         Button(cleaner_frame2, text="Reset", width=10, padx=5, fg=macadj("white", "red"), bg=macadj("red", "white"),
-               command=lambda: self.database_reset(frame, wd[0])) \
+               command=lambda: self.database_reset(frame, self.win.topframe)) \
             .grid(row=rrr, column=0, sticky="w")
         rrr += 1
         Label(cleaner_frame2, text="").grid(row=rrr)
         rrr += 1
         Label(cleaner_frame2, text="").grid(row=rrr)
         r += 1
-        button = Button(wd[4])
-        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=wd[0]))
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":  # center the widget text for mac
             button.config(anchor="w")
         button.pack(side=LEFT)
-        rear_window(wd)
+        self.win.finish()
 
     @staticmethod
     def database_clean_rings():
@@ -1828,16 +1828,16 @@ class DatabaseAdmin:
                                       "\n\n This action can not be reversed."
                                       "\n\n Are you sure you want to proceed?", parent=frame):
             return
-        path = "kb_sub/mandates.sqlite"
+        path_ = "kb_sub/mandates.sqlite"
         if projvar.platform == "macapp":
-            path = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
+            path_ = os.path.expanduser("~") + '/Documents/.klusterbox/mandates.sqlite'
         if projvar.platform == "winapp":
-            path = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
+            path_ = os.path.expanduser("~") + '\\Documents\\.klusterbox\\mandates.sqlite'
         if projvar.platform == "py":
-            path = "kb_sub/mandates.sqlite"
+            path_ = "kb_sub/mandates.sqlite"
         try:
-            if os.path.exists(path):
-                os.remove(path)
+            if os.path.exists(path_):
+                os.remove(path_)
         except sqlite3.OperationalError:
             messagebox.showerror("Access Error",
                                  "Klusterbox can not delete the database as it is being used by another "
@@ -1845,7 +1845,7 @@ class DatabaseAdmin:
                                  parent=frame)
         frame.destroy()
         masterframe.destroy()
-        reset("none")  # reset initial value of globals
+        Globals().reset()  # reset initial value of globals
         DataBase().setup()
         StartUp().start()
 
@@ -1920,7 +1920,7 @@ class DatabaseAdmin:
                     del projvar.list_of_stations[:]
                     projvar.list_of_stations.append("out of station")
 
-                    reset("none")  # reset investigation range
+                    Globals().reset()  # reset investigation range
             messagebox.showinfo("Database Maintenance",
                                 "Success! The database has been cleaned of the specified records.",
                                 parent=frame)
@@ -1939,7 +1939,7 @@ class DatabaseAdmin:
                     if stat != "out of station":
                         projvar.list_of_stations.remove(stat)
                     if projvar.invran_station == stat:
-                        reset("none")  # reset initial value of globals
+                        Globals().reset()  # reset initial value of globals
                 if tab == "station_index":
                     if stat != "out of station":
                         sql = "DELETE FROM station_index WHERE kb_station = '%s'" % stat
@@ -2129,37 +2129,38 @@ class DatabaseAdmin:
 
     def database_delete_carriers(self, frame, station):
         """ build a screen to delete carriers. """
-        wd = front_window(frame)
-        Label(wd[3], text="Delete Carriers", font=macadj("bold", "Helvetica 18")) \
+        self.win = MakeWindow()
+        self.win.create(frame)
+        Label(self.win.body, text="Delete Carriers", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
-        Label(wd[3], text="").grid(row=1, column=0)
-        Label(wd[3], text="Select the station to see all carriers who have ever worked "
+        Label(self.win.body, text="").grid(row=1, column=0)
+        Label(self.win.body, text="Select the station to see all carriers who have ever worked "
                           "at the station - past and present. \nDeleting the carrier will"
                           "result in all records for that carrier being deleted. This "
                           "includes clock \nrings and name indexes. ", justify=LEFT) \
             .grid(row=2, column=0, sticky="w", columnspan=6)
-        Label(wd[3], text="").grid(row=3, column=0)
-        Label(wd[3], text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
-        station_selection = StringVar(wd[3])
-        om_station = OptionMenu(wd[3], station_selection, *projvar.list_of_stations)
+        Label(self.win.body, text="").grid(row=3, column=0)
+        Label(self.win.body, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
+        station_selection = StringVar(self.win.body)
+        om_station = OptionMenu(self.win.body, station_selection, *projvar.list_of_stations)
         om_station.config(width=30, anchor="w")
         om_station.grid(row=5, column=0, columnspan=2, sticky="w")
         if station == "x":
             station_selection.set("Select a station")
         else:
             station_selection.set(station)
-        Button(wd[3], text="select", width=macadj(14, 12), anchor="w",
-               command=lambda: self.database_chg_station(wd[0], station_selection)) \
+        Button(self.win.body, text="select", width=macadj(14, 12), anchor="w",
+               command=lambda: self.database_chg_station(self.win.topframe, station_selection)) \
             .grid(row=5, column=2, sticky="w")
-        Label(wd[3], text="                ",
+        Label(self.win.body, text="                ",
               anchor="w").grid(row=5, column=3, sticky="w")
-        Label(wd[3], text="").grid(row=6, column=0)
+        Label(self.win.body, text="").grid(row=6, column=0)
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
               "ORDER BY carrier_name ASC" % station
         results = inquire(sql)
         if station != "x":
-            Label(wd[3], text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
-        results_frame = Frame(wd[3])
+            Label(self.win.body, text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
+        results_frame = Frame(self.win.body)
         results_frame.grid(row=8, columnspan=4)
         i = 0
         car_vars = []
@@ -2184,17 +2185,18 @@ class DatabaseAdmin:
             Label(results_frame, text="                 ", anchor="w").grid(row=i, column=4, sticky="w")
             i += 1
         # apply and close buttons
-        button_apply = Button(wd[4])
-        button_back = Button(wd[4])
+        button_apply = Button(self.win.buttons)
+        button_back = Button(self.win.buttons)
         button_apply.config(text="Apply", width=15,
-                            command=lambda: self.database_delete_carriers_apply(wd[0], station_selection, car_vars))
-        button_back.config(text="Go Back", width=15, command=lambda: MainFrame().start(frame=wd[0]))
+                            command=lambda: self.database_delete_carriers_apply(self.win.topframe,
+                                                                                station_selection, car_vars))
+        button_back.config(text="Go Back", width=15, command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":
             button_apply.config(anchor="w")
             button_back.config(anchor="w")
         button_apply.pack(side=LEFT)
         button_back.pack(side=LEFT)
-        rear_window(wd)
+        self.win.finish()
 
     def database_chg_station(self, frame, station):
         """ delete the carrier in a station. """
@@ -2353,6 +2355,59 @@ class DatabaseAdmin:
                                 "table of the database. No action taken.")
         return
 
+    @staticmethod
+    def carrier_list_cleaning(frame):
+        """ cleans the database of duplicate database_delete_records """
+        sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
+        results = inquire(sql)
+        duplicates = []
+        for i in range(len(results)):
+            if i != len(results) - 1:  # if the loop has not reached the end of the list
+                if results[i][1] == results[i + 1][1] and \
+                        results[i][2] == results[i + 1][2] and \
+                        results[i][3] == results[i + 1][3] and \
+                        results[i][4] == results[i + 1][4] and \
+                        results[i][5] == results[i + 1][5]:  # if the name current and next name are the same
+                    duplicates.append(i + 1)
+        ok = False
+        if len(duplicates) > 0:
+            ok = messagebox.askokcancel("Database Maintenance",
+                                        "Did you want to eliminate database redundancies? \n"
+                                        "{} redundancies have been found in the database \n"
+                                        "This is recommended maintenance.".format(len(duplicates)),
+                                        parent=frame)
+        if ok:
+            pb_root = Tk()  # create a window for the progress bar
+            pb_root.title("Database Maintenance")
+            titlebar_icon(pb_root)  # place icon in titlebar
+            pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
+            pb_label.pack(side=LEFT)
+            pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+            pb.pack(side=LEFT)
+            pb["maximum"] = len(duplicates)  # set length of progress bar
+            pb.start()
+            i = 0
+            for d in duplicates:
+                pb["value"] = i  # increment progress bar
+                sql = "DELETE FROM carriers WHERE effective_date='%s' and carrier_name='%s'" % (
+                    results[d][0], results[d][1])
+                commit(sql)
+                pb_root.update()
+                i += 1
+            pb.stop()  # stop and destroy the progress bar
+            pb_label.destroy()  # destroy the label for the progress bar
+            pb.destroy()
+            pb_root.destroy()
+            messagebox.showinfo("Database Maintenance",
+                                "All redundancies have been eliminated from the carrier list.",
+                                parent=frame)
+            MainFrame().start(frame=frame)
+        if not ok:
+            messagebox.showinfo("Database Maintenance",
+                                "No redundancies have been found in the carrier list.",
+                                parent=frame)
+        del duplicates[:]
+
 
 class RptWin:
     """ report window. generatess the carrier status history screen. """
@@ -2454,15 +2509,15 @@ class PdfSplitter:
 
     def get_file_path(self):
         """ Created for pdf splitter - gets a pdf file """
-        path = dir_filedialog()  # get the pdf file
-        file_path = filedialog.askopenfilename(initialdir=path,
+        path_ = dir_filedialog()  # get the pdf file
+        file_path = filedialog.askopenfilename(initialdir=path_,
                                                filetypes=[("PDF files", "*.pdf")], title="Select PDF")
         self.subject_path.set(file_path)
 
     def get_new_path(self):
         """ Created for pdf splitter - creates/overwrites a pdf file """
-        path = dir_filedialog()
-        save_filename = filedialog.asksaveasfilename(initialdir=path,
+        path_ = dir_filedialog()
+        save_filename = filedialog.asksaveasfilename(initialdir=path_,
                                                      filetypes=[("PDF files", "*.pdf")], title="Overwrite/Create PDF")
         self.new_path.set(save_filename)
 
@@ -2589,6 +2644,7 @@ class AutoDataEntry:
         self.is_mac = macadj(False, True)  # returns True for mac, False if not mac
         self.csv_fix = None
         self.target_file = None
+        self.future_carriers = []  # carriers with recs in the future, but not the past.
 
     def run(self, frame):
         """ calls auto set up to get needed csv file. """
@@ -2645,8 +2701,8 @@ class AutoDataEntry:
 
         def get_path(self):
             """ get the path to the employee everything report or return False """
-            path = dir_filedialog()
-            self.parent.file_path = filedialog.askopenfilename(initialdir=path,
+            path_ = dir_filedialog()
+            self.parent.file_path = filedialog.askopenfilename(initialdir=path_,
                                                                filetypes=[("Excel files", "*.csv *.xls")])
             if self.parent.file_path == "":  # if there is no selections - end
                 return False
@@ -2917,8 +2973,9 @@ class AutoDataEntry:
             self.parent.get_file()  # read the csv file and assign to self.a_file attribute
             self.get_tacslist()
             self.remove_tacs_duplicates()
-            self.qualify_tacslist()
+            self.insert_into_nameindex()
             self.get_new_carrier()
+            self.get_future_carriers()
             self.limit_tacslist()
             self.get_name_index()
             self.namepairing_router()
@@ -2930,7 +2987,7 @@ class AutoDataEntry:
             s_day = self.parent.t_date.strftime("%d")
             sql = "SELECT kb_station FROM station_index WHERE tacs_station = '%s'" % self.parent.tacs_station
             station = inquire(sql)
-            set_globals(s_year, s_mo, s_day, self.parent.t_range, station[0][0], "None")
+            Globals().set(s_year, s_mo, s_day, self.parent.t_range, station[0][0], "None")
 
         def get_carrier_indexes(self):
             """ gets carrier names and employee ids from the database."""
@@ -2993,7 +3050,7 @@ class AutoDataEntry:
                 self.parent.tacs_list.append(record)
             self.parent.tacs_list.sort(key=itemgetter(1))  # re-alphabetize the list of carriers
 
-        def qualify_tacslist(self):
+        def insert_into_nameindex(self):
             """ inserts new carriers into the name index. """
             sql = ""
             add = 0  # create tallies for reports
@@ -3038,7 +3095,7 @@ class AutoDataEntry:
             for name in self.parent.check_these:
                 sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % name[0]
                 result = inquire(sql)
-                kb_name = result[0][0]
+                kb_name = result[0][0]  # capture the klusterbox name from name index
                 sql = "SELECT effective_date,carrier_name FROM carriers " \
                       "WHERE carrier_name = '%s' AND effective_date <= '%s' " \
                       "ORDER BY effective_date DESC" % (kb_name, projvar.invran_date_week[0])
@@ -3049,6 +3106,17 @@ class AutoDataEntry:
                     self.to_remove.append(name[0])  # removes from tacs list
             # removes don't check from check these
             self.parent.check_these = [x for x in self.parent.check_these if x[0] not in dont_check]
+
+        def get_new_carriers_not_indexed(self):
+            """ need to add carriers from to_addname with no eariler records. """
+            pass
+
+        def get_future_carriers(self):
+            """ get a list of carriers from tacs list who have records in the future, but not past. """
+            for t in self.parent.tacs_list:
+                for n in self.parent.new_carrier:
+                    if t[0] == n[0]:  # if there is a match for emp ids
+                        self.parent.future_carriers.append(t)  # build the future carriers array
 
         def limit_tacslist(self):
             """ deletes from the tacs list. """
@@ -3072,7 +3140,7 @@ class AutoDataEntry:
                 self.parent.AutoIndexer6(self.parent).run(self.frame)  # to straight to entering rings
             # all tacs list resolved/ new names unresolved
             elif len(self.parent.tacs_list) < 1 and len(self.parent.new_carrier) > 0:
-                self.parent.AutoIndexer4(self.parent).run(self.frame)  # add new carriers in AI6
+                self.parent.AutoIndexer4(self.parent).run(self.frame)  # add new carriers in AI4
             # tacs and new carriers resolved/ carriers to check
             elif len(self.parent.tacs_list) < 1 and len(self.parent.new_carrier) < 1 and \
                     len(self.parent.check_these) > 0:
@@ -3294,7 +3362,8 @@ class AutoDataEntry:
             for t_name in self.parent.tacs_list:
                 possible_names = []
                 Label(self.win.body, text=str(i + 1), anchor="w").grid(row=cc, column=0)
-                Label(self.win.body, text=t_name[1] + ", " + t_name[2], anchor="w", width=15, fg=color)\
+                fullname = t_name[1] + ", " + t_name[2]
+                Label(self.win.body, text=fullname, anchor="w", width=15, fg=color)\
                     .grid(row=cc, column=1)  # name
                 Label(self.win.body, text=t_name[3], anchor="w", width=10, fg=color)\
                     .grid(row=cc, column=2)  # assignment
@@ -3305,7 +3374,10 @@ class AutoDataEntry:
                 name_options = ["ADD NAME", "DISCARD"] + possible_names
                 self.parent.name_sorter.append(StringVar(self.win.body))
                 option_menu = OptionMenu(self.win.body, self.parent.name_sorter[i], *name_options)
-                self.parent.name_sorter[i].set(name_options[0])
+                if fullname in possible_names:
+                    self.parent.name_sorter[i].set(fullname)
+                else:
+                    self.parent.name_sorter[i].set(name_options[0])
                 option_menu.config(width=15)
                 option_menu.grid(row=cc, column=3)  # possible matches
                 if len(possible_names) == 1:  # display indicator for possible matches
@@ -3333,6 +3405,7 @@ class AutoDataEntry:
             self.ai3_apply_sort()  # discard, add or pair name
             self.insert_to_nameindex()  # add names to name index
             self.insert_to_addname()  # add names to name index
+            self.get_future_carriers()  # get carriers with no prior emp id/ no past rec but a future rec.
             # self.apply_ai3_report()  # message screens to summerize output
             self.build_addname()  # build to_addname array
             if len(self.parent.to_addname) > 0:  # route conditional on arrays
@@ -3367,7 +3440,7 @@ class AutoDataEntry:
                     self.parent.check_these.append(self.parent.tacs_list[i])
                     # pair += 1  # count of paired items
                 i += 1
-    
+
         def insert_to_nameindex(self):
             """ add names to name index """
             pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
@@ -3406,6 +3479,8 @@ class AutoDataEntry:
             self.new_name = []  # array of new names which have been modified with emp id
             for name in self.parent.new_carrier:
                 self.parent.to_addname.append(name)  # add new carriers in list to be added to carrier table
+            # delete any item from new carrier that has been added to addname
+            self.parent.new_carrier = [x for x in self.parent.new_carrier if x not in self.parent.to_addname]
             pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
             pb_label.grid(row=0, column=2)
             pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
@@ -3444,6 +3519,24 @@ class AutoDataEntry:
             pb.stop()  # stop and destroy the progress bar
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()
+
+        def get_future_carriers(self):
+            """ make list of carriers which rec in the future but none present or past. """
+            # make a list of candidates out of all names selected and add names in ai3.
+            possible_future = self.parent.check_these + self.parent.to_addname
+            for name in possible_future:
+                # get the klusterbox name with the employee id.
+                sql = "SELECT kb_name FROM name_index WHERE emp_id = '%s'" % name[0]
+                result = inquire(sql)
+                kb_name = result[0][0]  # capture the klusterbox name from name index
+                # check if there is any record in the past.
+                sql = "SELECT effective_date,carrier_name FROM carriers " \
+                      "WHERE carrier_name = '%s' AND effective_date <= '%s' " \
+                      "ORDER BY effective_date DESC" % (kb_name, projvar.invran_date_week[0])
+                result = inquire(sql)
+                if not result:  # if there is not a record in the past...
+                    if name not in self.parent.future_carriers:  # if they are not already in the array...
+                        self.parent.future_carriers.append(name)  # add them so they can have rec added in ai4
     
         def apply_ai3_report(self):
             """ message screens to summerize output """
@@ -3454,7 +3547,7 @@ class AutoDataEntry:
                                                        len(self.to_remove)), parent=self.win.topframe)
     
         def build_addname(self):
-            """ build to_addname array """
+            """ add carriers with emp id#s to  to_addname array """
             count = 0  # swap out the names which have been modified in self.parent.to_addname
             for item in self.to_chg:  # for each item to be swapped
                 self.parent.to_addname.remove(item)  # clear out the old one
@@ -3481,14 +3574,27 @@ class AutoDataEntry:
             self.ai4_l_s = []  # create array for list status
             self.ai4_l_ns = []  # create array for ns days
             self.ai4_route = []  # create array for route/s
+            self.clean_ns = None  # temp string var for ns day
 
         def run(self, frame):
             """ add new carriers to carrier table / pairing screen #3 """
             self.frame = frame
+            self.add_future_carriers()
             self.ai4_opt_nsday()
             self.ai4_full_ns_dict()
             self.ai4_ns_dict()
             self.ai4_screen()
+
+        def add_future_carriers(self):
+            """ add carriers with records in future but need new one for present."""
+            change = False  # identifies if a change occurs - change will trigger a sort. 
+            for fc in self.parent.future_carriers: # for each carrier in future_carriers.
+                if fc not in self.parent.to_addname:  # if they are not in to_addname
+                    self.parent.to_addname.append(fc)  # add them to to_addname
+                    change = True
+            if change:  # if there is a change to the to_addname array.
+                self.parent.to_addname.sort(key=itemgetter(1))  # sort the array by name.
+
 
         def ai4_opt_nsday(self):
             """ get ns structure preference from database """
@@ -3651,16 +3757,62 @@ class AutoDataEntry:
             for i in range(len(self.ai4_carrier_name)):
                 pb["value"] = i  # increment progress bar
                 passed_ns = self.ai4_l_ns[i].get().split(" - ")  # clean the passed ns day data
-                clean_ns = StringVar(self.win.body)  # put ns day var in StringVar object
-                clean_ns.set(passed_ns[1])
+                self.clean_ns = StringVar(self.win.body)  # put ns day var in StringVar object
+                self.clean_ns.set(passed_ns[1])
                 # check moves/route and enter data into rings table
-                if not apply_2(self.eff_date, self.ai4_carrier_name[i], self.ai4_l_s[i], clean_ns,
-                               self.ai4_route[i], self.station, self.win.body):
+                if not self.check_and_apply(i):
                     return False
                 self.win.buttons.update()
             pb.stop()  # stop and destroy the progress bar
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()
+            return True
+
+        def check_and_apply(self, i):
+            """ adds new carriers to the carriers table """
+            # simplify the variables.
+            date = self.eff_date  # the effective date - first day of the investigation range.
+            name = self.ai4_carrier_name[i]
+            list_ = self.ai4_l_s[i].get()
+            nsday = self.clean_ns.get()
+            route = self.ai4_route[i].get()
+            station = self.station.get()
+            # check the route
+            if not self.check_route(route):  # return False if the checks fail
+                return False
+            route = Handler(route).routes_adj()  # simplify any five digit route numbers when possible
+            route = Handler(route).route_zeros_to_empty()  # convert routes "0000" to empty strings
+            sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
+                  "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" \
+                  % (name, date)
+            results = inquire(sql)
+            if len(results) == 0:
+                sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                      " VALUES('%s','%s','%s','%s','%s','%s')" % \
+                      (date, name, list_, nsday, route, station)
+                commit(sql)
+            elif len(results) == 1:
+                sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
+                      "WHERE effective_date = '%s' and carrier_name = '%s'" % \
+                      (list_, nsday, route, station, date, name)
+                commit(sql)
+            elif len(results) > 1:
+                sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % \
+                      (date, name)
+                commit(sql)
+                sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                      " VALUES('%s','%s','%s','%s','%s','%s')" \
+                      % (date, name, list_, nsday, route, station)
+                commit(sql)
+            return True
+
+        def check_route(self, route):
+            """ checks the route for auto data entry manual entries. """
+            routecheck = RouteChecker(route, frame=self.win.topframe)  # create RouteChecker object
+            if routecheck.is_empty():  # if there is an empty string, skip other checks...
+                return True
+            if not routecheck.check_all():  # check numeric, lenght and route numbers...
+                return False  # return False if the checks fail.
             return True
 
         def ai4_count_change(self):
@@ -3685,7 +3837,6 @@ class AutoDataEntry:
             self.full_ns_dict = {}
             self.ns_dict = {}  # create dictionary for ns day data
             self.name_dict = {}  # generate dictionary for emp id to kb_name
-            self.carriers_names_list = []  # generate list of only names from 'in range carrier list'
             self.ai5_carrier_list = None
             self.code_ns = None
             self.win = None
@@ -3700,6 +3851,8 @@ class AutoDataEntry:
             self.reg_list_tuple = ("nl", "wal", "otdl")
             self.skip_this_screen = True
             self.color = "blue"  # the display color of information from tacs
+            self.eff_date = None  # effective date for check and apply
+            self.clean_ns = None  # temp string var for ns day
 
         def run(self, frame):
             """ master method for running other methods. """
@@ -3740,18 +3893,21 @@ class AutoDataEntry:
 
         def ai5_carrierlist(self):
             """ generate list of only names from 'in range carrier list' """
+            names_list = []
             self.ai5_carrier_list = gen_carrier_list()  # generate an in range carrier list
             for name in self.ai5_carrier_list:
-                self.carriers_names_list.append(name[1])
+                names_list.append(name[1])
             remainders = []  # find carriers in 'check these' but not in 'in range carrier list' aka 'remainders'
             for name in self.parent.check_these:
-                if self.name_dict[name[0]] not in self.carriers_names_list:
+                if self.name_dict[name[0]] not in names_list:
                     remainders.append(name)
             for name in remainders:  # get carriers data from carriers for remainders
                 sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date <= '%s'" \
                       "ORDER BY effective_date desc" % (self.name_dict[name[0]], projvar.invran_date_week[0])
                 result = inquire(sql)
-                self.ai5_carrier_list.append(list(result[0]))
+                # self.ai5_carrier_list.append(list(result[0]))
+                if result:
+                    self.ai5_carrier_list.append(result[0])
             self.ai5_carrier_list.sort(key=itemgetter(1))  # resort carrier list after additions
             
         def ai5_nscode(self):
@@ -3902,9 +4058,9 @@ class AutoDataEntry:
 
         def ai5_apply(self):
             """ generate progressbar - sends data to be checked """
-            eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
+            self.eff_date = projvar.invran_date_week[0]  # if investigation range is weekly
             if not projvar.invran_weekly_span:  # if investigation range is daily
-                eff_date = projvar.invran_date
+                self.eff_date = projvar.invran_date
             pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
             pb_label.pack(side=LEFT)
             pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
@@ -3914,10 +4070,9 @@ class AutoDataEntry:
             for i in range(len(self.carrier_name)):
                 pb["value"] = i  # increment progress bar
                 passed_ns = self.l_ns[i].get().split(" - ")  # clean the passed ns day data
-                clean_ns = StringVar(self.win.topframe)  # put ns day var in StringVar object
-                clean_ns.set(passed_ns[1])
-                if not self.check_and_apply(self.win.topframe, eff_date, self.carrier_name[i],
-                                          self.l_s[i], clean_ns, self.e_route[i], self.l_station[i]):
+                self.clean_ns = StringVar(self.win.topframe)  # put ns day var in StringVar object
+                self.clean_ns.set(passed_ns[1])
+                if not self.check_and_apply(i):
                     frame = self.win.topframe  # prevent the object from being obliterated by rerunning __init__
                     self.__init__(self.parent)  # re initialize the child class
                     self.run(frame)
@@ -3928,58 +4083,51 @@ class AutoDataEntry:
             pb.destroy()
             self.parent.AutoIndexer6(self.parent).run(self.win.topframe)
 
-        @staticmethod
-        def check_and_apply(frame, date, carrier, ls, ns, route, station):
+        def check_and_apply(self, i):
             """ adds new carriers to the carriers table """
-            if len(route.get()) > 29:
-                messagebox.showerror("Route number input error",
-                                     "There can be no more than five routes per carrier "
-                                     "(for T6 carriers).\n Routes numbers must be four or five digits long.\n"
-                                     "If there are multiple routes, route numbers must be separated by "
-                                     "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                                     "commas or empty spaces", parent=frame)
+            # simplify the variables.
+            date = self.eff_date  # the effective date - first day of the investigation range.
+            name = self.carrier_name[i]
+            list_ = self.l_s[i].get()
+            nsday = self.clean_ns.get()
+            route = self.e_route[i].get()
+            station = self.l_station[i].get()
+            # check the route
+            if not self.check_route(route):
                 return False
-            route_list = route.get().split("/")
-            for item in route_list:
-                item = item.strip()
-                if item != "":
-                    if len(item) < 4 or len(item) > 5:
-                        messagebox.showerror("Route number input error",
-                                             "Routes numbers must be four or five digits long.\n"
-                                             "If there are multiple routes, route numbers must be separated by "
-                                             "the \'/\' character. For example: 1001/1015/10124/10224/0972. "
-                                             "Do not use commas or empty spaces",
-                                             parent=frame)
-                        return False
-                if item.isdigit() == FALSE and item != "":
-                    messagebox.showerror("Route number input error",
-                                         "Route numbers must be numbers and can not contain "
-                                         "letters",
-                                         parent=frame)
-                    return False
-            route_input = Handler(route.get()).routes_adj()
-            if route_input == "0000":
-                route_input = ""
+            route = Handler(route).routes_adj()
+            route = Handler(route).route_zeros_to_empty()
             sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
-                  "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" % (carrier, date)
+                  "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" \
+                  % (name, date)
             results = inquire(sql)
             if len(results) == 0:
                 sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
-                      " VALUES('%s','%s','%s','%s','%s','%s')" \
-                      % (date, carrier, ls.get(), ns.get(), route_input, station.get())
+                      " VALUES('%s','%s','%s','%s','%s','%s')" % \
+                      (date, name, list_, nsday, route, station)
                 commit(sql)
             elif len(results) == 1:
                 sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
                       "WHERE effective_date = '%s' and carrier_name = '%s'" % \
-                      (ls.get(), ns.get(), route_input, station.get(), date, carrier)
+                      (list_, nsday, route, station, date, name)
                 commit(sql)
             elif len(results) > 1:
-                sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % (date, carrier)
+                sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % \
+                      (date, name)
                 commit(sql)
                 sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
                       " VALUES('%s','%s','%s','%s','%s','%s')" \
-                      % (date, carrier, ls.get(), ns.get(), route_input, station.get())
+                      % (date, name, list_, nsday, route, station)
                 commit(sql)
+            return True
+
+        def check_route(self, route):
+            """ checks the route for auto data entry manual entries. """
+            routecheck = RouteChecker(route, frame=self.win.topframe)  # create RouteChecker object
+            if routecheck.is_empty():  # if there is an empty string, skip other checks...
+                return True
+            if not routecheck.check_all():  # check numeric, lenght and route numbers...
+                return False  # return False if the checks fail.
             return True
 
     class AutoIndexer6:
@@ -4143,7 +4291,6 @@ class AutoDataEntry:
 
         def ai6_apply(self):
             """ executes when apply is pressed. """
-            date = projvar.invran_date_week[0]
             pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
             pb_label.pack(side=LEFT)
             pb = ttk.Progressbar(self.win.buttons, length=250, mode="determinate")  # create progress bar
@@ -4153,14 +4300,45 @@ class AutoDataEntry:
             for i in range(len(self.carrier_name)):
                 pb["value"] = i  # increment progress bar
                 if self.station[i].get() != self.new_station[i].get():  # if there is a change of station
-                    self.parent.AutoIndexer5(self.parent).check_and_apply(self.win.topframe, date,
-                    self.carrier_name[i].get(), self.list_status[i], self.ns_day[i], self.route[i], self.new_station[i])
+                    self.check_and_apply(i)
                 self.win.buttons.update()
             pb.stop()  # stop and destroy the progress bar
             pb_label.destroy()  # destroy the label for the progress bar
             pb.destroy()
-            # self.auto_skimmer(self.win.topframe, self.file_path)
             self.parent.AutoSkimmer(self.parent).run(self.win.topframe)
+
+        def check_and_apply(self, i):
+            """ adds new carriers to the carriers table """
+            # simplify the variables.
+            date = projvar.invran_date_week[0]  # the effective date - first day of the investigation range.
+            name = self.carrier_name[i].get()
+            list_ = self.list_status[i].get()
+            nsday = self.ns_day[i].get()
+            route = self.route[i].get()
+            station = self.new_station[i].get()
+            sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
+                  "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" \
+                  % (name, date)
+            results = inquire(sql)
+            if len(results) == 0:
+                sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                      " VALUES('%s','%s','%s','%s','%s','%s')" % \
+                      (date, name, list_, nsday, route, station)
+                commit(sql)
+            elif len(results) == 1:
+                sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
+                      "WHERE effective_date = '%s' and carrier_name = '%s'" % \
+                      (list_, nsday, route, station, date, name)
+                commit(sql)
+            elif len(results) > 1:
+                sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % \
+                      (date, name)
+                commit(sql)
+                sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                      " VALUES('%s','%s','%s','%s','%s','%s')" \
+                      % (date, name, list_, nsday, route, station)
+                commit(sql)
+            return True
 
     class AutoSkimmer:
         """
@@ -4218,7 +4396,7 @@ class AutoDataEntry:
             """ master method for running other methods. """
             self.frame = frame
             self.skim_configs()  # get configuration settings
-            carrier_list_cleaning_for_auto_skimmer(self.frame, msgbox=False)
+            self.carrier_list_cleaning()  # cleans the database of duplicate records
             self.skim_day_dict()  # make a dictionary for each day in the week
             if not self.skim_check_csv():  # checks for employee everything report
                 self.parent.go_back(self.frame)  # quit and return to main screen
@@ -4686,67 +4864,150 @@ class AutoDataEntry:
             """ get the end tour time for the proto array """
             self.day_et = self.daily_line[21]
 
+        @staticmethod
+        def carrier_list_cleaning():
+            """ cleans the database of duplicate records """
+            sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
+            results = inquire(sql)
+            duplicates = []
+            for i in range(len(results)):
+                if i != len(results) - 1:  # if the loop has not reached the end of the list
+                    if results[i][1] == results[i + 1][1] and \
+                            results[i][2] == results[i + 1][2] and \
+                            results[i][3] == results[i + 1][3] and \
+                            results[i][4] == results[i + 1][4] and \
+                            results[i][5] == results[i + 1][5]:  # if the name current and next name are the same
+                        duplicates.append(i + 1)
+            if len(duplicates) > 0:
+                pb_root = Tk()  # create a window for the progress bar
+                pb_root.title("Database Maintenance")
+                titlebar_icon(pb_root)  # place icon in titlebar
+                pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
+                pb_label.pack(side=LEFT)
+                pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
+                pb.pack(side=LEFT)
+                pb["maximum"] = len(duplicates)  # set length of progress bar
+                pb.start()
+                i = 0
+                for d in duplicates:
+                    pb["value"] = i  # increment progress bar
+                    sql = "DELETE FROM carriers WHERE effective_date='%s' and carrier_name='%s'" % (
+                        results[d][0], results[d][1])
+                    commit(sql)
+                    pb_root.update()
+                    i += 1
+                pb.stop()  # stop and destroy the progress bar
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()
+                pb_root.destroy()
+            del duplicates[:]
 
-def save_all(frame):
-    """ this creates a message when someone selects the 'save' menu option. """
-    messagebox.showinfo("For Your Information ",
-                        "All data has already been saved. Data is saved to the\n"
-                        "database whenever an apply or submit button is pressed.\n"
-                        "This button does nothing. :)",
-                        parent=frame)
 
+class Archive:
+    """
+    This class opens and deletes archives.
+    """
+    def __init__(self):
+        self.frame = None
+        # make sure that lenght of path array and label array are the same or else there will be an index error.
+        self.path_array = [  # used in clear all
+            'spreadsheets',
+            'over_max_spreadsheet',
+            'speedsheets',
+            'over_max',
+            'ot_equitability',
+            'ot_distribution',
+            'ee_reader',
+            'weekly_availability',
+            'pp_guide'
+        ]
+        self.status_array = []  # used in clear all
 
-def file_dialogue(folder):
-    """ opens file folders to access generated kbreports """
-    if not os.path.isdir(folder):
-        os.makedirs(folder)
-    if projvar.platform == "py":
-        file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
-    else:
-        file_path = filedialog.askopenfilename(initialdir=folder)
-    if file_path:
+    @staticmethod
+    def file_dialogue(folder):
+        """ opens file folders to access generated kbreports """
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
+        if projvar.platform == "py":
+            file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
+        else:
+            file_path = filedialog.askopenfilename(initialdir=folder)
+        if file_path:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", file_path])
+            if sys.platform == "darwin":
+                subprocess.call(["open", file_path])
+
+    @staticmethod
+    def remove_file(folder):
+        """ removes a file and all contents """
+        if os.path.isdir(folder):  # if it exist
+            shutil.rmtree(folder)  # delete it
+
+    def remove_file_var(self, frame, folder):
+        """ removes a file and all contents """
+        self.frame = frame
+        folder = check_path(folder)
         if sys.platform == "win32":
-            os.startfile(file_path)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", file_path])
-        if sys.platform == "darwin":
-            subprocess.call(["open", file_path])
-
-
-def remove_file(folder):
-    """ removes a file and all contents """
-    if os.path.isdir(folder):
-        shutil.rmtree(folder)
-
-
-def remove_file_var(frame, folder):
-    """ removes a file and all contents """
-    if sys.platform == "win32":
-        folder_name = folder.split("\\")
-    else:
-        folder_name = folder.split("/")
-    folder_name = folder_name[-2]
-    if os.path.isdir(folder):
-        if messagebox.askokcancel("Delete Folder Contents",
+            folder_name = folder.split("\\")
+        else:
+            folder_name = folder.split("/")
+        folder_name = folder_name[-2]
+        if not os.path.isdir(folder):
+            messagebox.showwarning("Delete Folder Contents",
+                                   "The {} folder is already empty".format(folder_name),
+                                   parent=self.frame)
+            return
+        if not messagebox.askokcancel("Delete Folder Contents",
                                   "This will delete all the files in the {} archive. "
                                           .format(folder_name),
-                                  parent=frame):
-            try:
-                shutil.rmtree(folder)
-                if not os.path.isdir(folder):
-                    messagebox.showinfo("Delete Folder Contents",
-                                        "Success! All the files in the {} archive have been deleted."
-                                        .format(folder_name),
-                                        parent=frame)
-            except PermissionError:
-                messagebox.showerror("Delete Folder Contents",
-                                     "Failure! {} can not be deleted because it is being used by another program."
-                                     .format(folder_name),
-                                     parent=frame)
-    else:
-        messagebox.showwarning("Delete Folder Contents",
-                               "The {} folder is already empty".format(folder_name),
-                               parent=frame)
+                                  parent=self.frame):
+            return
+        try:
+            shutil.rmtree(folder)
+            if not os.path.isdir(folder):
+                messagebox.showinfo("Delete Folder Contents",
+                                    "Success! All the files in the {} archive have been deleted."
+                                    .format(folder_name),
+                                    parent=self.frame)
+        except PermissionError:
+            messagebox.showerror("Delete Folder Contents",
+                                 "Failure! {} can not be deleted because it is being used by another program."
+                                 .format(folder_name),
+                                 parent=frame)
+
+    def clear_all(self, frame):
+        """ this empties and deletes all archive folders."""
+        self.frame = frame
+        for folder in self.path_array:  # for each in the path array
+            self.clear_each(check_path(folder))  # delete the folder and record status report.
+        status_string = self.build_status_string()
+        messagebox.showinfo("Archive File Management",
+                            "Delete all archives requested: \n"
+                            "Status: \n"
+                            "{}".format(status_string),
+                            parent=self.frame)
+
+    def clear_each(self, folder):
+        """ this is called by clear all to delete individual files. """
+        if not os.path.isdir(folder):
+            self.status_array.append("already empty - no action taken")
+            return
+        try:
+            shutil.rmtree(folder)
+            if not os.path.isdir(folder):
+                self.status_array.append("successfully deleted")
+        except PermissionError:
+            self.status_array.append("folder in use - action failed.")
+
+    def build_status_string(self):
+        """ builds a string for the status report. """
+        status_string = ""
+        for i in range(len(self.status_array)):
+            status_string += "{}: {}\n".format(self.path_array[i], self.status_array[i])
+        return status_string
 
 
 class StartUp:
@@ -4810,101 +5071,6 @@ class StartUp:
         for stat in results:
             projvar.list_of_stations.append(stat[0])
         MainFrame().start(frame=self.win.topframe)  # load new frame
-
-
-def carrier_list_cleaning_for_auto_skimmer(frame, msgbox=True):
-    """ cleans the database of duplicate records """
-    sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
-    results = inquire(sql)
-    duplicates = []
-    for i in range(len(results)):
-        if i != len(results) - 1:  # if the loop has not reached the end of the list
-            if results[i][1] == results[i + 1][1] and \
-                    results[i][2] == results[i + 1][2] and \
-                    results[i][3] == results[i + 1][3] and \
-                    results[i][4] == results[i + 1][4] and \
-                    results[i][5] == results[i + 1][5]:  # if the name current and next name are the same
-                duplicates.append(i + 1)
-    if len(duplicates) > 0:
-        pb_root = Tk()  # create a window for the progress bar
-        pb_root.title("Database Maintenance")
-        titlebar_icon(pb_root)  # place icon in titlebar
-        pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
-        pb_label.pack(side=LEFT)
-        pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-        pb.pack(side=LEFT)
-        pb["maximum"] = len(duplicates)  # set length of progress bar
-        pb.start()
-        i = 0
-        for d in duplicates:
-            pb["value"] = i  # increment progress bar
-            sql = "DELETE FROM carriers WHERE effective_date='%s' and carrier_name='%s'" % (
-                results[d][0], results[d][1])
-            commit(sql)
-            pb_root.update()
-            i += 1
-        pb.stop()  # stop and destroy the progress bar
-        pb_label.destroy()  # destroy the label for the progress bar
-        pb.destroy()
-        pb_root.destroy()
-        if msgbox:
-            messagebox.showinfo("Database Maintenance",
-                                "All redundancies have been eliminated from the carrier list.",
-                                parent=frame)
-    del duplicates[:]
-
-
-def carrier_list_cleaning(frame):
-    """ cleans the database of duplicate database_delete_records """
-    sql = "SELECT * FROM carriers ORDER BY carrier_name, effective_date"
-    results = inquire(sql)
-    duplicates = []
-    for i in range(len(results)):
-        if i != len(results) - 1:  # if the loop has not reached the end of the list
-            if results[i][1] == results[i + 1][1] and \
-                    results[i][2] == results[i + 1][2] and \
-                    results[i][3] == results[i + 1][3] and \
-                    results[i][4] == results[i + 1][4] and \
-                    results[i][5] == results[i + 1][5]:  # if the name current and next name are the same
-                duplicates.append(i + 1)
-    ok = False
-    if len(duplicates) > 0:
-        ok = messagebox.askokcancel("Database Maintenance",
-                                    "Did you want to eliminate database redundancies? \n"
-                                    "{} redundancies have been found in the database \n"
-                                    "This is recommended maintenance.".format(len(duplicates)),
-                                    parent=frame)
-    if ok:
-        pb_root = Tk()  # create a window for the progress bar
-        pb_root.title("Database Maintenance")
-        titlebar_icon(pb_root)  # place icon in titlebar
-        pb_label = Label(pb_root, text="Updating Changes: ")  # make label for progress bar
-        pb_label.pack(side=LEFT)
-        pb = ttk.Progressbar(pb_root, length=400, mode="determinate")  # create progress bar
-        pb.pack(side=LEFT)
-        pb["maximum"] = len(duplicates)  # set length of progress bar
-        pb.start()
-        i = 0
-        for d in duplicates:
-            pb["value"] = i  # increment progress bar
-            sql = "DELETE FROM carriers WHERE effective_date='%s' and carrier_name='%s'" % (
-                results[d][0], results[d][1])
-            commit(sql)
-            pb_root.update()
-            i += 1
-        pb.stop()  # stop and destroy the progress bar
-        pb_label.destroy()  # destroy the label for the progress bar
-        pb.destroy()
-        pb_root.destroy()
-        messagebox.showinfo("Database Maintenance",
-                            "All redundancies have been eliminated from the carrier list.",
-                            parent=frame)
-        MainFrame().start(frame=frame)
-    if not ok:
-        messagebox.showinfo("Database Maintenance",
-                            "No redundancies have been found in the carrier list.",
-                            parent=frame)
-    del duplicates[:]
 
 
 class GenConfig:
@@ -5221,7 +5387,7 @@ class StationList:
                 DatabaseAdmin().database_clean_carriers()
                 DatabaseAdmin().database_clean_rings()
                 if projvar.invran_station == station:
-                    reset("none")  # reset initial value of globals
+                    Globals().reset()  # reset initial value of globals
         # access list of stations from database
         sql = "SELECT * FROM stations ORDER BY station"
         results = inquire(sql)
@@ -5246,7 +5412,7 @@ class StationList:
                                  parent=self.win.body)
             return
         if projvar.invran_station == old_station.get():
-            reset("none")  # reset initial value of globals
+            Globals().reset()  # reset initial value of globals
         go_ahead = True
         duplicate = False
         if new_station.get() in projvar.list_of_stations:
@@ -6502,7 +6668,6 @@ class NameIndex:
         """ creates a screen which shows all records in the name index. """
         sql = "SELECT * FROM name_index ORDER BY tacs_name"
         results = inquire(sql)
-        # wd = front_window("none")  # get window objects
         self.win = MakeWindow()
         self.win.create(frame)
         x = 0
@@ -6706,14 +6871,14 @@ class AboutKlusterbox:
         """ fills the screen with widgets. """
         r = 0  # set row counter
         if projvar.platform == "macapp":
-            path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources',
+            path_ = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources',
                                 'kb_about.jpg')
         elif projvar.platform == "winapp":
-            path = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
+            path_ = os.path.join(os.path.sep, os.getcwd(), 'kb_about.jpg')
         else:
-            path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
+            path_ = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', 'kb_images', 'kb_about.jpg')
         try:
-            self.photo = ImageTk.PhotoImage(Image.open(path))
+            self.photo = ImageTk.PhotoImage(Image.open(path_))
             Label(self.win.body, image=self.photo).grid(row=r, column=0, columnspan=10, sticky="w")
         except (TclError, FileNotFoundError):
             pass
@@ -6855,20 +7020,20 @@ class AboutKlusterbox:
             if sys.platform == "win32":
                 if projvar.platform == "py":
                     try:
-                        path = doc
-                        os.startfile(path)  # in IDE the files are in the project folder
+                        path_ = doc
+                        os.startfile(path_)  # in IDE the files are in the project folder
                     except FileNotFoundError:
-                        path = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', doc)
-                        os.startfile(path)  # in KB legacy the files are in the kb_sub folder
+                        path_ = os.path.join(os.path.sep, os.getcwd(), 'kb_sub', doc)
+                        os.startfile(path_)  # in KB legacy the files are in the kb_sub folder
                 if projvar.platform == "winapp":
-                    path = os.path.join(os.path.sep, os.getcwd(), doc)
-                    os.startfile(path)
+                    path_ = os.path.join(os.path.sep, os.getcwd(), doc)
+                    os.startfile(path_)
             if sys.platform == "linux":
                 subprocess.call(doc)
             if sys.platform == "darwin":
                 if projvar.platform == "macapp":
-                    path = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', doc)
-                    subprocess.call(["open", path])
+                    path_ = os.path.join(os.path.sep, 'Applications', 'klusterbox.app', 'Contents', 'Resources', doc)
+                    subprocess.call(["open", path_])
                 if projvar.platform == "py":
                     subprocess.call(["open", doc])
         except FileNotFoundError:
@@ -6896,6 +7061,7 @@ class MassInput:
         self.pass_date = None
         self.mi_date = None
         self.mi_sort = None
+        self.apply_date = None
 
     def initialize(self):
         """ initialize all the arrays to empty """
@@ -6936,6 +7102,7 @@ class MassInput:
         if projvar.invran_weekly_span:  # if investigation range is weekly
             for i in range(len(projvar.invran_date_week)):
                 if opt_day[i] == day:
+                    self.apply_date = projvar.invran_date_week[i]  # save the date for the apply method.
                     f_date = projvar.invran_date_week[i].strftime("%a - %b %d, %Y")
                     self.pass_date.set(i)
                     Label(self.win.body, text="Showing results for {}"
@@ -6944,6 +7111,7 @@ class MassInput:
         if not projvar.invran_weekly_span:  # if investigation range is daily
             for i in range(len(opt_day)):
                 if projvar.invran_date.strftime("%a") == opt_day[i]:
+                    self.apply_date = projvar.invran_date  # save the date for the apply method.
                     f_date = projvar.invran_date.strftime("%a - %b %d, %Y")
                     self.pass_date.set(i)
                     Label(self.win.body, text="Showing results for {}"
@@ -7121,7 +7289,7 @@ class MassInput:
         button_submit = Button(self.win.buttons, text="Submit", width=15, command=lambda: self.apply_mi(goback=True))
         button_apply = Button(self.win.buttons, text="Apply", width=15, command=lambda: self.apply_mi())
         button_back = Button(self.win.buttons, text="Go Back", width=15,
-                             command=lambda: MainFrame().start(self.win.topframe))
+                             command=lambda: MainFrame().start(frame=self.win.topframe))
 
         if sys.platform == "win32":
             button_submit.config(anchor="w")
@@ -7159,94 +7327,41 @@ class MassInput:
             # if there is a differance, then put the new record in the database
             if self.array_var[i][2] != self.mi_list[i].get() or self.array_var[i][3] != self.mi_nsday[i].get() \
                     or self.array_var[i][5] != self.mi_station[i].get():
-                apply(year, month, day, self.array_var[i][1], self.mi_list[i], self.mi_nsday[i], self.mi_route[i],
-                      self.mi_station[i], self.win.body)
+                self.apply(i)
         if goback:
-            MainFrame().start(self.win.topframe)
+            MainFrame().start(frame=self.win.topframe)
         else:
             self.mass_input(self.win.topframe, self.mi_date.get(), self.mi_sort.get())
 
-
-def apply(year, month, day, c_name, ls, ns, route, station, frame):
-    """ executes to enter carrier information into the database """
-    if year.get() > 9999:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
-        return
-    if year.get() < 1:
-        messagebox.showerror("Year Input Error", "Year must be between 1 and 9999", parent=frame)
-        return
-
-    try:
-        date = datetime(year.get(), month.get(), day.get())
-    except ValueError:
-        messagebox.showerror("Invalid Date", "Date entered is not valid", parent=frame)
-        return
-    carrier = c_name.strip().lower()
-    if len(carrier) > 30:
-        messagebox.showerror("Name input error",
-                             "Names must not exceed 30 characters.", parent=frame)
-        return
-    if len(carrier) < 1:
-        messagebox.showerror("Name input error", "You must enter a name.", parent=frame)
-        return
-    if not apply_2(date, carrier, ls, ns, route, station, frame):
-        return
-
-
-def apply_2(date, carrier, ls, ns, route, station, frame):
-    """ checks and enters carrier information. """
-    route_list = route.get().split("/")
-    if len(route.get()) > 29:
-        messagebox.showerror("Route number input error",
-                             "There can be no more than five routes per carrier "
-                             "(for T6 carriers).\n Routes numbers must be four or five digits long.\n"
-                             "If there are multiple routes, route numbers must be separated by "
-                             "the \'/\' character. For example: 1001/1015/10124/10224/0972. Do not use "
-                             "commas or empty spaces",
-                             parent=frame)
-        return False
-    for item in route_list:
-        item = item.strip()
-        if item != "":
-            if len(item) < 4 or len(item) > 5:
-                messagebox.showerror("Route number input error",
-                                     'Routes numbers must be four or five digits long.\n'
-                                     'If there are multiple routes, route numbers must be separated by '
-                                     'the \'/\' character. For example: 1001/1015/1024/1036/1072. Do not use '
-                                     'commas or empty spaces',
-                                     parent=frame)
-                return False
-        if item.isdigit() == FALSE and item != "":
-            messagebox.showerror("Route number input error",
-                                 "Route numbers must be numbers and can not contain "
-                                 "letters",
-                                 parent=frame)
-            return False
-    # find all matches for date and name
-    route_input = Handler(route.get()).routes_adj()  # call routes adj to shorten routes that don't need 5 digits
-    if route_input == "0000":  # do not enter route for unassigned regulars
-        route_input = ""
-    sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
-          "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" % (carrier, date)
-    results = inquire(sql)
-    if len(results) == 0:
-        sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
-              " VALUES('%s','%s','%s','%s','%s','%s')" \
-              % (date, carrier, ls.get(), ns.get(), route_input, station.get())
-        commit(sql)
-    elif len(results) == 1:
-        sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
-              "WHERE effective_date = '%s' and carrier_name = '%s'" % \
-              (ls.get(), ns.get(), route_input, station.get(), date, carrier)
-        commit(sql)
-    elif len(results) > 1:
-        sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % (date, carrier)
-        commit(sql)
-        sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
-              " VALUES('%s','%s','%s','%s','%s','%s')" \
-              % (date, carrier, ls.get(), ns.get(), route_input, station.get())
-        commit(sql)
-    return True
+    def apply(self, i):
+        """ executes to insert or update changes from mass input. """
+        date = self.apply_date  # simplify the variable names
+        name = self.array_var[i][1]
+        list_ = self.mi_list[i].get()
+        nsday = self.mi_nsday[i].get()
+        route = self.mi_route[i].get()
+        station = self.mi_station[i].get()
+        sql = "SELECT effective_date, carrier_name,list_status, ns_day,route_s, station, rowid FROM carriers " \
+              "WHERE carrier_name = '%s' and effective_date = '%s' ORDER BY effective_date" % \
+              (self.array_var[i][1], self.apply_date)
+        results = inquire(sql)
+        if len(results) == 0:
+            sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                  " VALUES('%s','%s','%s','%s','%s','%s')" \
+                  % (date, name, list_, nsday, route, station)
+            commit(sql)
+        elif len(results) == 1:
+            sql = "UPDATE carriers SET list_status='%s',ns_day='%s',route_s='%s',station='%s' " \
+                  "WHERE effective_date = '%s' and carrier_name = '%s'" % \
+                  (list_, nsday, route, station, date, name)
+            commit(sql)
+        elif len(results) > 1:
+            sql = "DELETE FROM carriers WHERE effective_date ='%s' and carrier_name = '%s'" % (date, name)
+            commit(sql)
+            sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                  " VALUES('%s','%s','%s','%s','%s','%s')" \
+                  % (date, name, list_, nsday, route, station)
+            commit(sql)
 
 
 class CarrierInput:
@@ -7961,20 +8076,6 @@ class CarrierInput:
             MainFrame().start(frame=self.win.topframe)
 
 
-def reset(frame):
-    """ reset initial value of globals """
-    projvar.invran_year = None
-    projvar.invran_month = None
-    projvar.invran_day = None
-    projvar.invran_weekly_span = None  # default is weekly investigation range
-    projvar.invran_station = None
-    projvar.invran_date_week = []
-    projvar.invran_date = None
-    projvar.ns_code = {}
-    if frame != "none":
-        MainFrame().start(frame=frame)
-
-
 class MainFrame:
     """
     This is the main screen where the carrier list and all pull down menus are displayed.
@@ -8111,8 +8212,10 @@ class MainFrame:
         # set and reset buttons for investigation range
         Button(self.invest_frame, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
                fg=macadj("white", "green"), command=lambda: self.call_globals()).grid(row=2, column=3, padx=2)
+        # Button(self.invest_frame, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
+        #        fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=4, padx=2)
         Button(self.invest_frame, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
-               fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=4, padx=2)
+               fg=macadj("white", "red"), command=lambda: self.reset_globals()).grid(row=2, column=4, padx=2)
 
     def investigation_range(self):
         """ configure widgets for setting investigation range """
@@ -8151,11 +8254,18 @@ class MainFrame:
                                                      self.win.topframe))\
             .grid(row=2, column=6)
         Button(self.invest_frame, text="Reset", width=macadj(8, 9), bg=macadj("red", "SystemButtonFace"),
-               fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=7)
+               fg=macadj("white", "red"), command=lambda: self.reset_globals()).grid(row=2, column=7)
 
     def make_globals(self, year, month, day, i_range, station, frame):
         """ sets the globals and then restarts the class. """
-        set_globals(year, month, day, i_range, station, frame)
+        Globals().set(year, month, day, i_range, station, frame)
+        self.__init__()  # re initialize the class
+        self.start(frame)  # start again
+
+    def reset_globals(self):
+        """ resets the globals and then restarts the class. """
+        frame = self.win.topframe  # capture the frame object so it isn't destroyed by next line.
+        Globals().reset()
         self.__init__()  # re initialize the class
         self.start(frame)  # start again
 
@@ -8297,7 +8407,7 @@ class MainFrame:
         menubar = Menu(self.win.topframe)
         # file menu
         basic_menu = Menu(menubar, tearoff=0)
-        basic_menu.add_command(label="Save All", command=lambda: save_all(self.win.topframe))
+        basic_menu.add_command(label="Save All", command=lambda: self.save_all())
         basic_menu.add_separator()
         basic_menu.add_command(label="New Carrier", command=lambda: CarrierInput().new_carriers(self.win.topframe))
         basic_menu.add_command(label="Multiple Input", 
@@ -8398,52 +8508,55 @@ class MainFrame:
                                command=lambda: OpenText().open_docs(self.win.body, 'cheatsheet.txt'))
         speed_menu.add_command(label="Instructions",
                                command=lambda: OpenText().open_docs(self.win.body, 'speedsheet_instructions.txt'))
-        speed_menu.add_command(label="Speedsheet Archive", command=lambda: file_dialogue(dir_path('speedsheets')))
+        speed_menu.add_command(label="Speedsheet Archive",
+                               command=lambda: Archive().file_dialogue(dir_path('speedsheets')))
         speed_menu.add_command(label="Clear Archive",
-                                command=lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
+                                command=lambda: Archive().remove_file_var(self.win.topframe, dir_path('speedsheets')))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         # archive menu
         reportsarchive_menu = Menu(menubar, tearoff=0)
         reportsarchive_menu.add_command(label="Mandates Spreadsheet",
-                                        command=lambda: file_dialogue(dir_path('spreadsheets')))
+                                        command=lambda: Archive().file_dialogue(dir_path('spreadsheets')))
         reportsarchive_menu.add_command(label="Over Max Spreadsheet",
-                                        command=lambda: file_dialogue(dir_path('over_max_spreadsheet')))
+                                        command=lambda: Archive().file_dialogue(dir_path('over_max_spreadsheet')))
         reportsarchive_menu.add_command(label="Speedsheets",
-                                        command=lambda: file_dialogue(dir_path('speedsheets')))
+                                        command=lambda: Archive().file_dialogue(dir_path('speedsheets')))
         reportsarchive_menu.add_command(label="Over Max Finder",
-                                        command=lambda: file_dialogue(dir_path('over_max')))
+                                        command=lambda: Archive().file_dialogue(dir_path('over_max')))
         reportsarchive_menu.add_command(label="OT Equitability",
-                                        command=lambda: file_dialogue(dir_path('ot_equitability')))
+                                        command=lambda: Archive().file_dialogue(dir_path('ot_equitability')))
         reportsarchive_menu.add_command(label="OT Distribution",
-                                        command=lambda: file_dialogue(dir_path('ot_distribution')))
+                                        command=lambda: Archive().file_dialogue(dir_path('ot_distribution')))
         reportsarchive_menu.add_command(label="Everything Report",
-                                        command=lambda: file_dialogue(dir_path('ee_reader')))
+                                        command=lambda: Archive().file_dialogue(dir_path('ee_reader')))
         reportsarchive_menu.add_command(label="Weekly Availability",
-                                        command=lambda: file_dialogue(dir_path('weekly_availability')))
+                                        command=lambda: Archive().file_dialogue(dir_path('weekly_availability')))
         reportsarchive_menu.add_command(label="Pay Period Guide",
-                                        command=lambda: file_dialogue(dir_path('pp_guide')))
+                                        command=lambda: Archive().file_dialogue(dir_path('pp_guide')))
         reportsarchive_menu.add_separator()
         cleararchive = Menu(reportsarchive_menu, tearoff=0)
         cleararchive.add_command(label="Mandates Spreadsheet",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('spreadsheets')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'spreadsheets'))
         cleararchive.add_command(label="Over Max Spreadsheet",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('over_max_spreadsheet')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'over_max_spreadsheet'))
         cleararchive.add_command(label="Speedsheets",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('speedsheets')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'speedsheets'))
         cleararchive.add_command(label="Over Max Finder",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('over_max')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'over_max'))
         cleararchive.add_command(label="OT Equitability",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('ot_equitability')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'ot_equitability'))
         cleararchive.add_command(label="OT Distribution",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('ot_distribution')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'ot_distribution'))
         cleararchive.add_command(label="Everything Report",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('ee_reader')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'ee_reader'))
         cleararchive.add_command(label="Weekly Availability",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('weekly_availability')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'weekly_availability'))
         cleararchive.add_command(label="Pay Period Guide",
-                                 command=lambda: remove_file_var(self.win.topframe, dir_path('pp_guide')))
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'pp_guide'))
         reportsarchive_menu.add_cascade(label="Clear Archive", menu=cleararchive)
         menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
+        reportsarchive_menu.add_command(label="Celear All Archives",
+                                        command=lambda: Archive().clear_all(self.win.topframe))
         # management menu
         management_menu = Menu(menubar, tearoff=0)
         management_menu.add_command(label="General Configurations",
@@ -8473,7 +8586,7 @@ class MainFrame:
                                     command=lambda: DatabaseAdmin().database_delete_carriers(self.win.topframe,
                                                                                              projvar.invran_station))
         management_menu.add_command(label="Clean Carrier List", 
-                                    command=lambda: carrier_list_cleaning(self.win.topframe))
+                                    command=lambda: DatabaseAdmin().carrier_list_cleaning(self.win.topframe))
         management_menu.add_command(label="Clean Rings", 
                                     command=lambda: DatabaseAdmin().clean_rings3_table())
         management_menu.add_separator()
@@ -8500,12 +8613,20 @@ class MainFrame:
         else:
             Label(self.win.buttons, text="").pack(side=LEFT)
 
+    def save_all(self):
+        """ this creates a message when someone selects the 'save' menu option. """
+        messagebox.showinfo("For Your Information ",
+                            "All data has already been saved. Data is saved to the\n"
+                            "database whenever an apply or submit button is pressed.\n"
+                            "This button does nothing. :)",
+                            parent=self.win.topframe)
+
 
 if __name__ == "__main__":
     """ this is where the program starts """
     global pb_flag
     setup_plaformvar()   # set up platform variable
-    setup_dirs_by_platformvar()  # create directories if they don't exist
+    setup_dirs_by_platformvar()  # create klusterbox/.klusterbox or kb_sub directories if they don't exist
     DataBase().setup()  # set up the database
     projvar.root = Tk()  # initialize root window
     position_x = 100  # initialize position and size for root window
@@ -8518,6 +8639,6 @@ if __name__ == "__main__":
     if len(projvar.list_of_stations) < 2:  # if there are no stations in the stations list
         StartUp().start()  # a start up screen for first time use
     else:
-        remove_file(dir_path_check('report'))  # empty out folders
-        remove_file(dir_path_check('infc_grv'))
+        Archive().remove_file(dir_path_check('report'))  # empty out folders
+        Archive().remove_file(dir_path_check('infc_grv'))
         MainFrame().start()  # get the show on the road

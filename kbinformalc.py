@@ -10,15 +10,21 @@ by grievance as well as summaries.
 import projvar  # defines project variables used in all modules.
 from kbtoolbox import commit, dir_path, dir_path_check, dt_converter, find_pp, inquire, isfloat, macadj, \
     isint, NewWindow, titlebar_icon, informalc_date_checker
-from tkinter import *
-from tkinter import messagebox, ttk
+# standard libraries
+from tkinter import messagebox, ttk, BOTH, BOTTOM, Button, Canvas, END, Entry, Frame, Label, LEFT, \
+    Listbox, mainloop, NW, OptionMenu, Radiobutton, RIDGE, RIGHT, Scrollbar, StringVar, TclError, \
+    Tk, VERTICAL, Y
 from datetime import datetime, timedelta
 import os
 import shutil
 import sys
 import subprocess
+import re
 # define globals
 global root  # used to hold the Tk() root for the new window used by all Informal C windows.
+
+""" this module has its own MakeWindow() class since it uses a different root. 
+So it is not imported from kbtoolbar. """
 
 
 def informalc_gen_clist(start, end, station):

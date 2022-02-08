@@ -4,17 +4,15 @@ this module contains the pdf converter which reads employee everything reports i
 into csv formatted employee everything reports which can be read by the automatic data entry, auto overmax finder and
 the employee everything reader.
 """
-from kbtoolbox import *
+from kbtoolbox import inquire, dir_filedialog, find_pp, PdfConverterFix, titlebar_icon
 # Standard Libraries
-from tkinter import *
-from tkinter import messagebox, filedialog, ttk
+from tkinter import messagebox, filedialog, ttk, Label, Tk
 from datetime import timedelta
 import os
 import csv
-import sys
-import subprocess
 from io import StringIO  # change from cStringIO to io for py 3x
 import time
+import re
 # PDF Converter Libraries
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
@@ -55,9 +53,8 @@ def pdf_to_text(frame, filepath):
             char_margin=2,
             line_margin=.5,
             word_margin=.5,
-            boxes_flow=.5,
-            detect_vertical=False,
-            all_texts=False)
+            boxes_flow=.5  # detect_vertical=False (default), all_texts=False (default)
+            )
     )
     for i in range(2):
         retstr = StringIO()
@@ -82,8 +79,8 @@ def pdf_to_text(frame, filepath):
             pb["maximum"] = page_count  # set length of progress bar
             pb.start()
             count = 0
-            for page in PDFPage.get_pages(filein, pagenos, maxpages=maxpages, password=password, caching=caching[i],
-                                          check_extractable=True):
+            # check_extractable=True (default setting)
+            for page in PDFPage.get_pages(filein, pagenos, maxpages=maxpages, password=password, caching=caching[i]):
                 interpreter.process_page(page)
                 pb["value"] = count  # increment progress bar
                 pb_text.config(text="Reading page: {}/{}".format(count, page_count))

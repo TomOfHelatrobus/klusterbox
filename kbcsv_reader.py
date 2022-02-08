@@ -3,11 +3,13 @@ a klusterbox module: Klusterbox Employee Everything Report Reader for CSV files
 provides code for reading employee everything reports in the csv format.
 such as the employee everything report reader
 """
-from kbtoolbox import *
+from kbtoolbox import dir_path, dir_filedialog, ee_ns_detect, find_pp, Handler
+import sys
 import csv
 import os
 import subprocess
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
+from datetime import timedelta
 from kbcsv_repair import CsvRepair
 from operator import itemgetter
 

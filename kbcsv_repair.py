@@ -3,7 +3,7 @@ a klusterbox module: Klusterbox Checking and Repair for Employee Everything Repo
 this module contains code for the csv repair file which reads a csv employee everything report, then writes a new file
 skipping blank lines or arrays no values.
 """
-from kbtoolbox import *
+from kbtoolbox import BuildPath, ProgressBarDe
 import csv
 import os
 
