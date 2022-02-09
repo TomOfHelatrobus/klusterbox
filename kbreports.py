@@ -328,6 +328,59 @@ class Reports:
                 subprocess.call(["open", dir_path('pp_guide') + filename])
 
 
+class CheatSheet:
+    """
+    This class generates a cheatsheet which allows the user to view a generated document showing codes they need to
+    read TACS reports.
+    """
+
+    @staticmethod
+    def tacs_cheatsheet():
+        """ generate a tacs cheatsheet for the user. """
+        stamp = datetime.now().strftime("%d%H%M%S")  # create a file name
+        filename = "tacs_cheatsheet" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("TACS Cheat Sheet\n")
+        report.write("\nD/A (Designation and Activity) Codes:\n\n")
+        report.write("13-4 .......... Full Time Regular (FTR)\n")
+        report.write("33-4 .......... Part Time Regular (PTR)\n")
+        report.write("43-4 .......... Part Time Flexible (PTF)\n")
+        report.write("84-4 .......... City Carrier Assistant (CCA)\n")
+        report.write("11-0 .......... Clerk\n")
+        report.write("16-6 .......... Maintenance\n")
+        report.write("09-0 .......... Supervisor/ Manager\n")
+        report.write("\nHour Codes:\n\n")
+        report.write("5200 .......... Work Hours\n")
+        report.write("5300 .......... Overtime Hours\n")
+        report.write("4300 .......... Penalty Overtime\n")
+        report.write("5400 .......... Night Work Premium\n")
+        report.write("55## .......... Annual Leave\n")
+        report.write("56## .......... Sick Leave\n")
+        report.write("5800 .......... Holiday Leave\n")
+        report.write("59## .......... Leave Without Pay (LWOP) - Part Day\n")
+        report.write("60## .......... Leave Without Pay (LWOP) - Full Day\n")
+        report.write("2400 .......... Absence Without Leave (AWOL)\n")
+        report.write("\nOperation Codes:\n\n")
+        report.write("721 ........... Street Time\n")
+        report.write("722 ........... Office Time\n")
+        report.write("613 ........... Stewards Time\n")
+        report.write("354 ........... Standby Time\n")
+        report.write("743 ........... Route Maintenance\n")
+        report.write("\nMove Codes:\n\n")
+        report.write("BT ............ Begin Tour\n")
+        report.write("MV 7210-## .... Move to Street\n")
+        report.write("MV 7220-## .... Move to Office\n")
+        report.write("093 ........... No Lunch\n")
+        report.write("ET ............ End Tour\n")
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", dir_path('report') + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+
 class Messenger:
     """
     The Messenger class gives the location of the program and also provides the user information in the form of

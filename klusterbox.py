@@ -12,7 +12,7 @@ This version of Klusterbox is being released under the GNU General Public Licens
 """
 # custom modules
 import projvar
-from kbreports import Reports, Messenger
+from kbreports import Reports, Messenger, CheatSheet
 from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, check_path, gen_ns_dict, \
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
@@ -54,8 +54,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomandsusan4ever@msn.com"
 
 # version variables
-version = "4.006"
-release_date = "Jan 18, 2022"  # format is Jan 1, 2022
+version = "5.000"
+release_date = "undetermined"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -3587,14 +3587,13 @@ class AutoDataEntry:
 
         def add_future_carriers(self):
             """ add carriers with records in future but need new one for present."""
-            change = False  # identifies if a change occurs - change will trigger a sort. 
-            for fc in self.parent.future_carriers: # for each carrier in future_carriers.
+            change = False  # identifies if a change occurs - change will trigger a sort.
+            for fc in self.parent.future_carriers:  # for each carrier in future_carriers.
                 if fc not in self.parent.to_addname:  # if they are not in to_addname
                     self.parent.to_addname.append(fc)  # add them to to_addname
                     change = True
             if change:  # if there is a change to the to_addname array.
                 self.parent.to_addname.sort(key=itemgetter(1))  # sort the array by name.
-
 
         def ai4_opt_nsday(self):
             """ get ns structure preference from database """
@@ -4956,11 +4955,11 @@ class Archive:
             folder_name = folder.split("/")
         folder_name = folder_name[-2]
         if not os.path.isdir(folder):
-            messagebox.showwarning("Delete Folder Contents",
+            messagebox.showwarning("Archive File Management",
                                    "The {} folder is already empty".format(folder_name),
                                    parent=self.frame)
             return
-        if not messagebox.askokcancel("Delete Folder Contents",
+        if not messagebox.askokcancel("Archive File Management",
                                   "This will delete all the files in the {} archive. "
                                           .format(folder_name),
                                   parent=self.frame):
@@ -4968,12 +4967,12 @@ class Archive:
         try:
             shutil.rmtree(folder)
             if not os.path.isdir(folder):
-                messagebox.showinfo("Delete Folder Contents",
+                messagebox.showinfo("Archive File Management",
                                     "Success! All the files in the {} archive have been deleted."
                                     .format(folder_name),
                                     parent=self.frame)
         except PermissionError:
-            messagebox.showerror("Delete Folder Contents",
+            messagebox.showerror("Archive File Management",
                                  "Failure! {} can not be deleted because it is being used by another program."
                                  .format(folder_name),
                                  parent=frame)
@@ -4981,32 +4980,39 @@ class Archive:
     def clear_all(self, frame):
         """ this empties and deletes all archive folders."""
         self.frame = frame
+        if not messagebox.askokcancel("Archive File Management",
+                                  "This will delete all the files in the all archives. \n\n"
+                                  "As all data used to generate spreadsheets and reports is "
+                                  "kept in the klusterbox database, deleting archives is "
+                                  "safe since they can easily be regenerated.",
+                                  parent=self.frame):
+            return
         for folder in self.path_array:  # for each in the path array
             self.clear_each(check_path(folder))  # delete the folder and record status report.
         status_string = self.build_status_string()
         messagebox.showinfo("Archive File Management",
-                            "Delete all archives requested: \n"
-                            "Status: \n"
+                            "Delete all archives requested. \n\n"
+                            "Report: \n"
                             "{}".format(status_string),
                             parent=self.frame)
 
     def clear_each(self, folder):
         """ this is called by clear all to delete individual files. """
         if not os.path.isdir(folder):
-            self.status_array.append("already empty - no action taken")
+            self.status_array.append("Already empty - no action taken")
             return
         try:
             shutil.rmtree(folder)
             if not os.path.isdir(folder):
-                self.status_array.append("successfully deleted")
+                self.status_array.append("Successfully deleted")
         except PermissionError:
-            self.status_array.append("folder in use - action failed.")
+            self.status_array.append("Folder in use - action failed.")
 
     def build_status_string(self):
         """ builds a string for the status report. """
         status_string = ""
         for i in range(len(self.status_array)):
-            status_string += "{}: {}\n".format(self.path_array[i], self.status_array[i])
+            status_string += "    {}:  {}\n".format(self.path_array[i], self.status_array[i])
         return status_string
 
 
@@ -8212,8 +8218,6 @@ class MainFrame:
         # set and reset buttons for investigation range
         Button(self.invest_frame, text="Set", width=macadj(5, 6), bg=macadj("green", "SystemButtonFace"),
                fg=macadj("white", "green"), command=lambda: self.call_globals()).grid(row=2, column=3, padx=2)
-        # Button(self.invest_frame, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
-        #        fg=macadj("white", "red"), command=lambda: reset(self.win.topframe)).grid(row=2, column=4, padx=2)
         Button(self.invest_frame, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
                fg=macadj("white", "red"), command=lambda: self.reset_globals()).grid(row=2, column=4, padx=2)
 
@@ -8258,7 +8262,8 @@ class MainFrame:
 
     def make_globals(self, year, month, day, i_range, station, frame):
         """ sets the globals and then restarts the class. """
-        Globals().set(year, month, day, i_range, station, frame)
+        if not Globals().set(year, month, day, i_range, station, frame):
+            return
         self.__init__()  # re initialize the class
         self.start(frame)  # start again
 
@@ -8308,8 +8313,9 @@ class MainFrame:
         invest_range = True
         if self.invran.get() == "day":
             invest_range = False
-        self.make_globals(breakdown.year, breakdown.month, breakdown.day, invest_range, self.station.get(),
-                              self.win.topframe)
+        if not self.make_globals(breakdown.year, breakdown.month, breakdown.day, invest_range, self.station.get(),
+                              self.win.topframe):
+            return
 
     def investigation_status(self):
         """ provide message on status of investigation range """
@@ -8466,6 +8472,9 @@ class MainFrame:
         menubar.add_cascade(label="Readers", menu=automated_menu)
         # reports menu
         reports_menu = Menu(menubar, tearoff=0)
+        reports_menu.add_command(label="TACS Cheat Sheet",
+                                        command=lambda: CheatSheet().tacs_cheatsheet())
+        reports_menu.add_separator()
         reports_menu.add_command(label="Carrier Route and NS Day", 
                                  command=lambda: Reports(self.win.topframe).rpt_carrier())
         reports_menu.add_command(label="Carrier Route", 
@@ -8484,11 +8493,11 @@ class MainFrame:
         reports_menu.add_command(label="Pay Period Guide Generator", 
                                  command=lambda: Reports(self.win.topframe).pay_period_guide())
         if projvar.invran_day is None:
-            reports_menu.entryconfig(0, state=DISABLED)
-            reports_menu.entryconfig(1, state=DISABLED)
             reports_menu.entryconfig(2, state=DISABLED)
             reports_menu.entryconfig(3, state=DISABLED)
-            reports_menu.entryconfig(6, state=DISABLED)
+            reports_menu.entryconfig(4, state=DISABLED)
+            reports_menu.entryconfig(5, state=DISABLED)
+            reports_menu.entryconfig(8, state=DISABLED)
         menubar.add_cascade(label="Reports", menu=reports_menu)
         # speedsheeet menu
         speed_menu = Menu(menubar, tearoff=0)
@@ -8555,7 +8564,7 @@ class MainFrame:
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'pp_guide'))
         reportsarchive_menu.add_cascade(label="Clear Archive", menu=cleararchive)
         menubar.add_cascade(label="Archive", menu=reportsarchive_menu)
-        reportsarchive_menu.add_command(label="Celear All Archives",
+        reportsarchive_menu.add_command(label="Clear All Archives",
                                         command=lambda: Archive().clear_all(self.win.topframe))
         # management menu
         management_menu = Menu(menubar, tearoff=0)

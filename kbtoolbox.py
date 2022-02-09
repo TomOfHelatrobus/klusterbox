@@ -245,7 +245,7 @@ class Globals:
             messagebox.showerror("Investigation station setting",
                                  'Please select a station.',
                                  parent=frame)
-            return
+            return False
         # error check for valid date
         try:
             date = datetime(int(s_year), int(s_mo), int(s_day))
@@ -253,7 +253,7 @@ class Globals:
             messagebox.showerror("Investigation date/range",
                                  'The date entered is not valid.',
                                  parent=frame)
-            return
+            return False
         projvar.invran_date = date
         wkdy_name = date.strftime("%a")
         while wkdy_name != "Sat":  # while date enter is not a saturday
@@ -327,6 +327,7 @@ class Globals:
         projvar.ns_code["thu"] = "Thu"
         projvar.ns_code["fri"] = "Fri"
         projvar.invran_station = station
+        return True
 
     @staticmethod
     def reset():
