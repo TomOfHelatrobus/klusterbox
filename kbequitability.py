@@ -180,7 +180,7 @@ class OTEquitSpreadsheet:
     def ask_ok(self):
         """ continue the process if user presses ok. """
         if messagebox.askokcancel("Spreadsheet generator",
-                                  "Do you want to generate a spreadsheet?",
+                                  "Do you want to generate an Over Time Equitability Spreadsheet?",
                                   parent=self.frame):
             return True
         return False
@@ -1145,7 +1145,7 @@ class OTDistriSpreadsheet:
     def ask_ok(self):
         """ ends the process if the user selects cancel. """
         if messagebox.askokcancel("Spreadsheet generator",
-                                  "Do you want to generate a spreadsheet?",
+                                  "Do you want to generate an Overtime Distribution Spreadsheet?",
                                   parent=self.frame):
             return True
         return False

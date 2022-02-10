@@ -738,13 +738,13 @@ class EnterRings:
     @staticmethod
     def auto_endtour(total, bt):
         """ add 50 clicks to the begin tour an 5200 time """
-        if float(total) >= 6:
-            auto_et = float(bt) + float(total) + .50
-        else:
-            auto_et = float(bt) + float(total)
-        if auto_et >= 24:
-            auto_et -= 24
-        return "{:.2f}".format(auto_et)
+        if float(total) >= 6:  # if the 5200 time is 6 hours or more
+            auto_et = float(bt) + float(total) + .50  # ET is automatically calculated: ET = 5200 + BT + lunch
+        else:  # if 5200 time is less than 6 hours
+            auto_et = float(bt) + float(total)  # ET is automatically calculated: ET = 5200 + BT (no lunch added)
+        if auto_et >= 24:  # if the calculated ET goes over midnight
+            auto_et -= 24  # make a correct AM time.
+        return "{:.2f}".format(auto_et)  # return as a string with two decimal places.
 
     def addrecs(self):
         """ add records to database """

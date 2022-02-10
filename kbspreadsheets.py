@@ -106,7 +106,7 @@ class ImpManSpreadsheet:
     def ask_ok(self):
         """ ends process if user cancels """
         if messagebox.askokcancel("Spreadsheet generator",
-                                  "Do you want to generate a spreadsheet?",
+                                  "Do you want to generate an Improper Mandates Spreadsheet?",
                                   parent=self.frame):
             return True
         return False
@@ -981,7 +981,8 @@ class OvermaxSpreadsheet:
     def ask_ok(self):
         """ continue if user selects ok. """
         if messagebox.askokcancel("Spreadsheet generator",
-                                  "Do you want to generate a spreadsheet?",
+                                  "Do you want to generate an Over Max Spreadsheet for violations "
+                                  "of the 12 and 60 Hour Rule?",
                                   parent=self.frame):
             return True
         return False

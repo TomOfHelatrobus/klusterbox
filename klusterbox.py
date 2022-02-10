@@ -5091,9 +5091,11 @@ class GenConfig:
         self.invran_mode = None  # stringvar
         self.ot_rings_limiter = None  # stringvar
         self.tourrings_var = None  # stringvar
+        self.spreadsheet_pref = None  # stringvar
         self.tourrings = None  # True to show BT/ET rings, False to hide
         self.rings_limiter = None  # ot rings limiter status from tolerance table
         self.invran_result = None  # investigation range mode from tolerance table
+        self.spreadsheet_result = None  # the spreadsheet_pref from the tolerance table.
         self.row = 0
         self.status_update = None  # a label widget for status report
 
@@ -5115,6 +5117,9 @@ class GenConfig:
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
         results = inquire(sql)
         self.invran_result = results[0][0]
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "spreadsheet_pref"
+        results = inquire(sql)
+        self.spreadsheet_result = results[0][0]
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "ot_rings_limiter"
         results = inquire(sql)
         rings_limiter = results[0][0]
@@ -5133,6 +5138,7 @@ class GenConfig:
         """ create the stringvars """
         self.wheel_selection = StringVar(self.win.body)
         self.invran_mode = StringVar(self.win.body)
+        self.spreadsheet_pref = StringVar(self.win.body)
         self.ot_rings_limiter = StringVar(self.win.body)
         self.tourrings_var = StringVar(self.win.body)
 
@@ -5172,7 +5178,23 @@ class GenConfig:
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
-
+        """ spreadsheet preference - any new options must be added to MainFrame().define_spreadsheet_button(). """
+        pref_options = (
+            "Mandates",
+            "Over Max",
+            "OT Equitability",
+            "OT Distribution")
+        Label(self.win.body, text="Spreadsheet Preference:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_sheet = OptionMenu(self.win.body, self.spreadsheet_pref, *pref_options)  # option menu configuration below
+        om_sheet.config(width=18)
+        om_sheet.grid(row=self.row, column=1, columnspan=2)
+        self.spreadsheet_pref.set(self.spreadsheet_result)
+        self.row += 1
+        Button(self.win.body, text="set", width=7,
+               command=lambda: self.apply_spreadsheet_pref()).grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
         # overtime rings limiter
         Label(self.win.body, text="Overtime Rings Limiter:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_rings = OptionMenu(self.win.body, self.ot_rings_limiter, "on", "off")  # option menu configuration below
@@ -5184,7 +5206,6 @@ class GenConfig:
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
-
         # tourrings - show bt et rings
         text = macadj("Expanded Clock Rings ____________________________________",
                       "Expanded Clock Rings ________________________")
@@ -5218,6 +5239,14 @@ class GenConfig:
         sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (rings_limiter, "ot_rings_limiter")
         commit(sql)
         msg = "Overtime Rings Limiter updated: {}".format(self.ot_rings_limiter.get())
+        self.status_update.config(text="{}".format(msg))
+
+    def apply_spreadsheet_pref(self):
+        """ apply the spreadsheet preference. """
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % \
+              (self.spreadsheet_pref.get(), "spreadsheet_pref")
+        commit(sql)
+        msg = "Spreadsheet Preference updated: {}".format(self.spreadsheet_pref.get())
         self.status_update.config(text="{}".format(msg))
 
     def apply_invran_mode(self):
@@ -8102,6 +8131,10 @@ class MainFrame:
         self.invran_date = None  # investigation range date
         self.stations_minus_outofstation = []  # list of stations
         self.invran_result = None
+        self.spreadsheet_pref = "improper_mandate"
+        self.ot_date = None  # an argument passed to the OT Equitability Spreadsheet - a date in the
+        # ot distribution spreadsheet will show only work assignment and no list carriers
+        self.listoptions = ("wal", "nl")
 
     def start(self, frame=None):
         """ master method for controlling methods in class """
@@ -8122,6 +8155,7 @@ class MainFrame:
             self.investigation_range_simple()  # configure widgets for setting investigation range
         else:
             self.investigation_range()  # configure widgets for setting investigation range
+        self.get_spreadsheet_preference()  # configure what spreadsheet will generate if spreadsheet button pushed.
         self.investigation_status()  # provide message on status of investigation range
         if projvar.invran_station is None:  # if the investigation range is not set
             self.invran_not_set()  # investigation range not set screen
@@ -8140,6 +8174,9 @@ class MainFrame:
         if projvar.invran_weekly_span:
             self.start_date = projvar.invran_date_week[0]
             self.end_date = projvar.invran_date_week[6]
+        self.ot_date = projvar.invran_date  # build argument for ot equitability spreadsheet
+        if projvar.invran_weekly_span:  # if the investigation range is weekly
+            self.ot_date = projvar.invran_date_week[6]  # pass the last day of the investigation range as datetime
 
     def make_stringvars(self):
         """ create stringvars """
@@ -8197,6 +8234,12 @@ class MainFrame:
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
         results = inquire(sql)
         self.invran_result = results[0][0]
+
+    def get_spreadsheet_preference(self):
+        """ get the spreadsheet preference from the tolerances table for use in the define_spreadsheet() method. """
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "spreadsheet_pref"
+        results = inquire(sql)
+        self.spreadsheet_pref = results[0][0]
 
     def investigation_range_simple(self):
         """ executes if the investigation range is configured to simple in gui configution """
@@ -8419,19 +8462,15 @@ class MainFrame:
         basic_menu.add_command(label="Multiple Input", 
                                command=lambda dd="Sat", ss="name": MassInput().mass_input(self.win.topframe, dd, ss))
         basic_menu.add_command(label="Mandates Spreadsheet",
-                               command=lambda r_rings="x": ImpManSpreadsheet().create(self.win.topframe))
+                               command=lambda: ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",
-                               command=lambda r_rings="x": OvermaxSpreadsheet().create(self.win.topframe))
-        ot_date = projvar.invran_date  # build argument for ot equitability spreadsheet
-        if projvar.invran_weekly_span:  # if the investigation range is weekly
-            ot_date = projvar.invran_date_week[6]   # pass the last day of the investigation range as datetime
+                               command=lambda: OvermaxSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="OT Equitability Spreadsheet",
                                command=lambda: OTEquitSpreadsheet().create(self.win.topframe,
-                                                                           ot_date, self.station.get()))
-        listoptions = ("wal", "nl")  # ot distribution spreadsheet will show only work assignment and no list carriers
+                                                                           self.ot_date, self.station.get()))
         basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda: OTDistriSpreadsheet()
                                .create(self.win.topframe, projvar.invran_date_week[0], self.station.get(),
-                                       "weekly", listoptions))
+                                       "weekly", self.listoptions))
         basic_menu.add_separator()
         basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
         basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
@@ -8605,7 +8644,19 @@ class MainFrame:
                                     command=lambda: StationIndex().station_index_mgmt(self.win.topframe))
         menubar.add_cascade(label="Management", menu=management_menu)
         projvar.root.config(menu=menubar)
-        
+
+    def define_spreadsheet_button(self):
+        """ determine what happens when the spreadsheet button on the bottom of the page is pressed. """
+        if self.spreadsheet_pref == "Mandates":
+            ImpManSpreadsheet().create(self.win.topframe)
+        if self.spreadsheet_pref == "Over Max":
+            OvermaxSpreadsheet().create(self.win.topframe)
+        if self.spreadsheet_pref == "OT Equitability":
+            OTEquitSpreadsheet().create(self.win.topframe, self.ot_date, self.station.get())
+        if self.spreadsheet_pref == "OT Distribution":
+            OTDistriSpreadsheet().create(self.win.topframe, projvar.invran_date_week[0],
+                                         self.station.get(), "weekly", self.listoptions)
+
     def bottom_of_frame(self):
         """ configure buttons on the bottom of the frame """
         if projvar.invran_day is not None:
@@ -8617,7 +8668,7 @@ class MainFrame:
             Button(self.win.buttons, text="Auto Data Entry", command=lambda: AutoDataEntry().run(self.win.topframe),
                    width=macadj(12, 12)).pack(side=LEFT)
             Button(self.win.buttons, text="Spreadsheet", width=macadj(13, 13),
-                   command=lambda: ImpManSpreadsheet().create(self.win.topframe)).pack(side=LEFT)
+                   command=lambda: self.define_spreadsheet_button()).pack(side=LEFT)
             Button(self.win.buttons, text="Quit", width=macadj(13, 13), command=projvar.root.destroy).pack(side=LEFT)
         else:
             Label(self.win.buttons, text="").pack(side=LEFT)

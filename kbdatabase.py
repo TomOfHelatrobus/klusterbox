@@ -118,7 +118,8 @@ class DataBase:
             (26, "ot_calc_pref", "off_route"),
             (27, "min_ot_dist", 25),
             (28, "ot_calc_pref_dist", "off_route"),
-            (29, "tourrings", 0)
+            (29, "tourrings", 0),
+            (30, "spreadsheet_pref", "improper_mandate")
         )
         for tol in tolerance_array:
             self.pbar_counter += 1
