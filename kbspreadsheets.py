@@ -1920,3 +1920,382 @@ class OvermaxSpreadsheet:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
+
+
+class ImpManSpreadsheet4:
+    """
+    This is a spreadsheet built to placate step B for Region 4.
+    """
+    def __init__(self):
+        self.frame = None  # the frame of parent
+        self.pb = None  # progress bar object
+        self.pbi = 0  # progress bar count index
+        self.startdate = None  # start date of the investigation
+        self.enddate = None  # ending date of the investigation
+        self.dates = []  # all days of the investigation
+        self.carrierlist = []  # all carriers in carrier list
+        self.carrier_breakdown = []  # all carriers in carrier list broken down into appropiate list
+        self.tol_ot_ownroute = 0.0  # get tolerances from tolerances table.
+        self.tol_ot_offroute = 0.0
+        self.tol_availability = 0.0
+        self.min_man4_nl = 0  # get minimum rows from tolerances table
+        self.min_man4_wal = 0
+        self.min_man4_otdl = 0
+        self.min_man4_aux = 0
+        self.wb = None  # the workbook object
+        self.ws_list = []  # "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"
+        self.day_of_week = []  # seven day array for weekly investigations/ one day array for daily investigations
+        # styles for worksheet
+        self.ws_header = None  # style
+        self.list_header = None  # style
+        self.date_dov = None  # style
+        self.date_dov_title = None  # style
+        self.col_header = None  # style
+        self.input_name = None  # style
+        self.input_s = None  # style
+        self.calcs = None  # style
+
+        self.quad_top = None  # style
+        self.quad_bottom = None  # style
+
+        self.day = None  # build worksheet - loop once for each day
+        self.i = 0  # build worksheet loop iteration
+        self.lsi = 0  # list loop iteration
+        self.pref = ("nl", "wal", "otdl", "aux")
+
+    def create(self, frame):
+        """ a master method for running other methods in proper order."""
+        self.frame = frame
+        if not self.ask_ok():  # abort if user selects cancel from askokcancel
+            return
+        self.pb = ProgressBarDe(label="Building Improper Mandates Spreadsheet")
+        self.pb.max_count(100)  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
+        self.get_dates()
+        self.get_pb_max_count()  # set the length of the progress bar
+        self.get_carrierlist()
+        self.get_carrier_breakdown()  # breakdown carrier list into no list, wal, otdl, aux
+        self.get_tolerances()  # get tolerances, minimum rows and page break preferences from tolerances table
+        self.get_styles()
+        self.build_workbook()
+        self.set_dimensions()
+        self.build_ws_loop()  # loop once for each day
+        self.save_open()
+
+    def ask_ok(self):
+        """ ends process if user cancels """
+        if messagebox.askokcancel("Spreadsheet generator",
+                                  "Do you want to generate an Improper Mandates Spreadsheet?",
+                                  parent=self.frame):
+            return True
+        return False
+
+    def get_dates(self):
+        """ get the dates from the project variables """
+        self.startdate = projvar.invran_date  # set daily investigation range as default - get start date
+        self.enddate = projvar.invran_date  # get end date
+        self.dates = [projvar.invran_date, ]  # create an array of days - only one day if daily investigation range
+        if projvar.invran_weekly_span:  # if the investigation range is weekly
+            date = projvar.invran_date_week[0]
+            self.startdate = projvar.invran_date_week[0]
+            self.enddate = projvar.invran_date_week[6]
+            self.dates = []
+            for i in range(7):  # create an array with all the days in the weekly investigation range
+                self.dates.append(date)
+                date += timedelta(days=1)
+
+    def get_pb_max_count(self):
+        """ set length of progress bar """
+        self.pb.max_count((len(self.dates)*4)+1)  # once for each list in each day, plus saving
+
+    def get_carrierlist(self):
+        """ get record sets for all carriers """
+        self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
+
+    def get_carrier_breakdown(self):
+        """ breakdown carrier list into no list, wal, otdl, aux """
+        timely_rec = []
+        for day in self.dates:
+            nl_array = []
+            wal_array = []
+            otdl_array = []
+            aux_array = []
+            for carrier in self.carrierlist:
+                for rec in reversed(carrier):
+                    if Convert(rec[0]).dt_converter() <= day:
+                        timely_rec = rec
+                if timely_rec[2] == "nl":
+                    nl_array.append(timely_rec)
+                if timely_rec[2] == "wal":
+                    wal_array.append(timely_rec)
+                if timely_rec[2] == "otdl":
+                    otdl_array.append(timely_rec)
+                if timely_rec[2] == "aux" or timely_rec[2] == "ptf":
+                    aux_array.append(timely_rec)
+            daily_breakdown = [nl_array, wal_array, otdl_array, aux_array]
+            self.carrier_breakdown.append(daily_breakdown)
+
+    def get_tolerances(self):
+        """ get spreadsheet tolerances, row minimums and page break prefs from tolerance table """
+        sql = "SELECT tolerance FROM tolerances"
+        result = inquire(sql)
+        self.tol_ot_ownroute = float(result[0][0])  # overtime on own route tolerance
+        self.tol_ot_offroute = float(result[1][0])  # overtime off own route tolerance
+        self.tol_availability = float(result[2][0])  # availability tolerance
+        self.min_man4_nl = int(result[3][0])  # minimum rows for no list
+        self.min_man4_wal = int(result[4][0])  # mimimum rows for work assignment
+        self.min_man4_otdl = int(result[5][0])  # minimum rows for otdl
+        self.min_man4_aux = int(result[6][0])  # minimum rows for auxiliary
+
+    def get_styles(self):
+        """ Named styles for workbook """
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                         alignment=Alignment(horizontal='right'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='right'))
+        self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
+        self.calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
+                                border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                alignment=Alignment(horizontal='right'))
+
+        self.quad_top = NamedStyle(name="quad_top", font=Font(name='Arial', size=10),
+                                   alignment=Alignment(horizontal='left', vertical='top'),
+                                   border=Border(left=bd, top=bd, right=bd))
+        self.quad_bottom = NamedStyle(name="quad_bottom", font=Font(name='Arial', size=10),
+                                   alignment=Alignment(horizontal='right'),
+                                   border=Border(left=bd, bottom=bd, right=bd))
+
+    def build_workbook(self):
+        """ build the workbook object """
+        day_finder = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
+        i = 0
+        self.wb = Workbook()  # define the workbook
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            for ii in range(len(day_finder)):
+                if projvar.invran_date.strftime("%a") == day_finder[ii]:  # find the correct day
+                    i = ii
+            self.ws_list.append(self.wb.active)  # create first worksheet
+            self.ws_list[0].title = day_of_week[i]  # title first worksheet
+            self.day_of_week.append(day_of_week[i])  # create self.day_of_week array with one day
+        if projvar.invran_weekly_span:  # if investigation range is weekly
+            for day in day_of_week:
+                self.day_of_week.append(day)  # create self.day_of_week array with seven days
+            self.ws_list.append(self.wb.active)  # create first worksheet
+            self.ws_list[0].title = "saturday"  # title first worksheet
+            for i in range(1, 7):  # create worksheet for remaining six days
+                self.ws_list.append(self.wb.create_sheet(day_of_week[i]))  # create subsequent worksheets
+                self.ws_list[i].title = day_of_week[i]  # title subsequent worksheets
+
+    def set_dimensions(self):
+        """ set the orientation and dimensions of the workbook """
+        for i in range(len(self.dates)):
+            self.ws_list[i].set_printer_settings(paper_size=1, orientation='landscape')  # set orientation
+            self.ws_list[i].oddFooter.center.text = "&A"  # include the footer
+            self.ws_list[i].column_dimensions["A"].width = 4  # column width
+            self.ws_list[i].column_dimensions["B"].width = 4
+            self.ws_list[i].column_dimensions["C"].width = 9
+            self.ws_list[i].column_dimensions["D"].width = 9
+            self.ws_list[i].column_dimensions["E"].width = 5
+            self.ws_list[i].column_dimensions["F"].width = 4
+            self.ws_list[i].column_dimensions["G"].width = 9
+            self.ws_list[i].column_dimensions["H"].width = 9
+            self.ws_list[i].column_dimensions["I"].width = 9
+            self.ws_list[i].column_dimensions["J"].width = 9
+            self.ws_list[i].column_dimensions["K"].width = 9
+            self.ws_list[i].column_dimensions["L"].width = 5
+            self.ws_list[i].column_dimensions["M"].width = 4
+            self.ws_list[i].column_dimensions["N"].width = 9
+            self.ws_list[i].column_dimensions["O"].width = 9
+            self.ws_list[i].column_dimensions["P"].width = 9
+            self.ws_list[i].row_dimensions[8].height = 45  # adjust row height
+            self.ws_list[i].row_dimensions[10].height = 45  # adjust row height
+
+    def build_ws_loop(self):
+        """ this loops once for each list. """
+        self.i = 0
+        for day in self.dates:
+            self.day = day
+            self.build_ws_headers()
+            self.build_ws_quads()
+            # self.list_loop()  # loops four times. once for each list.
+            self.i += 1
+
+    def build_ws_headers(self):
+        """ worksheet headers """
+        cell = self.ws_list[self.i].cell(row=1, column=3)
+        cell.value = "Improper Mandate Worksheet"
+        cell.style = self.ws_header
+        self.ws_list[self.i].merge_cells('C1:O1')
+        cell = self.ws_list[self.i].cell(row=3, column=3)  # create date label
+        cell.value = "Date:  "
+        cell.style = self.date_dov_title
+        cell = self.ws_list[self.i].cell(row=3, column=4)  # display date
+        cell.value = format(self.day, "%A  %m/%d/%y")
+        cell.style = self.date_dov
+        self.ws_list[self.i].merge_cells('D3:H3')
+        cell = self.ws_list[self.i].cell(row=3, column=9)  # pay period label
+        cell.value = "Pay Period:  "
+        cell.style = self.date_dov_title
+        self.ws_list[self.i].merge_cells('I3:J3')
+        cell = self.ws_list[self.i].cell(row=3, column=11)  # display pay period
+        cell.value = projvar.pay_period
+        cell.style = self.date_dov
+        self.ws_list[self.i].merge_cells('K3:O3')
+        cell = self.ws_list[self.i].cell(row=4, column=3)  # station label
+        cell.value = "Station:  "
+        cell.style = self.date_dov_title
+        cell = self.ws_list[self.i].cell(row=4, column=4)  # display station
+        cell.value = projvar.invran_station
+        cell.style = self.date_dov
+        self.ws_list[self.i].merge_cells('D4:H4')
+
+    def build_ws_quads(self):
+        """ build the two quadrants and other elements on the coversheet """
+        # Violations Quadrants
+        # Top Left
+        cell = self.ws_list[self.i].cell(row=8, column=3)  # NON-OTDL Violations on own route Page 1
+        cell.value = "NON-OTDL \nViolations on own route \nPage 1"
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('C8:E8')
+        cell = self.ws_list[self.i].cell(row=9, column=3)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('C9:E9')
+
+        # Top Right
+        cell = self.ws_list[self.i].cell(row=8, column=6)  # NON-OTDL Violations off own route Page 1
+        cell.value = "NON-OTDL \nViolations off own route \nPage 1"
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('F8:H8')
+        cell = self.ws_list[self.i].cell(row=9, column=6)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('F9:H9')
+
+        # Bottom Left
+        cell = self.ws_list[self.i].cell(row=10, column=3)  # Blank
+        cell.value = ""
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('C10:E10')
+        cell = self.ws_list[self.i].cell(row=11, column=3)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('C11:E11')
+
+        # Bottom Right
+        cell = self.ws_list[self.i].cell(row=10, column=6)  # Work assignment Violations off own route Page 2
+        cell.value = "Work Assignment \nViolations off own route \nPage 2"
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('F10:H10')
+        cell = self.ws_list[self.i].cell(row=11, column=6)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('F11:H11')
+
+        # Totals Left
+        cell = self.ws_list[self.i].cell(row=12, column=3)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('C12:E12')
+
+        # Totals Right
+        cell = self.ws_list[self.i].cell(row=12, column=6)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('F12:H12')
+
+        # Availability Quadrants
+        # Top Left
+        cell = self.ws_list[self.i].cell(row=8, column=10)  # CCAs Available to 10 hours Page 3
+        cell.value = "CCAs \nAvailable to 10 hours \nPage 3"
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('J8:L8')
+        cell = self.ws_list[self.i].cell(row=9, column=10)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('J9:L9')
+
+        # Top Right
+        cell = self.ws_list[self.i].cell(row=8, column=13)  # CCAs Available to 11.5 hours Page 3
+        cell.value = "CCAs \nAvailable to 11.5 hours \nPage 3"
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('M8:O8')
+        cell = self.ws_list[self.i].cell(row=9, column=13)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('M9:O9')
+
+        # Bottom Left
+        cell = self.ws_list[self.i].cell(row=10, column=10)  # OTDL Available to 10 hours Page 4
+        cell.value = "OTDL \nAvailable to 10 hours \nPage 4"
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('J10:L10')
+        cell = self.ws_list[self.i].cell(row=11, column=10)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('J11:L11')
+
+        # Bottom Right
+        cell = self.ws_list[self.i].cell(row=10, column=13)  # OTDL Available to 12 hours Page 4
+        cell.value = "OTDL \nAvailable to 12 hours \nPage 4"
+        cell.style = self.quad_top
+        self.ws_list[self.i].merge_cells('M10:O10')
+        cell = self.ws_list[self.i].cell(row=11, column=13)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('M11:O11')
+
+        # Totals Left
+        cell = self.ws_list[self.i].cell(row=12, column=10)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('J12:L12')
+
+        # Totals Right
+        cell = self.ws_list[self.i].cell(row=12, column=13)
+        cell.value = ""
+        cell.style = self.quad_bottom
+        self.ws_list[self.i].merge_cells('M12:O12')
+
+    def save_open(self):
+        """ name and open the excel file """
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving...")
+        r = "_w"
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            r = "_d"
+        xl_filename = "man4" + str(format(self.dates[0], "_%y_%m_%d")) + r + ".xlsx"
+        try:
+            self.wb.save(dir_path('mandates_4') + xl_filename)
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.frame)
+            if sys.platform == "win32":
+                os.startfile(dir_path('mandates_4') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/mandates_4/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('mandates_4') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not opened. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=self.frame)
+        self.pb.stop()

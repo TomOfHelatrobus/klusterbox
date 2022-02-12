@@ -1739,7 +1739,7 @@ class InformalC:
             self.add_hours = None
             self.add_rate = None
             self.add_amount = None
-            self.poe_listbox = None  # holds the list box object
+            self.poe_listbox_ = None  # holds the list box object
             
         def poe_search(self, frame):
             """ creates a screen that allows user to update payouts for carriers. """
@@ -2055,7 +2055,7 @@ class InformalC:
         def goback(self, frame):
             """ pay out entry - go back and destroy the companion window if it still exist. """
             try:
-                self.poe_listbox.destroy()
+                self.poe_listbox_.destroy()
             except TclError:
                 pass
             self.poe_search(frame)
@@ -2063,7 +2063,7 @@ class InformalC:
         def poe_listbox(self, dt_year, station, dt_start, year):
             """ pay out entry - create a listbox which allows the user to add carriers. """
             poe_root = Tk()
-            self.poe_listbox = poe_root  # set the value
+            self.poe_listbox_ = poe_root  # set the value
             poe_root.title("KLUSTERBOX")
             titlebar_icon(poe_root)  # place icon in titlebar
             x_position = projvar.root.winfo_x() + 450

@@ -19,7 +19,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
     RouteChecker
-from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet
+from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
@@ -4911,6 +4911,7 @@ class Archive:
         # make sure that lenght of path array and label array are the same or else there will be an index error.
         self.path_array = [  # used in clear all
             'spreadsheets',
+            'mandates_4',
             'over_max_spreadsheet',
             'speedsheets',
             'over_max',
@@ -5183,7 +5184,9 @@ class GenConfig:
             "Mandates",
             "Over Max",
             "OT Equitability",
-            "OT Distribution")
+            "OT Distribution",
+            "Mandates_4"
+            )
         Label(self.win.body, text="Spreadsheet Preference:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_sheet = OptionMenu(self.win.body, self.spreadsheet_pref, *pref_options)  # option menu configuration below
         om_sheet.config(width=18)
@@ -8463,6 +8466,8 @@ class MainFrame:
                                command=lambda dd="Sat", ss="name": MassInput().mass_input(self.win.topframe, dd, ss))
         basic_menu.add_command(label="Mandates Spreadsheet",
                                command=lambda: ImpManSpreadsheet().create(self.win.topframe))
+        basic_menu.add_command(label="Mandates No.4 Spreadsheet",
+                               command=lambda: ImpManSpreadsheet4().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",
                                command=lambda: OvermaxSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="OT Equitability Spreadsheet",
@@ -8495,7 +8500,8 @@ class MainFrame:
             basic_menu.entryconfig(5, state=DISABLED)
             basic_menu.entryconfig(6, state=DISABLED)
             basic_menu.entryconfig(7, state=DISABLED)
-            basic_menu.entryconfig(10, state=DISABLED)
+            basic_menu.entryconfig(8, state=DISABLED)
+            basic_menu.entryconfig(11, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
@@ -8585,6 +8591,8 @@ class MainFrame:
         cleararchive = Menu(reportsarchive_menu, tearoff=0)
         cleararchive.add_command(label="Mandates Spreadsheet",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'spreadsheets'))
+        cleararchive.add_command(label="Mandates No. 4",
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'mandates_4'))
         cleararchive.add_command(label="Over Max Spreadsheet",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'over_max_spreadsheet'))
         cleararchive.add_command(label="Speedsheets",
@@ -8656,6 +8664,8 @@ class MainFrame:
         if self.spreadsheet_pref == "OT Distribution":
             OTDistriSpreadsheet().create(self.win.topframe, projvar.invran_date_week[0],
                                          self.station.get(), "weekly", self.listoptions)
+        if self.spreadsheet_pref == "Mandates_4":
+            ImpManSpreadsheet4().create(self.win.topframe)
 
     def bottom_of_frame(self):
         """ configure buttons on the bottom of the frame """
