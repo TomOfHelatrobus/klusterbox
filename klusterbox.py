@@ -28,6 +28,7 @@ from kbcsv_reader import max_hr, ee_skimmer
 from kbpdfhandling import pdf_converter
 from kbenterrings import EnterRings
 from kbinformalc import InformalC
+from kbfixes import Fixes
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # Standard Libraries
@@ -54,7 +55,7 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomandsusan4ever@msn.com"
 
 # version variables
-version = "5.000"
+version = "5.000"  # version number must be convertable to a float and should increase for Fixes()
 release_date = "undetermined"  # format is Jan 1, 2022
 
 
@@ -8698,6 +8699,7 @@ if __name__ == "__main__":
     setup_plaformvar()   # set up platform variable
     setup_dirs_by_platformvar()  # create klusterbox/.klusterbox or kb_sub directories if they don't exist
     DataBase().setup()  # set up the database
+    Fixes().check(version)
     projvar.root = Tk()  # initialize root window
     position_x = 100  # initialize position and size for root window
     position_y = 50
