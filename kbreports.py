@@ -468,6 +468,23 @@ class Messenger:
             text = "Creates a page break between the OT Desired List " \
                    " and the Auxiliary List on the spreadsheet \n\n" \
                    "Select ON or OFF"
+
+        if switch == "pb_wal_aux":
+            text = "Creates a page break between the Work Assignment List " \
+                   " and the Auxiliary List on the spreadsheet \n\n" \
+                   "Select ON or OFF"
+        if switch == "pb_aux_otdl":
+            text = "Creates a page break between the Auxiliary List \n" \
+                   "and the OT Desired List on the spreadsheet \n\n" \
+                   "Select ON or OFF"
+        if switch == "man4_dis_limit":
+            text = "Limits what is displayed in the Improper Mandates No.4 \n" \
+                   "Spreadsheet for no-list and work assignment carriers \n" \
+                   "(all otdl and auxiliary carriers will be displayed).\n" \
+                   "\"show all\" will display all carriers. \n"\
+                   "\"only workdays\" will display who worked that day. \n"\
+                   "\"only mandates\" will display all carriers who worked \n" \
+                   "overtime or off their routes. \n"
         if switch == "min_ot_equit":
             text = "Sets the minimum number of rows for the " \
                    "OTDL Equitability spreadsheet. \n\n" \

@@ -119,8 +119,16 @@ class DataBase:
             (27, "min_ot_dist", 25),
             (28, "ot_calc_pref_dist", "off_route"),
             (29, "tourrings", 0),
-            (30, "spreadsheet_pref", "improper_mandate"),
-            (31, "lastfix", "1.000")
+            (30, "spreadsheet_pref", "Mandates"),
+            (31, "lastfix", "1.000"),
+            (32, "min4_ss_nl", 25),
+            (33, "min4_ss_wal", 25),
+            (34, "min4_ss_otdl", 25),
+            (35, "min4_ss_aux", 25),
+            (36, "pb4_nl_wal", "True"),
+            (37, "pb4_wal_aux", "True"),
+            (38, "pb4_aux_otdl", "True"),
+            (39, "man4_dis_limit", "show all")
         )
         for tol in tolerance_array:
             self.pbar_counter += 1

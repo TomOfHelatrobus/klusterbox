@@ -973,7 +973,7 @@ class SpeedCarrierCheck:
         chg_these = []
         if not self.parent.allowaddrecs:  # if all checks passed
             return
-        # self.name = self.name.lower()  # make sure the name is lowercase
+        self.name = self.name.lower()  # make sure the name is lowercase
         if self.addlist != ["empty"]:
             add = "     INPUT: List Status added or updated to database >>{}\n" \
                 .format(Convert(self.addlist).array_to_string())  # report

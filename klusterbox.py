@@ -5620,10 +5620,18 @@ class SpreadsheetConfig:
         self.min_wal = 0.0
         self.min_otdl = 0.0
         self.min_aux = 0.0
-        self.min_overmax = 0.0
         self.pb_nl_wal = True  # page break between no list and work assignment
         self.pb_wal_otdl = True  # page break between work assignment and otdl
         self.pb_otdl_aux = True  # page break between otdl and auxiliary
+        self.min4_nl = 0.0  # minimum rows for mandates no.4
+        self.min4_wal = 0.0
+        self.min4_otdl = 0.0
+        self.min4_aux = 0.0
+        self.pb4_nl_wal = True  # page break between no list and work assignment for mandates no.4
+        self.pb4_wal_aux = True  # page break between work assignment and otdl for mandates no.4
+        self.pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
+        self.man4_dis_limit = None
+        self.min_overmax = 0.0
         self.min_ot_equit = None  # minimum rows for ot equitability spreadsheet
         self.ot_calc_pref = None  # overtime calcuations preference for otdl equitability
         self.min_ot_dist = None  # minimum rows for ot distribution spreadsheet
@@ -5632,10 +5640,20 @@ class SpreadsheetConfig:
         self.min_wal_var = None
         self.min_otdl_var = None
         self.min_aux_var = None
-        self.min_overmax_var = None
         self.pb_nl_wal_var = None  # page break between no list and work assignment
         self.pb_wal_otdl_var = None  # page break between work assignment and otdl
         self.pb_otdl_aux_var = None  # page break between otdl and auxiliary
+
+        self.min4_nl_var = None  # stringvar for mandates no.4
+        self.min4_wal_var = None
+        self.min4_otdl_var = None
+        self.min4_aux_var = None
+        self.pb4_nl_wal_var = None  # page break between no list and work assignment for mandates no.4
+        self.pb4_wal_aux_var = None  # page break between work assignment and aux for mandates no.4
+        self.pb4_aux_otdl_var = None  # page break between auxiliary and otdl for mandates no.4
+        self.man4_dis_limit_var = None  # mandates no.4 display limiter
+        self.min_overmax_var = None
+        self.min_otdl_var = None
         self.min_ot_equit_var = None  # minimum rows for ot equitability spreadsheet
         self.ot_calc_pref_var = None  # overtime calcuations preference for otdl equitability
         self.min_ot_dist_var = None  # minimum rows for ot distribution spreadsheet
@@ -5647,10 +5665,18 @@ class SpreadsheetConfig:
         self.add_min_wal = 0.0
         self.add_min_otdl = 0.0
         self.add_min_aux = 0.0
-        self.add_min_overmax = 0.0
         self.add_pb_nl_wal = True  # page break between no list and work assignment
         self.add_pb_wal_otdl = True  # page break between work assignment and otdl
         self.add_pb_otdl_aux = True  # page break between otdl and auxiliary
+        self.add_min4_nl = 0.0  # prep values to be entered into database for mandates no.4
+        self.add_min4_wal = 0.0
+        self.add_min4_otdl = 0.0
+        self.add_min4_aux = 0.0
+        self.add_pb4_nl_wal = True  # page break between no list and work assignment for mandates no.4
+        self.add_pb4_wal_aux = True  # page break between work assignment and otdl for mandates no.4
+        self.add_pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
+        self.add_man4_dis_limit = None  # mandates no.4 display limiter
+        self.add_min_overmax = 0.0
         self.add_min_ot_equit = None
         self.add_ot_calc_pref = None
         self.add_min_ot_dist = None  # minimum rows for ot distribution spreadsheet
@@ -5680,10 +5706,22 @@ class SpreadsheetConfig:
         self.pb_nl_wal = results[21][0]  # page break between no list and work assignment
         self.pb_wal_otdl = results[22][0]  # page break between work assignment and otdl
         self.pb_otdl_aux = results[23][0]  # page break between otdl and auxiliary
+        # get values for mandates no.4 spreadsheets
+        self.min4_nl = results[32][0]
+        self.min4_wal = results[33][0]
+        self.min4_otdl = results[34][0]
+        self.min4_aux = results[35][0]
+        self.pb4_nl_wal = results[36][0]  # page break between no list and work assignment
+        self.pb4_wal_aux = results[37][0]  # page break between work assignment and aux
+        self.pb4_aux_otdl = results[38][0]  # page break between auxiliary and otdl
+        self.man4_dis_limit = results[39][0]  # mandates no.4 display limiter
         # convert bool to "on" or "off"
         self.pb_nl_wal = Convert(self.pb_nl_wal).strbool_to_onoff()
         self.pb_wal_otdl = Convert(self.pb_wal_otdl).strbool_to_onoff()
         self.pb_otdl_aux = Convert(self.pb_otdl_aux).strbool_to_onoff()
+        self.pb4_nl_wal = Convert(self.pb4_nl_wal).strbool_to_onoff()
+        self.pb4_wal_aux = Convert(self.pb4_wal_aux).strbool_to_onoff()
+        self.pb4_aux_otdl = Convert(self.pb4_aux_otdl).strbool_to_onoff()
         # otdl equitability vars
         self.min_ot_equit = results[25][0]  # minimum rows
         self.ot_calc_pref = results[26][0]  # ot calculation preference
@@ -5701,6 +5739,16 @@ class SpreadsheetConfig:
         self.pb_nl_wal_var = StringVar(self.win.body)
         self.pb_wal_otdl_var = StringVar(self.win.body)
         self.pb_otdl_aux_var = StringVar(self.win.body)
+
+        self.min4_nl_var = StringVar(self.win.body)
+        self.min4_wal_var = StringVar(self.win.body)
+        self.min4_otdl_var = StringVar(self.win.body)
+        self.min4_aux_var = StringVar(self.win.body)
+        self.pb4_nl_wal_var = StringVar(self.win.body)
+        self.pb4_wal_aux_var = StringVar(self.win.body)
+        self.pb4_aux_otdl_var = StringVar(self.win.body)
+        self.man4_dis_limit_var = StringVar(self.win.body)
+
         self.min_ot_equit_var = StringVar(self.win.body)
         self.ot_calc_pref_var = StringVar(self.win.body)
         self.min_ot_dist_var = StringVar(self.win.body)
@@ -5716,6 +5764,16 @@ class SpreadsheetConfig:
         self.pb_nl_wal_var.set(self.pb_nl_wal)
         self.pb_wal_otdl_var.set(self.pb_wal_otdl)
         self.pb_otdl_aux_var.set(self.pb_otdl_aux)
+
+        self.min4_nl_var.set(self.min4_nl)
+        self.min4_wal_var.set(self.min4_wal)
+        self.min4_otdl_var.set(self.min4_otdl)
+        self.min4_aux_var.set(self.min4_aux)
+        self.pb4_nl_wal_var.set(self.pb4_nl_wal)
+        self.pb4_wal_aux_var.set(self.pb4_wal_aux)
+        self.pb4_aux_otdl_var.set(self.pb4_aux_otdl)
+        self.man4_dis_limit_var.set(self.man4_dis_limit)
+
         self.min_ot_equit_var.set(self.min_ot_equit)
         self.ot_calc_pref_var.set(self.ot_calc_pref)
         self.min_ot_dist_var.set(self.min_ot_dist)
@@ -5729,8 +5787,8 @@ class SpreadsheetConfig:
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
-        text = macadj("Improper Mandate Spreadsheets _____________________________________",
-                      "Improper Mandate Spreadsheets _____________________________________")
+        text = macadj("Improper Mandate Spreadsheets __________________________________________",
+                      "Improper Mandate Spreadsheets __________________________________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
@@ -5795,8 +5853,85 @@ class SpreadsheetConfig:
         # Display header for 12 and 60 Hour Violations Spread Sheet
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
-        text = macadj("12 and 60 Hour Violations Spreadsheets ______________________________",
-                      "12 and 60 Hour Violations Spreadsheets ______________________________")
+
+        text = macadj("Improper Mandate No. 4 Spreadsheets ____________________________________",
+                      "Improper Mandate No. 4 Spreadsheets ____________________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
+        row += 1
+        Label(self.win.body, text="Minimum rows for No List Carriers", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min4_nl_var).grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_nl")).grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Minimum rows for Work Assignment", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min4_wal_var).grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_wal")).grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Minimum rows for OT Desired", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min4_otdl_var).grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_otdl")).grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Minimum rows for Auxiliary", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.min4_aux_var).grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("min_aux")).grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+        Label(self.win.body, text="Page Breaks Between List:", anchor="w").grid(row=row, column=0, sticky="w")
+        row += 1
+        # Page break between no list and work assignment
+        Label(self.win.body, text="  No List and Work Assignment", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_pb_1 = OptionMenu(self.win.body, self.pb4_nl_wal_var, "on", "off")
+        om_pb_1.config(width=3)
+        om_pb_1.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("pb_nl_wal")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        # Page break between work assignment and auxiliary
+        Label(self.win.body, text="  Work Assignment and Auxiliary", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_pb_2 = OptionMenu(self.win.body, self.pb4_wal_aux_var, "on", "off")
+        om_pb_2.config(width=3)
+        om_pb_2.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("pb_wal_aux")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        # Page break between auxiliary and ot desired
+        Label(self.win.body, text=" Auxiliary and OT Desired", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_pb_3 = OptionMenu(self.win.body, self.pb4_aux_otdl_var, "on", "off")
+        om_pb_3.config(width=3)
+        om_pb_3.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("pb_aux_otdl")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Mandates No. 4 Display Limiter", width=30, anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        # display_limiter options: show all, only workdays, only mandates
+        om_dis_lim = OptionMenu(self.win.body, self.man4_dis_limit_var, "show all", "only workdays", "only mandates")
+        om_dis_lim.config(width=12)
+        om_dis_lim.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("man4_dis_limit")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+
+        Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+        text = macadj("12 and 60 Hour Violations Spreadsheets ___________________________________",
+                      "12 and 60 Hour Violations Spreadsheets ___________________________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
@@ -5812,8 +5947,8 @@ class SpreadsheetConfig:
         row += 1
 
         # Display header for OTDL Equitability Spread Sheet
-        text = macadj("OTDL Equitability Spreadsheets _______________________________________",
-                      "OTDL Equitability Spreadsheets _______________________________________")
+        text = macadj("OTDL Equitability Spreadsheets ____________________________________________",
+                      "OTDL Equitability Spreadsheets ____________________________________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
@@ -5837,8 +5972,8 @@ class SpreadsheetConfig:
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         # Display header for Overtime Distribution Spread Sheet
-        text = macadj("Overtime Distribution Spreadsheets __________________________________",
-                      "Overtime Distribution Spreadsheets __________________________________")
+        text = macadj("Overtime Distribution Spreadsheets _______________________________________",
+                      "Overtime Distribution Spreadsheets _______________________________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
         row += 1
@@ -5863,7 +5998,7 @@ class SpreadsheetConfig:
 
         row += 1
         dashes = ""
-        dashcount = 72
+        dashcount = 77
         if sys.platform == "darwin":
             dashcount = 55
         for i in range(dashcount):
@@ -5903,21 +6038,29 @@ class SpreadsheetConfig:
 
     def min_ss_presets(self, order):
         """ defines the presets. """
-        num = "25"
-        over_num = "30"
+        num = "25"  # default for improper mandates
+        num4 = "19"  # default for improper mandates no. 4
+        over_num = "30"  # default for over max
         ot_num = "19"  # default for otdl equitability minimum rows
         ot_dist_num = "25"  # default for ot distribution minimum rows
         msg = "Minimum rows reset to default. "
         if order == "one":
             num = "1"
+            num4 = "1"
             over_num = "1"
             ot_num = "1"
             ot_dist_num = "1"
             msg = "Minimum rows set to one. "
         self.status_update.config(text="{}".format(msg))
+        # set minimum rows for improper mandates
         types = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux")
         for t in types:  # set minimum row values for improper mandate spreadsheet
             sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num, t)
+            commit(sql)
+        # set minimum rows for improper mandates no. 4
+        types = ("min4_ss_nl", "min4_ss_wal", "min4_ss_otdl", "min4_ss_aux")
+        for t in types:  # set minimum row values for improper mandate spreadsheet no.4
+            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (num4, t)
             commit(sql)
         # set minimum row value for overmax spreadsheet
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (over_num, "min_ss_overmax")
@@ -5928,7 +6071,7 @@ class SpreadsheetConfig:
         # set minimum row value for ot distribution
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (ot_dist_num, "min_ot_dist")
         commit(sql)
-        pagebreaks = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux")
+        pagebreaks = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux", "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl")
         if order == "default":
             for pb in pagebreaks:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("True", pb)
@@ -5937,13 +6080,17 @@ class SpreadsheetConfig:
             commit(sql)
             sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("off_route", "ot_calc_pref_dist")
             commit(sql)
+            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("show all", "man4_dis_limit")
+            commit(sql)
         self.get_settings()
         self.set_stringvars()
 
     def check(self, var):
         """ checks entries for minimum rows. """
         current_var = ("No List minimum rows", "Work Assignment minimum rows", "OT Desired minimum rows",
-                       "Auxiliary minimum rows", "Over Max minimum rows", "OTDL Equitability minimum rows")
+                       "Auxiliary minimum rows", "No List minimum rows no.4", "Work Assignment minimum rows no.4",
+                       "OT Desired minimum rows no.4",
+                       "Auxiliary minimum rows no.4", "Over Max minimum rows", "OTDL Equitability minimum rows")
         if MinrowsChecker(var).is_empty():
             return True
         if not MinrowsChecker(var).is_numeric():
@@ -5971,22 +6118,35 @@ class SpreadsheetConfig:
 
     def apply(self, go_home):
         """ checks and updates spreadsheet settings """
-        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux, self.min_overmax, self.min_ot_equit,
+        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux,
+                      self.min4_nl, self.min4_wal, self.min4_otdl, self.min4_aux,
+                      self.min_overmax, self.min_ot_equit,
                       self.min_ot_dist)
-        onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux)
-        onrecs_misc = (self.ot_calc_pref, self.ot_calc_pref_dist)
+        onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux,
+                         self.pb4_nl_wal, self.pb4_wal_aux, self.pb4_aux_otdl)
+        onrecs_misc = (self.man4_dis_limit, self.ot_calc_pref, self.ot_calc_pref_dist)
         check_these = (self.min_nl_var.get(), self.min_wal_var.get(), self.min_otdl_var.get(), self.min_aux_var.get(),
-                       self.min_overmax_var.get(), self.min_ot_equit_var.get(), self.min_ot_dist_var.get())
-        add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux, self.add_min_overmax,
-                     self.add_min_ot_equit, self.add_min_ot_dist]
-        categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux", "min_ss_overmax", "min_ot_equit",
-                      "min_ot_dist")
-        pbs = (self.pb_nl_wal_var.get(), self.pb_wal_otdl_var.get(), self.pb_otdl_aux_var.get())
-        add_pbs = [self.add_pb_nl_wal, self.add_pb_wal_otdl, self.add_pb_otdl_aux]
-        pb_categories = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux")
-        misc = (self.ot_calc_pref_var.get(), self.ot_calc_pref_dist_var.get())  # misc stringvars
-        add_misc = [self.add_ot_calc_pref, self.add_ot_calc_pref_dist]  # misc values to update to database
-        misc_categories = ("ot_calc_pref", "ot_calc_pref_dist")  # list of records in the tolerance table.
+                       self.min4_nl_var.get(), self.min4_wal_var.get(), self.min4_otdl_var.get(),
+                       self.min4_aux_var.get(), self.min_overmax_var.get(), self.min_ot_equit_var.get(),
+                       self.min_ot_dist_var.get())
+        add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux,
+                     self.add_min4_nl, self.add_min4_wal, self.add_min4_otdl, self.add_min4_aux,
+                     self.add_min_overmax, self.add_min_ot_equit, self.add_min_ot_dist]
+        categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux",
+                      "min4_ss_nl", "min4_ss_wal", "min4_ss_otdl", "min4_ss_aux",
+                      "min_ss_overmax", "min_ot_equit", "min_ot_dist")
+        pbs = (self.pb_nl_wal_var.get(), self.pb_wal_otdl_var.get(), self.pb_otdl_aux_var.get(),
+               self.pb4_nl_wal_var.get(), self.pb4_wal_aux_var.get(), self.pb4_aux_otdl_var.get())
+        add_pbs = [self.add_pb_nl_wal, self.add_pb_wal_otdl, self.add_pb_otdl_aux,
+                   self.add_pb4_nl_wal, self.add_pb4_wal_aux, self.add_pb4_aux_otdl]
+        pb_categories = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux",
+                         "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl")
+        # misc stringvars
+        misc = (self.man4_dis_limit_var.get(), self.ot_calc_pref_var.get(), self.ot_calc_pref_dist_var.get())
+        # misc values to update to database
+        add_misc = [self.add_man4_dis_limit, self.add_ot_calc_pref, self.add_ot_calc_pref_dist]
+        # list of records in the tolerance table.
+        misc_categories = ("man4_dis_limit", "ot_calc_pref", "ot_calc_pref_dist")
         self.check_i = 0
         for var in check_these:  # check each of the minimum rows stringvars
             if not self.check(var):  # if any fail
@@ -8566,7 +8726,7 @@ class MainFrame:
         speed_menu.add_command(label="Speedsheet Archive",
                                command=lambda: Archive().file_dialogue(dir_path('speedsheets')))
         speed_menu.add_command(label="Clear Archive",
-                                command=lambda: Archive().remove_file_var(self.win.topframe, dir_path('speedsheets')))
+                                command=lambda: Archive().remove_file_var(self.win.topframe, 'speedsheets'))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         # archive menu
         reportsarchive_menu = Menu(menubar, tearoff=0)
