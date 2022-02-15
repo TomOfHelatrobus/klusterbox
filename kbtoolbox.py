@@ -1029,7 +1029,7 @@ class Convert:
             else:
                 number = float(self.data)  # convert the number to a float
                 return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
-        except ValueError:
+        except (ValueError, TypeError):
             number = 0.00  # convert the number to a float
             return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
 
@@ -1102,7 +1102,7 @@ class Handler:
         try:
             self.data = float(self.data)
             return self.data
-        except ValueError:
+        except (ValueError, TypeError):
             return self.data
 
     @staticmethod
@@ -1139,7 +1139,7 @@ def isfloat(value):
     try:
         float(value)
         return True
-    except ValueError:
+    except (ValueError, TypeError):
         return False
 
 
@@ -1148,7 +1148,7 @@ def isint(value):
     try:
         int(value)
         return True
-    except ValueError:
+    except (ValueError, TypeError):
         return False
 
 
@@ -1554,7 +1554,7 @@ class RingTimeChecker:
         try:
             self.ring = float(self.ring)
             return self.ring
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     def check_for_zeros(self):
@@ -1562,7 +1562,7 @@ class RingTimeChecker:
         try:
             if float(self.ring) == 0:
                 return True
-        except ValueError:
+        except (ValueError, TypeError):
             pass
         if self.ring == "":
             return True
@@ -1573,7 +1573,7 @@ class RingTimeChecker:
         try:
             float(self.ring)
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     def over_24(self):
@@ -1623,7 +1623,7 @@ class MovesChecker:
         try:
             if float(self.moves) == 0:
                 return True
-        except ValueError:
+        except (ValueError, TypeError):
             pass
         return False
 
@@ -1652,7 +1652,7 @@ class MinrowsChecker:
         try:
             self.data = float(self.data)
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
     def no_decimals(self):
@@ -1770,7 +1770,7 @@ class BackSlashDateChecker:
         try:
             datetime(int(self.year), int(self.month), int(self.day))
             return True
-        except ValueError:
+        except (ValueError, TypeError):
             return False
 
 

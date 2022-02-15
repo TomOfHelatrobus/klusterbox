@@ -1955,26 +1955,37 @@ class ImpManSpreadsheet4:
         self.input_name = None  # style
         self.input_s = None  # style
         self.calcs = None  # style
-
         self.quad_top = None  # style
         self.quad_bottom = None  # style
         self.quad_left = None  # style
         self.quad_right = None  # style
         self.col_header_left = None  # style
         self.col_header = None  # style
-
+        self.footer_left = None  # style
+        self.footer_right = None  # style
+        self.footer_mid = None  # style
         self.day = None  # build worksheet - loop once for each day
         self.i = 0  # build worksheet loop iteration
         self.lsi = 0  # list loop iteration
         self.pref = ("nl", "wal", "otdl", "aux")
         self.row = 0
+        # cell for summary quadrants page
+        self.cellc9 = None  # non otdl own route violations
+        self.cellf9 = None  # non otdl off route violations
+        self.cellf11 = None  # wal off route violations
+        self.cellj9 = None  # aux availability to 10 hours
+        self.cellm9 = None  # aux availability to 11.5 hours
+        self.cellj11 = None  # otdl availability to 10 hours
+        self.cellm11 = None  # otdl availability to 12 hours
+        self.cellf16 = None  # carriers out past dispatch of value
+        self.celln16 = None  # otdl/aux availability to DOV
+
         self.ot_list = ("NON OTDL", "Work Assignment", "Auxiliary", "OTDL")  # list loop iteration
         self.page_titles = ("NON-OTDL Employees that worked overtime",
                             "Work Assignment Employees that worked off their assignment",
                             "Auxiliary Employees who were available to work OT",
                             "OTDL Employees who were available to work OT")
         self.pref = ("nl", "wal", "aux", "otdl")
-
         self.pb4_nl_wal = True  # page break between no list and work assignment
         self.pb4_wal_aux = True  # page break between work assignment and otdl
         self.pb4_aux_otdl = True  # page break between otdl and auxiliary
@@ -1982,7 +1993,7 @@ class ImpManSpreadsheet4:
         self.min4_ss_wal = 0  # minimum rows for work assignment list
         self.min4_ss_otdl = 0  # minimum rows for overtime desired list
         self.min4_ss_aux = 0  # minimum rows for auxiliary
-
+        self.row_number = 1
         self.carrier = None  # current iteration of carrier's name is assigned self.carrier
         self.list_ = None  # current iteration of carrier's list status is assigned self.carrier
         self.route = None  # current iteration of carrier's route is assigned self.carrier
@@ -2009,6 +2020,8 @@ class ImpManSpreadsheet4:
         self.list_dict = {'': '', 'nl': 'non list', 'wal': 'wal', 'otdl': 'otdl', 'aux': 'cca', 'ptf': 'ptf'}
         self.display_limiter = "show all"  # show all, only workdays, only mandates
         self.display_counter = 0  # count the number of rows displayed per list loop
+        self.listrange = []  # records the first row, last row and summary row of each list
+        self.dayrange = []  # records the listranges for the day by appending listranges after each listloop.
 
     def create(self, frame):
         """ a master method for running other methods in proper order."""
@@ -2036,7 +2049,7 @@ class ImpManSpreadsheet4:
     def ask_ok(self):
         """ ends process if user cancels """
         if messagebox.askokcancel("Spreadsheet generator",
-                                  "Do you want to generate an Improper Mandates Spreadsheet?",
+                                  "Do you want to generate an \nImproper Mandates No. 4 Spreadsheet?",
                                   parent=self.frame):
             return True
         return False
@@ -2146,8 +2159,17 @@ class ImpManSpreadsheet4:
                                    alignment=Alignment(horizontal='left', vertical='top'),
                                    border=Border(left=bd, bottom=bd, top=bd))
         self.quad_right = NamedStyle(name="quad_right", font=Font(name='Arial', size=10),
-                                    alignment=Alignment(horizontal='left', vertical='top'),
+                                    alignment=Alignment(horizontal='right', vertical='top'),
                                     border=Border(top=bd, bottom=bd, right=bd))
+        self.footer_left = NamedStyle(name="footer_left", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='left'),
+                                    border=Border(left=bd, bottom=bd, top=bd))
+        self.footer_right = NamedStyle(name="footer_right", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='right'),
+                                     border=Border(top=bd, bottom=bd, right=bd))
+        self.footer_mid = NamedStyle(name="footer_mid", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='right'),
+                                     border=Border(top=bd, bottom=bd))
 
     def build_workbook(self):
         """ build the workbook object """
@@ -2199,11 +2221,13 @@ class ImpManSpreadsheet4:
         """ this loops once for each list. """
         self.i = 0
         for day in self.dates:
+            self.dayrange = []  # initialize array for holding all start/stop/summary rows for all four list.
             self.day = day
             self.build_ws_headers()
             self.build_ws_quads()
             self.pagebreak(force=True)  # force the page break
             self.list_loop()  # loops four times. once for each list.
+            self.fill_quads()  # write formulas for the quadrants on the cover sheet.
             self.i += 1
 
     def build_ws_headers(self):
@@ -2239,28 +2263,28 @@ class ImpManSpreadsheet4:
         """ build the two quadrants and other elements on the coversheet """
         # Violations Quadrants
         # Top Left
+        self.ws_list[self.i].merge_cells('C8:E8')
         cell = self.ws_list[self.i].cell(row=8, column=3)  # NON-OTDL Violations on own route Page 1
         cell.value = "NON-OTDL \nViolations on own route \nPage 1"
         cell.style = self.quad_top
-        self.ws_list[self.i].merge_cells('C8:E8')
-        cell = self.ws_list[self.i].cell(row=9, column=3)
-        cell.value = ""
-        cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('C9:E9')
+        self.cellc9 = self.ws_list[self.i].cell(row=9, column=3)
+        self.cellc9.value = ""
+        self.cellc9.style = self.quad_bottom
         # Top Right
         cell = self.ws_list[self.i].cell(row=8, column=6)  # NON-OTDL Violations off own route Page 1
         cell.value = "NON-OTDL \nViolations off own route \nPage 1"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('F8:H8')
-        cell = self.ws_list[self.i].cell(row=9, column=6)
-        cell.value = ""
-        cell.style = self.quad_bottom
+        self.cellf9 = self.ws_list[self.i].cell(row=9, column=6)  # value filled later
+        self.cellf9.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('F9:H9')
+        self.cellf9.number_format = "#,###.00;[RED]-#,###.00"
         # Bottom Left
+        self.ws_list[self.i].merge_cells('C10:E10')
         cell = self.ws_list[self.i].cell(row=10, column=3)  # Blank
         cell.value = ""
         cell.style = self.quad_top
-        self.ws_list[self.i].merge_cells('C10:E10')
         cell = self.ws_list[self.i].cell(row=11, column=3)
         cell.value = ""
         cell.style = self.quad_bottom
@@ -2270,85 +2294,96 @@ class ImpManSpreadsheet4:
         cell.value = "Work Assignment \nViolations off own route \nPage 2"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('F10:H10')
-        cell = self.ws_list[self.i].cell(row=11, column=6)
-        cell.value = ""
-        cell.style = self.quad_bottom
+        self.cellf11 = self.ws_list[self.i].cell(row=11, column=6)
+        self.cellf11.value = ""
+        self.cellf11.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('F11:H11')
         # Totals Left
         cell = self.ws_list[self.i].cell(row=12, column=3)
-        cell.value = ""
+        formula = "= %s!C%s" % (self.day_of_week[self.i], "9")
+        cell.value = formula
         cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('C12:E12')
+        cell.number_format = "#,###.00;[RED]-#,###.00"
         # Totals Right
         cell = self.ws_list[self.i].cell(row=12, column=6)
-        cell.value = ""
+        formula = "= SUM(%s!F%s + %s!F%s)" % (self.day_of_week[self.i], "9", self.day_of_week[self.i], "11")
+        cell.value = formula
         cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('F12:H12')
+        cell.number_format = "#,###.00;[RED]-#,###.00"
         # Availability Quadrants
         # Top Left
         cell = self.ws_list[self.i].cell(row=8, column=10)  # CCAs Available to 10 hours Page 3
         cell.value = "CCAs \nAvailable to 10 hours \nPage 3"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('J8:L8')
-        cell = self.ws_list[self.i].cell(row=9, column=10)
-        cell.value = ""
-        cell.style = self.quad_bottom
+        self.cellj9 = self.ws_list[self.i].cell(row=9, column=10)  # value filled later
+        self.cellj9.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('J9:L9')
+        self.cellj9.number_format = "#,###.00;[RED]-#,###.00"
         # Top Right
         cell = self.ws_list[self.i].cell(row=8, column=13)  # CCAs Available to 11.5 hours Page 3
         cell.value = "CCAs \nAvailable to 11.5 hours \nPage 3"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('M8:O8')
-        cell = self.ws_list[self.i].cell(row=9, column=13)
-        cell.value = ""
-        cell.style = self.quad_bottom
+        self.cellm9 = self.ws_list[self.i].cell(row=9, column=13)  # value filled later
+        self.cellm9.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('M9:O9')
+        self.cellm9.number_format = "#,###.00;[RED]-#,###.00"
         # Bottom Left
         cell = self.ws_list[self.i].cell(row=10, column=10)  # OTDL Available to 10 hours Page 4
         cell.value = "OTDL \nAvailable to 10 hours \nPage 4"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('J10:L10')
-        cell = self.ws_list[self.i].cell(row=11, column=10)
-        cell.value = ""
-        cell.style = self.quad_bottom
+        self.cellj11 = self.ws_list[self.i].cell(row=11, column=10)  # value filled later
+        self.cellj11.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('J11:L11')
+        self.cellj11.number_format = "#,###.00;[RED]-#,###.00"
         # Bottom Right
         cell = self.ws_list[self.i].cell(row=10, column=13)  # OTDL Available to 12 hours Page 4
         cell.value = "OTDL \nAvailable to 12 hours \nPage 4"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('M10:O10')
-        cell = self.ws_list[self.i].cell(row=11, column=13)
-        cell.value = ""
-        cell.style = self.quad_bottom
+        self.cellm11 = self.ws_list[self.i].cell(row=11, column=13)  # value filled later
+        self.cellm11.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('M11:O11')
+        self.cellm11.number_format = "#,###.00;[RED]-#,###.00"
         # Totals Left
         cell = self.ws_list[self.i].cell(row=12, column=10)
-        cell.value = ""
+        formula = "= SUM(%s!J%s + %s!J%s)" % (self.day_of_week[self.i], "9", self.day_of_week[self.i], "11")
+        cell.value = formula
         cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('J12:L12')
+        cell.number_format = "#,###.00;[RED]-#,###.00"
         # Totals Right
         cell = self.ws_list[self.i].cell(row=12, column=13)
-        cell.value = ""
+        formula = "= SUM(%s!M%s + %s!M%s)" % (self.day_of_week[self.i], "9", self.day_of_week[self.i], "11")
+        cell.value = formula
         cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('M12:O12')
+        cell.number_format = "#,###.00;[RED]-#,###.00"
         # DOV box
         cell = self.ws_list[self.i].cell(row=14, column=3)  # Dispatch of Value
         cell.value = "Dispatch of Value"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('C14:E15')
-        cell = self.ws_list[self.i].cell(row=16, column=3)
-        cell.value = ""
+        cell = self.ws_list[self.i].cell(row=16, column=3)  # filled out by spreadsheet user
+        cell.value = "23.99"
         cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('C16:E16')
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+
         # DOV Violations box
         cell = self.ws_list[self.i].cell(row=14, column=6)  # Dispatch of Value
         cell.value = "Carriers out past \nDispatch of Value"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('F14:H15')
-        cell = self.ws_list[self.i].cell(row=16, column=6)
-        cell.value = ""
-        cell.style = self.quad_bottom
+        self.cellf16 = self.ws_list[self.i].cell(row=16, column=6)  # value filled later - # of carriers out past DOV
+        self.cellf16.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('F16:H16')
+        self.cellf16.number_format = "#,###;[RED]-#,###"
+
         # Straight Time Available:
         cell = self.ws_list[self.i].cell(row=14, column=10)  # Straight Time Available:
         cell.value = "Straight Time Available:"
@@ -2358,15 +2393,18 @@ class ImpManSpreadsheet4:
         cell.value = ""
         cell.style = self.quad_right
         self.ws_list[self.i].merge_cells('N14:O14')
+
         # Available to DOV:
+
         cell = self.ws_list[self.i].cell(row=16, column=10)  # Available to DOV:
         cell.value = "Available to DOV:"
         cell.style = self.quad_left
         self.ws_list[self.i].merge_cells('J16:M16')
-        cell = self.ws_list[self.i].cell(row=16, column=14)  # avaiable to dov formula
-        cell.value = ""
-        cell.style = self.quad_right
+
+        self.celln16 = self.ws_list[self.i].cell(row=16, column=14)  # avaiable to dov formula
+        self.celln16.style = self.quad_right
         self.ws_list[self.i].merge_cells('N16:O16')
+        self.celln16.number_format = "#,###.00;[RED]-#,###.00"
         self.row = 19  # starts on row 19 to give room to the quadrants
 
     def list_loop(self):
@@ -2376,20 +2414,28 @@ class ImpManSpreadsheet4:
             self.list_and_column_headers()  # builds headers for list and columns
             self.carrierlist_mod()
             self.get_first_row()
-            self.carrierloop()
-            # self.build_footer()
+            self.row_number = 1  # initialize the row number that appears on the far left column
+            self.carrierloop()  # loop once to fill a row with carrier rings data
+            self.fill_for_minrows()  # fill in blank rows to fullfill minrows requirement
+            self.get_listrange()
+            self.dayrange.append(self.listrange)  # get rows information for each list loop.
+            self.build_footer()
             self.pagebreak()
             self.increment_progbar()
             self.lsi += 1
-        self.lsi = 0  # remember list loop iteration
+        self.lsi = 0  # reset list loop iteration
 
     def list_and_column_headers(self):
         """ builds headers for list and column """
         n_14heads = ("On Own \nRoute", "Off Route", "Available \nto 10", "Available \nto 10")
         o_15heads = ("Off Route", "Other Route", "Available \nto 11.50", "Available \nto 12.00")
         p_16heads = ("Other Route", "", "Available \nto DOV", "Available \nto DOV")
+
         cell = self.ws_list[self.i].cell(row=self.row, column=1)
         cell.value = self.page_titles[self.lsi]  # Displays the page title for each list,
+        cell.style = self.list_header
+        cell = self.ws_list[self.i].cell(row=self.row, column=16)
+        cell.value = "Page {}".format(self.lsi+1)  # Displays the page title for each list,
         cell.style = self.list_header
         self.row += 2
         self.ws_list[self.i].row_dimensions[self.row].height = 30  # adjust row height
@@ -2447,17 +2493,6 @@ class ImpManSpreadsheet4:
     def carrierlist_mod(self):
         """ add empty carrier records to carrier list until quantity matches minrows preference """
         self.mod_carrierlist = self.carrier_breakdown[self.i][self.lsi]
-        # if self.pref[self.lsi] in ("nl",):  # if "no list"
-        #     minrows = self.min4_ss_nl
-        # elif self.pref[self.lsi] in ("wal",):  # if "work assignment list"
-        #     minrows = self.min4_ss_wal
-        # elif self.pref[self.lsi] in ("otdl",):  # if "overtime desired list"
-        #     minrows = self.min4_ss_otdl
-        # else:  # if "auxiliary"
-        #     minrows = self.min4_ss_aux
-        # while len(self.mod_carrierlist) < minrows:  # until carrier list quantity matches minrows
-        #     add_this = ('', '', '', '', '', '')
-        #     self.mod_carrierlist.append(add_this)  # append empty recs to carrier list
 
     def get_first_row(self):
         """ record the number of the first row for totals formulas in footers """
@@ -2467,7 +2502,6 @@ class ImpManSpreadsheet4:
         """ loop for each carrier """
         self.display_counter = 0  # count the number of rows displayed
         for carrier in self.mod_carrierlist:
-            self.get_last_row()  # record the number of the last row for total formulas in footers
             self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
             self.list_ = carrier[2]  # get the list status of the carrier
             self.route = carrier[4]  # get the route of the carrier
@@ -2475,13 +2509,29 @@ class ImpManSpreadsheet4:
             self.get_rings()  # get individual carrier rings for the day
             self.number_crunching()  # do calculations to get overtime and availability
             if self.qualify():  # test the rings to see if they need to be displayed
+                self.display_recs()  # build the carrier and the rings row into the spreadsheet
                 self.display_counter += 1
-                self.display_recs()  # put the carrier and the first part of rings into the spreadsheet
                 self.row += 1
-        self.fill_for_minrows()  # fill in blank rows to fullfill minrows requirement
 
     def fill_for_minrows(self):
         """ fill in blank rows to fullfill minrows requirement. """
+        self.carrier = ""  # current iteration of carrier list is assigned self.carrier
+        self.list_ = ""  # get the list status of the carrier
+        self.route = ""  # get the route of the carrier
+        self.totalhours = 0.0  # set default as an empty string
+        self.bt = ""  # begin tour
+        self.rs = ""  # return to station
+        self.et = ""  # end tour
+        self.codes = ""  # codes from carrier rings
+        self.moves = ""  # moves from carrier rings
+        self.overtime = 0.0  # the total overtime worked
+        self.onroute = 0.0  # the amount of overtime worked on the carrier's own route.
+        self.offroute = 0.0  # total time spend off route
+        self.otherroute_array = []  # a list of routes where carrier worked off assignment
+        self.otherroute = ""  # a formatted display for routes worked off assignment
+        self.avail_10 = 0.0  # otdl/aux availability to 10 hours
+        self.avail_115 = 0.0  # aux availability to 11.50 hours
+        self.avail_12 = 0.0  # otdl availability to 12 hours.
         blank_lines = []  # make an array for blank lines
         if self.pref[self.lsi] in ("nl",):  # if "no list"
             minrows = self.min4_ss_nl
@@ -2495,24 +2545,7 @@ class ImpManSpreadsheet4:
             add_this = ('', '', '', '', '', '')
             blank_lines.append(add_this)  # append empty recs to carrier list
             self.display_counter += 1
-        for carrier in blank_lines:
-            self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
-            self.list_ = carrier[2]  # get the list status of the carrier
-            self.route = carrier[4]  # get the route of the carrier
-            self.totalhours = 0.0  # set default as an empty string
-            self.bt = ""
-            self.rs = ""
-            self.et = ""
-            self.codes = ""
-            self.moves = ""
-            self.overtime = 0.0  # the total overtime worked
-            self.onroute = 0.0  # the amount of overtime worked on the carrier's own route.
-            self.offroute = 0.0  # total time spend off route
-            self.otherroute_array = []  # a list of routes where carrier worked off assignment
-            self.otherroute = ""  # a formatted display for routes worked off assignment
-            self.avail_10 = 0.0  # otdl/aux availability to 10 hours
-            self.avail_115 = 0.0  # aux availability to 11.50 hours
-            self.avail_12 = 0.0  # otdl availability to 12 hours.
+        for _ in blank_lines:
             self.display_recs()  # put the carrier and the first part of rings into the spreadsheet
             self.row += 1
 
@@ -2522,10 +2555,6 @@ class ImpManSpreadsheet4:
             route = self.route.split("/")
             if len(route) == 5:
                 self.route = "T6: {} +".format(route[0])
-
-    def get_last_row(self):
-        """ record the number of the last row for totals formulas in footers """
-        self.last_row = self.row
 
     def get_rings(self):
         """ get individual carrier rings for the day """
@@ -2640,7 +2669,11 @@ class ImpManSpreadsheet4:
                 return False
 
     def display_recs(self):
-        """ put the carrier and the first part of rings into the spreadsheet """
+        """ put the carrier and the first part of rings into the spreadsheet - it's show time! """
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)  # row number
+        cell.value = "{}.".format(self.row_number)
+        cell.style = self.input_s
+        self.row_number += 1  # increment the row number
         cell = self.ws_list[self.i].cell(row=self.row, column=2)  # name
         cell.value = self.carrier
         cell.style = self.input_name
@@ -2716,6 +2749,144 @@ class ImpManSpreadsheet4:
             cell.value = formula
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.get_last_row()  # record the number of the last row for total formulas in footers
+
+    def get_last_row(self):
+        """ record the number of the last row for totals formulas in footers """
+        self.last_row = self.row
+
+    def get_listrange(self):
+        """ get the first row and last row of the current list and store them into an array called listrange.
+        later, the summary row will be added."""
+        self.listrange = []
+        self.listrange.append(self.first_row)
+        self.listrange.append(self.last_row)
+        self.listrange.append(self.row)  # put the 3rd and final row number into the listrange - summary row
+
+    def build_footer(self):
+        """ call the footer depending on the list. """
+        if self.pref[self.lsi] == "nl":
+            self.nl_footer()
+        elif self.pref[self.lsi] == "wal":
+            self.wal_footer()
+        elif self.pref[self.lsi] == "otdl":
+            self.otdl_footer()
+        else:
+            self.aux_footer()
+        self.row += 1
+
+    def nl_footer(self):
+        """ build the non list footer. """
+        self.ws_list[self.i].row_dimensions[self.row].height = 20  # adjust row height
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)  # totals label
+        cell.value = "     Totals:"
+        cell.style = self.footer_left
+        self.ws_list[self.i].merge_cells('B' + str(self.row) + ':M' + str(self.row))
+        cell = self.ws_list[self.i].cell(row=self.row, column=14)  # totals own route
+        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_mid
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=15)  # totals off route
+        formula = "=SUM(%s!O%s:O%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_mid
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=16)  # blank formated cell
+        cell.value = ""
+        cell.style = self.footer_right
+
+    def wal_footer(self):
+        """ build the work assignment footer """
+        self.ws_list[self.i].row_dimensions[self.row].height = 20  # adjust row height
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)  # totals label
+        cell.value = "     Totals:"
+        cell.style = self.footer_left
+        self.ws_list[self.i].merge_cells('B' + str(self.row) + ':M' + str(self.row))
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=14)  # totals off route
+        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_mid
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=15)  # blank formated cell
+        cell.style = self.footer_right
+
+    def aux_footer(self):
+        """ build the footer for auxiliary - cca and ptf - carriers. """
+        self.ws_list[self.i].row_dimensions[self.row].height = 20  # adjust row height
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)  # totals label
+        cell.value = "     Totals:"
+        cell.style = self.footer_left
+        self.ws_list[self.i].merge_cells('B' + str(self.row) + ':M' + str(self.row))
+        cell = self.ws_list[self.i].cell(row=self.row, column=14)  # availability to 10
+        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_mid
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=15)  # availability to 11.50
+        formula = "=SUM(%s!O%s:O%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_mid
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=16)  # availability to DOV
+        formula = "=SUM(%s!P%s:P%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_right
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+
+    def otdl_footer(self):
+        """ build the overtime desired list footer. """
+        self.ws_list[self.i].row_dimensions[self.row].height = 20  # adjust row height
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)  # totals label
+        cell.value = "     Totals:"
+        cell.style = self.footer_left
+        self.ws_list[self.i].merge_cells('B' + str(self.row) + ':M' + str(self.row))
+        cell = self.ws_list[self.i].cell(row=self.row, column=14)  # availability to 10
+        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_mid
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=15)  # availability to 12
+        formula = "=SUM(%s!O%s:O%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_mid
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[self.i].cell(row=self.row, column=16)  # availability to DOV
+        formula = "=SUM(%s!P%s:P%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        cell.value = formula
+        cell.style = self.footer_right
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+
+    def fill_quads(self):
+        """ write formulas for the quadrants on the cover sheet. %s!J%s"""
+        formula = "=%s!N%s" % (self.day_of_week[self.i], self.dayrange[0][2])  # cell N+nl summary
+        self.cellc9.value = formula  # non otdl own route violations
+        formula = "=%s!O%s" % (self.day_of_week[self.i], self.dayrange[0][2])  # cell O+nl summary
+        self.cellf9.value = formula  # non otdl off route violations
+        formula = "=%s!N%s" % (self.day_of_week[self.i], self.dayrange[1][2])  # cell O+wal summary
+        self.cellf11.value = formula  # wal off route violations
+        formula = "=%s!N%s" % (self.day_of_week[self.i], self.dayrange[2][2])  # cell N+aux summary
+        self.cellj9.value = formula  # aux availability to 10 hours
+        formula = "=%s!O%s" % (self.day_of_week[self.i], self.dayrange[2][2])  # cell O+aux summary
+        self.cellm9.value = formula  # aux availability to 11.5 hours
+        formula = "=%s!N%s" % (self.day_of_week[self.i], self.dayrange[3][2])  # cell N+otdl summary
+        self.cellj11.value = formula  # otdl availability to 10 hours
+        formula = "=%s!O%s" % (self.day_of_week[self.i], self.dayrange[3][2])  # cell O+otdl summary
+        self.cellm11.value = formula  # otdl availability to 12 hours
+        formula = "=SUM(%s!P%s + %s!P%s" \
+                  % (self.day_of_week[self.i], self.dayrange[2][2],  # cell P+aux summary
+                     self.day_of_week[self.i], self.dayrange[3][2])  # cell P+otdl summary
+        self.celln16.value = formula
+        formula = "=COUNTIF(%s!J%s:J%s, \">\"&%s!C%s) + " \
+                  "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s) + " \
+                  "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s) + " \
+                  "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s)" \
+                  % (self.day_of_week[self.i], self.dayrange[0][0], self.dayrange[0][1], self.day_of_week[self.i], "16",
+                     self.day_of_week[self.i], self.dayrange[1][0], self.dayrange[1][1], self.day_of_week[self.i], "16",
+                     self.day_of_week[self.i], self.dayrange[2][0], self.dayrange[2][1], self.day_of_week[self.i], "16",
+                     self.day_of_week[self.i], self.dayrange[3][0], self.dayrange[3][1], self.day_of_week[self.i], "16")
+        self.cellf16.value = formula  # carriers out past dispatch of value
 
     def pagebreak(self, force=False):
         """ create a page break if consistant with user preferences. If page break is True, then the page

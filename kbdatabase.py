@@ -17,7 +17,7 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(53)
+        self.pbar.max_count(57)
         self.pbar.start_up()
         self.globals()
         self.tables()
@@ -28,6 +28,7 @@ class DataBase:
         self.ns_config()
         self.mousewheel()
         self.list_of_stations()
+        self.informalc()
         self.pbar.stop()
 
     def globals(self):
@@ -57,7 +58,14 @@ class DataBase:
             'CREATE table IF NOT EXISTS otdl_preference (quarter varchar, carrier_name varchar, preference varchar, '
             'station varchar, makeups varchar)',
             'CREATE table IF NOT EXISTS refusals (refusal_date varchar, carrier_name varchar, refusal_type varchar, '
-            'refusal_time varchar)'
+            'refusal_time varchar)',
+            'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,'
+            'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar, '
+            'level varchar)',
+            'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, '
+            'rate varchar, amount varchar)',
+            'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, payday varchar, '
+            'carrier_name varchar, hours varchar,rate varchar,amount varchar)'
         )
 
         tables_text = (
@@ -70,7 +78,10 @@ class DataBase:
             "Setting up: Tables - NS Configurations",
             "Setting up: Tables - Tolerances...",
             "Setting up: Tables - OTDL Preference",
-            "Setting up: Tables - Refusals"
+            "Setting up: Tables - Refusals",
+            "Setting up: Tables - Informal C",
+            "Setting up: Tables - Informal C Awards",
+            "Setting up: Tables - Informal C Payouts"
         )
         for i in range(len(tables_sql)):
             self.pbar_counter += 1
@@ -121,10 +132,10 @@ class DataBase:
             (29, "tourrings", 0),
             (30, "spreadsheet_pref", "Mandates"),
             (31, "lastfix", "1.000"),
-            (32, "min4_ss_nl", 25),
-            (33, "min4_ss_wal", 25),
-            (34, "min4_ss_otdl", 25),
-            (35, "min4_ss_aux", 25),
+            (32, "min4_ss_nl", 19),
+            (33, "min4_ss_wal", 19),
+            (34, "min4_ss_otdl", 19),
+            (35, "min4_ss_aux", 19),
             (36, "pb4_nl_wal", "True"),
             (37, "pb4_wal_aux", "True"),
             (38, "pb4_aux_otdl", "True"),
@@ -211,6 +222,18 @@ class DataBase:
         projvar.list_of_stations = []
         for stat in results:
             projvar.list_of_stations.append(stat[0])
+
+    def informalc(self):
+        """ check the informalc table and make changes if needed"""
+        self.pbar_counter += 1
+        self.pbar.move_count(self.pbar_counter)
+        self.pbar.change_text("Setting up: Tables - Informal C > update ")
+        # modify table for legacy version which did not have level column of informalc_grv table.
+        sql = 'PRAGMA table_info(informalc_grv)'  # get table info. returns an array of columns.
+        result = inquire(sql)
+        if len(result) <= 8:  # if there are not enough columns add the leave type and leave time columns
+            sql = 'ALTER table informalc_grv ADD COLUMN level varchar'
+            commit(sql)
 
 
 def setup_plaformvar():
