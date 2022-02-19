@@ -5299,13 +5299,6 @@ class StationList:
         """
         self.win = MakeWindow()
         self.win.create(frame)
-        frame.destroy()
-        gobackbutton = Button(self.win.buttons)
-        gobackbutton.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
-        if sys.platform == "win32":
-            gobackbutton.config(anchor="w")
-        gobackbutton.pack(side=LEFT)
-        # link up the canvas and scrollbar
         # page title
         row = 0
         Label(self.win.body, text="Manage Station List", font=macadj("Arial 12", "Helvetica 18")) \
@@ -5391,7 +5384,13 @@ class StationList:
             Label(self.win.body, text="{}.  {}".format(count, ss)).grid(row=row, columnspan=2, sticky="w")
             count += 1
             row += 1
-        self.win.finish()
+        # the screen has just one button - go back which returns to the main screeen.
+        gobackbutton = Button(self.win.buttons)
+        gobackbutton.config(text="Go Back", width=20, command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            gobackbutton.config(anchor="w")
+        gobackbutton.pack(side=LEFT)
+        self.win.finish()  # main loop, etc
 
     def apply_station(self, switch, station):
         """ checks and enters stations into the station table. """
@@ -5480,6 +5479,202 @@ class StationList:
             self.station_list(self.win.topframe)
         if not go_ahead:
             return
+
+
+class SetDov:
+    """
+    creates a scren where the user can change, delete and reset the dispatch of value for each day - Saturday through
+    Friday
+    """
+    def __init__(self):
+        self.frame = None
+        self.win = None
+        self.autofill = None  # stringvar for autofill
+        self.dovsat = StringVar()  # stringvar for saturday dov
+        self.dovsun = StringVar()   # stringvar for sunday dov
+        self.dovmon = StringVar()  # stringvar for monday dov
+        self.dovtue = StringVar()  # stringvar for tuesday dov
+        self.dovwed = StringVar()  # stringvar for wednesday dov
+        self.dovthu = StringVar()  # stringvar for thursday dov
+        self.dovfri = StringVar()  # stringvar for friday dov
+        self.dovarray = [self.dovsat, self.dovsun, self.dovmon, self.dovtue, self.dovwed, self.dovthu, self.dovfri]
+        self.days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        self.checksat = BooleanVar()  # bool for saturday "temporary"
+        self.checksun = BooleanVar()  # bool for sunday "temporary"
+        self.checkmon = BooleanVar()  # bool for monday "temporary"
+        self.checktue = BooleanVar()  # bool for tuesday "temporary"
+        self.checkwed = BooleanVar()  # bool for wednesday "temporary"
+        self.checkthu = BooleanVar()  # bool for thursday "temporary"
+        self.checkfri = BooleanVar()  # bool for friday "temporary"
+        self.checkarray = [self.checksat, self.checksun, self.checkmon, self.checktue, self.checkwed,
+                           self.checkthu, self.checkfri]
+        self.addsat = ""
+        self.addsun = ""
+        self.addmon = ""
+        self.addtue = ""
+        self.addwed = ""
+        self.addthu = ""
+        self.addfri = ""
+        self.addarray = [self.addsat, self.addsun, self.addmon, self.addtue, self.addwed, self.addthu, self.addfri]
+        self.status_update = None
+
+    def run(self, frame):
+        """ a master method for running the other methods in the proper order. """
+        self.frame = frame
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+        self.set_stringvars()
+        self.build_screen()
+        self.buttons_frame()
+        self.win.finish()
+
+    def set_stringvars(self):
+        """ set the value for the stringvars """
+        self.autofill = StringVar(self.win.body)
+        for i in range(7):
+            self.dovarray[i] = StringVar(self.win.body)
+
+    def build_screen(self):
+        """ generates the widgets to build the screen. """
+        row = 0
+        Label(self.win.body, text="Dispatch of Value Settings", font=macadj("Arial 12", "Helvetica 18")) \
+            .grid(row=row, columnspan=14, sticky="w")
+        row += 1
+        Label(self.win.body, text="").grid(row=row)
+        row += 1
+        text = macadj("Autofill Dispatch of Value (DOV) _____________________________",
+                      "Autofill Dispatch of Value (DOV) _____________________________")
+        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
+        row += 1
+        Entry(self.win.body, width=7, textvariable=self.autofill).grid(row=row, column=0, sticky="w")
+        Button(self.win.body, width=5, text="autofill", command=lambda: self.applyautofill()) \
+            .grid(row=row, column=13, sticky="w")
+        row += 1
+        text = "Use Autofill to fill a value as a time formatted in military time with clicks, not minutes, " \
+               "for all days at once. Then press apply or submit."
+        Label(self.win.body, text=text, wraplength=300, anchor="w", justify=LEFT)\
+            .grid(row=row, columnspan=14, sticky="w")
+        row += 1
+        Label(self.win.body, text="").grid(row=row)
+        row += 1
+        text = macadj("Set Dispatch of Value (DOV) __________________________________",
+                      "Set Dispatch of Value (DOV) __________________________________")
+        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
+        row += 1
+        for i in range(len(self.dovarray)):
+            Entry(self.win.body, width=7, textvariable=self.dovarray[i]).grid(row=row, column=0, sticky="w")
+            Checkbutton(self.win.body, variable=self.checkarray[i], onvalue=1).\
+                grid(row=row, column=1, sticky="w")
+            Label(self.win.body, width=10, text=self.days[i], anchor="w").grid(row=row, column=2, sticky="w")
+            row += 1
+        text = "Fill in the daily dispatch of value times. Use a military time with clicks not minutes. Click the " \
+               "checkbox next to the time if the daily time is temporary and one time only. This allow you to change " \
+               "the DOV for just one day before going back to the previous setting. "
+        Label(self.win.body, text=text, wraplength=300, anchor="w", justify=LEFT).\
+            grid(row=row, columnspan=14, sticky="w")
+        row += 1
+        Label(self.win.body, text="").grid(row=row)  # whitespace
+        row += 1
+        text = macadj("Dispatch of Value History ___________________________________",
+                      "Dispatch of Value History ___________________________________")
+        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
+        row += 1
+        Label(self.win.body, text="Generate Text Report: ", anchor="w")\
+            .grid(row=row, column=0, sticky="w", columnspan=10)
+        Button(self.win.body, text="Report", width=5).grid(row=row, column=13)
+        row += 1
+        Label(self.win.body, text="Delete History: ", anchor="w")\
+            .grid(row=row, column=0, sticky="w", columnspan=10)
+        Button(self.win.body, text="Delete", width=5).grid(row=row, column=13)
+        row += 1
+        Label(self.win.body, text="").grid(row=row)  # whitespace
+        row += 1
+        text = macadj("Reset Default Dispatch of Value _____________________________",
+                      "Reset Default Dispatch of Value _____________________________")
+        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
+        row += 1
+        Button(self.win.body, text="Reset", width=5).grid(row=row, column=13)
+        row += 1
+        Label(self.win.body, text="").grid(row=row)  # whitespace
+        row += 1
+
+    def buttons_frame(self):
+        """ configures the widgets on the bottom of the frame """
+        button_submit = Button(self.win.buttons)
+        button_apply = Button(self.win.buttons)
+        button_back = Button(self.win.buttons)
+        button_submit.config(text="Submit", command=lambda: self.apply(True))
+        button_apply.config(text="Apply", command=lambda: self.apply(False))
+        button_back.config(text="Go Back", command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button_submit.config(width=15, anchor="w")
+            button_apply.config(width=15, anchor="w")
+            button_back.config(width=15, anchor="w")
+        else:
+            button_submit.config(width=9)
+            button_apply.config(width=9)
+            button_back.config(width=9)
+        button_submit.pack(side=LEFT)
+        button_apply.pack(side=LEFT)
+        button_back.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.status_update.pack(side=LEFT)
+
+    def applyautofill(self):
+        """ automatically sets the values for the entry widgets for all days of DOV times"""
+        for i in range(len(self.dovarray)):  # in self.autofill.get():
+            self.dovarray[i].set(self.autofill.get())
+
+    def apply(self, goback):
+        """ check and enter new dov values into the database """
+        for i in range(7):
+            if not RingTimeChecker(self.dovarray[i].get()).check_numeric():
+                messagebox.showerror("Dispatch of Value Error",
+                                     "The Dispatch of Value for {} must be a number.".format(self.days[i]),
+                                     parent=self.win.body)
+                return
+            if not RingTimeChecker(self.dovarray[i].get()).count_decimals_place():
+                messagebox.showerror("Dispatch of Value Error",
+                                     "The Dispatch of Value for {} must not have more than one "
+                                     "decimal.".format(self.days[i]),
+                                     parent=self.win.body)
+                return
+            if RingTimeChecker(self.dovarray[i].get()).check_for_zeros():
+                messagebox.showerror("Dispatch of Value Error",
+                                     "The Dispatch of Value for {} must not be empty or zero.".format(self.days[i]),
+                                     parent=self.win.body)
+                return
+            if not RingTimeChecker(self.dovarray[i].get()).less_than_zero():
+                messagebox.showerror("Dispatch of Value Error",
+                                     "The Dispatch of Value for {} must not be less than zero.".format(self.days[i]),
+                                     parent=self.win.body)
+                return
+            if not RingTimeChecker(self.dovarray[i].get()).over_24():
+                messagebox.showerror("Dispatch of Value Error",
+                                     "The Dispatch of Value for {} must not more than 24.".format(self.days[i]),
+                                     parent=self.win.body)
+                return
+            # return if the number can not be made into a float.
+            to_add = RingTimeChecker(self.dovarray[i].get()).make_float()
+            if not to_add:
+                return
+            self.addarray[i] = "{:.2f}".format(to_add)
+
+        print(self.addarray)
+        for i in range(7):
+            #  "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
+            sql = "INSERT INTO dov (eff_date, station, time, temp) VALUES(%s, %s, %s, %r)" % \
+                  (projvar.invran_date_week[i], projvar.invran_station, self.addarray[i], self.checkarray[i].get())
+            print(sql)
+
+        if goback:
+            MainFrame().start(frame=self.win.topframe)
+        else:
+            for i in range(7):  # for each stringvar
+                self.dovarray[i].set(self.addarray[i])  # set the stringvar to the formatted time.
+            msg = "did something"
+            self.status_update.config(text="{}".format(msg))
+            # self.run(self.win.topframe)
 
 
 class Tolerances:
@@ -8732,6 +8927,8 @@ class MainFrame:
         reportsarchive_menu = Menu(menubar, tearoff=0)
         reportsarchive_menu.add_command(label="Mandates Spreadsheet",
                                         command=lambda: Archive().file_dialogue(dir_path('spreadsheets')))
+        reportsarchive_menu.add_command(label="Mandates No. 4",
+                                        command=lambda: Archive().file_dialogue(dir_path('mandates_4')))
         reportsarchive_menu.add_command(label="Over Max Spreadsheet",
                                         command=lambda: Archive().file_dialogue(dir_path('over_max_spreadsheet')))
         reportsarchive_menu.add_command(label="Speedsheets",
@@ -8781,13 +8978,16 @@ class MainFrame:
         management_menu.add_separator()
         management_menu.add_command(label="List of Stations",
                                     command=lambda: StationList().station_list(self.win.topframe))
+        management_menu.add_command(label="Set Dispatch of Value",
+                                    command=lambda: SetDov().run(self.win.topframe))
         management_menu.add_command(label="Tolerances", command=lambda: Tolerances().tolerances(self.win.topframe))
         management_menu.add_command(label="Spreadsheet Settings",
                                     command=lambda: SpreadsheetConfig().start(self.win.topframe))
         management_menu.add_command(label="NS Day Configurations",
                                     command=lambda: NsConfig().ns_config(self.win.topframe))
         if projvar.invran_day is None:
-            management_menu.entryconfig(5, state=DISABLED)
+            management_menu.entryconfig(3, state=DISABLED)  # disable the Set DOV if invran is not set.
+            management_menu.entryconfig(6, state=DISABLED)  # disable ns day configurations if invran is not set.
         management_menu.add_command(label="Speedsheet Settings", 
                                     command=lambda: SpeedConfig(self.win.topframe).create())
         management_menu.add_separator()
