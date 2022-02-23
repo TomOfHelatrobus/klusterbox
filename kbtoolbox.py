@@ -881,6 +881,27 @@ class Convert:
     def __init__(self, data):
         self.data = data
 
+    def dt_to_str(self):
+        """ converts a datetime object to a string """
+        return self.data.strftime("%Y-%m-%d %H:%M:%S")
+
+    def str_to_dt(self):
+        """converts a string of a datetime to an actual datetime"""
+        return datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
+
+    def dt_converter(self):
+        """ converts a string of a datetime to an actual datetime """
+        dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
+        return dt
+
+    def dt_to_backslash_str(self):
+        """ converts a datetime object to a string of a backslash date e.g. 01/01/2000 """
+        return self.data.strftime("%m/%d/%Y")
+
+    def dt_to_day_str(self):
+        """ converts a datetime object to a string of day(in lowercase) e.g. mon, tue, wed, etc """
+        return self.data.strftime("%a").lower()
+
     def datetime_separation(self):
         """ converts a datetime object into an array with year, month and day """
         year = self.data.strftime("%Y")
@@ -959,11 +980,6 @@ class Convert:
         sat_range += timedelta(days=1)
         if self.data == sat_range.strftime("%a").lower():  # friday
             return str(sat_range)
-
-    def dt_converter(self):
-        """ converts a string of a datetime to an actual datetime """
-        dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
-        return dt
 
     def empty_not_zero(self):
         """ returns an empty string for any value equal to zero """

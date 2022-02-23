@@ -20,7 +20,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
     RouteChecker
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4
-from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar
+from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
@@ -1774,7 +1774,7 @@ class DatabaseAdmin:
             commit(sql)
         pb_text.config(text="Deleting NULL clock rings.")
         pb_root.update()
-        sql = "DELETE FROM rings3 WHERE carrier_name IS Null"
+        sql = "DELETE FROM rings3 WHERE carrier_name IS NULL"
         commit(sql)
         sql = "DELETE FROM rings3 WHERE total='%s' and code='%s' and leave_type ='%s'" % ("", 'none', '0.0')
         commit(sql)
@@ -2927,7 +2927,8 @@ class AutoDataEntry:
                 if self.station_new not in projvar.list_of_stations:
                     sql = "INSERT INTO stations (station) VALUES('%s')" % self.station_new
                     commit(sql)
-                    projvar.list_of_stations.append(self.station_new)
+                    projvar.list_of_stations.append(self.station_new)  # add station to list of stations
+                    DovBase().minimum_recs(self.station_new)  # put minimum recs into dov table for new station.
                 # add the station to the station index
                 sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
                       % (self.parent.tacs_station, self.station_new, "")
@@ -2937,8 +2938,8 @@ class AutoDataEntry:
                                     "recognized.".format(self.station_new),
                                     parent=self.win.topframe)
             else:
-                """ if the carrier is selecting a station from the drop down menu. add the station to the 
-                station index """
+                # if the carrier is selecting a station from the drop down menu. add the station to the
+                # station index
                 sql = "INSERT INTO station_index (tacs_station, kb_station, finance_num) VALUES('%s','%s','%s')" \
                       % (self.parent.tacs_station, self.station_sorter.get(), "")
                 commit(sql)
@@ -4724,7 +4725,7 @@ class AutoDataEntry:
                 commit(sql)
             else:
                 sql = "UPDATE rings3 SET total='%s', rs='%s' ,code='%s',moves='%s'," \
-                      "leave_type ='%s',leave_time = '%s', bt='%s', et='%s' " \
+                      "leave_type ='%s',leave_time='%s', bt='%s', et='%s' " \
                       "WHERE rings_date = '%s' and carrier_name = '%s'" % (
                           self.current_array[2], self.current_array[3], self.current_array[4], self.current_array[5],
                           self.current_array[6], self.current_array[7], self.current_array[8], self.current_array[9],
@@ -5063,14 +5064,15 @@ class StartUp:
 
     def apply_startup(self):
         """ run checks after the user presses apply. """
-        if not self.new_station.get().strip():
+        station = self.new_station.get().strip()  # simplify the var name
+        if not station:
             messagebox.showerror("Prohibited Action",
                                  "You can not enter a blank entry for a station.",
                                  parent=self.win.body)
             return
-        sql = "INSERT INTO stations (station) VALUES('%s')" % (self.new_station.get().strip())
+        sql = "INSERT INTO stations (station) VALUES('%s')" % station
         commit(sql)
-        projvar.list_of_stations.append(self.new_station.get().strip())
+        projvar.list_of_stations.append(station)
         # access list of stations from database
         sql = "SELECT * FROM stations ORDER BY station"
         results = inquire(sql)
@@ -5078,6 +5080,8 @@ class StartUp:
         del projvar.list_of_stations[:]
         for stat in results:
             projvar.list_of_stations.append(stat[0])
+        # create minimum records in dov table for the station
+        DovBase().minimum_recs(station)
         MainFrame().start(frame=self.win.topframe)  # load new frame
 
 
@@ -5268,7 +5272,7 @@ class GenConfig:
         else:  # if the self.wheel_selection.get() == "reverse"
             wheel_multiple = int(-1)
             projvar.mousewheel = int(-1)  # sets the project variable
-        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (wheel_multiple, "mousewheel")
+        sql = "UPDATE tolerances SET tolerance='%s' WHERE category='%s'" % (wheel_multiple, "mousewheel")
         commit(sql)
         msg = "Mousescroll direction updated: {}".format(self.wheel_selection.get())
         self.status_update.config(text="{}".format(msg))
@@ -5405,10 +5409,11 @@ class StationList:
                                      "That station is already in the list of stations.",
                                      parent=self.win.body)
                 return
-        if switch == "enter":
             sql = "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
             commit(sql)
             projvar.list_of_stations.append(station.get())
+            # add minimum recs to DOV table
+            DovBase().minimum_recs(station.get())
         if switch == "delete":
             if station == "out of station":
                 text = "You can not delete the \"out of station\" listing."
@@ -5426,6 +5431,9 @@ class StationList:
                 DatabaseAdmin().database_clean_rings()
                 if projvar.invran_station == station:
                     Globals().reset()  # reset initial value of globals
+            # delete from DOV table
+            sql = "DELETE FROM dov WHERE station = '%s'" % station
+            commit(sql)
         # access list of stations from database
         sql = "SELECT * FROM stations ORDER BY station"
         results = inquire(sql)
@@ -5466,12 +5474,18 @@ class StationList:
             commit(sql)
             projvar.list_of_stations.remove(new_station.get())
         if go_ahead:
+            # update in stations table
             sql = "UPDATE stations SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
             commit(sql)
+            # update in carriers table
             sql = "UPDATE carriers SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
             commit(sql)
+            # update in station index table
             sql = "UPDATE station_index SET kb_station='%s' WHERE kb_station='%s'" % \
                   (new_station.get(), old_station.get())
+            commit(sql)
+            # update in DOV table
+            sql = "UPDATE dov SET station='%s' WHERE station='%s'" % (new_station.get(), old_station.get())
             commit(sql)
             """ update the the project variable for list of stations: """
             projvar.list_of_stations.append(new_station.get())  # add the new station name
@@ -5499,6 +5513,7 @@ class SetDov:
         self.dovfri = StringVar()  # stringvar for friday dov
         self.dovarray = [self.dovsat, self.dovsun, self.dovmon, self.dovtue, self.dovwed, self.dovthu, self.dovfri]
         self.days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        self.day = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         self.checksat = BooleanVar()  # bool for saturday "temporary"
         self.checksun = BooleanVar()  # bool for sunday "temporary"
         self.checkmon = BooleanVar()  # bool for monday "temporary"
@@ -5508,6 +5523,36 @@ class SetDov:
         self.checkfri = BooleanVar()  # bool for friday "temporary"
         self.checkarray = [self.checksat, self.checksun, self.checkmon, self.checktue, self.checkwed,
                            self.checkthu, self.checkfri]
+        # most recent record in the dov table
+        self.onrecsat = []
+        self.onrecsun = []
+        self.onrecmon = []
+        self.onrectue = []
+        self.onrecwed = []
+        self.onrecthu = []
+        self.onrecfri = []
+        self.onrecarray = [self.onrecsat, self.onrecsun, self.onrecmon, self.onrectue, self.onrecwed, self.onrecthu,
+                           self.onrecfri]
+        # shows record if there is one for the current day, if blank if there is no record for the current day
+        self.now_onrecsat = False
+        self.now_onrecsun = False
+        self.now_onrecmon = False
+        self.now_onrectue = False
+        self.now_onrecwed = False
+        self.now_onrecthu = False
+        self.now_onrecfri = False
+        self.now_onrecarray = [self.now_onrecsat, self.now_onrecsun, self.now_onrecmon, self.now_onrectue, 
+                              self.now_onrecwed, self.now_onrecthu, self.now_onrecfri]
+        # get the most recent record which is not temporary
+        self.perm_onrecsat = []
+        self.perm_onrecsun = []
+        self.perm_onrecmon = []
+        self.perm_onrectue = []
+        self.perm_onrecwed = []
+        self.perm_onrecthu = []
+        self.perm_onrecfri = []
+        self.perm_onrecarray = [self.perm_onrecsat, self.perm_onrecsun, self.perm_onrecmon, self.perm_onrectue, 
+                              self.perm_onrecwed, self.perm_onrecthu, self.perm_onrecfri]
         self.addsat = ""
         self.addsun = ""
         self.addmon = ""
@@ -5516,6 +5561,8 @@ class SetDov:
         self.addthu = ""
         self.addfri = ""
         self.addarray = [self.addsat, self.addsun, self.addmon, self.addtue, self.addwed, self.addthu, self.addfri]
+        self.insert_counter = 0
+        self.update_counter = 0
         self.status_update = None
 
     def run(self, frame):
@@ -5523,16 +5570,63 @@ class SetDov:
         self.frame = frame
         self.win = MakeWindow()
         self.win.create(self.frame)
+        self.get_onrecs()
+        self.get_now_onrecs()
+        self.get_premrecs()
+        self.make_stringvars()
         self.set_stringvars()
         self.build_screen()
         self.buttons_frame()
         self.win.finish()
 
-    def set_stringvars(self):
-        """ set the value for the stringvars """
+    def get_onrecs(self):
+        """ get the records currently in the database """
+        for i in range(len(self.days)):
+            sql = "SELECT * FROM dov WHERE eff_date <= '%s' AND station = '%s' AND day = '%s' " \
+                  "ORDER BY eff_date DESC" % \
+                  (projvar.invran_date_week[0], projvar.invran_station, self.day[i])
+            result = inquire(sql)
+            self.onrecarray[i] = result
+
+    def get_now_onrecs(self):
+        """ sets now onrecs to True if there is a record for the current day. That value is put into an array of
+        seven days - one boolean for each day. """
+        for i in range(len(self.onrecarray)):
+            if self.onrecarray[i][0]:
+                onrec_date = self.onrecarray[i][0][0]
+                onrec_day = self.day[i]
+                invran_date = Convert(projvar.invran_date_week[0]).dt_to_str()
+                invran_day = Convert(projvar.invran_date_week[i]).dt_to_day_str()
+                if onrec_date == invran_date:  # compare dates - is always saturday in the service week
+                    if onrec_day == invran_day:  # compare days - mon vs tue, etc
+                        self.now_onrecarray[i] = True
+
+    def get_premrecs(self):
+        """ get the permenent records - all recs that have temp set to False """
+        for i in range(len(self.onrecarray)):
+            for rec in self.onrecarray[i]:
+                if rec[4] == 'False':
+                    self.perm_onrecarray[i] = rec
+                    break
+
+    def make_stringvars(self):
+        """ define and create the stringvars using a loop"""
         self.autofill = StringVar(self.win.body)
         for i in range(7):
             self.dovarray[i] = StringVar(self.win.body)
+
+    def set_stringvars(self):
+        """ set the values for the stringvars using a loop """
+        for i in range(7):
+            recfortoday = self.now_onrecarray[i]
+            if recfortoday:  # use the most recent record - which is for the current day
+                daily_temp = Convert(self.onrecarray[i][0][4]).str_to_bool()  # make boolean a proper boolean
+                self.dovarray[i].set(self.onrecarray[i][0][3])  # get time - time is fourth item in results
+                self.checkarray[i].set(daily_temp)
+            else:  # use the most recent record where "temp" is False
+                daily_temp = Convert(self.perm_onrecarray[i][4]).str_to_bool()  # make boolean a proper boolean
+                self.dovarray[i].set(self.perm_onrecarray[i][3])  # get time - time is fourth item in results
+                self.checkarray[i].set(daily_temp)
 
     def build_screen(self):
         """ generates the widgets to build the screen. """
@@ -5563,9 +5657,11 @@ class SetDov:
         row += 1
         for i in range(len(self.dovarray)):
             Entry(self.win.body, width=7, textvariable=self.dovarray[i]).grid(row=row, column=0, sticky="w")
-            Checkbutton(self.win.body, variable=self.checkarray[i], onvalue=1).\
+            Checkbutton(self.win.body, variable=self.checkarray[i], onvalue=True, offvalue=False).\
                 grid(row=row, column=1, sticky="w")
             Label(self.win.body, width=10, text=self.days[i], anchor="w").grid(row=row, column=2, sticky="w")
+            date = Convert(projvar.invran_date_week[i]).dt_to_backslash_str()
+            Label(self.win.body, width=10, text=date, anchor="w").grid(row=row, column=3, sticky="w")
             row += 1
         text = "Fill in the daily dispatch of value times. Use a military time with clicks not minutes. Click the " \
                "checkbox next to the time if the daily time is temporary and one time only. This allow you to change " \
@@ -5575,28 +5671,25 @@ class SetDov:
         row += 1
         Label(self.win.body, text="").grid(row=row)  # whitespace
         row += 1
-        text = macadj("Dispatch of Value History ___________________________________",
-                      "Dispatch of Value History ___________________________________")
+        text = macadj("Dispatch of Value History ____________________________________",
+                      "Dispatch of Value History ____________________________________")
         Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
         row += 1
         Label(self.win.body, text="Generate Text Report: ", anchor="w")\
             .grid(row=row, column=0, sticky="w", columnspan=10)
-        Button(self.win.body, text="Report", width=5).grid(row=row, column=13)
+        Button(self.win.body, text="Report", width=5, command=lambda: self.generate_report()).grid(row=row, column=13)
         row += 1
         Label(self.win.body, text="Delete History: ", anchor="w")\
             .grid(row=row, column=0, sticky="w", columnspan=10)
-        Button(self.win.body, text="Delete", width=5).grid(row=row, column=13)
+        Button(self.win.body, text="Delete", width=5, command=lambda: self.delete_history()).grid(row=row, column=13)
+        row += 1
+        text = "Delete History will delete all DOV records for the station except for the default records with " \
+               "the default settings. After the records are deleted, you can use this screen to fill in the proper " \
+               "values."
+        Label(self.win.body, text=text, wraplength=300, anchor="w", justify=LEFT). \
+            grid(row=row, columnspan=14, sticky="w")
         row += 1
         Label(self.win.body, text="").grid(row=row)  # whitespace
-        row += 1
-        text = macadj("Reset Default Dispatch of Value _____________________________",
-                      "Reset Default Dispatch of Value _____________________________")
-        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
-        row += 1
-        Button(self.win.body, text="Reset", width=5).grid(row=row, column=13)
-        row += 1
-        Label(self.win.body, text="").grid(row=row)  # whitespace
-        row += 1
 
     def buttons_frame(self):
         """ configures the widgets on the bottom of the frame """
@@ -5627,23 +5720,30 @@ class SetDov:
 
     def apply(self, goback):
         """ check and enter new dov values into the database """
+        if not self.check():
+            return
+        self.enter_database()
+        self.route(goback)
+
+    def check(self):
+        """ check the values and return False if there is an error. """
         for i in range(7):
             if not RingTimeChecker(self.dovarray[i].get()).check_numeric():
                 messagebox.showerror("Dispatch of Value Error",
                                      "The Dispatch of Value for {} must be a number.".format(self.days[i]),
                                      parent=self.win.body)
-                return
+                return False
             if not RingTimeChecker(self.dovarray[i].get()).count_decimals_place():
                 messagebox.showerror("Dispatch of Value Error",
                                      "The Dispatch of Value for {} must not have more than one "
                                      "decimal.".format(self.days[i]),
                                      parent=self.win.body)
-                return
+                return False
             if RingTimeChecker(self.dovarray[i].get()).check_for_zeros():
                 messagebox.showerror("Dispatch of Value Error",
                                      "The Dispatch of Value for {} must not be empty or zero.".format(self.days[i]),
                                      parent=self.win.body)
-                return
+                return False
             if not RingTimeChecker(self.dovarray[i].get()).less_than_zero():
                 messagebox.showerror("Dispatch of Value Error",
                                      "The Dispatch of Value for {} must not be less than zero.".format(self.days[i]),
@@ -5653,28 +5753,117 @@ class SetDov:
                 messagebox.showerror("Dispatch of Value Error",
                                      "The Dispatch of Value for {} must not more than 24.".format(self.days[i]),
                                      parent=self.win.body)
-                return
+                return False
             # return if the number can not be made into a float.
             to_add = RingTimeChecker(self.dovarray[i].get()).make_float()
             if not to_add:
-                return
+                return False
             self.addarray[i] = "{:.2f}".format(to_add)
+        return True
 
-        print(self.addarray)
+    def enter_database(self):
+        """ input/ update records to the dov table of the database """
         for i in range(7):
-            #  "INSERT INTO stations (station) VALUES('%s')" % (station.get().strip())
-            sql = "INSERT INTO dov (eff_date, station, time, temp) VALUES(%s, %s, %s, %r)" % \
-                  (projvar.invran_date_week[i], projvar.invran_station, self.addarray[i], self.checkarray[i].get())
-            print(sql)
+            time_ = self.addarray[i]  # simplify the time to be updated
+            temp = self.checkarray[i].get()
+            onrec_time = self.onrecarray[i][0][3]
+            onrec_temp = Convert(self.onrecarray[i][0][4]).str_to_bool()
+            if self.now_onrecarray[i]:  # if there is already a record for the same day...
+                # or the time/temp is different
+                if onrec_time != time_ or onrec_temp != temp:
+                    sql = "UPDATE dov SET dov_time='%s', temp='%s' " \
+                          "WHERE eff_date='%s' AND station='%s' AND day='%s'" % \
+                        (time_, temp, projvar.invran_date_week[0],
+                         projvar.invran_station, self.day[i])
+                    commit(sql)
+                    self.update_counter += 1
+            else:  # if there is no record for the same day
+                if temp:  # if the temp box is checked
+                    self.insert_database(i)  # make a new record in the dov table
+                else:  # if the temp box is not checked
+                    # if the time/temp is different
+                    if onrec_time != time_ or onrec_temp != temp:
+                        self.insert_database(i)  # make a new record in the dov table
 
+    def insert_database(self, i):
+        """ make a new record in the dov table. """
+        time_ = self.addarray[i]  # simplify the time to be updated
+        temp = self.checkarray[i].get()
+        sql = "INSERT INTO dov (eff_date, station, day, dov_time, temp) " \
+              "VALUES('%s', '%s', '%s', '%s', '%s')" % \
+              (projvar.invran_date_week[0], projvar.invran_station, self.day[i], time_, temp)
+        commit(sql)
+        self.insert_counter += 1
+
+    def generate_report(self):
+        """ generate a report showing all dispatch of value times for each week with records. """
+        history_array = []  # holds an array of seven days for each week where recs exist.
+        date_array = []  # holds an array of dates where records exist
+        sql = "SELECT DISTINCT eff_date FROM dov WHERE station = '%s' ORDER BY eff_date DESC" % projvar.invran_station
+        unique_dates = inquire(sql)
+        for date in unique_dates:
+            date_array.append(date[0])
+            sql = "SELECT * FROM dov WHERE station = '%s' and eff_date = '%s'" % (projvar.invran_station, date[0])
+            recs = inquire(sql)
+            wk_array = ["", "", "", "", "", "", ""]
+            for i in range(len(self.day)):  # once per day of the week - 7 times
+                to_add = ""  # initialize with empty string - also serves as a default value
+                for rec in recs:  # check each record where effective date and station match
+                    if rec[2] == self.day[i]:
+                        to_add = rec[3]  # put the time in a holder variable.
+                        if rec[4] == "True":  # if temp is true
+                            to_add += "*"  # astrick will denote a temporary/one time value.
+                wk_array[i] = to_add
+            history_array.append(wk_array)
+        Reports(self.win.topframe).rpt_dov_history(date_array, history_array)
+
+    def delete_history(self):
+        """ this will delete all records for the station in the dov table then will recreate the default records. """
+        if not messagebox.askokcancel("Dispatch of Value Settings",
+                                      "Are you sure you want to delete the DOV history? All DOV records will "
+                                      "be deleted and new default records will be generated. ",
+                                      parent=self.win.body):
+            return
+        sql = "DELETE FROM dov WHERE station='%s'" % projvar.invran_station
+        commit(sql)
+        DovBase().minimum_recs(projvar.invran_station)
+        self.get_onrecs()
+        self.get_now_onrecs()
+        self.get_premrecs()
+        self.set_stringvars()
+        msg = "All DOV records deleted - default values reset."
+        self.status_update.config(text="{}".format(msg))
+
+    def route(self, goback):
+        """ re run screen or return to main screen. """
         if goback:
             MainFrame().start(frame=self.win.topframe)
         else:
-            for i in range(7):  # for each stringvar
-                self.dovarray[i].set(self.addarray[i])  # set the stringvar to the formatted time.
-            msg = "did something"
+            self.get_onrecs()
+            self.get_now_onrecs()
+            self.get_premrecs()
+            self.set_stringvars()
+            msg = self.create_msg()
             self.status_update.config(text="{}".format(msg))
-            # self.run(self.win.topframe)
+            
+    def create_msg(self):
+        """ builds the msg for the status update """
+        msg = ""
+        if self.insert_counter:
+            s = ""
+            if self.insert_counter > 1:
+                s = "s"
+            msg += str(self.insert_counter) + " record{} inserted.  ".format(s)
+        if self.update_counter:
+            s = ""
+            if self.update_counter > 1:
+                s = "s"
+            msg += str(self.update_counter) + " record{} updated.  ".format(s)
+        if not self.insert_counter and not self.update_counter:
+            msg = "No changes made"
+        self.insert_counter = 0  # reset counters 
+        self.update_counter = 0
+        return msg
 
 
 class Tolerances:

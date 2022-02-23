@@ -17,18 +17,19 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(57)
+        self.pbar.max_count(67)
         self.pbar.start_up()
-        self.globals()
-        self.tables()
-        self.stations()
-        self.tolerances()
-        self.rings()
-        self.skippers()
-        self.ns_config()
-        self.mousewheel()
-        self.list_of_stations()
-        self.informalc()
+        self.globals()  # pb increment: 1
+        self.tables()  # pb increment: 14
+        self.stations()  # pb increment: 1
+        self.tolerances()  # pb increment: 40
+        self.rings()  # pb increment: 1
+        self.skippers()  # pb increment: 1
+        self.ns_config()  # pb increment: 6
+        self.mousewheel()  # pb increment: 1
+        self.list_of_stations()  # pb increment: 1
+        self.informalc()  # pb increment: 1
+        self.dov()  # pb increment: 1
         self.pbar.stop()
 
     def globals(self):
@@ -65,7 +66,9 @@ class DataBase:
             'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, '
             'rate varchar, amount varchar)',
             'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, payday varchar, '
-            'carrier_name varchar, hours varchar,rate varchar,amount varchar)'
+            'carrier_name varchar, hours varchar,rate varchar,amount varchar)',
+            'CREATE table IF NOT EXISTS dov(eff_date date, station varchar, day varchar, dov_time varchar, '
+            'temp varchar)'
         )
 
         tables_text = (
@@ -81,7 +84,8 @@ class DataBase:
             "Setting up: Tables - Refusals",
             "Setting up: Tables - Informal C",
             "Setting up: Tables - Informal C Awards",
-            "Setting up: Tables - Informal C Payouts"
+            "Setting up: Tables - Informal C Payouts",
+            "Setting up: Tables - DOV"
         )
         for i in range(len(tables_sql)):
             self.pbar_counter += 1
@@ -235,6 +239,16 @@ class DataBase:
             sql = 'ALTER table informalc_grv ADD COLUMN level varchar'
             commit(sql)
 
+    def dov(self):
+        """ check if minimum records are in the dov table. These are seven recs, one for each day, for the
+        year 1. This ensures that there is always a record in the dov table. the default value is hard coded. """
+        self.pbar_counter += 1
+        self.pbar.move_count(self.pbar_counter)
+        for station in projvar.list_of_stations:  # for each station with a record in station table
+            self.pbar.change_text("Setting up: Tables - DOV > {} default values".format(station))
+            if station != "out of station":
+                DovBase().minimum_recs(station)  # make sure the minimum recs are in the DOV table.
+
 
 def setup_plaformvar():
     """ set up platform variable """
@@ -272,3 +286,30 @@ def setup_dirs_by_platformvar():
     if projvar.platform == "py":
         if not os.path.isdir('kb_sub'):
             os.makedirs('kb_sub')
+
+
+class DovBase:
+    """
+    deals with DOV table in the mandates.sql database
+    """
+
+    def __init__(self):
+        self.station = None
+        self.day = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        self.defaulttime = "20.50"
+
+    def minimum_recs(self, station):
+        """ places 7 records dated year 1 in the DOV table so that the database always has a default record
+         for any day. """
+        self.station = station
+        for day in self.day:
+            # check if the minimum record is in the database/ there is one for each day
+            sql = "SELECT * FROM dov WHERE station = '%s' AND eff_date = '%s' AND day = '%s'" % \
+                  (self.station, "0001-01-01 00:00:00", day)
+            result = inquire(sql)
+            if not result:
+                # if the minimum record is not in the database, then add it.
+                sql = "INSERT INTO dov (eff_date, station, day, dov_time, temp) " \
+                      "VALUES('%s', '%s', '%s', '%s', '%s')" % \
+                      ("0001-01-01 00:00:00", self.station, day, self.defaulttime, False)
+                commit(sql)

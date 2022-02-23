@@ -34,8 +34,9 @@ class Fixes:
         """ compare the version number to the version number of the fix and what's been marked done in the dbase. """
         if self.lastfix >= self.version:
             return False
-        if self.version >= 5.000:
+        if self.version >= 5.0:
             V5000Fix().run()
+            V5000FixA().run()
         return True
 
     def update_lastfix(self):
@@ -70,6 +71,7 @@ class V5000Fix:
         """ a master method for running other methods in proper order"""
         if not self.check_arrays():  # avoid index errors if the arrays don't have similar lengths.
             return
+        self.delete_null_names()
         self.get_carriers()
         self.fix_carriers()
 
@@ -80,6 +82,17 @@ class V5000Fix:
                 self.iterations = len(self.tablelist)
                 return True
         return False
+
+    def delete_null_names(self):
+        """ delete all the records where the name is null """
+        for i in range(self.iterations):
+            sql = "SELECT DISTINCT {} from {}".format(self.name_convention[i], self.tablelist[i])
+            results = inquire(sql)
+            if results:
+                for carrier in results:
+                    if carrier[0] is None:
+                        sql = "DELETE FROM {} WHERE {} IS NULL".format(self.tablelist[i], self.name_convention[i])
+                        commit(sql)
 
     def get_carriers(self):
         """ get a list of distinct names from the carriers table. """
@@ -100,3 +113,31 @@ class V5000Fix:
                               .format(self.tablelist[i], self.name_convention[i], self.name_convention[i]) \
                           % (carrier.lower(), carrier)
                     commit(sql)
+
+
+class V5000FixA:
+    """
+    replace the null values in rings 3 in bt and et columns with empty strings.
+    """
+
+    def run(self):
+        """ master method for running other methods in proper order. """
+        if self.check_for_null():
+            self.update_null_to_emptystring()
+
+    @staticmethod
+    def check_for_null():
+        """ returns true if there are null values in bt"""
+        sql = "SELECT * FROM rings3 WHERE bt IS NULL"
+        results = inquire(sql)
+        if results:
+            return True
+        return False
+
+    @staticmethod
+    def update_null_to_emptystring():
+        """ change any null values in bt and et to empty strings in the rings3 table. """
+        sql = "UPDATE rings3 SET bt = '' WHERE bt IS NULL"
+        commit(sql)
+        sql = "UPDATE rings3 SET et = '' WHERE et IS NULL"
+        commit(sql)

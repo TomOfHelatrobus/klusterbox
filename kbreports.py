@@ -5,7 +5,7 @@ investigation range, or their ns days, etc. The Messenger class gives the locati
 the user information in the form of message boxes.
 """
 import projvar
-from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path
+from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path, Convert
 from tkinter import messagebox, simpledialog
 import os
 import sys
@@ -326,6 +326,47 @@ class Reports:
                 subprocess.call(["xdg-open", 'kb_sub/pp_guide/' + filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('pp_guide') + filename])
+
+    @staticmethod
+    def rpt_dov_history(date_array, history_array):
+        """ Generate and display a report of dispatch of value times for a station """
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+        filename = "report_dov_history" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nDispatch of Value History\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n\n'.format(projvar.invran_station))
+
+        report.write('{:>4} {:<16} {:<7} {:<7} {:<7} {:<7} {:<7} {:<7} {:<7} \n'
+                     .format("", "Effective Date", "sat", "sun", "mon", "tue", "wed", "thu", "fri"))
+        report.write('     -----------------------------------------------------------------------------\n')
+        i = 1
+        for line in history_array:
+            date = Convert(date_array[i-1]).str_to_dt()
+            date = Convert(date).dt_to_backslash_str()
+            report.write('{:>4} {:<16} {:<7} {:<7} {:<7} {:<7} {:<7} {:<7} {:<7}\n'
+                         .format("", date, line[0], line[1], line[2], line[3], line[4], line[5], line[6]))
+            if i % 3 == 0:
+                report.write('     -----------------------------------------------------------------------------\n')
+            i += 1
+        report.write('\n\n\n')
+        report.write(' This report shows the settings for dispatch of value (DOV) times. The most recent \n'
+                     ' records will be on the top and earlier records lower on the list. \n\n'
+                     ' Effective Date is the first day of the service week and will always be a Saturday. \n'
+                     ' this is the date on which the record is effective. The record will apply to later \n'
+                     ' days of the week until updated/changed.\n\n'
+                     ' Asterisks denote a temporary record. Such records will only apply for one day, \n'
+                     ' after which the earlier non-temporary will apply.\n\n'
+                     ' The bottom record is the default. It generates automatically and can not/ should \n'
+                     ' not be deleted. The time set in the default records is arbitrary and is not \n'
+                     ' necessarily the correct time.')
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
 
 
 class CheatSheet:
