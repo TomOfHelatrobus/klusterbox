@@ -2022,6 +2022,7 @@ class ImpManSpreadsheet4:
         self.display_counter = 0  # count the number of rows displayed per list loop
         self.listrange = []  # records the first row, last row and summary row of each list
         self.dayrange = []  # records the listranges for the day by appending listranges after each listloop.
+        self.dovarray = []  # build a list of 7 dov times. One for each day.
 
     def create(self, frame):
         """ a master method for running other methods in proper order."""
@@ -2040,6 +2041,7 @@ class ImpManSpreadsheet4:
         self.get_carrierlist()
         self.get_carrier_breakdown()  # breakdown carrier list into no list, wal, otdl, aux
         self.get_tolerances()  # get tolerances, minimum rows and page break preferences from tolerances table
+        self.get_dov()  # get the dispatch of value for each day
         self.get_styles()
         self.build_workbook()
         self.set_dimensions()
@@ -2126,6 +2128,24 @@ class ImpManSpreadsheet4:
         self.min_man4_wal = int(result[4][0])  # mimimum rows for work assignment
         self.min_man4_otdl = int(result[5][0])  # minimum rows for otdl
         self.min_man4_aux = int(result[6][0])  # minimum rows for auxiliary
+
+    def get_dov(self):
+        """ get the dov records currently in the database """
+        days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        for i in range(len(days)):
+            sql = "SELECT * FROM dov WHERE eff_date <= '%s' AND station = '%s' AND day = '%s' " \
+                  "ORDER BY eff_date DESC" % \
+                  (projvar.invran_date_week[0], projvar.invran_station, days[i])
+            result = inquire(sql)
+            for rec in result:
+                if rec[0] == Convert(projvar.invran_date_week[0]).dt_to_str():
+                    self.dovarray.append(rec[3])
+                    break
+                elif rec[4] == "False":
+                    self.dovarray.append(rec[3])
+                    break
+                else:
+                    continue
 
     def get_styles(self):
         """ Named styles for workbook """
@@ -2369,7 +2389,7 @@ class ImpManSpreadsheet4:
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('C14:E15')
         cell = self.ws_list[self.i].cell(row=16, column=3)  # filled out by spreadsheet user
-        cell.value = "23.99"
+        cell.value = self.dovarray[self.i]
         cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('C16:E16')
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -2395,7 +2415,6 @@ class ImpManSpreadsheet4:
         self.ws_list[self.i].merge_cells('N14:O14')
 
         # Available to DOV:
-
         cell = self.ws_list[self.i].cell(row=16, column=10)  # Available to DOV:
         cell.value = "Available to DOV:"
         cell.style = self.quad_left
@@ -2783,7 +2802,7 @@ class ImpManSpreadsheet4:
         cell.style = self.footer_left
         self.ws_list[self.i].merge_cells('B' + str(self.row) + ':M' + str(self.row))
         cell = self.ws_list[self.i].cell(row=self.row, column=14)  # totals own route
-        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
         cell.value = formula
         cell.style = self.footer_mid
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -2820,17 +2839,17 @@ class ImpManSpreadsheet4:
         cell.style = self.footer_left
         self.ws_list[self.i].merge_cells('B' + str(self.row) + ':M' + str(self.row))
         cell = self.ws_list[self.i].cell(row=self.row, column=14)  # availability to 10
-        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
         cell.value = formula
         cell.style = self.footer_mid
         cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.ws_list[self.i].cell(row=self.row, column=15)  # availability to 11.50
-        formula = "=SUM(%s!O%s:O%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        formula = "=SUM(%s!O%s:O%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
         cell.value = formula
         cell.style = self.footer_mid
         cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.ws_list[self.i].cell(row=self.row, column=16)  # availability to DOV
-        formula = "=SUM(%s!P%s:P%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        formula = "=SUM(%s!P%s:P%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
         cell.value = formula
         cell.style = self.footer_right
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -2843,17 +2862,17 @@ class ImpManSpreadsheet4:
         cell.style = self.footer_left
         self.ws_list[self.i].merge_cells('B' + str(self.row) + ':M' + str(self.row))
         cell = self.ws_list[self.i].cell(row=self.row, column=14)  # availability to 10
-        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        formula = "=SUM(%s!N%s:N%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
         cell.value = formula
         cell.style = self.footer_mid
         cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.ws_list[self.i].cell(row=self.row, column=15)  # availability to 12
-        formula = "=SUM(%s!O%s:O%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        formula = "=SUM(%s!O%s:O%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
         cell.value = formula
         cell.style = self.footer_mid
         cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.ws_list[self.i].cell(row=self.row, column=16)  # availability to DOV
-        formula = "=SUM(%s!P%s:P%s)" % (self.day_of_week[self.i],self.listrange[0],self.listrange[1])
+        formula = "=SUM(%s!P%s:P%s)" % (self.day_of_week[self.i], self.listrange[0], self.listrange[1])
         cell.value = formula
         cell.style = self.footer_right
         cell.number_format = "#,###.00;[RED]-#,###.00"

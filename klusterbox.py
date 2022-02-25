@@ -5523,7 +5523,7 @@ class SetDov:
         self.checkfri = BooleanVar()  # bool for friday "temporary"
         self.checkarray = [self.checksat, self.checksun, self.checkmon, self.checktue, self.checkwed,
                            self.checkthu, self.checkfri]
-        # most recent record in the dov table
+        # all records in the dov table
         self.onrecsat = []
         self.onrecsun = []
         self.onrecmon = []
