@@ -1839,11 +1839,12 @@ class DatabaseAdmin:
         try:
             if os.path.exists(path_):
                 os.remove(path_)
-        except sqlite3.OperationalError:
+        except (sqlite3.OperationalError, PermissionError):
             messagebox.showerror("Access Error",
                                  "Klusterbox can not delete the database as it is being used by another "
                                  "application. Close the database in the other application and retry.",
                                  parent=frame)
+            return
         frame.destroy()
         masterframe.destroy()
         Globals().reset()  # reset initial value of globals
@@ -5781,9 +5782,12 @@ class SetDov:
                 if temp:  # if the temp box is checked
                     self.insert_database(i)  # make a new record in the dov table
                 else:  # if the temp box is not checked
-                    # if the time/temp is different
-                    if onrec_time != time_ or onrec_temp != temp:
-                        self.insert_database(i)  # make a new record in the dov table
+                    if onrec_temp:  # if the current or earliest record in the database is temporary
+                        if self.perm_onrecarray[i][3] != time_:  # if there is a diffence in the time.
+                            self.insert_database(i)  # make a new record in the dov table
+                    else:  # if the current or earliest record in the database is not temporary.
+                        if onrec_time != time_ or onrec_temp != temp:  # if the time/temp is different
+                            self.insert_database(i)  # make a new record in the dov table
 
     def insert_database(self, i):
         """ make a new record in the dov table. """
@@ -7575,7 +7579,10 @@ class AboutKlusterbox:
                       "kbequitability.py",
                       "kbcsv_repair.py",
                       "kbpdfhandling.py",
-                      "kbcsv_reader.py"
+                      "kbcsv_reader.py",
+                      "kbenterrings.py",
+                      "kbfixes.py",
+                      "kbinformalc.py"
                       )
         for i in range(len(sourcecode)):
             Button(self.win.body, text="read", width=macadj(7, 7),
@@ -8773,7 +8780,8 @@ class MainFrame:
     def get_stations_list(self):
         """ get a list of stations for station optionmenu """
         self.stations_minus_outofstation = projvar.list_of_stations[:]
-        self.stations_minus_outofstation.remove("out of station")
+        if "out of station" in self.stations_minus_outofstation:
+            self.stations_minus_outofstation.remove("out of station")
         if len(self.stations_minus_outofstation) == 0:
             self.stations_minus_outofstation.append("undefined")
 

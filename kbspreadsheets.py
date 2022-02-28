@@ -2007,6 +2007,7 @@ class ImpManSpreadsheet4:
         self.overtime = 0.0  # the amount of overtime worked by the carrier
         self.onroute = 0.0  # the amount of overworked on the carrier's own route.
         self.offroute = 0.0  # empty string or calculated time that carrier spent off their assignment
+        self.offroute_adj = 0.0  # self.offroute adjusted for pivot time, ns days, and whole days off bid assignment
         self.otherroute_array = []  # a list of routes where carrier worked off assignment
         self.otherroute = ""  # the off assignment route the carrier worked on - formated for the cell
         self.avail_10 = 0.0  # otdl/aux availability to 10 hours
@@ -2291,6 +2292,7 @@ class ImpManSpreadsheet4:
         self.cellc9 = self.ws_list[self.i].cell(row=9, column=3)
         self.cellc9.value = ""
         self.cellc9.style = self.quad_bottom
+        self.cellc9.number_format = "#,###.00;[RED]-#,###.00"
         # Top Right
         cell = self.ws_list[self.i].cell(row=8, column=6)  # NON-OTDL Violations off own route Page 1
         cell.value = "NON-OTDL \nViolations off own route \nPage 1"
@@ -2318,6 +2320,7 @@ class ImpManSpreadsheet4:
         self.cellf11.value = ""
         self.cellf11.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('F11:H11')
+        self.cellf11.number_format = "#,###.00;[RED]-#,###.00"
         # Totals Left
         cell = self.ws_list[self.i].cell(row=12, column=3)
         formula = "= %s!C%s" % (self.day_of_week[self.i], "9")
@@ -2388,7 +2391,7 @@ class ImpManSpreadsheet4:
         cell.value = "Dispatch of Value"
         cell.style = self.quad_top
         self.ws_list[self.i].merge_cells('C14:E15')
-        cell = self.ws_list[self.i].cell(row=16, column=3)  # filled out by spreadsheet user
+        cell = self.ws_list[self.i].cell(row=16, column=3)  # aquired by get_dov()
         cell.value = self.dovarray[self.i]
         cell.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('C16:E16')
@@ -2402,7 +2405,7 @@ class ImpManSpreadsheet4:
         self.cellf16 = self.ws_list[self.i].cell(row=16, column=6)  # value filled later - # of carriers out past DOV
         self.cellf16.style = self.quad_bottom
         self.ws_list[self.i].merge_cells('F16:H16')
-        self.cellf16.number_format = "#,###;[RED]-#,###"
+        self.cellf16.number_format = "#,##0"
 
         # Straight Time Available:
         cell = self.ws_list[self.i].cell(row=14, column=10)  # Straight Time Available:
@@ -2546,6 +2549,7 @@ class ImpManSpreadsheet4:
         self.overtime = 0.0  # the total overtime worked
         self.onroute = 0.0  # the amount of overtime worked on the carrier's own route.
         self.offroute = 0.0  # total time spend off route
+        self.offroute_adj = 0.0  # self.offroute adjusted for pivot time, ns days, and whole days off bid assignment
         self.otherroute_array = []  # a list of routes where carrier worked off assignment
         self.otherroute = ""  # a formatted display for routes worked off assignment
         self.avail_10 = 0.0  # otdl/aux availability to 10 hours
@@ -2601,6 +2605,7 @@ class ImpManSpreadsheet4:
         self.overtime = 0.0  # the total overtime worked
         self.onroute = 0.0  # the amount of overtime worked on the carrier's own route.
         self.offroute = 0.0  # total time spend off route
+        self.offroute_adj = 0.0
         self.otherroute_array = []  # a list of routes where carrier worked off assignment
         self.otherroute = ""  # a formatted display for routes worked off assignment
         self.avail_10 = 0.0  # otdl/aux availability to 10 hours
@@ -2611,6 +2616,7 @@ class ImpManSpreadsheet4:
             if self.moves:
                 self.calc_offroute()  # calculate the time that the carrier spent off their route and get other route
                 self.format_otherroute()  # format the self.other route so that if fits in the spreadsheet cell
+            self.calc_offroute_adj()  # adj for pivot time or if code is nsday or whole day spent off route
         if self.pref[self.lsi] == "nl":
             self.calc_onroute()  # calculate the overtime worked on carrier's own route.
         if self.pref[self.lsi] in ("otdl", "aux"):
@@ -2632,10 +2638,26 @@ class ImpManSpreadsheet4:
         for _ in range(move_sets):
             offroute = float(moves[count+1]) - float(moves[count])  # calculate off route time per triad
             self.offroute += offroute  # add triad time off route
-            self.offroute = min(self.overtime, self.offroute)
             self.otherroute_array.append(moves[count+2])
             count += 3
+        self.offroute = round(self.offroute, 2)
+        if self.offroute >= self.totalhours:
+            self.offroute = self.totalhours
         self.moves = moves[0]  # replace moves with the first time moved off route
+
+    def calc_offroute_adj(self):
+        """ calculate the off route overtime for ns days or if the whole day is spent off own route. """
+        self.offroute_adj = min(self.overtime, self.offroute)  # will adjust for pivot time
+        if self.codes == "ns day":  # if it is the ns day, then whole day is off route
+            self.offroute_adj = self.totalhours
+            self.otherroute_array.append("ns day")
+            self.otherroute = "ns day"
+            self.moves = self.bt
+        if self.totalhours:
+            # if self.totalhours <= self.offroute:  # if the whole day is off route
+            if self.offroute == self.totalhours:  # if the whole day is off route
+                self.offroute_adj = self.totalhours
+                self.otherroute = "off bid"
 
     def calc_onroute(self):
         """ calculate the overtime the carrier worked on their own route. """
@@ -2661,6 +2683,11 @@ class ImpManSpreadsheet4:
             self.avail_115 = 11.5  # aux availability to 11.50 hours
             self.avail_12 = 12  # otdl availability to 12 hours.
             return
+        if self.codes in ("light", "excused", "sch chg", "annual", "sick"):  # if carrier excused for day
+            self.avail_10 = 0  # otdl/aux availability to 0 hours
+            self.avail_115 = 0  # aux availability to 0 hours
+            self.avail_12 = 0  # otdl availability to 0 hours.
+            return
         if not self.totalhours:
             return
         self.avail_10 = max(10 - self.totalhours, 0)
@@ -2679,11 +2706,11 @@ class ImpManSpreadsheet4:
             return False
         if self.display_limiter == "only mandates":
             if self.pref[self.lsi] == "nl":
-                if self.overtime:
+                if self.overtime or self.offroute_adj:
                     return True
                 return False
             if self.pref[self.lsi] == "wal":
-                if self.offroute:
+                if self.offroute_adj:
                     return True
                 return False
 
@@ -2734,7 +2761,7 @@ class ImpManSpreadsheet4:
             column += 1
         if self.pref[self.lsi] in ("nl", "wal"):
             cell = self.ws_list[self.i].cell(row=self.row, column=column)  # off route
-            cell.value = Convert(self.offroute).str_to_floatoremptystr()
+            cell.value = Convert(self.offroute_adj).str_to_floatoremptystr()
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
             column += 1
@@ -2897,10 +2924,12 @@ class ImpManSpreadsheet4:
                   % (self.day_of_week[self.i], self.dayrange[2][2],  # cell P+aux summary
                      self.day_of_week[self.i], self.dayrange[3][2])  # cell P+otdl summary
         self.celln16.value = formula
-        formula = "=COUNTIF(%s!J%s:J%s, \">\"&%s!C%s) + " \
+        formula = "=MAX(" \
                   "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s) + " \
                   "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s) + " \
-                  "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s)" \
+                  "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s) + " \
+                  "COUNTIF(%s!J%s:J%s, \">\"&%s!C%s)," \
+                  "0)" \
                   % (self.day_of_week[self.i], self.dayrange[0][0], self.dayrange[0][1], self.day_of_week[self.i], "16",
                      self.day_of_week[self.i], self.dayrange[1][0], self.dayrange[1][1], self.day_of_week[self.i], "16",
                      self.day_of_week[self.i], self.dayrange[2][0], self.dayrange[2][1], self.day_of_week[self.i], "16",

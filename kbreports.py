@@ -355,7 +355,7 @@ class Reports:
                      ' Effective Date is the first day of the service week and will always be a Saturday. \n'
                      ' this is the date on which the record is effective. The record will apply to later \n'
                      ' days of the week until updated/changed.\n\n'
-                     ' Asterisks denote a temporary record. Such records will only apply for one day, \n'
+                     ' * Asterisks denote a temporary record. Such records will only apply for one day, \n'
                      ' after which the earlier non-temporary will apply.\n\n'
                      ' The bottom record is the default. It generates automatically and can not/ should \n'
                      ' not be deleted. The time set in the default records is arbitrary and is not \n'

@@ -240,13 +240,12 @@ class Globals:
     @staticmethod
     def set(s_year, s_mo, s_day, i_range, station, frame):
         """ checks and sets globals """
-        projvar.invran_weekly_span = i_range
-        if station == "undefined":
+        if station == "undefined":  # check for a valid station - returns error if "undefined" is selected.
             messagebox.showerror("Investigation station setting",
                                  'Please select a station.',
                                  parent=frame)
             return False
-        # error check for valid date
+        # error check for valid date - returns if there is not a valid date
         try:
             date = datetime(int(s_year), int(s_mo), int(s_day))
         except ValueError:
@@ -254,7 +253,8 @@ class Globals:
                                  'The date entered is not valid.',
                                  parent=frame)
             return False
-        projvar.invran_date = date
+        projvar.invran_weekly_span = i_range  # set the range
+        projvar.invran_date = date  # set the date
         wkdy_name = date.strftime("%a")
         while wkdy_name != "Sat":  # while date enter is not a saturday
             date -= timedelta(days=1)  # walk back the date until it is a saturday
