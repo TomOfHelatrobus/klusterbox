@@ -173,34 +173,34 @@ class InformalC:
             Label(self.win.body, text="New Settlement", font=macadj("bold", "Helvetica 18"))\
                 .grid(row=0, column=0, sticky="w")
             Label(self.win.body, text="").grid(row=1, column=0, sticky="w")
-            Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
                 .grid(row=2, column=0, sticky="w")
             
             Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
                 .grid(row=2, column=1, sticky="w")
             Label(self.win.body, text="Incident Date").grid(row=3, column=0, sticky="w")
-            Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w") \
+            Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w") \
                 .grid(row=4, column=0, sticky="w")
             
             Entry(self.win.body, textvariable=self.incident_start, justify='right', width=macadj(20, 15)) \
                 .grid(row=4, column=1, sticky="w")
-            Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
                 .grid(row=5, column=0, sticky="w")
             
             Entry(self.win.body, textvariable=self.incident_end, justify='right', width=macadj(20, 15)) \
                 .grid(row=5, column=1, sticky="w")
-            Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
                 .grid(row=6, column=0, sticky="w")
             
             Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
                 .grid(row=6, column=1, sticky="w")
             # select level
-            Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
                 .grid(row=7, column=0, sticky="w")  # select settlement level
             
             lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
@@ -208,8 +208,8 @@ class InformalC:
             lvl_om.config(width=macadj(13, 13))
             lvl_om.grid(row=7, column=1)
             self.lvl.set("informal a")
-            Label(self.win.body, text="Station: ", background=macadj("gray95", "grey"),  # select a station
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)). \
+            Label(self.win.body, text="Station: ", background=macadj("gray95", "white"),  # select a station
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)). \
                 grid(row=8, column=0, sticky="w")
             Label(self.win.body, text="", height=macadj(1, 2)).grid(row=8, column=1)
             
@@ -220,14 +220,14 @@ class InformalC:
             station_om = OptionMenu(self.win.body, self.station, *station_options)
             station_om.config(width=macadj(40, 34))
             station_om.grid(row=9, column=0, columnspan=2, sticky="e")
-            Label(self.win.body, text="GATS Number: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            Label(self.win.body, text="GATS Number: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
                 .grid(row=10, column=0, sticky="w")  # enter gats number
             
             Entry(self.win.body, textvariable=self.gats_number, justify='right', width=macadj(20, 15)) \
                 .grid(row=10, column=1, sticky="w")
-            Label(self.win.body, text="Documentation?: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            Label(self.win.body, text="Documentation?: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
                 .grid(row=11, column=0, sticky="w")  # select documentation
             
             doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
@@ -235,8 +235,8 @@ class InformalC:
             docs_om.config(width=macadj(13, 13))
             docs_om.grid(row=11, column=1)
             self.docs.set("no")
-            Label(self.win.body, text="Description: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            Label(self.win.body, text="Description: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
                 .grid(row=15, column=0, sticky="w")
             Label(self.win.body, text="", height=macadj(1, 2)).grid(row=15, column=1)
             
@@ -245,9 +245,10 @@ class InformalC:
             Label(self.win.body, text="", height=macadj(1, 1)).grid(row=17, column=0)
             Label(self.win.body, text=self.msg, fg="red", height=macadj(1, 1))\
                 .grid(row=18, column=0, columnspan=2, sticky="w")
-            Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor="w",
+            button_alignment = macadj("w", "center")
+            Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
                    command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
-            Button(self.win.buttons, text="Enter", width=macadj(19, 18),
+            Button(self.win.buttons, text="Enter", width=macadj(19, 18), anchor=button_alignment,
                    command=lambda: self.informalc_new_apply()).grid(row=0, column=1)
 
         def informalc_new_apply(self):
@@ -482,7 +483,7 @@ class InformalC:
                 .grid(row=0, columnspan=6, sticky="w")
             Label(self.win.body, text=" ").grid(row=1, columnspan=6)
             # select station
-            Label(self.win.body, text=" Station ", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
+            Label(self.win.body, text=" Station ", background=macadj("gray95", "white"), fg=macadj("black", "black"),
                   anchor="w", width=macadj(14, 12)).grid(row=2, column=0, columnspan=3, sticky="w")
             station_options = projvar.list_of_stations
             if "out of station" in station_options:
@@ -501,8 +502,8 @@ class InformalC:
             Radiobutton(self.win.body, text="no", variable=self.incident_date, value='no', width=macadj(2, 4)) \
                 .grid(row=4, column=1, sticky="w")
             Label(self.win.body, text="", width=macadj(2, 4)).grid(row=4, column=2)
-            Label(self.win.body, text=" Incident Dates", background=macadj("gray95", "grey"), 
-                  fg=macadj("black", "white"), anchor="w", width=14).grid(row=4, column=3, sticky="w")
+            Label(self.win.body, text=" Incident Dates", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), anchor="w", width=14).grid(row=4, column=3, sticky="w")
             Entry(self.win.body, textvariable=self.incident_start, width=macadj(12, 8), justify='right')\
                 .grid(row=4, column=4)
             Entry(self.win.body, textvariable=self.incident_end, width=macadj(12, 8), justify='right')\
@@ -513,8 +514,8 @@ class InformalC:
                 .grid(row=5, column=0, sticky="w")
             Radiobutton(self.win.body, text="no", variable=self.signing_date, value='no', width=macadj(2, 4)) \
                 .grid(row=5, column=1, sticky="w")
-            Label(self.win.body, text=" Signing Dates", background=macadj("gray95", "grey"), 
-                  fg=macadj("black", "white"), anchor="w", width=14).grid(row=5, column=3, sticky="w")
+            Label(self.win.body, text=" Signing Dates", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), anchor="w", width=14).grid(row=5, column=3, sticky="w")
             Entry(self.win.body, textvariable=self.signing_start, width=macadj(12, 8), justify='right')\
                 .grid(row=5, column=4)
             Entry(self.win.body, textvariable=self.signing_end, width=macadj(12, 8), justify='right')\
@@ -526,8 +527,8 @@ class InformalC:
             Radiobutton(self.win.body, text="no", variable=self.set_lvl, value='no', width=macadj(2, 4)) \
                 .grid(row=6, column=1, sticky="w")
             self.set_lvl.set("no")
-            Label(self.win.body, text=" Settlement Level ", background=macadj("gray95", "grey"), 
-                  fg=macadj("black", "white"), anchor="w", width=14, height=1).grid(row=6, column=3, sticky="w")
+            Label(self.win.body, text=" Settlement Level ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=6, column=3, sticky="w")
             lvl_options = ("informal a", "formal a", "step b", "pre-arb", "arbitration")
             lvl_om = OptionMenu(self.win.body, self.level, *lvl_options)
             lvl_om.config(width=macadj(20, 16))
@@ -538,7 +539,7 @@ class InformalC:
                 .grid(row=7, column=0, sticky="w")
             Radiobutton(self.win.body, text="no", variable=self.gats, value='no', width=macadj(2, 4)) \
                 .grid(row=7, column=1, sticky="w")
-            Label(self.win.body, text=" GATS Number", background=macadj("gray95", "grey"), fg=macadj("black", "white"),
+            Label(self.win.body, text=" GATS Number", background=macadj("gray95", "white"), fg=macadj("black", "black"),
                   anchor="w", width=14, height=1).grid(row=7, column=3, sticky="w")
             gats_options = ("no", "yes")
             gats_om = OptionMenu(self.win.body, self.have_gats, *gats_options)
@@ -551,8 +552,8 @@ class InformalC:
                 .grid(row=9, column=0, sticky="w")
             Radiobutton(self.win.body, text="no", variable=self.docs, value='no', width=macadj(2, 4)) \
                 .grid(row=9, column=1, sticky="w")
-            Label(self.win.body, text=" Documentation", background=macadj("gray95", "grey"), 
-                  fg=macadj("black", "white"), anchor="w", width=14, height=1).grid(row=9, column=3, sticky="w")
+            Label(self.win.body, text=" Documentation", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=9, column=3, sticky="w")
             doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
             docs_om = OptionMenu(self.win.body, self.have_docs, *doc_options)
             docs_om.config(width=macadj(10, 8))
@@ -563,9 +564,10 @@ class InformalC:
         
         def build_buttons(self):
             """ build the buttons on the bottom of the screen. """
-            Button(self.win.buttons, text="Search", width=20,
+            button_alignment = macadj("w", "center")
+            Button(self.win.buttons, text="Search", width=20, anchor=button_alignment,
                    command=lambda: self.grvlist_apply()).grid(row=0, column=1)
-            Button(self.win.buttons, text="Go Back", width=20, anchor="w", 
+            Button(self.win.buttons, text="Go Back", width=20, anchor=button_alignment,
                    command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
 
         def grvlist_apply(self):
@@ -1770,10 +1772,11 @@ class InformalC:
             om_backdate = OptionMenu(self.win.body, backdate, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
             om_backdate.config(width=5)
             om_backdate.grid(row=6, column=2, sticky="w")
-            Button(self.win.buttons, text="Go Back", width=20, 
+            button_alignment = macadj("w", "center")
+            Button(self.win.buttons, text="Go Back", width=20, anchor=button_alignment,
                    command=lambda: self.parent.informalc(self.win.topframe))\
                 .grid(row=0, column=1, sticky="w")
-            Button(self.win.buttons, text="Apply", width=20,
+            Button(self.win.buttons, text="Apply", width=20, anchor=button_alignment,
                    command=lambda: self.apply_search(self.win.topframe, the_year,
                                                                    the_station, backdate)) \
                 .grid(row=0, column=2, sticky="w")
@@ -2138,13 +2141,13 @@ class InformalC:
             om_backdate = OptionMenu(self.win.body, backdate, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")
             om_backdate.config(width=5)
             om_backdate.grid(row=8, column=2, sticky="w")
-            Button(self.win.buttons, text="Go Back", width=16,
+            button_alignment = macadj("w", "center")
+            Button(self.win.buttons, text="Go Back", width=16, anchor=button_alignment,
                    command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
             Label(self.win.buttons, text="Report: ", width=16).grid(row=0, column=1)
-            Button(self.win.buttons, text="All Carriers", width=16,
+            Button(self.win.buttons, text="All Carriers", width=16, anchor=button_alignment,
                    command=lambda: self.por_all(afterdate, beforedate, station, backdate)) \
                 .grid(row=0, column=2)
-            # Button(self.win.buttons, text="By Carrier", width=16).grid(row=0, column=3)
             self.win.finish()
 
         def por_all(self, afterdate, beforedate, station, backdate):

@@ -5152,14 +5152,14 @@ class GenConfig:
     def build(self):
         """ build the screens """
         Label(self.win.body, text="General Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, sticky="w", columnspan=4)
+            .grid(row=self.row, sticky="w", columnspan=14)
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
         text = macadj("Interface Configurations __________________________________",
-                      "Interface Configurations __________________________________")
+                      "Interface Configurations _________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=self.row, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=self.row, column=0, columnspan=14, sticky="w")
         self.row += 1
         # mousewheel scrolling direction
         Label(self.win.body, text="Mouse Wheel Scrolling:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
@@ -5195,7 +5195,8 @@ class GenConfig:
             )
         Label(self.win.body, text="Spreadsheet Preference:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_sheet = OptionMenu(self.win.body, self.spreadsheet_pref, *pref_options)  # option menu configuration below
-        om_sheet.config(width=18)
+        om_sheet_width = macadj(18, 14)
+        om_sheet.config(width=om_sheet_width)
         om_sheet.grid(row=self.row, column=1, columnspan=2)
         self.spreadsheet_pref.set(self.spreadsheet_result)
         self.row += 1
@@ -5217,9 +5218,9 @@ class GenConfig:
         self.row += 1
         # tourrings - show bt et rings
         text = macadj("Expanded Clock Rings ____________________________________",
-                      "Expanded Clock Rings ________________________")
+                      "Expanded Clock Rings ___________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=self.row, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=self.row, column=0, columnspan=14, sticky="w")
         self.row += 1
         Label(self.win.body, text="Show BT/ET Rings:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_tourrings = OptionMenu(self.win.body, self.tourrings_var, "on", "off")  # option menu configuration below
@@ -5307,7 +5308,7 @@ class StationList:
         # page title
         row = 0
         Label(self.win.body, text="Manage Station List", font=macadj("Arial 12", "Helvetica 18")) \
-            .grid(row=row, columnspan=2, sticky="w")
+            .grid(row=row, columnspan=13, sticky="w")
         row += 1
         Label(self.win.body, text="").grid(row=row)
         row += 1
@@ -5317,7 +5318,8 @@ class StationList:
                       "Enter New Station ______________________")
         Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=3, sticky="w")
         row += 1
-        e = Entry(self.win.body, width=35, textvariable=new_name)
+        entry_width = macadj(35, 24)
+        e = Entry(self.win.body, width=entry_width, textvariable=new_name)
         e.grid(row=row, column=0, sticky="w")
         new_name.set("")
         Button(self.win.body, width=5, anchor="w", text="ENTER",
@@ -5330,11 +5332,12 @@ class StationList:
         sql = "SELECT * FROM stations ORDER BY station"
         results = inquire(sql)
         text = macadj("List Of Stations _____________________________________",
-                      "List Of Stations _______________________")
-        Label(self.win.body, text=text, fg="blue", pady=5).grid(row=row, columnspan=3, sticky="w")
+                      "List Of Stations ________________________")
+        Label(self.win.body, text=text, fg="blue", pady=5).grid(row=row, columnspan=13, sticky="w")
         row += 1
         for record in results:
-            Button(self.win.body, text=record[0], width=30, anchor="w").grid(row=row, column=0, sticky="w")
+            button_width = macadj(30, 25)
+            Button(self.win.body, text=record[0], width=button_width, anchor="w").grid(row=row, column=0, sticky="w")
             Button(self.win.body, text="delete",
                    command=lambda x=record[0]: self.apply_station("delete", x)) \
                 .grid(row=row, column=1, sticky="w")
@@ -5345,8 +5348,8 @@ class StationList:
             row += 1
             # change names of stations
             text = macadj("Change Station Name ______________________________",
-                          "Change Station Name __________________")
-            Label(self.win.body, text=text, fg="blue").grid(row=row, column=0, columnspan=3, sticky="w")
+                          "Change Station Name ___________________")
+            Label(self.win.body, text=text, fg="blue").grid(row=row, column=0, columnspan=13, sticky="w")
             row += 1
             all_stations = []
             for rec in results:
@@ -5355,14 +5358,16 @@ class StationList:
                 all_stations.remove("out of station")
             old_station = StringVar(self.win.body)
             om = OptionMenu(self.win.body, old_station, *all_stations)
-            om.config(width="35")
+            om_width = macadj("35", "27")
+            om.config(width=om_width)
             om.grid(row=row, column=0, sticky="w", columnspan=2)
             row += 1
             old_station.set("select a station")
             Label(self.win.body, text="enter a new name:").grid(row=row, column=0, sticky="w")
             row += 1
             new_station = StringVar(self.win.body)
-            Entry(self.win.body, textvariable=new_station, width="35").grid(row=row, column=0, sticky="w")
+            entry_width = macadj("35", "24")
+            Entry(self.win.body, textvariable=new_station, width=entry_width).grid(row=row, column=0, sticky="w")
             new_station.set("enter a new station name")
             Button(self.win.body, text="update", command=lambda: self.station_update_apply(old_station, new_station)) \
                 .grid(row=row, column=1, sticky="w")
@@ -5372,7 +5377,7 @@ class StationList:
         row += 1
         text = macadj("List Of Stations _____________________________________",
                       "List Of Stations ________________________")
-        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=3, sticky="w")
+        Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=13, sticky="w")
         row += 1
         Label(self.win.body, text="(referenced in carrier database)", pady=5) \
             .grid(row=row, columnspan=3, sticky="w")
@@ -5638,12 +5643,12 @@ class SetDov:
         Label(self.win.body, text="").grid(row=row)
         row += 1
         text = macadj("Autofill Dispatch of Value (DOV) _____________________________",
-                      "Autofill Dispatch of Value (DOV) _____________________________")
+                      "Autofill Dispatch of Value (DOV) ___________________")
         Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
         row += 1
         Entry(self.win.body, width=7, textvariable=self.autofill).grid(row=row, column=0, sticky="w")
         Button(self.win.body, width=5, text="autofill", command=lambda: self.applyautofill()) \
-            .grid(row=row, column=13, sticky="w")
+            .grid(row=row, column=4, sticky="w")
         row += 1
         text = "Use Autofill to fill a value as a time formatted in military time with clicks, not minutes, " \
                "for all days at once. Then press apply or submit."
@@ -5653,7 +5658,7 @@ class SetDov:
         Label(self.win.body, text="").grid(row=row)
         row += 1
         text = macadj("Set Dispatch of Value (DOV) __________________________________",
-                      "Set Dispatch of Value (DOV) __________________________________")
+                      "Set Dispatch of Value (DOV) ______________________")
         Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
         row += 1
         for i in range(len(self.dovarray)):
@@ -5673,16 +5678,16 @@ class SetDov:
         Label(self.win.body, text="").grid(row=row)  # whitespace
         row += 1
         text = macadj("Dispatch of Value History ____________________________________",
-                      "Dispatch of Value History ____________________________________")
+                      "Dispatch of Value History ________________________")
         Label(self.win.body, text=text, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
         row += 1
         Label(self.win.body, text="Generate Text Report: ", anchor="w")\
             .grid(row=row, column=0, sticky="w", columnspan=10)
-        Button(self.win.body, text="Report", width=5, command=lambda: self.generate_report()).grid(row=row, column=13)
+        Button(self.win.body, text="Report", width=5, command=lambda: self.generate_report()).grid(row=row, column=4)
         row += 1
         Label(self.win.body, text="Delete History: ", anchor="w")\
             .grid(row=row, column=0, sticky="w", columnspan=10)
-        Button(self.win.body, text="Delete", width=5, command=lambda: self.delete_history()).grid(row=row, column=13)
+        Button(self.win.body, text="Delete", width=5, command=lambda: self.delete_history()).grid(row=row, column=4)
         row += 1
         text = "Delete History will delete all DOV records for the station except for the default records with " \
                "the default settings. After the records are deleted, you can use this screen to fill in the proper " \
@@ -6171,34 +6176,34 @@ class SpreadsheetConfig:
         """ fills the window with widgets. """
         row = 0
         Label(self.win.body, text="Spreadsheet Settings",
-              font=macadj("bold", "Helvetica 18"), anchor="w").grid(row=row, sticky="w", columnspan=4)
+              font=macadj("bold", "Helvetica 18"), anchor="w").grid(row=row, sticky="w", columnspan=14)
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         text = macadj("Improper Mandate Spreadsheets __________________________________________",
-                      "Improper Mandate Spreadsheets __________________________________________")
+                      "Improper Mandate Spreadsheets __________________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=row, column=0, columnspan=114, sticky="w")
         row += 1
-        Label(self.win.body, text="Minimum rows for No List Carriers", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for No List Carriers", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_nl_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_nl")).grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Minimum rows for Work Assignment", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Work Assignment", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_wal_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_wal")).grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Minimum rows for OT Desired", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for OT Desired", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_otdl_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_otdl")).grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Minimum rows for Auxiliary", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Auxiliary", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_aux_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
@@ -6209,7 +6214,7 @@ class SpreadsheetConfig:
         Label(self.win.body, text="Page Breaks Between List:", anchor="w").grid(row=row, column=0, sticky="w")
         row += 1
         # Page break between no list and work assignment
-        Label(self.win.body, text="  No List and Work Assignment", width=30, anchor="w")\
+        Label(self.win.body, text="  No List and Work Assignment", width=macadj(30, 26), anchor="w")\
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_1 = OptionMenu(self.win.body, self.pb_nl_wal_var, "on", "off")
         om_pb_1.config(width=3)
@@ -6219,7 +6224,7 @@ class SpreadsheetConfig:
             .grid(row=row, column=2, padx=4)
         row += 1
         # Page break between no list and work assignment
-        Label(self.win.body, text="  Work Assignment and OT Desired", width=30, anchor="w") \
+        Label(self.win.body, text="  Work Assignment and OT Desired", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_2 = OptionMenu(self.win.body, self.pb_wal_otdl_var, "on", "off")
         om_pb_2.config(width=3)
@@ -6229,7 +6234,7 @@ class SpreadsheetConfig:
             .grid(row=row, column=2, padx=4)
         row += 1
         # Page break between no list and work assignment
-        Label(self.win.body, text="  OT Desired and Auxiliary", width=30, anchor="w") \
+        Label(self.win.body, text="  OT Desired and Auxiliary", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_3 = OptionMenu(self.win.body, self.pb_otdl_aux_var, "on", "off")
         om_pb_3.config(width=3)
@@ -6243,29 +6248,29 @@ class SpreadsheetConfig:
         row += 1
 
         text = macadj("Improper Mandate No. 4 Spreadsheets ____________________________________",
-                      "Improper Mandate No. 4 Spreadsheets ____________________________________")
+                      "Improper Mandate No. 4 Spreadsheets ____________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=row, column=0, columnspan=14, sticky="w")
         row += 1
-        Label(self.win.body, text="Minimum rows for No List Carriers", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for No List Carriers", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min4_nl_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_nl")).grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Minimum rows for Work Assignment", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Work Assignment", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min4_wal_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_wal")).grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Minimum rows for OT Desired", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for OT Desired", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min4_otdl_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_otdl")).grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Minimum rows for Auxiliary", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Auxiliary", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min4_aux_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
@@ -6276,7 +6281,7 @@ class SpreadsheetConfig:
         Label(self.win.body, text="Page Breaks Between List:", anchor="w").grid(row=row, column=0, sticky="w")
         row += 1
         # Page break between no list and work assignment
-        Label(self.win.body, text="  No List and Work Assignment", width=30, anchor="w") \
+        Label(self.win.body, text="  No List and Work Assignment", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_1 = OptionMenu(self.win.body, self.pb4_nl_wal_var, "on", "off")
         om_pb_1.config(width=3)
@@ -6286,7 +6291,7 @@ class SpreadsheetConfig:
             .grid(row=row, column=2, padx=4)
         row += 1
         # Page break between work assignment and auxiliary
-        Label(self.win.body, text="  Work Assignment and Auxiliary", width=30, anchor="w") \
+        Label(self.win.body, text="  Work Assignment and Auxiliary", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_2 = OptionMenu(self.win.body, self.pb4_wal_aux_var, "on", "off")
         om_pb_2.config(width=3)
@@ -6296,7 +6301,7 @@ class SpreadsheetConfig:
             .grid(row=row, column=2, padx=4)
         row += 1
         # Page break between auxiliary and ot desired
-        Label(self.win.body, text=" Auxiliary and OT Desired", width=30, anchor="w") \
+        Label(self.win.body, text=" Auxiliary and OT Desired", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_pb_3 = OptionMenu(self.win.body, self.pb4_aux_otdl_var, "on", "off")
         om_pb_3.config(width=3)
@@ -6305,7 +6310,7 @@ class SpreadsheetConfig:
                command=lambda: Messenger(self.win.topframe).tolerance_info("pb_aux_otdl")) \
             .grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Mandates No. 4 Display Limiter", width=30, anchor="w") \
+        Label(self.win.body, text="Mandates No. 4 Display Limiter", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         # display_limiter options: show all, only workdays, only mandates
         om_dis_lim = OptionMenu(self.win.body, self.man4_dis_limit_var, "show all", "only workdays", "only mandates")
@@ -6319,12 +6324,12 @@ class SpreadsheetConfig:
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         text = macadj("12 and 60 Hour Violations Spreadsheets ___________________________________",
-                      "12 and 60 Hour Violations Spreadsheets ___________________________________")
+                      "12 and 60 Hour Violations Spreadsheets __________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=row, column=0, columnspan=14, sticky="w")
         row += 1
         # Display widgets for 12 and 60 Hour Violations Spread Sheet
-        Label(self.win.body, text="Minimum rows for Over Max", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Over Max", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_overmax_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
@@ -6336,19 +6341,19 @@ class SpreadsheetConfig:
 
         # Display header for OTDL Equitability Spread Sheet
         text = macadj("OTDL Equitability Spreadsheets ____________________________________________",
-                      "OTDL Equitability Spreadsheets ____________________________________________")
+                      "OTDL Equitability Spreadsheets __________________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=row, column=0, columnspan=14, sticky="w")
         row += 1
         # Display widgets for OTDL Equitability Spread Sheet
-        Label(self.win.body, text="Minimum rows for OTDL Equitability", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for OTDL Equitability", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_ot_equit_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_ot_equit")) \
             .grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Overtime Calculation Preference", width=30, anchor="w") \
+        Label(self.win.body, text="Overtime Calculation Preference", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_ot_equit = OptionMenu(self.win.body, self.ot_calc_pref_var, "all", "off_route")
         om_ot_equit.config(width=7)
@@ -6361,19 +6366,19 @@ class SpreadsheetConfig:
         row += 1
         # Display header for Overtime Distribution Spread Sheet
         text = macadj("Overtime Distribution Spreadsheets _______________________________________",
-                      "Overtime Distribution Spreadsheets _______________________________________")
+                      "Overtime Distribution Spreadsheets _______________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=row, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=row, column=0, columnspan=14, sticky="w")
         row += 1
         # Display widgets for Overtime Distribution Spread Sheet
-        Label(self.win.body, text="Minimum rows for Overtime Distribution", width=30, anchor="w") \
+        Label(self.win.body, text="Minimum rows for Overtime Distribution", width=macadj(30, 27), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         Entry(self.win.body, width=5, textvariable=self.min_ot_dist_var).grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_ot_dist")) \
             .grid(row=row, column=2, padx=4)
         row += 1
-        Label(self.win.body, text="Overtime Calculation Preference", width=30, anchor="w") \
+        Label(self.win.body, text="Overtime Calculation Preference", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_ot_equit = OptionMenu(self.win.body, self.ot_calc_pref_dist_var, "all", "off_route")
         om_ot_equit.config(width=7)
@@ -6388,10 +6393,10 @@ class SpreadsheetConfig:
         dashes = ""
         dashcount = 77
         if sys.platform == "darwin":
-            dashcount = 55
+            dashcount = 60
         for i in range(dashcount):
             dashes += "_"
-        Label(self.win.body, text=dashes, pady=5, fg="blue").grid(row=row, columnspan=4, sticky="w")
+        Label(self.win.body, text=dashes, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
         row += 1
         Label(self.win.body, text="Restore Defaults").grid(row=row, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("default")) \
@@ -6599,7 +6604,7 @@ class NsConfig:
             .grid(row=0, sticky="w", columnspan=4)
         Label(self.win.body, text=" ").grid(row=1, column=0)
         text = macadj("Change Configuration ________________________________________________",
-                      "Change Configuration ________________________________________________")
+                      "Change Configuration _________________________________________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=2, column=0, columnspan=4, sticky="w")
         # Label(self.win.body, text="Change Configuration").grid(row=2, sticky="w", columnspan=4)
@@ -6637,7 +6642,7 @@ class NsConfig:
         yellow_text.set(result[0][2])
         om_yellow = OptionMenu(self.win.body, yellow_color, *color_array)
         yellow_color.set(result[0][1])
-        om_yellow.config(width=13, anchor="w")
+        om_yellow.config(width=13, anchor=macadj("w","center"))
         om_yellow.grid(row=7, column=2, sticky="w")
         Label(self.win.body, text="yellow").grid(row=7, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['blue'])).grid(row=8, column=0, sticky="w")  # blue row
@@ -6645,7 +6650,7 @@ class NsConfig:
         blue_text.set(result[1][2])
         om_blue = OptionMenu(self.win.body, blue_color, *color_array)
         blue_color.set(result[1][1])
-        om_blue.config(width=13, anchor="w")
+        om_blue.config(width=13, anchor=macadj("w","center"))
         om_blue.grid(row=8, column=2, sticky="w")
         Label(self.win.body, text="blue").grid(row=8, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['green'])).grid(row=9, column=0, sticky="w")  # green row
@@ -6653,7 +6658,7 @@ class NsConfig:
         green_text.set(result[2][2])
         om_green = OptionMenu(self.win.body, green_color, *color_array)
         green_color.set(result[2][1])
-        om_green.config(width=13, anchor="w")
+        om_green.config(width=13, anchor=macadj("w","center"))
         om_green.grid(row=9, column=2, sticky="w")
         Label(self.win.body, text="green").grid(row=9, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['brown'])).grid(row=10, column=0, sticky="w")  # brown row
@@ -6661,7 +6666,7 @@ class NsConfig:
         brown_text.set(result[3][2])
         om_brown = OptionMenu(self.win.body, brown_color, *color_array)
         brown_color.set(result[3][1])
-        om_brown.config(width=13, anchor="w")
+        om_brown.config(width=13, anchor=macadj("w","center"))
         om_brown.grid(row=10, column=2, sticky="w")
         Label(self.win.body, text="brown").grid(row=10, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['red'])).grid(row=11, column=0, sticky="w")  # red row
@@ -6669,7 +6674,7 @@ class NsConfig:
         red_text.set(result[4][2])
         om_red = OptionMenu(self.win.body, red_color, *color_array)
         red_color.set(result[4][1])
-        om_red.config(width=13, anchor="w")
+        om_red.config(width=13, anchor=macadj("w","center"))
         om_red.grid(row=11, column=2, sticky="w")
         Label(self.win.body, text="red").grid(row=11, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['black'])).grid(row=12, column=0, sticky="w")  # black row
@@ -6677,7 +6682,7 @@ class NsConfig:
         black_text.set(result[5][2])
         om_black = OptionMenu(self.win.body, black_color, *color_array)
         black_color.set(result[5][1])
-        om_black.config(width=13, anchor="w")
+        om_black.config(width=13, anchor=macadj("w","center"))
         om_black.grid(row=12, column=2, sticky="w")
         Label(self.win.body, text="black").grid(row=12, column=3, sticky="w")
         Label(self.win.body, text=" ").grid(row=13)
@@ -6685,7 +6690,7 @@ class NsConfig:
             .grid(row=14, column=3)
         Label(self.win.body, text=" ").grid(row=15)
         text = macadj("Restore Defaults ______________________________________________________",
-                      "Restore Defaults ______________________________________________________")
+                      "Restore Defaults ____________________________________________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=16, column=0, columnspan=4, sticky="w")
         # Label(self.win.body, text="Restore Defaults").grid(row=16)
@@ -6981,14 +6986,14 @@ class AdeSettings:
         self.win.create(frame)
         r = 0
         Label(self.win.body, text="Auto Data Entry Settings", font=macadj("bold", "Helvetica 18")) \
-            .grid(row=r, column=0, sticky="w", columnspan=4)
+            .grid(row=r, column=0, sticky="w", columnspan=14)
         r += 1
-        Label(self.win.body, text="").grid(row=r, column=1)
+        Label(self.win.body, text="").grid(row=r)
         r += 1
         text = macadj("NS Day Structure Preference ________________________________",
-                      "NS Day Structure Preference ________________________________")
+                      "NS Day Structure Preference _________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=r, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=r, column=0, columnspan=14, sticky="w")
         r += 1
         ns_structure = StringVar(self.win.body)
         sql = "SELECT tolerance FROM tolerances WHERE category='%s'" % "ns_auto_pref"
@@ -7005,12 +7010,12 @@ class AdeSettings:
         Label(self.win.body, text="").grid(row=r, column=1)
         r += 1
         text = macadj("List of TACS MODS Codes __________________________________",
-                      "List of TACS MODS Codes __________________________________")
+                      "List of TACS MODS Codes ___________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=r, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=r, column=0, columnspan=14, sticky="w")
         r += 1
         Label(self.win.body, text="(to exclude from Auto Data Entry moves).") \
-            .grid(row=r, column=0, columnspan=4, sticky="w")
+            .grid(row=r, column=0, columnspan=14, sticky="w")
         r += 1
         Label(self.win.body, text="code", fg="grey", anchor="w") \
             .grid(row=r, column=0)
@@ -7037,17 +7042,18 @@ class AdeSettings:
         Label(self.win.body, text="").grid(row=r, column=2)
         r += 1
         text = macadj("Add New Code _____________________________________________",
-                      "Add New Code _____________________________________________")
+                      "Add New Code ____________________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=r, column=0, columnspan=4, sticky="w")
+              fg="blue").grid(row=r, column=0, columnspan=14, sticky="w")
         r += 1
         new_code = StringVar(self.win.body)
         new_descp = StringVar(self.win.body)
         Label(self.win.body, text="code", fg="grey", anchor="w").grid(row=r, column=0)
         Label(self.win.body, text="description", fg="grey", anchor="w").grid(row=r, column=1, columnspan=2)
         r += 1
-        Entry(self.win.body, textvariable=new_code, width=6).grid(row=r, column=0)  # add new code
-        Entry(self.win.body, textvariable=new_descp, width=35).grid(row=r, column=1, columnspan=2)
+
+        Entry(self.win.body, textvariable=new_code, width=macadj(6, 4)).grid(row=r, column=0)  # add new code
+        Entry(self.win.body, textvariable=new_descp, width=macadj(35, 27)).grid(row=r, column=1, columnspan=2)
         Button(self.win.body, text="Add", width=5, 
                command=lambda: self.codes_add(new_code, new_descp)) \
             .grid(row=r, column=3)
@@ -7155,7 +7161,7 @@ class PdfConvertConfig:
         Label(self.win.body, text=" ").grid(row=1, column=0)
         # Label(self.win.body, text="Generate Reports for PDF Converter").grid(row=2, sticky="w", columnspan=4)
         text = macadj("Generate Reports for PDF Converter __________________________",
-                      "Generate Reports for PDF Converter __________________________")
+                      "Generate Reports for PDF Converter _____________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=2, column=0, columnspan=4, sticky="w")
         # Label(self.win.body, text=" ").grid(row=3, column=0)
@@ -7176,7 +7182,7 @@ class PdfConvertConfig:
         Label(self.win.body, text=" ").grid(row=6, column=0)
         # allow user to read from a text file to bypass the pdfminer
         text = macadj("Generate Reports from Text File ______________________________",
-                      "Generate Reports from Text File ______________________________")
+                      "Generate Reports from Text File ________________________")
         Label(self.win.body, text=text, anchor="w",
               fg="blue").grid(row=7, column=0, columnspan=4, sticky="w")
         Label(self.win.body, text="     (where a text file of pdfminer output has been generated)") \
@@ -8192,11 +8198,11 @@ class CarrierInput:
         date_frame = Frame(self.win.body)  # define frame
         date_frame.grid(row=1, sticky=W, pady=5)  # put frame on grid
         text = macadj("Effective Date _______________________________",
-                      "Effective Date _______________________________")
+                      "Effective Date _________________________")
         Label(date_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=20, sticky="w")
-        Label(date_frame, text="Month", fg=macadj("grey", "white"), anchor="w").grid(row=1, column=0)
-        Label(date_frame, text="Day", fg=macadj("grey", "white"), anchor="w").grid(row=1, column=1)
-        Label(date_frame, text="Year", fg=macadj("grey", "white"), anchor="w").grid(row=1, column=2)
+        Label(date_frame, text="Month", fg=macadj("grey", "grey"), anchor="w").grid(row=1, column=0)
+        Label(date_frame, text="Day", fg=macadj("grey", "grey"), anchor="w").grid(row=1, column=1)
+        Label(date_frame, text="Year", fg=macadj("grey", "grey"), anchor="w").grid(row=1, column=2)
         Label(date_frame, text="          ").grid(row=1, column=3)
         om_month = OptionMenu(date_frame, self.month, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
         om_month.config(width=2)
@@ -8214,18 +8220,18 @@ class CarrierInput:
         name_frame = Frame(self.win.body, pady=2)
         name_frame.grid(row=2, sticky=W, pady=5)
         text = macadj("Carrier Name _______________________________",
-                      "Carrier Name _______________________________")
+                      "Carrier Name _________________________")
         Label(name_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
         if self.input_type == "new":
-            Label(name_frame, text=" Last Name: ", width=22, anchor="w", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
-            Label(name_frame, text=" 1st Initial ", width=7, anchor="w", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white")).grid(row=1, column=1, sticky=W)
+            Label(name_frame, text=" Last Name: ", width=22, anchor="w", background=macadj("gray95", "white"),
+                  fg=macadj("black", "grey")).grid(row=1, column=0, sticky=W)
+            Label(name_frame, text=" 1st Initial ", width=7, anchor="w", background=macadj("gray95", "white"),
+                  fg=macadj("black", "grey")).grid(row=1, column=1, sticky=W)
             Entry(name_frame, width=macadj(27, 22), textvariable=self.name).grid(row=2, column=0, sticky=W)
             Entry(name_frame, width=macadj(8, 6), textvariable=self.fname).grid(row=2, column=1, sticky=W)
         if self.input_type == "edit":
             Label(name_frame, text=" Carrier Name: {}".format(self.carrier), anchor="w",
-                  background=macadj("gray95", "grey"), fg=macadj("black", "white"), width=30)\
+                  background=macadj("gray95", "white"), fg=macadj("black", "black"), width=30)\
                 .grid(row=1, column=0, columnspan=4, sticky=W)
             Entry(name_frame, width=macadj(37, 29), textvariable=self.chg_name)\
                 .grid(row=2, column=0, columnspan=4, sticky=W)
@@ -8234,7 +8240,7 @@ class CarrierInput:
                    command=lambda: self.name_change()).grid(row=3, column=1, sticky=W, pady=6)
         if self.input_type == "update":
             Label(name_frame, text=self.carrier, anchor="w",
-                  background=macadj("gray95", "grey"), fg=macadj("black", "white"), width=30) \
+                  background=macadj("gray95", "white"), fg=macadj("black", "black"), width=30) \
                 .grid(row=1, column=0, columnspan=4, sticky=W)
 
     def list_status(self):
@@ -8242,7 +8248,7 @@ class CarrierInput:
         list_frame = Frame(self.win.body, pady=5)
         list_frame.grid(row=3, sticky=W, pady=5)
         text = macadj("List Status ________________________________",
-                      "List Status ________________________________")
+                      "List Status ___________________________")
         Label(list_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
 
         Radiobutton(list_frame, text="OTDL", variable=self.ls, value='otdl', justify=LEFT) \
@@ -8261,7 +8267,7 @@ class CarrierInput:
         ns_frame = Frame(self.win.body, pady=5)
         ns_frame.grid(row=4, sticky=W, pady=5)
         text = macadj("Non Scheduled Day ________________________",
-                      "Non Scheduled Day ________________________")
+                      "Non Scheduled Day ____________________")
         Label(ns_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
         Radiobutton(ns_frame, text="{}:   yellow".format(projvar.ns_code['yellow']), variable=self.ns, value="yellow",
                     indicatoron=macadj(0, 1), width=15, anchor="w", bg=macadj("grey", "white"),
@@ -8318,10 +8324,10 @@ class CarrierInput:
         route_frame = Frame(self.win.body, pady=2)
         route_frame.grid(row=5, sticky=W)
         text = macadj("Route _______________________________________",
-                      "Route ______________________________________")
+                      "Route _______________________________")
         Label(route_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
-        Label(route_frame, text=" Route/s", width=30, anchor="w", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
+        # Label(route_frame, text=" Route/s", width=30, anchor="w", background=macadj("gray95", "grey"),
+        #       fg=macadj("black", "white")).grid(row=1, column=0, sticky=W)
         Entry(route_frame, width=macadj(37, 29), textvariable=self.route).grid(row=1, column=0, sticky=W)
 
     def get_station(self):
@@ -8329,10 +8335,10 @@ class CarrierInput:
         station_frame = Frame(self.win.body, pady=5)
         station_frame.grid(row=6, sticky=W, pady=5)
         text = macadj("Station _____________________________________",
-                      "Station ____________________________________")
+                      "Station ______________________________")
         Label(station_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
         om_stat = OptionMenu(station_frame, self.station, *projvar.list_of_stations)
-        om_stat.config(width=macadj(30, 22))
+        om_stat.config(width=macadj(30, 27))
         om_stat.grid(row=1, column=0, sticky=W)
 
     def delete_button(self):
@@ -8340,7 +8346,7 @@ class CarrierInput:
         delete_frame = Frame(self.win.body, pady=5)
         delete_frame.grid(row=7, sticky=W, pady=5)
         text = macadj("Delete Carrier ______________________________",
-                      "Delete Carrier _____________________________")
+                      "Delete Carrier ________________________")
         Label(delete_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
         Label(delete_frame, text="Delete carrier and all associated records. ", anchor="w") \
             .grid(row=1, column=0, columnspan=3, sticky=W)
@@ -8354,7 +8360,7 @@ class CarrierInput:
         report_frame = Frame(self.win.body, pady=5)
         report_frame.grid(row=8, sticky=W, pady=5)
         text = macadj("Status Change Report _______________________",
-                      "Status Change Report _______________________")
+                      "Status Change Report __________________")
         Label(report_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
         Label(report_frame, text="Generate Report: ", anchor="w").grid(row=1, column=0, sticky=W)
         Button(report_frame, text="Report", width=10,
@@ -8366,7 +8372,7 @@ class CarrierInput:
         history_frame = Frame(self.win.body, pady=5)
         history_frame.grid(row=9, sticky=W, pady=5)
         text = macadj("Status Change History ______________________",
-                      "Status Change History ______________________")
+                      "Status Change History _________________")
         Label(history_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
         row_line = 1
         for line in self.onrecs:
@@ -8386,10 +8392,11 @@ class CarrierInput:
             Label(history_frame, width=25, text="station: {}".format(line[5]), anchor="w") \
                 .grid(row=row_line, column=0, sticky=W, columnspan=4)
             row_line += 1
-            Button(history_frame, width=14, text="edit", anchor="w",
+            button_alignment = macadj("w", "center")
+            Button(history_frame, width=14, text="edit", anchor=button_alignment,
                    command=lambda rec=line: self.update_carrier(self.win.topframe, rec)) \
                 .grid(row=row_line, column=0, sticky=W, )
-            Button(history_frame, width=14, text="delete", anchor="w",
+            Button(history_frame, width=14, text="delete", anchor=button_alignment,
                    command=lambda rec=line: self.delete_rec(rec)) \
                 .grid(row=row_line, column=1, sticky=W)
             Label(history_frame, text="                             ").grid(row=row_line, column=2, sticky=W)

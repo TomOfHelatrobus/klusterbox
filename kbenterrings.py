@@ -4,6 +4,8 @@ information.
 """
 
 # custom modules
+import sys
+
 import projvar
 from kbtoolbox import commit, inquire, CarrierRecSet, Convert, Handler, macadj, MovesChecker, NewWindow, Rings, \
     RingTimeChecker, RouteChecker
@@ -285,7 +287,7 @@ class EnterRings:
                     self.new_entry(frame[i], day[i], colcount, ww)  # MOVES on, off and route entry widgets
                     original_colcount = colcount
                     colcount += 3
-                    Button(frame[i], text="more moves",
+                    Button(frame[i], text=macadj("more moves", "add"), fg=macadj("black", "grey"),
                            command=lambda x=i: self.new_entry(frame[x], day[x], original_colcount, ww)) \
                         .grid(row=grid_i, column=colcount)
                     colcount += 1
@@ -429,13 +431,12 @@ class EnterRings:
 
     def buttons_frame(self):
         """ build the buttons for the bottom of the screen """
-        Button(self.win.buttons, text="Submit", width=10, anchor="w",
+        button_alignment = macadj("w", "center")
+        Button(self.win.buttons, text="Submit", width=10, anchor=button_alignment,
                command=lambda: self.apply_rings(True)).pack(side=LEFT)
-        Button(self.win.buttons, text="Apply", width=10, anchor="w",
+        Button(self.win.buttons, text="Apply", width=10, anchor=button_alignment,
                command=lambda: self.apply_rings(False)).pack(side=LEFT)
-        # Button(self.win.buttons, text="Go Back", width=10, anchor="w",
-        #        command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
-        Button(self.win.buttons, text="Go Back", width=10, anchor="w",
+        Button(self.win.buttons, text="Go Back", width=10, anchor=button_alignment,
                command=lambda: self.win.root.destroy()).pack(side=LEFT)
         Label(self.win.buttons, text="{}".format(self.status_update), fg="red").pack(side=LEFT)
 
