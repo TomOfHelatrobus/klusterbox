@@ -394,6 +394,8 @@ class CheatSheet:
         report.write("5200 .......... Work Hours\n")
         report.write("5300 .......... Overtime Hours\n")
         report.write("4300 .......... Penalty Overtime\n")
+        report.write("4800 .......... Holiday Premium Pay\n")
+        report.write("49## .......... OWCP Leave Without Pay (LWOP)\n")
         report.write("5400 .......... Night Work Premium\n")
         report.write("55## .......... Annual Leave\n")
         report.write("56## .......... Sick Leave\n")
@@ -412,6 +414,8 @@ class CheatSheet:
         report.write("MV 7210-## .... Move to Street\n")
         report.write("MV 7220-## .... Move to Office\n")
         report.write("093 ........... No Lunch\n")
+        report.write("OL ............ Begin Lunch\n")
+        report.write("IL ............ End Lunch\n")
         report.write("ET ............ End Tour\n")
         report.close()
         if sys.platform == "win32":  # open the text document
