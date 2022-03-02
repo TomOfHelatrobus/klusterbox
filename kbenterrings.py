@@ -287,7 +287,10 @@ class EnterRings:
                     self.new_entry(frame[i], day[i], colcount, ww)  # MOVES on, off and route entry widgets
                     original_colcount = colcount
                     colcount += 3
-                    Button(frame[i], text=macadj("more moves", "add"), fg=macadj("black", "grey"),
+                    mactext = "move moves"  # write text for move moves buttons for mac
+                    if "tourrings" in widgetlist:  # move moves button text is conditional on if tourrings
+                        mactext = "+mv"  # if tourrings use a shorter version
+                    Button(frame[i], text=macadj("more moves", mactext), fg=macadj("black", "grey"),
                            command=lambda x=i: self.new_entry(frame[x], day[x], original_colcount, ww)) \
                         .grid(row=grid_i, column=colcount)
                     colcount += 1
