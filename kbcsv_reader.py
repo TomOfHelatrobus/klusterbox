@@ -14,381 +14,442 @@ from kbcsv_repair import CsvRepair
 from operator import itemgetter
 
 
-def max_hr(frame):
+class MaxHr:
     """
     generates a report for 12/60 hour violations
     """
-    path = dir_filedialog()
-    file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
-    csv_fix = CsvRepair()  # create a CsvRepair object
-    # returns a file path for a checked and, if needed, fixed csv file.
-    file_path = csv_fix.run(file_path)
-    day_xlr = {"Saturday": "sat", "Sunday": "sun", "Monday": "mon", "Tuesday": "tue", "Wednesday": "wed",
-               "Thursday": "thr", "Friday": "fri"}
-    leave_xlr = {"49": "owcp   ", "55": "annual ", "56": "sick   ", "58": "holiday", "59": "lwop   ", "60": "lwop   "}
-    maxhour = []
-    max_aux_day = []
-    max_ft_day = []
-    extra_hours = []
-    all_extra = []
-    adjustment = []
-    target_file = None
-    pp = ""
-    ft = ""
-    days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
-    day_hours = []
-    if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
-        target_file = open(file_path, newline="")
-        a_file = csv.reader(target_file)
-        cc = 0
-        good_id = "no"
-        for line in a_file:
-            if cc == 0:
-                if line[0][:8] != "TAC500R3":
-                    messagebox.showwarning("File Selection Error",
-                                           "The selected file does not appear to be an "
-                                           "Employee Everything report.",
-                                           parent=frame)
-                    target_file.close()
-                    csv_fix.destroy()
-                    return
-            if cc == 2:  # on the second line
-                pp = line[0]  # find the pay period
-                pp = pp.strip()  # strip whitespace out of pay period information
-            if cc != 0:  # on all but the first line
-                if line[18] == "Base" and good_id and len(day_hours) > 0:
-                    # find fri hours for friday adjustment
-                    fri_hrs = 0
-                    for t in day_hours:  # get the friday hours
-                        if t[3] == "Friday":
-                            fri_hrs += float(t[2])
-                    # find thu hours for thursday adjustment
-                    thu_hrs = 0
-                    for t in day_hours:  # find the thursday hours
-                        if t[3] == "Thursday":
-                            thu_hrs += float(t[2])
-                    # find wed hours for wednesday adjustment
-                    wed_hrs = 0
-                    for t in day_hours:  # find the wednesday hours
-                        if t[3] == "Wednesday":
-                            wed_hrs += float(t[2])
-                    # find the weekly total by adding daily totals
-                    wkly_total = 0
-                    for t in day_hours:
-                        wkly_total += float(t[2])
-                    if wkly_total > 60:
-                        add_maxhr = (day_hours[0][0].lower(), day_hours[0][1].lower(), wkly_total)
-                        maxhour.append(add_maxhr)
-                        for item in extra_hours:  # get any extra hours codes for non-5200 hours list
-                            all_extra.append(item)
-                        # find the all adjustments
-                        if ft:
-                            # find friday adjustment
-                            fri_post_60 = float(wkly_total - 60)
-                            if fri_hrs > 12:
-                                fri_over = fri_hrs - 12
-                                if fri_over < fri_post_60:
-                                    fri_adj = fri_over
-                                else:
-                                    fri_adj = fri_post_60
-                                add_adjustment = ("fri", day_hours[0][0].lower(), day_hours[0][1].lower(), fri_adj)
-                                adjustment.append(add_adjustment)
-                            # find the thursday adjustment
-                            thu_post_60 = float(wkly_total - 60) - fri_hrs
-                            if thu_hrs > 12 and thu_post_60 > 0:
-                                thu_over = thu_hrs - 12
-                                if thu_over < thu_post_60:
-                                    thu_adj = thu_over
-                                else:
-                                    thu_adj = thu_post_60
-                                add_adjustment = ("thu", day_hours[0][0].lower(), day_hours[0][1].lower(), thu_adj)
-                                adjustment.append(add_adjustment)
-                            # find the wednesday adjustment
-                            wed_post_60 = float(wkly_total - 60) - fri_hrs - thu_hrs
-                            if wed_hrs > 12 and wed_post_60 > 0:
-                                wed_over = wed_hrs - 12
-                                if wed_over < wed_post_60:
-                                    wed_adj = wed_over
-                                else:
-                                    wed_adj = wed_post_60
-                                add_adjustment = (
-                                    "wed", day_hours[0][0].lower(), day_hours[0][1].lower(), wed_adj)
-                                adjustment.append(add_adjustment)
-                    del day_hours[:]
-                    del extra_hours[:]
-                # find first line of specific carrier
-                if line[18] == "Base" and line[19] in ("844", "134", "434"):
-                    good_id = line[4]  # remember id of carriers who are FT or aux carriers
-                    if line[19] in ("844", "434"):
-                        ft = False
-                    else:
-                        ft = True
-                if good_id == line[4] and line[18] != "Base":
-                    if line[18] in days:  # get the hours for each day
-                        spt_20 = line[20].split(':')  # split to get code and hours
-                        hr_type = spt_20[0][1] + spt_20[0][2]  # parse hour code to 2 digits
-                        # if hr_type in hr_codes:  # compare to array of hour codes
-                        if hr_type == "52":  # compare to array of hour codes
-                            if float(spt_20[1]) > 11.5 and not ft:
-                                add_max_aux = (line[5].lower(), line[6].lower(), line[18], spt_20[1])
-                                max_aux_day.append(add_max_aux)
-                            if float(spt_20[1]) > 12 and ft:
-                                add_max_ft = (line[5].lower(), line[6].lower(), line[18], spt_20[1])
-                                max_ft_day.append(add_max_ft)
-                            if ft:  # increment daily totals to find weekly total
-                                add_day_hours = (line[5].lower(), line[6].lower(), spt_20[1], line[18])
-                                day_hours.append(add_day_hours)
-                        extra_hour_codes = ("49", "55", "56", "58")  # paid leave types only , (lwop "59", "60")
-                        if hr_type in extra_hour_codes and ft:  # if there is holiday pay
-                            add_day_hours = (line[5].lower(), line[6].lower(), spt_20[1], line[18])
-                            day_hours.append(add_day_hours)
-                            add_extra_hours = (line[5].lower(), line[6].lower(), line[18], hr_type, spt_20[1])
-                            extra_hours.append(add_extra_hours)  # track non 5200 hours
-            cc += 1
-    elif file_path == "":
-        if target_file:
-            target_file.close()
-        csv_fix.destroy()
-        return
-    else:
+    def __init__(self):
+        self.frame = None  # get tkinter frame for messageboxes
+        self.path = dir_filedialog()
+        self.file_path = None
+        self.csv_fix = None  # create a CsvRepair object
+        # returns a file path for a checked and, if needed, fixed csv file.
+        self.file_path = None
+        self.filename = None
+        self.report = None
+        self.day_xlr = {"Saturday": "sat", "Sunday": "sun", "Monday": "mon", "Tuesday": "tue", "Wednesday": "wed",
+                   "Thursday": "thr", "Friday": "fri"}
+        self.leave_xlr = {"49": "owcp   ", "55": "annual ", "56": "sick   ", "58": "holiday", "59": "lwop   ",
+                     "60": "lwop   "}
+        self.maxhour = []
+        self.max_aux_day = []
+        self.max_ft_day = []
+        self.extra_hours = []
+        self.all_extra = []
+        self.adjustment = []
+        self.target_file = None
+        self.a_file = None
+        self.line = None
+        self.pp = ""
+        self.ft = ""
+        self.days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        self.day_hours = []
+        self.good_id = ""
+
+    def run(self, frame):
+        """ master method for controlling other methods """
+        self.frame = frame
+        if not self.get_filepath():  # get the file
+            return
+        self.check_filetype()  # check extension, make sure the path is not an empty string.
+        self.generate_proxyfile()  # create a proxy file to repair any double spaces or empty arrays
+        self.get_file()  # get the file object
+        if self.skimmer():  # break down file into line and analyze.
+            self.make_report()
+            self.write()
+            self.open()
+
+    def get_filepath(self):
+        """ get the file and return True, else return False """
+        self.file_path = filedialog.askopenfilename(initialdir=self.path, filetypes=[("Excel files", "*.csv *.xls")])
+        if not self.file_path:
+            return False
+        return True
+
+    def check_filetype(self):
+        """ makes sure the file is an csv or xls file. """
+        if self.file_path == "":
+            return False
+        if self.file_path[-4:].lower() == ".csv" or self.file_path[-4:].lower() == ".xls":
+            return True
         messagebox.showerror("Report Generator",
                              "The file you have selected is not a .csv or .xls file.\n"
                              "You must select a file with a .csv or .xls extension.",
-                             parent=frame)
-        if target_file:
-            target_file.close()
-        csv_fix.destroy()
-        return
-    # find the weekly total by adding daily totals for last carrier
-    if len(day_hours) > 0:
-        wkly_total = 0
-        for t in day_hours:
-            wkly_total += float(t[2])
-        if wkly_total > 60:
-            add_maxhr = (day_hours[0][0].lower(), day_hours[0][1].lower(), wkly_total)
-            maxhour.append(add_maxhr)
-            for item in extra_hours:  # get any extra hours codes for non-5200 hours list
-                all_extra.append(item)
-        del day_hours[:]
-        del extra_hours[:]
+                             parent=self.frame)
+        return False
 
-    if len(maxhour) == 0 and len(max_ft_day) == 0 and len(max_aux_day) == 0:
-        messagebox.showwarning("Report Generator",
-                               "No violations were found. "
-                               "The report was not generated.",
-                               parent=frame)
-        target_file.close()
-        csv_fix.destroy()
-        return
-    weekly_max = []  # array hold each carrier's hours for the week
-    daily_max = []  # array hold each carrier's sum of maximum daily hours for the week
-    if len(maxhour) > 0 or len(max_ft_day) > 0 or len(max_aux_day) > 0:
-        pp_str = pp[:-3] + "_" + pp[4] + pp[5] + "_" + pp[6]
-        filename = "max" + "_" + pp_str + ".txt"
-        report = open(dir_path('over_max') + filename, "w")
-        report.write("12 and 60 Hour Violations Report\n\n")
-        report.write("pay period: " + pp[:-3] + " " + pp[4] + pp[5] + "-" + pp[6] + "\n")  # printe pay period
-        pp_date = find_pp(int(pp[:-3]), pp[-3:])  # send year and pp to get the date
-        pp_date_end = pp_date + timedelta(days=6)  # add six days to get the last part of the range
-        report.write(
-            "week of: " + pp_date.strftime("%x") + " - " + pp_date_end.strftime("%x") + "\n")  # printe date
-        report.write("\n60 hour violations \n\n")
-        report.write("name                              total   over\n")
-        report.write("-----------------------------------------------\n")
-        if len(maxhour) == 0:
-            report.write("no violations" + "\n")
-        else:
-            diff_total = 0
-            maxhour.sort(key=itemgetter(0))
-            for item in maxhour:
+    def generate_proxyfile(self):
+        """ create a proxy file to repair any double spaces or empty arrays in the original file. """
+        self.csv_fix = CsvRepair()  # create a CsvRepair object
+        self.file_path = self.csv_fix.run(self.file_path)
+
+    def get_file(self):
+        """ get the file object """
+        self.target_file = open(self.file_path, newline="")
+        self.a_file = csv.reader(self.target_file)
+
+    def skimmer(self):
+        """ break down into lines and analyze """
+        self.good_id = "no"
+        cc = 0
+        for self.line in self.a_file:
+            if cc == 0:
+                if not self.check_for_eereport():
+                    return False
+            if cc == 2:  # on the second line
+                self.pp = self.line[0]  # find the pay period
+                self.pp = self.pp.strip()  # strip whitespace out of pay period information
+            if cc != 0:  # on all but the first line
+                self.anaylsis()
+            cc += 1
+        return True
+
+    def check_for_eereport(self):
+        """ make sure the file is an employee everything report. """
+        if self.line[0][:8] != "TAC500R3":
+            messagebox.showwarning("File Selection Error",
+                                   "The selected file does not appear to be an "
+                                   "Employee Everything report.",
+                                   parent=self.frame)
+            self.target_file.close()
+            self.csv_fix.destroy()
+            return False
+        return True
+
+    def anaylsis(self):
+        """ anaylsize the report line by line """
+
+        if self.line[18] == "Base" and self.good_id and len(self.day_hours) > 0:
+            # find fri hours for friday adjustment
+            fri_hrs = 0
+            for t in self.day_hours:  # get the friday hours
+                if t[3] == "Friday":
+                    fri_hrs += float(t[2])
+            # find thu hours for thursday adjustment
+            thu_hrs = 0
+            for t in self.day_hours:  # find the thursday hours
+                if t[3] == "Thursday":
+                    thu_hrs += float(t[2])
+            # find wed hours for wednesday adjustment
+            wed_hrs = 0
+            for t in self.day_hours:  # find the wednesday hours
+                if t[3] == "Wednesday":
+                    wed_hrs += float(t[2])
+            # find the weekly total by adding daily totals
+            wkly_total = 0
+            for t in self.day_hours:
+                wkly_total += float(t[2])
+            if wkly_total > 60:
+                add_maxhr = (self.day_hours[0][0].lower(), self.day_hours[0][1].lower(), wkly_total)
+                self.maxhour.append(add_maxhr)
+                for item in self.extra_hours:  # get any extra hours codes for non-5200 hours list
+                    self.all_extra.append(item)
+                # find the all adjustments
+                if self.ft:
+                    # find friday adjustment
+                    fri_post_60 = float(wkly_total - 60)
+                    if fri_hrs > 12:
+                        fri_over = fri_hrs - 12
+                        if fri_over < fri_post_60:
+                            fri_adj = fri_over
+                        else:
+                            fri_adj = fri_post_60
+                        add_adjustment = ("fri", self.day_hours[0][0].lower(), self.day_hours[0][1].lower(), fri_adj)
+                        self.adjustment.append(add_adjustment)
+                    # find the thursday adjustment
+                    thu_post_60 = float(wkly_total - 60) - fri_hrs
+                    if thu_hrs > 12 and thu_post_60 > 0:
+                        thu_over = thu_hrs - 12
+                        if thu_over < thu_post_60:
+                            thu_adj = thu_over
+                        else:
+                            thu_adj = thu_post_60
+                        add_adjustment = ("thu", self.day_hours[0][0].lower(), self.day_hours[0][1].lower(), thu_adj)
+                        self.adjustment.append(add_adjustment)
+                    # find the wednesday adjustment
+                    wed_post_60 = float(wkly_total - 60) - fri_hrs - thu_hrs
+                    if wed_hrs > 12 and wed_post_60 > 0:
+                        wed_over = wed_hrs - 12
+                        if wed_over < wed_post_60:
+                            wed_adj = wed_over
+                        else:
+                            wed_adj = wed_post_60
+                        add_adjustment = (
+                            "wed", self.day_hours[0][0].lower(), self.day_hours[0][1].lower(), wed_adj)
+                        self.adjustment.append(add_adjustment)
+            del self.day_hours[:]
+            del self.extra_hours[:]
+        # find first self.line of specific carrier
+        if self.line[18] == "Base" and self.line[19] in ("844", "134", "434"):
+            self.good_id = self.line[4]  # remember id of carriers who are FT or aux carriers
+            if self.line[19] in ("844", "434"):
+                self.ft = False
+            else:
+                self.ft = True
+        if self.good_id == self.line[4] and self.line[18] != "Base":
+            if self.line[18] in self.days:  # get the hours for each day
+                spt_20 = self.line[20].split(':')  # split to get code and hours
+                hr_type = spt_20[0][1] + spt_20[0][2]  # parse hour code to 2 digits
+                # if hr_type in hr_codes:  # compare to array of hour codes
+                if hr_type == "52":  # compare to array of hour codes
+                    if float(spt_20[1]) > 11.5 and not self.ft:
+                        add_max_aux = (self.line[5].lower(), self.line[6].lower(), self.line[18], spt_20[1])
+                        self.max_aux_day.append(add_max_aux)
+                    if float(spt_20[1]) > 12 and self.ft:
+                        add_max_ft = (self.line[5].lower(), self.line[6].lower(), self.line[18], spt_20[1])
+                        self.max_ft_day.append(add_max_ft)
+                    if self.ft:  # increment daily totals to find weekly total
+                        add_day_hours = (self.line[5].lower(), self.line[6].lower(), spt_20[1], self.line[18])
+                        self.day_hours.append(add_day_hours)
+                extra_hour_codes = ("49", "55", "56", "58")  # paid leave types only , (lwop "59", "60")
+                if hr_type in extra_hour_codes and self.ft:  # if there is holiday pay
+                    add_day_hours = (self.line[5].lower(), self.line[6].lower(), spt_20[1], self.line[18])
+                    self.day_hours.append(add_day_hours)
+                    add_extra_hours = (self.line[5].lower(), self.line[6].lower(), self.line[18], hr_type, spt_20[1])
+                    self.extra_hours.append(add_extra_hours)  # track non 5200 hours
+
+    def make_report(self):
+        """ make report object """
+        pp_str = self.pp[:-3] + "_" + self.pp[4] + self.pp[5] + "_" + self.pp[6]
+        self.filename = "max" + "_" + pp_str + ".txt"
+        self.report = open(dir_path('over_max') + self.filename, "w")
+
+    def write(self):
+        """ write the report """
+        weekly_max = []  # array hold each carrier's hours for the week
+        daily_max = []  # array hold each carrier's sum of maximum daily hours for the week
+        if len(self.maxhour) > 0 or len(self.max_ft_day) > 0 or len(self.max_aux_day) > 0:
+            self.report.write("12 and 60 Hour Violations self.report\n\n")
+            # disply pay period
+            self.report.write("pay period: " + self.pp[:-3] + " " + self.pp[4] + self.pp[5] + "-" + self.pp[6] + "\n")
+            pp_date = find_pp(int(self.pp[:-3]), self.pp[-3:])  # send year and pp to get the date
+            pp_date_end = pp_date + timedelta(days=6)  # add six days to get the last part of the range
+            self.report.write(
+                "week of: " + pp_date.strftime("%x") + " - " + pp_date_end.strftime("%x") + "\n")  # printe date
+            self.report.write("\n60 hour violations \n\n")
+            self.report.write("name                              total   over\n")
+            self.report.write("-----------------------------------------------\n")
+            if len(self.maxhour) == 0:
+                self.report.write("no violations" + "\n")
+            else:
+                diff_total = 0
+                self.maxhour.sort(key=itemgetter(0))
+                for item in self.maxhour:
+                    tabs = 30 - (len(item[0]))
+                    period = "."
+                    period += tabs * "."
+                    diff = float(item[2]) - 60
+                    diff_total += diff
+                    self.report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2]))
+                                 + "   " + "{0:.2f}".format(float(diff)).rjust(5, " ") + "\n")
+                    wmax_add = [item[0], item[1], diff]
+                    weekly_max.append(wmax_add)  # catch totals of violations for the week
+                self.report.write("\n" + "                                   total:  " +
+                                  "{0:.2f}".format(float(diff_total))
+                             + "\n")
+            self.all_extra.sort(key=itemgetter(0))
+            self.report.write("\nNon 5200 codes contributing to 60 hour violations  \n\n")
+            self.report.write("day   name                            hr type   hours\n")
+            self.report.write("-----------------------------------------------------\n")
+            if len(self.all_extra) == 0:
+                self.report.write("no contributions" + "\n")
+            for i in range(len(self.all_extra)):
+                tabs = 28 - (len(self.all_extra[i][0]))
+                period = "."
+                period += tabs * "."
+                self.report.write(self.day_xlr[self.all_extra[i][2]] + "   " +
+                             self.all_extra[i][0] + ", " +
+                             self.all_extra[i][1] + period +
+                             self.leave_xlr[self.all_extra[i][3]] + "  " +
+                             "{0:.2f}".format(float(self.all_extra[i][4])).rjust(5, " ")
+                             + "\n")
+            self.report.write("\n\n12 hour full time carrier violations \n\n")
+            self.report.write("day   name                        total   over   sum\n")
+            self.report.write("-----------------------------------------------------\n")
+            if len(self.max_ft_day) == 0:
+                self.report.write("no violations" + "\n")
+            diff_sum = 0
+            sum_total = 0
+            self.max_ft_day.sort(key=itemgetter(0))
+            for i in range(len(self.max_ft_day)):
+                jump = "no"  # triggers an analysis of the candidates array
+                diff = float(self.max_ft_day[i][3]) - 12
+                diff_sum += diff
+                if i != len(self.max_ft_day) - 1:  # if the loop has not reached the end of the list
+                    # if the name current and next name are the same
+                    if self.max_ft_day[i][0] == self.max_ft_day[i + 1][0] and \
+                            self.max_ft_day[i][1] == self.max_ft_day[i + 1][1]:
+                        jump = "yes"  # bypasses an analysis of the candidates array
+                        tabs = 24 - (len(self.max_ft_day[i][0]))
+                        period = "."
+                        period += tabs * "."
+                        self.report.write(self.day_xlr[self.max_ft_day[i][2]] + "   " +
+                                     self.max_ft_day[i][0] + ", " +
+                                     self.max_ft_day[i][1] +
+                                     period + "{0:.2f}".format(
+                            float(self.max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) + "\n")
+                if jump == "no":
+                    tabs = 24 - (len(self.max_ft_day[i][0]))
+                    period = "."
+                    period += tabs * "."
+                    self.report.write(self.day_xlr[self.max_ft_day[i][2]] + "   " +
+                                      self.max_ft_day[i][0] + ", " +
+                                      self.max_ft_day[i][1] + period +
+                                      "{0:.2f}".format(float(self.max_ft_day[i][3])) + "   " +
+                                      "{0:.2f}".format(float(diff)) + "   " +
+                                      "{0:.2f}".format(float(diff_sum)) + "\n")
+                    dmax_add = [self.max_ft_day[i][0], self.max_ft_day[i][1], diff_sum]
+                    daily_max.append(dmax_add)  # catch sum of daily violations for the week
+                    sum_total += diff_sum
+                    diff_sum = 0
+            self.report.write("\n" + "                                         total:  " +
+                              "{0:.2f}".format(float(sum_total))
+                         + "\n")
+            self.report.write("\n11.50 hour auxiliary carrier violations \n\n")
+            self.report.write("day   name                        total   over   sum\n")
+            self.report.write("-----------------------------------------------------\n")
+            if len(self.max_aux_day) == 0:
+                self.report.write("no violations" + "\n")
+            diff_sum = 0
+            sum_total = 0
+            self.max_aux_day.sort(key=itemgetter(0))
+            for i in range(len(self.max_aux_day)):
+                jump = "no"  # triggers an analysis of the candidates array
+                diff = float(self.max_aux_day[i][3]) - 11.5
+                diff_sum += diff
+                if i != len(self.max_aux_day) - 1:  # if the loop has not reached the end of the list
+                    # if the current and next name are the same
+                    if self.max_aux_day[i][0] == self.max_aux_day[i + 1][0] and \
+                            self.max_aux_day[i][1] == self.max_aux_day[i + 1][1]:
+                        jump = "yes"  # bypasses an analysis of the candidates array
+                        tabs = 24 - (len(self.max_aux_day[i][0]))
+                        period = "."
+                        period += tabs * "."
+                        self.report.write(self.day_xlr[self.max_aux_day[i][2]] + "   " +
+                                     self.max_aux_day[i][0] + ", " +
+                                     self.max_aux_day[i][1] + period +
+                                     "{0:.2f}".format(float(self.max_aux_day[i][3])) + "   " +
+                                     "{0:.2f}".format(float(diff)) + "\n")
+                if jump == "no":
+                    tabs = 24 - (len(self.max_aux_day[i][0]))
+                    period = "."
+                    period += tabs * "."
+                    self.report.write(self.day_xlr[self.max_aux_day[i][2]] + "   " +
+                                 self.max_aux_day[i][0] + ", " +
+                                 self.max_aux_day[i][1] + period +
+                                 "{0:.2f}".format(float(self.max_aux_day[i][3])) + "   " +
+                                 "{0:.2f}".format(float(diff)) + "   " +
+                                 "{0:.2f}".format(float(diff_sum)) + "\n")
+                    dmax_add = [self.max_aux_day[i][0], self.max_aux_day[i][1], diff_sum]
+                    daily_max.append(dmax_add)  # catch sum of daily violations for the week
+                    sum_total += diff_sum
+                    diff_sum = 0
+            self.report.write(
+                "\n" + "                                         total:  " +
+                "{0:.2f}".format(float(sum_total)) + "\n")
+            weekly_and_daily = []
+            d_max_remove = []
+            w_max_remove = []
+            # find the write the adjustments
+            # get the adjustment
+            self.adjustment.sort(key=itemgetter(1))
+            adj_sum = 0
+            adj_total = []
+            self.report.write("\nPost 60 Hour Adjustments \n\n")
+            self.report.write("day   name                   daily adj    total\n")
+            self.report.write("-----------------------------------------------\n")
+            if len(self.adjustment) == 0:
+                self.report.write("no adjustments" + "\n")
+            for i in range(len(self.adjustment)):
+                jump = "no"  # triggers an analysis of the adjustment array
+                adj_sum += self.adjustment[i][3]
+                if i != len(self.adjustment) - 1:  # if the loop has not reached the end of the list
+                    # if the current and next name are the same
+                    if self.adjustment[i][1] == self.adjustment[i + 1][1] and \
+                            self.adjustment[i][2] == self.adjustment[i + 1][2]:
+                        jump = "yes"  # bypasses an analysis of the candidates array
+                        tabs = 24 - (len(self.adjustment[i][1]))
+                        period = "."
+                        period += tabs * "."
+                        self.report.write(self.adjustment[i][0] + "   " +
+                                     self.adjustment[i][1] + ", "
+                                     + self.adjustment[i][2] + period +
+                                     "{0:.2f}".format(float(self.adjustment[i][3])) + "\n")
+                if jump == "no":
+                    tabs = 24 - (len(self.adjustment[i][1]))
+                    period = "."
+                    period += tabs * "."
+                    self.report.write(self.adjustment[i][0] + "   " + self.adjustment[i][1] + ", "
+                                 + self.adjustment[i][2] + period + "{0:.2f}".format(float(self.adjustment[i][3]))
+                                 + "     " + "{0:.2f}".format(float(adj_sum))
+                                 + "\n")
+                    adj_add = [self.adjustment[i][1], self.adjustment[i][2], adj_sum]
+                    adj_sum = 0
+                    adj_total.append(adj_add)  # catch sum of adjustments for the week
+            for w_max in weekly_max:  # find the total violation
+                for d_max in daily_max:
+                    # look for names with both weekly and daily violations
+                    if w_max[0] + w_max[1] == d_max[0] + d_max[1]:
+                        wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
+                        to_add = [w_max[0], w_max[1], wk_dy_sum]
+                        weekly_and_daily.append(to_add)
+                        d_max_remove.append(d_max)
+                        w_max_remove.append(w_max)
+            weekly_max = [x for x in weekly_max if x not in w_max_remove]
+            daily_max = [x for x in daily_max if x not in d_max_remove]
+            d_max_remove = []
+            w_max_remove = []
+            for d_max in daily_max:
+                for w_max in weekly_max:
+                    if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # if the names match
+                        wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
+                        to_add = [w_max[0], w_max[1], wk_dy_sum]
+                        weekly_and_daily.append(to_add)
+                        d_max_remove.append(d_max)
+                        w_max_remove.append(w_max)
+            weekly_max = [x for x in weekly_max if x not in w_max_remove]  # remove
+            daily_max = [x for x in daily_max if x not in d_max_remove]
+            joint_max = (weekly_max + daily_max + weekly_and_daily)  # add all arrays to get the final array
+
+            joint_max.sort(key=itemgetter(0, 1))
+            for j in joint_max:  # cycle through the totals and adjustments
+                for a in adj_total:
+                    if j[0] + j[1] == a[0] + a[1]:  # if the names match
+                        j[2] -= a[2]  # subtract the adjustment from the total
+            self.report.write("\n\nTotal of the two violations (with adjustments)\n\n")
+            self.report.write("name                              total\n")
+            self.report.write("---------------------------------------\n")
+            if len(joint_max) == 0:
+                self.report.write("no violations" + "\n")
+            great_total = 0
+            for item in joint_max:
                 tabs = 30 - (len(item[0]))
                 period = "."
                 period += tabs * "."
-                diff = float(item[2]) - 60
-                diff_total += diff
-                report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2]))
-                             + "   " + "{0:.2f}".format(float(diff)).rjust(5, " ") + "\n")
-                wmax_add = [item[0], item[1], diff]
-                weekly_max.append(wmax_add)  # catch totals of violations for the week
-            report.write("\n" + "                                   total:  " + "{0:.2f}".format(float(diff_total))
-                         + "\n")
-        all_extra.sort(key=itemgetter(0))
-        report.write("\nNon 5200 codes contributing to 60 hour violations  \n\n")
-        report.write("day   name                            hr type   hours\n")
-        report.write("-----------------------------------------------------\n")
-        if len(all_extra) == 0:
-            report.write("no contributions" + "\n")
-        for i in range(len(all_extra)):
-            tabs = 28 - (len(all_extra[i][0]))
-            period = "."
-            period += tabs * "."
-            report.write(day_xlr[all_extra[i][2]] + "   " + all_extra[i][0] + ", " + all_extra[i][1] + period +
-                         leave_xlr[all_extra[i][3]] + "  " + "{0:.2f}".format(float(all_extra[i][4])).rjust(5, " ")
-                         + "\n")
-        report.write("\n\n12 hour full time carrier violations \n\n")
-        report.write("day   name                        total   over   sum\n")
-        report.write("-----------------------------------------------------\n")
-        if len(max_ft_day) == 0:
-            report.write("no violations" + "\n")
-        diff_sum = 0
-        sum_total = 0
-        max_ft_day.sort(key=itemgetter(0))
-        for i in range(len(max_ft_day)):
-            jump = "no"  # triggers an analysis of the candidates array
-            diff = float(max_ft_day[i][3]) - 12
-            diff_sum += diff
-            if i != len(max_ft_day) - 1:  # if the loop has not reached the end of the list
-                # if the name current and next name are the same
-                if max_ft_day[i][0] == max_ft_day[i + 1][0] and max_ft_day[i][1] == max_ft_day[i + 1][1]:
-                    jump = "yes"  # bypasses an analysis of the candidates array
-                    tabs = 24 - (len(max_ft_day[i][0]))
-                    period = "."
-                    period += tabs * "."
-                    report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] +
-                                 period + "{0:.2f}".format(
-                        float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) + "\n")
-            if jump == "no":
-                tabs = 24 - (len(max_ft_day[i][0]))
-                period = "."
-                period += tabs * "."
-                report.write(day_xlr[max_ft_day[i][2]] + "   " + max_ft_day[i][0] + ", " + max_ft_day[i][1] + period
-                             + "{0:.2f}".format(float(max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) +
-                             "   " + "{0:.2f}".format(float(diff_sum)) + "\n")
-                dmax_add = [max_ft_day[i][0], max_ft_day[i][1], diff_sum]
-                daily_max.append(dmax_add)  # catch sum of daily violations for the week
-                sum_total += diff_sum
-                diff_sum = 0
-        report.write("\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total))
-                     + "\n")
-        report.write("\n11.50 hour auxiliary carrier violations \n\n")
-        report.write("day   name                        total   over   sum\n")
-        report.write("-----------------------------------------------------\n")
-        if len(max_aux_day) == 0:
-            report.write("no violations" + "\n")
-        diff_sum = 0
-        sum_total = 0
-        max_aux_day.sort(key=itemgetter(0))
-        for i in range(len(max_aux_day)):
-            jump = "no"  # triggers an analysis of the candidates array
-            diff = float(max_aux_day[i][3]) - 11.5
-            diff_sum += diff
-            if i != len(max_aux_day) - 1:  # if the loop has not reached the end of the list
-                # if the current and next name are the same
-                if max_aux_day[i][0] == max_aux_day[i + 1][0] and max_aux_day[i][1] == max_aux_day[i + 1][1]:
-                    jump = "yes"  # bypasses an analysis of the candidates array
-                    tabs = 24 - (len(max_aux_day[i][0]))
-                    period = "."
-                    period += tabs * "."
-                    report.write(day_xlr[max_aux_day[i][2]] + "   " + max_aux_day[i][0] + ", "
-                                 + max_aux_day[i][1] + period + "{0:.2f}".format(float(max_aux_day[i][3]))
-                                 + "   " + "{0:.2f}".format(float(diff)) + "\n")
-            if jump == "no":
-                tabs = 24 - (len(max_aux_day[i][0]))
-                period = "."
-                period += tabs * "."
-                report.write(day_xlr[max_aux_day[i][2]] + "   " + max_aux_day[i][0] + ", "
-                             + max_aux_day[i][1] + period + "{0:.2f}".format(float(max_aux_day[i][3]))
-                             + "   " + "{0:.2f}".format(float(diff)) + "   " + "{0:.2f}".format(float(diff_sum))
-                             + "\n")
-                dmax_add = [max_aux_day[i][0], max_aux_day[i][1], diff_sum]
-                daily_max.append(dmax_add)  # catch sum of daily violations for the week
-                sum_total += diff_sum
-                diff_sum = 0
-        report.write(
-            "\n" + "                                         total:  " + "{0:.2f}".format(float(sum_total)) + "\n")
-        weekly_and_daily = []
-        d_max_remove = []
-        w_max_remove = []
-        # find the write the adjustments
-        # get the adjustment
-        adjustment.sort(key=itemgetter(1))
-        adj_sum = 0
-        adj_total = []
-        report.write("\nPost 60 Hour Adjustments \n\n")
-        report.write("day   name                   daily adj    total\n")
-        report.write("-----------------------------------------------\n")
-        if len(adjustment) == 0:
-            report.write("no adjustments" + "\n")
-        for i in range(len(adjustment)):
-            jump = "no"  # triggers an analysis of the adjustment array
-            adj_sum += adjustment[i][3]
-            if i != len(adjustment) - 1:  # if the loop has not reached the end of the list
-                # if the current and next name are the same
-                if adjustment[i][1] == adjustment[i + 1][1] and adjustment[i][2] == adjustment[i + 1][2]:
-                    jump = "yes"  # bypasses an analysis of the candidates array
-                    tabs = 24 - (len(adjustment[i][1]))
-                    period = "."
-                    period += tabs * "."
-                    report.write(adjustment[i][0] + "   " + adjustment[i][1] + ", "
-                                 + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3])) + "\n")
-            if jump == "no":
-                tabs = 24 - (len(adjustment[i][1]))
-                period = "."
-                period += tabs * "."
-                report.write(adjustment[i][0] + "   " + adjustment[i][1] + ", "
-                             + adjustment[i][2] + period + "{0:.2f}".format(float(adjustment[i][3]))
-                             + "     " + "{0:.2f}".format(float(adj_sum))
-                             + "\n")
-                adj_add = [adjustment[i][1], adjustment[i][2], adj_sum]
-                adj_sum = 0
-                adj_total.append(adj_add)  # catch sum of adjustments for the week
-        for w_max in weekly_max:  # find the total violation
-            for d_max in daily_max:
-                if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # look for names with both weekly and daily violations
-                    wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
-                    to_add = [w_max[0], w_max[1], wk_dy_sum]
-                    weekly_and_daily.append(to_add)
-                    d_max_remove.append(d_max)
-                    w_max_remove.append(w_max)
-        weekly_max = [x for x in weekly_max if x not in w_max_remove]
-        daily_max = [x for x in daily_max if x not in d_max_remove]
-        d_max_remove = []
-        w_max_remove = []
-        for d_max in daily_max:
-            for w_max in weekly_max:
-                if w_max[0] + w_max[1] == d_max[0] + d_max[1]:  # if the names match
-                    wk_dy_sum = w_max[2] + d_max[2]  # add the weekly and daily
-                    to_add = [w_max[0], w_max[1], wk_dy_sum]
-                    weekly_and_daily.append(to_add)
-                    d_max_remove.append(d_max)
-                    w_max_remove.append(w_max)
-        weekly_max = [x for x in weekly_max if x not in w_max_remove]  # remove
-        daily_max = [x for x in daily_max if x not in d_max_remove]
-        joint_max = (weekly_max + daily_max + weekly_and_daily)  # add all arrays to get the final array
+                great_total += item[2]
+                # self.report.write(item[0] + ", " + item[1] + period +
+                #                   "{0:.2f}".format(float(item[2])).rjust(5, ".") + "\n")
+                str_format = "{0:.2f}".format(float(item[2])).rjust(5, ".")
+                self.report.write("{}, {}{}{}\n".format(item[0], item[1], period, str_format))
+            self.report.write("\n" + "                           total:  " +
+                              "{0:.2f}".format(float(great_total)) + "\n")
 
-        joint_max.sort(key=itemgetter(0, 1))
-        for j in joint_max:  # cycle through the totals and adjustments
-            for a in adj_total:
-                if j[0] + j[1] == a[0] + a[1]:  # if the names match
-                    j[2] -= a[2]  # subtract the adjustment from the total
-        report.write("\n\nTotal of the two violations (with adjustments)\n\n")
-        report.write("name                              total\n")
-        report.write("---------------------------------------\n")
-        if len(joint_max) == 0:
-            report.write("no violations" + "\n")
-        great_total = 0
-        for item in joint_max:
-            tabs = 30 - (len(item[0]))
-            period = "."
-            period += tabs * "."
-            great_total += item[2]
-            report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2])).rjust(5, ".") + "\n")
-        report.write(
-            "\n" + "                           total:  " + "{0:.2f}".format(float(great_total)) + "\n")
-        report.close()
+    def open(self):
+        """ open the file.  """
+        self.target_file.close()
+        self.csv_fix.destroy()
+        self.report.close()
         try:
             if sys.platform == "win32":
-                os.startfile(dir_path('over_max') + filename)
+                os.startfile(dir_path('over_max') + self.filename)
             if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/over_max/' + filename])
+                subprocess.call(["xdg-open", 'kb_sub/over_max/' + self.filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('over_max') + filename])
+                subprocess.call(["open", dir_path('over_max') + self.filename])
         except PermissionError:
             messagebox.showerror("Report Generator",
                                  "The report was not generated.",
-                                 parent=frame)
-    target_file.close()
-    csv_fix.destroy()
+                                 parent=self.frame)
 
 
 def ee_skimmer(frame):

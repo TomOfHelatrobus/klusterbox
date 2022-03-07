@@ -6,6 +6,7 @@ skipping blank lines or arrays no values.
 from kbtoolbox import BuildPath, ProgressBarDe
 import csv
 import os
+from os.path import exists
 
 
 class CsvRepair:
@@ -26,6 +27,7 @@ class CsvRepair:
         """ this runs the classes when called. """
         self.file_path = file_path  # after testing uncomment this and put file path into arguments
         self.get_newfilepath()  # create a name for the path
+        self.delete_filepath()
         self.destroy()  # if the file already exist. destroy it.
         self.get_file()
         self.test_write()
@@ -42,6 +44,15 @@ class CsvRepair:
             newfilename = filename.replace(".csv", "_fixed.csv")  # change the old file name
         path_splice.append(newfilename)  # add the new file name to the end of the path
         self.new_filepath = BuildPath().build(path_splice)  # get the new file path
+
+    def delete_filepath(self):
+        """ delete the filepath if it exist to avoid permission error """
+        if exists(self.new_filepath):
+            try:
+                os.remove(self.new_filepath)
+            except PermissionError:
+                self.new_filepath.close()
+                os.remove(self.new_filepath)
 
     def get_file(self):
         """ read the csv file and assign to self.a_file attribute """

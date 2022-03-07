@@ -3,9 +3,6 @@ This is a module in the klusterbox library. It creates a window where the user c
 information.
 """
 
-# custom modules
-import sys
-
 import projvar
 from kbtoolbox import commit, inquire, CarrierRecSet, Convert, Handler, macadj, MovesChecker, NewWindow, Rings, \
     RingTimeChecker, RouteChecker
@@ -22,13 +19,20 @@ class EnterRings:
     def __init__(self, carrier):
         self.win = NewWindow(title="Enter Clock Rings")
         self.frame = None
-        self.origin_frame = None  # defunct
         self.carrier = carrier
         self.carrecs = []  # get the carrier rec set
         self.ringrecs = []  # get the rings for the week
         self.dates = []  # get a datetime object for each day in the investigation range
         self.daily_carrecs = []  # get the carrier record for each day
         self.daily_ringrecs = []  # get the rings record for each day
+        self.onrec_totals = []  # ring records currently in the database
+        self.onrec_begintour = []
+        self.onrec_moves = []
+        self.onrec_rss = []
+        self.onrec_endtour = []
+        self.onrec_codes = []
+        self.onrec_lvtype = []
+        self.onrec_lvtime = []
         self.totals = []  # arrays holding stringvars
         self.moves = []
         self.rss = []
@@ -38,7 +42,7 @@ class EnterRings:
         self.refusals = []
         self.begintour = []
         self.endtour = []
-        self.now_moves = ""  # default values of the stringvars
+        self.now_moves = []  # the current elements of the onrec_moves array
         self.sat_mm = []  # holds daily stringvars for moves
         self.sun_mm = []
         self.mon_mm = []
@@ -46,7 +50,9 @@ class EnterRings:
         self.wed_mm = []
         self.thu_mm = []
         self.fri_mm = []
-        self.move_string = ""
+        self.moves_array = [self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm]
+        # self.move_string = ""
+        self.daily_moves = []
         self.ot_rings_limiter = None
         self.tourrings = None  # True if user wants to display the BT (begin tour) and ET (end tour)
         self.chg_these = []
@@ -59,6 +65,9 @@ class EnterRings:
         self.update_report = 0
         self.insert_report = 0
         self.day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        self.days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        self.i_range = 0
+        self.frame = []
 
     def start(self, frame=None):
         """ a master method for running the other methods in proper sequence """
@@ -70,10 +79,15 @@ class EnterRings:
         self.get_carrecs()
         self.get_ringrecs()
         self.get_dates()
+        self.get_i_range()
         self.get_daily_carrecs()
         self.get_daily_ringrecs()
         self.get_rings_limiter()
         self.get_tourrings()
+        self.build_frames()
+        self.get_onrecs()
+        self.get_stringvars()
+        self.set_stringvars()
         self.build_page()
         self.write_report()
         self.buttons_frame()
@@ -87,6 +101,14 @@ class EnterRings:
         self.dates = []  # get a datetime object for each day in the investigation range
         self.daily_carrecs = []  # get the carrier record for each day
         self.daily_ringrecs = []  # get the rings record for each day
+        self.onrec_totals = []  # ring records currently in the database
+        self.onrec_begintour = []
+        self.onrec_moves = []
+        self.onrec_rss = []
+        self.onrec_endtour = []
+        self.onrec_codes = []
+        self.onrec_lvtype = []
+        self.onrec_lvtime = []
         self.totals = []  # arrays holding stringvars
         self.moves = []
         self.rss = []
@@ -96,7 +118,7 @@ class EnterRings:
         self.refusals = []
         self.begintour = []
         self.endtour = []
-        self.now_moves = ""  # default values of the stringvars
+        self.now_moves = []  # the current elements of the onrec_moves array
         self.sat_mm = []  # holds daily stringvars for moves
         self.sun_mm = []
         self.mon_mm = []
@@ -104,12 +126,15 @@ class EnterRings:
         self.wed_mm = []
         self.thu_mm = []
         self.fri_mm = []
-        self.move_string = ""
+        self.moves_array = [self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm]
+        self.daily_moves = []
         self.chg_these = []
         self.addrings = []
         if projvar.invran_weekly_span:
             for i in range(7):
                 self.addrings.append([])
+        self.i_range = 0
+        self.frame = []
 
     def get_carrecs(self):
         """ get the carrier's carrier rec set """
@@ -133,6 +158,13 @@ class EnterRings:
             self.dates = projvar.invran_date_week
         else:
             self.dates = [projvar.invran_date, ]
+            
+    def get_i_range(self):
+        """ i range is a count of days in the investigation range. """
+        if projvar.invran_weekly_span:  # if investigation range is weekly
+            self.i_range = 7  # loop 7 times for week or once for day
+        else:
+            self.i_range = 1
 
     def get_daily_carrecs(self):
         """ make a list of carrier records for each day """
@@ -189,11 +221,66 @@ class EnterRings:
         if len(widgetlist) > 1:  # if there is more than one thing in the widgetlist
             return 6  # shorten the widget
         return 8
+    
+    def build_frames(self):
+        """ build the frames that nest inside the body frame. There is one frame per day. """
+        for i in range(self.i_range):
+            self.frame.append(Frame(self.win.body, width=500))
+
+    def get_onrecs(self):
+        """ get rings currently in the database. """
+        for i in range(self.i_range):
+            now_total = Convert(self.daily_ringrecs[i][2]).empty_not_zero()
+            now_bt = Convert(self.daily_ringrecs[i][9]).empty_not_zero()
+            now_rs = Convert(self.daily_ringrecs[i][3]).empty_not_zero()
+            now_et = Convert(self.daily_ringrecs[i][10]).auto_not_zero()
+            now_code = Convert(self.daily_ringrecs[i][4]).none_not_empty()
+            now_moves = self.daily_ringrecs[i][5]
+            now_lv_type = Convert(self.daily_ringrecs[i][6]).none_not_empty()
+            now_lv_time = Convert(self.daily_ringrecs[i][7]).empty_not_zero()
+            self.onrec_totals.append(now_total)
+            self.onrec_begintour.append(now_bt)
+            self.onrec_moves.append(now_moves)
+            self.onrec_rss.append(now_rs)
+            self.onrec_endtour.append(now_et)
+            self.onrec_codes.append(now_code)
+            self.onrec_lvtype.append(now_lv_type)
+            self.onrec_lvtime.append(now_lv_time)
+
+    def get_now_moves(self, i):
+        """ convert the on record moves array from a string into an array. """
+        self.now_moves = []
+        if not self.onrec_moves[i]:
+            return
+        moves = self.onrec_moves[i].split(",")
+        for ring in moves:
+            self.now_moves.append(ring)
+    
+    def get_stringvars(self):
+        """ make the stringvars for the page """
+        for i in range(self.i_range):
+            self.totals.append(StringVar(self.frame[i]))  # append stringvar to totals array
+            self.begintour.append(StringVar(self.frame[i]))  # append stringvar to bt array
+            self.rss.append(StringVar(self.frame[i]))  # RS entry widget
+            self.endtour.append(StringVar(self.frame[i]))  # append stringvar to et array
+            self.codes.append(StringVar(self.frame[i]))  # code entry widget
+            self.lvtypes.append(StringVar(self.frame[i]))  # leave type entry widget
+            self.lvtimes.append(StringVar(self.frame[i]))  # leave time entry widget
+            self.refusals.append("")  # refusals column is not used.
+
+    def set_stringvars(self):
+        """ set the values for the stringvars """
+        for i in range(self.i_range):
+            self.totals[i].set(self.onrec_totals[i])  # set the starting value for total
+            self.begintour[i].set(self.onrec_begintour[i])  # set the starting value for BT
+            self.rss[i].set(self.onrec_rss[i])  # set the starting value for RS
+            self.endtour[i].set(self.onrec_endtour[i])  # set the starting value for ET
+            self.codes[i].set(self.onrec_codes[i])
+            self.lvtypes[i].set(self.onrec_lvtype[i])  # set the starting value for leave type
+            self.lvtimes[i].set(self.onrec_lvtime[i])  # set the starting value for leave type
 
     def build_page(self):
         """ builds the screen """
-        day = ("sat", "sun", "mon", "tue", "wed", "thr", "fri")
-        frame = ["F0", "F1", "F2", "F3", "F4", "F5", "F6"]
         color = ["red", "light blue", "yellow", "green", "brown", "gold", "purple", "grey", "light grey"]
         nolist_codes = ("none", "ns day")
         ot_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
@@ -215,133 +302,112 @@ class EnterRings:
         if self.carrecs[0][4] != "":
             Label(header_frame, text="route/s: {}".format(self.carrecs[0][4])) \
                 .grid(row=2, sticky="w", columnspan=2)
-        frame_i += 2
-        if projvar.invran_weekly_span:  # if investigation range is weekly
-            i_range = 7  # loop 7 times for week or once for day
-        else:
-            i_range = 1
-        for i in range(i_range):
+        frame_i += 2  # the row where daily frames are placed on the grid. 
+        for i in range(self.i_range):
             # for ring in self.daily_ringrecs:  # assign the values for each rings attribute
-            now_total = Convert(self.daily_ringrecs[i][2]).empty_not_zero()
-            now_bt = Convert(self.daily_ringrecs[i][9]).empty_not_zero()
-            now_rs = Convert(self.daily_ringrecs[i][3]).empty_not_zero()
-            now_et = Convert(self.daily_ringrecs[i][10]).auto_not_zero()
-            now_code = Convert(self.daily_ringrecs[i][4]).none_not_empty()
-            self.now_moves = self.daily_ringrecs[i][5]
-            now_lv_type = Convert(self.daily_ringrecs[i][6]).none_not_empty()
-            now_lv_time = Convert(self.daily_ringrecs[i][7]).empty_not_zero()
             grid_i = 0  # counter for the grid within the frame
-            frame[i] = Frame(self.win.body, width=500)
-            frame[i].grid(row=frame_i, padx=5, sticky="w")
+            self.frame[i].grid(row=frame_i, padx=5, sticky="w")
             # Display the day and date
             if projvar.ns_code[self.carrecs[0][3]] == self.dates[i].strftime("%a"):
-                Label(frame[i], text="{} NS DAY".format(self.dates[i].strftime("%a %b %d, %Y")), fg="red") \
+                Label(self.frame[i], text="{} NS DAY".format(self.dates[i].strftime("%a %b %d, %Y")), fg="red") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
             else:
-                Label(frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
+                Label(self.frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
             grid_i += 1
             widgetlist = self.get_widgetlist(i)  # returns a list with moves and/or tourrings or an empty list.
             ww = self.get_ww(widgetlist)
             colcount = 0
             if self.daily_carrecs[i][5] == projvar.invran_station:
-                Label(frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=colcount)  # Display 5200 label
+                Label(self.frame[i], text="5200", fg=color[7]).grid(row=grid_i, column=colcount)  # Display 5200 label
                 colcount += 1
                 if "tourrings" in widgetlist:
-                    Label(frame[i], text="BT", fg=color[7]).grid(row=grid_i, column=colcount)
+                    Label(self.frame[i], text="BT", fg=color[7]).grid(row=grid_i, column=colcount)
                     colcount += 1
                 if "moves" in widgetlist:
-                    Label(frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=colcount)  # Display MV off
-                    Label(frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=colcount + 1)  # Display MV on
-                    Label(frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=colcount + 2)  # Display Route
+                    # display move off, move on and route triad.
+                    Label(self.frame[i], text="MV off", fg=color[7]).grid(row=grid_i, column=colcount)
+                    Label(self.frame[i], text="MV on", fg=color[7]).grid(row=grid_i, column=colcount + 1)
+                    Label(self.frame[i], text="Route", fg=color[7]).grid(row=grid_i, column=colcount + 2)
                     colcount += 4
-                Label(frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=colcount)  # Display RS label
+                Label(self.frame[i], text="RS", fg=color[7]).grid(row=grid_i, column=colcount)  # Display RS label
                 colcount += 1
                 if "tourrings" in widgetlist:
-                    Label(frame[i], text="ET", fg=color[7]).grid(row=grid_i, column=colcount)  # Display ET label
+                    Label(self.frame[i], text="ET", fg=color[7]).grid(row=grid_i, column=colcount)  # Display ET label
                     colcount += 1
-                Label(frame[i], text="code", fg=color[7]).grid(row=grid_i, column=colcount)  # Display code label
+                Label(self.frame[i], text="code", fg=color[7]).grid(row=grid_i, column=colcount)  # Display code label
                 colcount += 1
-                Label(frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=colcount)  # Display LV type label
+                # Display LV type label
+                Label(self.frame[i], text="LV type", fg=color[7]).grid(row=grid_i, column=colcount)
                 colcount += 1
-                Label(frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=colcount)  # Display LV time label
-
+                # Display LV time label
+                Label(self.frame[i], text="LV time", fg=color[7]).grid(row=grid_i, column=colcount)
                 grid_i += 1  # increment the grid to add a line
                 colcount = 0  # reset the column counter to zero
                 # Display the entry widgets
                 # 5200 time
-                self.totals.append(StringVar(frame[i]))  # append stringvar to totals array
-                total_widget[i] = Entry(frame[i], width=macadj(ww, 4), textvariable=self.totals[i])
+                total_widget[i] = Entry(self.frame[i], width=macadj(ww, 4), textvariable=self.totals[i])
                 total_widget[i].grid(row=grid_i, column=colcount)
-                self.totals[i].set(now_total)  # set the starting value for total
                 colcount += 1
                 # BT - begin tour
-                self.begintour.append(StringVar(frame[i]))  # append stringvar to bt array
-                self.begintour[i].set(now_bt)  # set the starting value for BT
                 if "tourrings" in widgetlist:  # only display if show BT/ET is configured.
-                    Entry(frame[i], width=macadj(ww, 4), textvariable=self.begintour[i]) \
+                    Entry(self.frame[i], width=macadj(ww, 4), textvariable=self.begintour[i]) \
                         .grid(row=grid_i, column=colcount)
                     colcount += 1
+
                 # Moves
+                # if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
+                # build three entry widgets and a button for more moves.
+                self.get_now_moves(i)  # converts onrec_moves to a daily array
+                self.more_moves(i, ww, widgetlist)
+                # More Moves Button
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
-                    self.new_entry(frame[i], day[i], colcount, ww)  # MOVES on, off and route entry widgets
-                    original_colcount = colcount
                     colcount += 3
-                    mactext = "move moves"  # write text for move moves buttons for mac
-                    if "tourrings" in widgetlist:  # move moves button text is conditional on if tourrings
-                        mactext = "+mv"  # if tourrings use a shorter version
-                    Button(frame[i], text=macadj("more moves", mactext), fg=macadj("black", "grey"),
-                           command=lambda x=i: self.new_entry(frame[x], day[x], original_colcount, ww)) \
-                        .grid(row=grid_i, column=colcount)
+                mactext = "move moves"  # write text for move moves buttons for mac
+                if "tourrings" in widgetlist:  # move moves button text is conditional on if tourrings
+                    mactext = "+mv"  # if tourrings use a shorter version
+                mv_button = Button(self.frame[i], text=macadj("more moves", mactext), fg=macadj("black", "grey"),
+                       command=lambda x=i: self.more_moves(x, ww, widgetlist))
+                if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
+                    mv_button.grid(row=grid_i, column=colcount)
                     colcount += 1
-                self.now_moves = ""  # zero out self.now_moves so more moves button works properly
                 # Return to Station (rs)
-                self.rss.append(StringVar(frame[i]))  # RS entry widget
-                Entry(frame[i], width=macadj(ww, 4), textvariable=self.rss[i]).grid(row=grid_i, column=colcount)
-                self.rss[i].set(now_rs)  # set the starting value for RS
+                Entry(self.frame[i], width=macadj(ww, 4), textvariable=self.rss[i]).grid(row=grid_i, column=colcount)
                 colcount += 1
                 # ET - end tour
-                self.endtour.append(StringVar(frame[i]))  # append stringvar to et array
-                self.endtour[i].set(now_et)  # set the starting value for ET
                 if "tourrings" in widgetlist:  # only display if show BT/ET is configured.
-                    Entry(frame[i], width=macadj(ww, 4), textvariable=self.endtour[i]) \
+                    Entry(self.frame[i], width=macadj(ww, 4), textvariable=self.endtour[i]) \
                         .grid(row=grid_i, column=colcount)
                     colcount += 1
                 # Codes/Notes
-                self.codes.append(StringVar(frame[i]))  # code entry widget
                 if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
-                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *nolist_codes)
+                    option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *nolist_codes)
                 elif self.daily_carrecs[i][2] == "otdl":
-                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *ot_codes)
+                    option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *ot_codes)
                 else:
-                    option_menu[i] = OptionMenu(frame[i], self.codes[i], *aux_codes)
-                self.codes[i].set(now_code)
+                    option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *aux_codes)
                 option_menu[i].configure(width=macadj(7, 6))
+
                 option_menu[i].grid(row=grid_i, column=colcount)  # code widget
                 colcount += 1  # increment the column
                 # Leave Type
-                self.lvtypes.append(StringVar(frame[i]))  # leave type entry widget
-                lv_option_menu[i] = OptionMenu(frame[i], self.lvtypes[i], *lv_options)
+                lv_option_menu[i] = OptionMenu(self.frame[i], self.lvtypes[i], *lv_options)
                 lv_option_menu[i].configure(width=macadj(7, 6))
                 lv_option_menu[i].grid(row=grid_i, column=colcount)  # leave type widget
                 colcount += 1  # increment the column
                 # Leave Time
-                self.lvtimes.append(StringVar(frame[i]))  # leave time entry widget
-                self.lvtypes[i].set(now_lv_type)  # set the starting value for leave type
-                self.lvtimes[i].set(now_lv_time)  # set the starting value for leave type
-                Entry(frame[i], width=macadj(ww, 4), textvariable=self.lvtimes[i]) \
+                Entry(self.frame[i], width=macadj(ww, 4), textvariable=self.lvtimes[i]) \
                     .grid(row=grid_i, column=colcount)  # leave time widget
                 colcount += 1  # increment the column
-                # Refusals
-                self.refusals.append("")  # refusals column is not used.
+                # Refusals are not used
             else:
-                self.totals.append(StringVar(frame[i]))  # 5200 entry widget
-                self.rss.append(StringVar(frame[i]))  # RS entry
+                self.totals.append(StringVar(self.frame[i]))  # 5200 entry widget
+                self.rss.append(StringVar(self.frame[i]))  # RS entry
                 if self.daily_carrecs[i][5] != "no record":  # display for records that are out of station
-                    Label(frame[i], text="out of station: {}".format(self.daily_carrecs[i][5]),
+                    Label(self.frame[i], text="out of station: {}".format(self.daily_carrecs[i][5]),
                           fg="white", bg="grey", width=55, height=2, anchor="w").grid(row=grid_i, column=0)
                 else:  # display for when there is no record relevant for that day.
-                    Label(frame[i], text="no record", fg="white", bg="grey", width=55, height=2, anchor="w") \
+                    Label(self.frame[i], text="no record", fg="white", bg="grey", width=55, height=2, anchor="w") \
                         .grid(row=grid_i, column=0)
             frame_i += 1
         f7 = Frame(self.win.body)
@@ -368,50 +434,47 @@ class EnterRings:
         elif (index - 2) % 3 == 0:  # third column
             return int(2)
 
-    def new_entry(self, frame, day, colcount, ww):
-        """ creates new entry fields for 'more move functionality' """
+    def moves_col_increment(self):
+        """ if the bt/et is being displayed, move the moves columns over one. """
+        if self.tourrings:
+            return 2
+        return 1
+
+    def more_moves(self, i, ww, widgetlist):
+        """" this executes if the user presses the more moves button. it will generate more move triad entry
+        widgets. """
         mm = []
-        if day == "sat":
+        if self.days[i] == "sat":
             mm = self.sat_mm  # find the day in question and use the correlating  array
-        elif day == "sun":
+        elif self.days[i] == "sun":
             mm = self.sun_mm
-        elif day == "mon":
+        elif self.days[i] == "mon":
             mm = self.mon_mm
-        elif day == "tue":
+        elif self.days[i] == "tue":
             mm = self.tue_mm
-        elif day == "wed":
+        elif self.days[i] == "wed":
             mm = self.wed_mm
-        elif day == "thr":
+        elif self.days[i] == "thu":
             mm = self.thu_mm
-        elif day == "fri":
+        elif self.days[i] == "fri":
             mm = self.fri_mm
-        # what to do depending on the moves
-        if self.now_moves == "":  # if there are no moves sent to the function
-            mm.append(StringVar(frame))  # create first entry field for new entries
-            Entry(frame, width=macadj(ww, 4), textvariable=mm[len(mm) - 1]) \
-                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # route
-            mm.append(StringVar(frame))  # create second entry field for new entries
-            Entry(frame, width=macadj(ww, 4), textvariable=mm[len(mm) - 1]) \
-                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # move off
-            mm.append(StringVar(frame))  # create second entry field for new entries
-            Entry(frame, width=macadj(ww, 5), textvariable=mm[len(mm) - 1]) \
-                .grid(row=self.triad_row_finder(len(mm) - 1) + 2,
-                      column=self.triad_col_finder(len(mm) - 1) + colcount)  # move on
-        else:  # if there are moves which need to be set
-            moves = self.now_moves.split(",")  # turn now_moves into an array
-            iterations = len(moves)  # get the number of items in moves array
-            for i in range(int(iterations)):  # loop through all items in moves array
-                mm.append(StringVar(frame))  # create entry field for moves from database
-                mm[i].set(moves[i])  # set values for the StringVars
-                if (i + 1) % 3 == 0:  # adjust the lenght of the route widget pending os
-                    ml = 5  # on mac, the route widget lenght is 5
-                else:
-                    ml = 4  # on mac, the rings widget lenght is 4
-                # build the widget
-                Entry(frame, width=macadj(ww, ml), textvariable=mm[i]) \
-                    .grid(row=self.triad_row_finder(i) + 2, column=self.triad_col_finder(i) + colcount)
+        if not self.now_moves:  # if first time or button pushed.
+            for _ in range(3):
+                self.now_moves.append("")
+        mci = self.moves_col_increment()  # moves counter increment: if bt/et is displayed, increment the column by 1
+        mwc = len(mm)  # moves widget counter: count the number of widgets
+        for ii in range(len(self.now_moves)):  # loop through all items in array of stringvars for the day.
+            mm.append(StringVar(self.frame[i]))  # create entry field for moves from database
+            mm[ii + mwc].set(self.now_moves[ii])  # set values for the StringVars
+            if (ii + 1) % 3 == 0:  # adjust the lenght of the route widget pending os
+                ml = 5  # on mac, the route widget lenght is 5
+            else:
+                ml = 4  # on mac, the rings widget lenght is 4
+            # build the widget use triad col/row finder to locate right place on grid
+            mv_widget = Entry(self.frame[i], width=macadj(ww, ml), textvariable=mm[ii + mwc])
+            if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
+                mv_widget.grid(column=self.triad_col_finder(ii + mwc) + mci, row=self.triad_row_finder(ii + mwc) + 2)
+        self.now_moves = []  # zero out self.now_moves so more moves button works properly
 
     def write_report(self):
         """ build the report to appear on bottom of screen """
@@ -452,7 +515,7 @@ class EnterRings:
 
     def apply_rings(self, go_home):
         """ execute when apply or submit is pressed """
-        self.empty_addrings()
+        self.empty_addrings()  # make sure addrings are empty before building them
         self.add_date()
         if not self.check_5200():
             return  # abort if there is an error
@@ -545,97 +608,89 @@ class EnterRings:
         for i in range(len(self.codes)):
             self.addrings[i].append(self.codes[i].get())
 
-    def bypass_moves(self):
-        """ keep existing moves if otdl rings limiter is on/True """
-        if projvar.invran_weekly_span:  # if investigation range is weekly
-            i_range = 7  # investigation range is seven days
-        else:
-            i_range = 1  # investigation range is one day
-        for i in range(i_range):  # loop for each day in investigation
-            moves = self.daily_ringrecs[i][5]  # get the preexisting record for that day
-            self.addrings[i].append(moves)  # add that record to addrings array
-
-    def move_string_constructor(self, first, second, third):
-        """ builds the moves triad - move off, move on and route - into the form entered into the database """
-        if self.move_string and first and second:
-            self.move_string += ","
-        if first and second:
-            self.move_string += first + "," + second + "," + third
+    def daily_moves_builder(self, first, second, third):
+        """ build an array of daily moves """
+        if first.strip() and second.strip():  # if the first and second values are not empty
+            self.daily_moves.append(first)
+            self.daily_moves.append(second)
+            self.daily_moves.append(third)
 
     def check_moves(self):
         """ checks the moves for errors """
-        if self.ot_rings_limiter:  # if the otdl rings limiter is on/True
-            self.bypass_moves()  # bypass all checks and put preexisting moves into addrings
-            return True  # mission accomplished
+        cc = 0  # index: increments one for each day
+        for d in self.moves_array:  # check for bad inputs in moves
+            if not self.check_moves_daily(d, cc):
+                return False
+            cc += 1
+        return True
+
+    def check_moves_daily(self, d, cc):
+        """  checks the moves for errors by the day  """
         first_move = None
         second_move = None
-        # route = None
-        days = (self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm)
-        cc = 0  # increments one for each day
-        for d in days:  # check for bad inputs in moves
-            self.move_string = ""  # emtpy out string where moves data is passed
-            x = len(d)
-            for i in range(x):
-                if self.triad_col_finder(i) == 0:  # find the first of the triad
-                    first_move = d[i].get().strip()
-                    second_move = d[i + 1].get().strip()
-                    if MovesChecker(first_move).check_for_zeros() or MovesChecker(second_move).check_for_zeros():
-                        if MovesChecker(first_move).check_for_zeros() and \
-                                MovesChecker(second_move).check_for_zeros():  # if both are zeros
-                            continue  # skip the rest of the checks
-                        text = "You must provide two values on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).check_numeric() or \
-                            not RingTimeChecker(second_move).check_numeric():
-                        text = "You must enter a numeric value on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not MovesChecker(first_move).compare(second_move):
-                        text = "The earlier value can not be greater than the later value on moves for {}." \
-                            .format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).over_24() or not RingTimeChecker(second_move).over_24():
-                        text = "Values greater than 24 are not accepted on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).less_than_zero() or \
-                            not RingTimeChecker(second_move).less_than_zero():
-                        text = "Values less than 0 are not accepted on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RingTimeChecker(first_move).count_decimals_place() or \
-                            not RingTimeChecker(second_move).count_decimals_place():
-                        text = "Moves can not have more than two decimal places on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    first_move = Convert(first_move).hundredths()
-                    second_move = Convert(second_move).hundredths()
-                if self.triad_col_finder(i) == 2:  # find the third of the triad
-                    route = d[i].get().strip()
-                    if RouteChecker(route).is_empty():  # if the route is an empty string
-                        self.move_string_constructor(first_move, second_move, "")
+        self.daily_moves = []  # empty out array where moves data is passed
+        x = len(d)
+        for i in range(x):
+            if self.triad_col_finder(i) == 0:  # find the first of the triad
+                first_move = d[i].get().strip()
+                second_move = d[i + 1].get().strip()
+                if MovesChecker(first_move).check_for_zeros() or MovesChecker(second_move).check_for_zeros():
+                    if MovesChecker(first_move).check_for_zeros() and \
+                            MovesChecker(second_move).check_for_zeros():  # if both are zeros
                         continue  # skip the rest of the checks
-                    if not RouteChecker(route).check_numeric():
-                        text = "You must enter a numeric value on route for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RouteChecker(route).only_one():
-                        text = "Only one route is allowed in route field on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if RouteChecker(route).only_numbers():
-                        text = "Only numbers are allowed in route field on moves for {}.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    if not RouteChecker(route).check_length():
-                        text = "The route number for {} must be four or five digits long.".format(self.day[cc])
-                        messagebox.showerror("Move entry error", text, parent=self.win.topframe)
-                        return False
-                    self.move_string_constructor(first_move, second_move, route)
-            self.addrings[cc].append(self.move_string)
-            cc += 1
+                    text = "You must provide two values on moves for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if not RingTimeChecker(first_move).check_numeric() or \
+                        not RingTimeChecker(second_move).check_numeric():
+                    text = "You must enter a numeric value on moves for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if not MovesChecker(first_move).compare(second_move):
+                    text = "The earlier value can not be greater than the later value on moves for {}." \
+                        .format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if not RingTimeChecker(first_move).over_24() or not RingTimeChecker(second_move).over_24():
+                    text = "Values greater than 24 are not accepted on moves for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if not RingTimeChecker(first_move).less_than_zero() or \
+                        not RingTimeChecker(second_move).less_than_zero():
+                    text = "Values less than 0 are not accepted on moves for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if not RingTimeChecker(first_move).count_decimals_place() or \
+                        not RingTimeChecker(second_move).count_decimals_place():
+                    text = "Moves can not have more than two decimal places on moves for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                first_move = Convert(first_move).hundredths()
+                second_move = Convert(second_move).hundredths()
+            if self.triad_col_finder(i) == 2:  # find the third of the triad
+                route = d[i].get().strip()
+                if RouteChecker(route).is_empty():  # if the route is an empty string
+                    # self.move_string_constructor(first_move, second_move, "")
+                    self.daily_moves_builder(first_move, second_move, "")
+                    continue  # skip the rest of the checks
+                if not RouteChecker(route).check_numeric():
+                    text = "You must enter a numeric value on route for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if not RouteChecker(route).only_one():
+                    text = "Only one route is allowed in route field on moves for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if RouteChecker(route).only_numbers():
+                    text = "Only numbers are allowed in route field on moves for {}.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                if not RouteChecker(route).check_length():
+                    text = "The route number for {} must be four or five digits long.".format(self.day[cc])
+                    messagebox.showerror("Move entry error", text, parent=self.win.topframe)
+                    return False
+                self.daily_moves_builder(first_move, second_move, route)
+        self.addrings[cc].append(self.daily_moves)
         return True
 
     def add_leavetype(self):
@@ -667,7 +722,6 @@ class EnterRings:
                     .format(self.day[i])
                 messagebox.showerror("Leave Time Error", text, parent=self.win.topframe)
                 return False
-            # lvtime = format(float(lvtime), '.2f')  # format it as a float with 2 decimal places
             lvtime = Convert(lvtime).hundredths()  # format it as a number with 2 decimal places
             self.addrings[i].append(lvtime)  # if all checks pass, add to addrings
         return True
@@ -754,6 +808,8 @@ class EnterRings:
         """ add records to database """
         sql = ""
         for i in range(len(self.dates)):
+            # convert the daily moves from an array into a string.
+            self.addrings[i][5] = Convert(self.addrings[i][5]).array_to_string()
             empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", "", "", ""]
             if self.addrings[i] == self.daily_ringrecs[i]:
                 sql = ""  # if new and old are a match, take no action

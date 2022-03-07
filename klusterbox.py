@@ -24,7 +24,7 @@ from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, Do
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
-from kbcsv_reader import max_hr, ee_skimmer
+from kbcsv_reader import MaxHr, ee_skimmer
 from kbpdfhandling import pdf_converter
 from kbenterrings import EnterRings
 from kbinformalc import InformalC
@@ -56,7 +56,7 @@ __author_email__ = "tomandsusan4ever@msn.com"
 
 # version variables
 version = "5.000"  # version number must be convertable to a float and should increase for Fixes()
-release_date = "undetermined"  # format is Jan 1, 2022
+release_date = "Mar 3, 2022"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -2336,26 +2336,6 @@ class DatabaseAdmin:
             messagebox.showerror("Report Generator",
                                  "The report failed to generate.",
                                  parent=frame)
-
-    @staticmethod
-    def clean_rings3_table():
-        """ database maintenance """
-        sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
-        result = inquire(sql)
-        types = ""
-        times = float(0.0)
-        if result:
-            sql = "UPDATE rings3 SET leave_type='%s',leave_time='%s'" \
-                  "WHERE leave_type IS NULL" \
-                  % (types, times)
-            commit(sql)
-            messagebox.showinfo("Clean Rings",
-                                "Rings table has been cleared of NULL values in leave type and leave time columns.")
-        else:
-            messagebox.showinfo("Clean Rings",
-                                "No NULL values in leave type and leave time columns were found in the Rings3 "
-                                "table of the database. No action taken.")
-        return
 
     @staticmethod
     def carrier_list_cleaning(frame):
@@ -6642,7 +6622,7 @@ class NsConfig:
         yellow_text.set(result[0][2])
         om_yellow = OptionMenu(self.win.body, yellow_color, *color_array)
         yellow_color.set(result[0][1])
-        om_yellow.config(width=13, anchor=macadj("w","center"))
+        om_yellow.config(width=13, anchor=macadj("w", "center"))
         om_yellow.grid(row=7, column=2, sticky="w")
         Label(self.win.body, text="yellow").grid(row=7, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['blue'])).grid(row=8, column=0, sticky="w")  # blue row
@@ -6650,7 +6630,7 @@ class NsConfig:
         blue_text.set(result[1][2])
         om_blue = OptionMenu(self.win.body, blue_color, *color_array)
         blue_color.set(result[1][1])
-        om_blue.config(width=13, anchor=macadj("w","center"))
+        om_blue.config(width=13, anchor=macadj("w", "center"))
         om_blue.grid(row=8, column=2, sticky="w")
         Label(self.win.body, text="blue").grid(row=8, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['green'])).grid(row=9, column=0, sticky="w")  # green row
@@ -6658,7 +6638,7 @@ class NsConfig:
         green_text.set(result[2][2])
         om_green = OptionMenu(self.win.body, green_color, *color_array)
         green_color.set(result[2][1])
-        om_green.config(width=13, anchor=macadj("w","center"))
+        om_green.config(width=13, anchor=macadj("w", "center"))
         om_green.grid(row=9, column=2, sticky="w")
         Label(self.win.body, text="green").grid(row=9, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['brown'])).grid(row=10, column=0, sticky="w")  # brown row
@@ -6666,7 +6646,7 @@ class NsConfig:
         brown_text.set(result[3][2])
         om_brown = OptionMenu(self.win.body, brown_color, *color_array)
         brown_color.set(result[3][1])
-        om_brown.config(width=13, anchor=macadj("w","center"))
+        om_brown.config(width=13, anchor=macadj("w", "center"))
         om_brown.grid(row=10, column=2, sticky="w")
         Label(self.win.body, text="brown").grid(row=10, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['red'])).grid(row=11, column=0, sticky="w")  # red row
@@ -6674,7 +6654,7 @@ class NsConfig:
         red_text.set(result[4][2])
         om_red = OptionMenu(self.win.body, red_color, *color_array)
         red_color.set(result[4][1])
-        om_red.config(width=13, anchor=macadj("w","center"))
+        om_red.config(width=13, anchor=macadj("w", "center"))
         om_red.grid(row=11, column=2, sticky="w")
         Label(self.win.body, text="red").grid(row=11, column=3, sticky="w")
         Label(self.win.body, text="{}".format(projvar.ns_code['black'])).grid(row=12, column=0, sticky="w")  # black row
@@ -6682,7 +6662,7 @@ class NsConfig:
         black_text.set(result[5][2])
         om_black = OptionMenu(self.win.body, black_color, *color_array)
         black_color.set(result[5][1])
-        om_black.config(width=13, anchor=macadj("w","center"))
+        om_black.config(width=13, anchor=macadj("w", "center"))
         om_black.grid(row=12, column=2, sticky="w")
         Label(self.win.body, text="black").grid(row=12, column=3, sticky="w")
         Label(self.win.body, text=" ").grid(row=13)
@@ -9069,7 +9049,7 @@ class MainFrame:
         automated_menu.add_command(label="Automatic Data Entry",
                                    command=lambda: AutoDataEntry().run(self.win.topframe))
         automated_menu.add_separator()
-        automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: max_hr(self.win.topframe))
+        automated_menu.add_command(label=" Auto Over Max Finder", command=lambda: MaxHr().run(self.win.topframe))
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(self.win.topframe))
@@ -9208,8 +9188,6 @@ class MainFrame:
                                                                                              projvar.invran_station))
         management_menu.add_command(label="Clean Carrier List", 
                                     command=lambda: DatabaseAdmin().carrier_list_cleaning(self.win.topframe))
-        management_menu.add_command(label="Clean Rings", 
-                                    command=lambda: DatabaseAdmin().clean_rings3_table())
         management_menu.add_separator()
         management_menu.add_command(label="Name Index", 
                                     command=lambda: NameIndex().name_index_screen(self.win.topframe))

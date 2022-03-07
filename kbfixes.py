@@ -118,16 +118,19 @@ class V5000Fix:
 class V5000FixA:
     """
     replace the null values in rings 3 in bt and et columns with empty strings.
+    also replace null values in rings 3 in leave type and time with empty string and empty float.
     """
 
     def run(self):
         """ master method for running other methods in proper order. """
         if self.check_for_null():
             self.update_null_to_emptystring()
+        if self.check_for_null_leave():
+            self.update_null_leavetime_type()
 
     @staticmethod
     def check_for_null():
-        """ returns true if there are null values in bt"""
+        """ returns true if there are null values in bt """
         sql = "SELECT * FROM rings3 WHERE bt IS NULL"
         results = inquire(sql)
         if results:
@@ -140,4 +143,23 @@ class V5000FixA:
         sql = "UPDATE rings3 SET bt = '' WHERE bt IS NULL"
         commit(sql)
         sql = "UPDATE rings3 SET et = '' WHERE et IS NULL"
+        commit(sql)
+
+    @staticmethod
+    def check_for_null_leave():
+        """ returns true if there are null values in leave time or type. """
+        sql = "SELECT * FROM rings3 WHERE leave_type IS NULL"
+        results = inquire(sql)
+        if results:
+            return True
+        return False
+
+    @staticmethod
+    def update_null_leavetime_type():
+        """ this converts leave type to an empty string and leave time to an empty float. """
+        types = ""
+        times = float(0.0)
+        sql = "UPDATE rings3 SET leave_type='%s',leave_time='%s'" \
+              "WHERE leave_type IS NULL" \
+              % (types, times)
         commit(sql)
