@@ -56,7 +56,7 @@ __author_email__ = "tomandsusan4ever@msn.com"
 
 # version variables
 version = "5.000"  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Mar 3, 2022"  # format is Jan 1, 2022
+release_date = "Mar 10, 2022"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -4698,15 +4698,15 @@ class AutoDataEntry:
             result = inquire(sql)
             if len(result) == 0:
                 sql = "INSERT INTO rings3 (rings_date, carrier_name, total, " \
-                      "rs, code, moves, leave_type,leave_time, bt, et) " \
+                      "rs, code, moves, leave_type, leave_time, bt, et) " \
                       "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')" % \
                       (self.current_array[0], self.current_array[1], self.current_array[2], self.current_array[3],
                        self.current_array[4], self.current_array[5], self.current_array[6], self.current_array[7],
                        self.current_array[8], self.current_array[9])
                 commit(sql)
             else:
-                sql = "UPDATE rings3 SET total='%s', rs='%s' ,code='%s',moves='%s'," \
-                      "leave_type ='%s',leave_time='%s', bt='%s', et='%s' " \
+                sql = "UPDATE rings3 SET total='%s', rs='%s', code='%s', moves='%s'," \
+                      "leave_type ='%s', leave_time='%s', bt='%s', et='%s'" \
                       "WHERE rings_date = '%s' and carrier_name = '%s'" % (
                           self.current_array[2], self.current_array[3], self.current_array[4], self.current_array[5],
                           self.current_array[6], self.current_array[7], self.current_array[8], self.current_array[9],
@@ -5185,8 +5185,8 @@ class GenConfig:
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
-        # overtime rings limiter
-        Label(self.win.body, text="Overtime Rings Limiter:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        # overtime rings limiter - rename to "Hide OTDL Move Rings"
+        Label(self.win.body, text="Hide OTDL Move Rings:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_rings = OptionMenu(self.win.body, self.ot_rings_limiter, "on", "off")  # option menu configuration below
         om_rings.config(width=7)
         om_rings.grid(row=self.row, column=1)
@@ -5228,7 +5228,7 @@ class GenConfig:
             rings_limiter = int(0)
         sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % (rings_limiter, "ot_rings_limiter")
         commit(sql)
-        msg = "Overtime Rings Limiter updated: {}".format(self.ot_rings_limiter.get())
+        msg = "Hide OTDL Move Rings updated: {}".format(self.ot_rings_limiter.get())
         self.status_update.config(text="{}".format(msg))
 
     def apply_spreadsheet_pref(self):

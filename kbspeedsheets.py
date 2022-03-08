@@ -493,8 +493,8 @@ class SpeedSheetGen:
                             ring_5200 = ring_recs[d][2]  # rings 5200
                             ring_move = self.mv_to_speed(ring_recs[d][5])  # format rings MOVES
                             ring_rs = ring_recs[d][3]  # rings RS
-                            ring_code = ring_recs[d][4]  # rings CODES
-                            ring_lvty = ring_recs[d][6]  # rings LEAVE TYPE
+                            ring_code = Convert(ring_recs[d][4]).empty_not_none()  # rings CODES
+                            ring_lvty = Convert(ring_recs[d][6]).empty_not_none()  # rings LEAVE TYPE
                             ring_lvtm = ring_recs[d][7]  # rings LEAVE TIME
                             ring_bt = ring_recs[d][9]  # rings BT
                             ring_et = ring_recs[d][10]  # rings ET

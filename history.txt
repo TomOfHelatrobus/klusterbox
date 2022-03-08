@@ -45,7 +45,7 @@ Version 4.005 (09/20/2021)
 Version 4.006 (01/09/2022) 
 	The kbcsv_repair module was added so that csv files could be fixed if they were not properly formated. Also the code for the Auto Data Entry was overhauled making it easier to read and edit. This will make the Auto Data Entry more reliable and stable.
 
-Version 5.000 (03/03/2022) 
+Version 5.000 (03/10/2022) 
 	Code was restructured to create two new modules: kbenterrings.py and kbinformalc.py. The two modules create new windows and which run independent of the main window. Mostly I wanted users to not lose their place on the carrier list when when entering rings. Also, I wanted to reduce the size of the the code on the main module - hence breaking off the informal c module. A new module - fixes - was added to allow fixes specific to new versions being installed. The fixes for 5.0 remove null values in the rings 3 table and remove all uppercase names in the database and changes them to all lowercase. 
 	I created an improper mandates N0.4 spreadsheet. This is a spreadsheet provided by the branch 47 of the NALC. Klusterbox will generate the spreadsheet and fill in values with data from the database. A screen for configurations is included in the management menu.
 	The option of entering begin tour and end tour were added to the rings table. Data entry modalities of enter rings screen, speedsheets and auto data entry where updated to allow the user to enter, edit and record begin tour and end tour. An auto detect for end tour was added to enter rings screen and speedsheets to make for faster data entry. The improper mandates number 4 spreadsheet was added to allow viewing of begin tour and end tour output. 

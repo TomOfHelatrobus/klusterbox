@@ -184,7 +184,7 @@ class EnterRings:
                         self.daily_ringrecs.append(list(rr))  # creates the daily_ringrecs array
                         match = True
             if not match:  # if there is no match
-                add_this = [d, self.carrier, "", "", "none", "", "none", "", "", "", ""]  # insert an empty record
+                add_this = [d, self.carrier, "", "", "none", "", "none", "", None, "", ""]  # insert an empty record
                 self.daily_ringrecs.append(add_this)  # creates the daily_ringrecs array
             match = False
         # convert the time item from string to datetime object
@@ -266,7 +266,7 @@ class EnterRings:
             self.codes.append(StringVar(self.frame[i]))  # code entry widget
             self.lvtypes.append(StringVar(self.frame[i]))  # leave type entry widget
             self.lvtimes.append(StringVar(self.frame[i]))  # leave time entry widget
-            self.refusals.append("")  # refusals column is not used.
+            self.refusals.append(None)  # refusals column is not used.
 
     def set_stringvars(self):
         """ set the values for the stringvars """
@@ -354,9 +354,7 @@ class EnterRings:
                     Entry(self.frame[i], width=macadj(ww, 4), textvariable=self.begintour[i]) \
                         .grid(row=grid_i, column=colcount)
                     colcount += 1
-
                 # Moves
-                # if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
                 # build three entry widgets and a button for more moves.
                 self.get_now_moves(i)  # converts onrec_moves to a daily array
                 self.more_moves(i, ww, widgetlist)
@@ -810,7 +808,8 @@ class EnterRings:
         for i in range(len(self.dates)):
             # convert the daily moves from an array into a string.
             self.addrings[i][5] = Convert(self.addrings[i][5]).array_to_string()
-            empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", "", "", ""]
+            # empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", "", "", ""]
+            empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", None, "", ""]
             if self.addrings[i] == self.daily_ringrecs[i]:
                 sql = ""  # if new and old are a match, take no action
             elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call" \
@@ -824,20 +823,20 @@ class EnterRings:
             elif self.daily_ringrecs[i] != empty_rec and self.addrings[i] != empty_rec:
                 # if a record exist but is different from the new record
                 sql = "UPDATE rings3 SET total='%s',rs='%s',code='%s',moves='%s',leave_type ='%s'," \
-                      "leave_time='%s', refusals='%s', bt='%s', et='%s' WHERE rings_date='%s' and carrier_name='%s'" \
+                      "leave_time='%s', bt='%s', et='%s' WHERE rings_date='%s' and carrier_name='%s'" \
                       % (self.addrings[i][2], self.addrings[i][3], self.addrings[i][4],
                          self.addrings[i][5], self.addrings[i][6], self.addrings[i][7],
-                         self.addrings[i][8], self.addrings[i][9], self.addrings[i][10],
+                         self.addrings[i][9], self.addrings[i][10],
                          self.dates[i], self.carrier)
                 self.update_report += 1
             elif self.daily_ringrecs[i] == empty_rec and self.addrings[i] != empty_rec:
                 # if a record doesn't exist and the new record is not empty
                 sql = "INSERT INTO rings3 (rings_date, carrier_name, total, rs, code, moves, leave_type, leave_time, " \
-                      "refusals, bt, et )" \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s') " \
+                      "bt, et )" \
+                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s') " \
                       % (self.dates[i], self.carrier, self.addrings[i][2], self.addrings[i][3],
                          self.addrings[i][4], self.addrings[i][5], self.addrings[i][6], self.addrings[i][7],
-                         self.addrings[i][8], self.addrings[i][9], self.addrings[i][10])
+                         self.addrings[i][9], self.addrings[i][10])
                 self.insert_report += 1
             if sql:
                 commit(sql)
