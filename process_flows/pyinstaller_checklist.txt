@@ -21,6 +21,10 @@ ___ ___ ___  1. (in explorer/finder) make sure the kb_install folder is inside t
 		___ ___ ___  9. kbpdfhandling.py
 		___ ___ ___  10. kbcsv_reader.py
 		___ ___ ___  11. kbcsv_repair.py
+		___ ___ ___  12. kbenterrings.py
+		___ ___ ___  13. kbfixes.py
+		___ ___ ___  14. kbinformalc.py
+
 		
 ___ ___ ___  3. (in terminal/ powershell) navigate to the klusterbox folder.
 
@@ -78,7 +82,9 @@ ___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_su
 	___ ___  16. kbpdfhandling.py
 	___ ___  17. kbcsv_reader.py
 	___ ___  18. kbcsv_repair.py
-
+	___ ___  19. kbenterrings.py
+	___ ___  20. kbfixes.py
+	___ ___  21. kbinformalc.py
 	
 	
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
@@ -128,7 +134,10 @@ ___ ___  4. (in explorer) enter into the dist folder and copy the klusterbox.exe
 	___ ___  j. kbspeedsheets.py
 	___ ___  l. kbpdfhandling.py
 	___ ___  m. kbcsv_reader.py
-	___ ___  n. kbcsv_repair.py	
+	___ ___  n. kbcsv_repair.py
+	___ ___  o. kbenterrings.py
+	___ ___  p. kbfixes.py
+	___ ___  q. kbinformalc.py
 
 ___ ___  7.(in explorer)  you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
@@ -154,11 +163,14 @@ ___ ___  #. (in explorer) make sure the following files are in the kb_install fo
 	___ ___  e. kbreports.py
 	___ ___  f. kbspreadsheets.py
 	___ ___  g. kbspeedsheets.py
-	___ ___  g. kbequitability.py
-	___ ___  g. kbcsv_reader.py
-	___ ___  g. kbcsv_repair.py
-	___ ___  g. kbpdfhandler.py
-	___ ___  g. klusterwin.spec
+	___ ___  h. kbequitability.py
+	___ ___  i. kbcsv_reader.py
+	___ ___  j. kbcsv_repair.py
+	___ ___  k. kbenterrings.py
+	___ ___  l. kbfixes.py
+	___ ___  m. kbinformalc.py
+	___ ___  n. kbpdfhandler.py
+	___ ___  o. klusterwin.spec
 
 	leave the kb_sub folder alone if it is in there.
 
