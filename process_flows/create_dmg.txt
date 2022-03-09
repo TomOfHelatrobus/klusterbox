@@ -71,5 +71,6 @@ ___  26. Close the Get Info window.
 
 ___  27. The setup_klusterbox_v< >_mac.dmg  file is ready for distribution. 
 
+___  28. It is safe to move Klusterbox.app and kb_install.png to the trash. 
 
 

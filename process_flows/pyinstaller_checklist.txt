@@ -90,23 +90,23 @@ ___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_su
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
 
 		w64 w32 mac
-		___ ___ ___  1. /kb_sub/mandates.sqlite
-		___ ___ ___  2. /kb_sub/ee_reader
-		___ ___ ___  3. /kb_sub/infc_grv
-		___ ___ ___  4. /kb_sub/over_max
-		___ ___ ___  5. /kb_sub/over_max_spreadsheet
-		___ ___ ___  6. /kb_sub/pp_guide
-		___ ___ ___  7. /kb_sub/spreadsheets
-		___ ___ ___  8. /kb_sub/weekly_availability
+		___ ___ 1. /kb_sub/mandates.sqlite
+		___ ___ 2. /kb_sub/ee_reader
+		___ ___ 3. /kb_sub/infc_grv
+		___ ___ 4. /kb_sub/over_max
+		___ ___ 5. /kb_sub/over_max_spreadsheet
+		___ ___ 6. /kb_sub/pp_guide
+		___ ___ 7. /kb_sub/spreadsheets
+		___ ___ 8. /kb_sub/weekly_availability
 		
 	b. only the following files should be in the kb_sub/kb_images folder. make sure the kb_images folder is present and contains the following files:
-		___ ___ ___  1. kb_about.jpg
-		___ ___ ___  2. kb_icon1.icns
-		___ ___ ___  3. kb_icon2.gif
-		___ ___ ___  4. kb_icon2.ico
-		___ ___ ___  5. kb_icon2.jpg
-		___ ___ ___  6. kb_icon2.xpm (optional)
-		___ ___ ___  7. .DS_Store (ignore this in mac. delete in windows)
+		___ ___ 1. kb_about.jpg
+		___ ___ 2. kb_icon1.icns
+		___ ___ 3. kb_icon2.gif
+		___ ___ 4. kb_icon2.ico
+		___ ___ 5. kb_icon2.jpg
+		___ ___ 6. kb_icon2.xpm (optional)
+		___ ___ 7. .DS_Store (ignore this in mac. delete in windows)
 
 ___ ___  3. (in powershell) enter the following in the command line:
 
@@ -244,7 +244,44 @@ ___  #. (in finder) copy and paste the klustermac.spec file from the klusterbox 
 
 ___  1. (in terminal) make sure you are in the kb_install folder
 
-___  2. (in terminal) enter the following in the command line: 
+___  2. (in finder) make sure the following files are in the kb_install folder:
+
+	___ a. klusterbox.py
+	___ b. projvar.py
+	___ c. kbtoolbox.py
+	___ d. kbdatabase.py
+	___ e. kbreports.py
+	___ f. kbspreadsheets.py
+	___ g. kbspeedsheets.py
+	___ h. kbequitability.py
+	___ i. kbcsv_reader.py
+	___ j. kbcsv_repair.py
+	___ k. kbpdfhandler.py
+	___ l. kbenterrings.py
+	___ m. kbfixes.py
+	___ n. kbinformalc.py
+	___ o. klusterwin.spec
+
+	leave the kb_sub folder alone if it is in there.
+
+___ 3. (in finder) make sure the above files and the following are in the datas list of the spec file. 
+	Pyinstaller will pull them from the project file, so there is no need to move them to 
+	kb_install. 
+	___ a. license.txt
+	___ b. readme.txt
+	___ c. history.txt
+	___ d. speedsheet_instructions.txt
+	___ e. cheatsheet.txt
+	___ f. requirements.txt (list of necessary libraries for running klusterbox.py)
+	
+___ 4. (in finder) make sure the image files are listed in the datas list of the spec file
+	(this references the kb_sub folder in the project folder):
+	___ a. kb_sub/kb_images/kb_about.jpg	
+	___ b. kb_sub/kb_images/kb_icon2.gif
+	___ c. kb_sub/kb_images/kb_icon2.ico
+	___ d. kb_sub/kb_images/kb_icon2.jpg
+
+___  5. (in terminal) enter the following in the command line: 
 
 	pyinstaller klustermac.spec
   

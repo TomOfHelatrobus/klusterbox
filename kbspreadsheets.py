@@ -2920,7 +2920,7 @@ class ImpManSpreadsheet4:
         self.cellj11.value = formula  # otdl availability to 10 hours
         formula = "=%s!O%s" % (self.day_of_week[self.i], self.dayrange[3][2])  # cell O+otdl summary
         self.cellm11.value = formula  # otdl availability to 12 hours
-        formula = "=SUM(%s!P%s + %s!P%s" \
+        formula = "=SUM(%s!P%s + %s!P%s)" \
                   % (self.day_of_week[self.i], self.dayrange[2][2],  # cell P+aux summary
                      self.day_of_week[self.i], self.dayrange[3][2])  # cell P+otdl summary
         self.celln16.value = formula
