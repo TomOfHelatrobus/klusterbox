@@ -490,14 +490,14 @@ class SpeedSheetGen:
                             ring_recs = Rings(car_name, self.date).get_for_week()  # get the rings for the carrier
                     for d in range(len(self.day_array)):
                         if r < len(self.car_recs[i]) and ring_recs[d] != []:  # if the carrier records are not exhausted
-                            ring_5200 = ring_recs[d][2]  # rings 5200
+                            ring_5200 = Convert(ring_recs[d][2]).str_to_floatoremptystr()  # rings 5200
                             ring_move = self.mv_to_speed(ring_recs[d][5])  # format rings MOVES
-                            ring_rs = ring_recs[d][3]  # rings RS
+                            ring_rs = Convert(ring_recs[d][3]).str_to_floatoremptystr()  # rings RS
                             ring_code = Convert(ring_recs[d][4]).empty_not_none()  # rings CODES
                             ring_lvty = Convert(ring_recs[d][6]).empty_not_none()  # rings LEAVE TYPE
-                            ring_lvtm = ring_recs[d][7]  # rings LEAVE TIME
-                            ring_bt = ring_recs[d][9]  # rings BT
-                            ring_et = ring_recs[d][10]  # rings ET
+                            ring_lvtm = Convert(ring_recs[d][7]).str_to_floatoremptystr()  # rings LEAVE TIME
+                            ring_bt = Convert(ring_recs[d][9]).str_to_floatoremptystr()  # rings BT
+                            ring_et = Convert(ring_recs[d][10]).str_to_floatoremptystr()  # rings ET
                         else:
                             ring_5200 = ""  # rings 5200
                             ring_move = ""  # rings MOVES
@@ -516,10 +516,12 @@ class SpeedSheetGen:
                         cell = self.ws_list[i].cell(column=2, row=row)  # rings 5200
                         cell.value = ring_5200
                         cell.style = self.input_s
+                        cell.number_format = "#,###.00;[RED]-#,###.00"
                         cell.protection = Protection(locked=False)
                         cell = self.ws_list[i].cell(column=3, row=row)  # rings BT
                         cell.value = ring_bt
                         cell.style = self.input_s
+                        cell.number_format = "#,###.00;[RED]-#,###.00"
                         cell.protection = Protection(locked=False)
                         cell = self.ws_list[i].cell(column=4, row=row)  # rings moves
                         cell.value = ring_move
@@ -529,10 +531,12 @@ class SpeedSheetGen:
                         cell = self.ws_list[i].cell(column=8, row=row)  # rings RS
                         cell.value = ring_rs
                         cell.style = self.input_s
+                        cell.number_format = "#,###.00;[RED]-#,###.00"
                         cell.protection = Protection(locked=False)
                         cell = self.ws_list[i].cell(column=9, row=row)  # rings ET
                         cell.value = ring_et
                         cell.style = self.input_s
+                        cell.number_format = "#,###.00;[RED]-#,###.00"
                         cell.protection = Protection(locked=False)
                         cell = self.ws_list[i].cell(column=10, row=row)  # rings code
                         cell.value = ring_code
@@ -545,6 +549,7 @@ class SpeedSheetGen:
                         cell = self.ws_list[i].cell(column=12, row=row)  # rings lv time
                         cell.value = ring_lvtm
                         cell.style = self.input_s
+                        cell.number_format = "#,###.00;[RED]-#,###.00"
                         cell.protection = Protection(locked=False)
                         row += 1
         self.pb.stop()
