@@ -1366,6 +1366,7 @@ class SpeedSettings:
         self.min_alpha = int(results[17][0])
         self.min_abc = int(results[18][0])
         self.speedcell_ns_rotate_mode = Convert(results[19][0]).str_to_bool()
+        self.speedsheet_fullreport = Convert(results[40][0]).str_to_bool()
 
 
 class DateChecker:

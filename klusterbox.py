@@ -55,8 +55,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomandsusan4ever@msn.com"
 
 # version variables
-version = "5.000"  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Mar 10, 2022"  # format is Jan 1, 2022
+version = "5.001"  # version number must be convertable to a float and should increase for Fixes()
+release_date = "undetermined"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -1222,6 +1222,7 @@ class SpeedSheetCheck:
         self.wb = wb
         self.path_ = path_
         self.interject = interject  # True = add to database/ False = pre-check
+        self.fullreport = False  # True = shows full report/ False = only show errors and attn warnings
         self.carrier_count = 0
         self.rings_count = 0
         self.fatal_rpt = 0
@@ -1258,6 +1259,7 @@ class SpeedSheetCheck:
         try:
             date_array = [1, 1, 1]
             self.set_ns_preference()
+            self.get_fullreport()
             if date_array:
                 projvar.try_absorber = True  # use project variable to absorb error from try/except statement.
             if self.ns_rotate_mode is not None and self.set_all_inclusive():
@@ -1287,6 +1289,15 @@ class SpeedSheetCheck:
             self.ns_rotate_mode = True
         else:
             self.ns_rotate_mode = False
+
+    def get_fullreport(self):
+        """ get the full report setting from the tolerances table - if True, the full report including add/fyi
+        will be shown when the precheck or input into database is run. - if False, the report will only show
+        errors and attention warnings. """
+        sql = "SELECT tolerance FROM tolerances WHERE category = 'speedsheets_fullreport'"
+        result = inquire(sql)  # get spreadsheet settings from database
+        self.fullreport = result[0][0]
+        self.fullreport = Convert(self.fullreport).str_to_bool()
 
     def set_all_inclusive(self):
         """ is the speedsheet all inclusive/ carrier only. """
@@ -6722,8 +6733,9 @@ class SpeedConfig:
     def __init__(self, frame):
         self.frame = frame
         self.win = MakeWindow()
-        self.ns_mode = StringVar(self.win.body)
-        self.abc_breakdown = StringVar(self.win.body)  # create stringvars
+        self.ns_mode = StringVar(self.win.body)  # create stringvars
+        self.fullreport = StringVar(self.win.body)
+        self.abc_breakdown = StringVar(self.win.body)
         self.min_empid = StringVar(self.win.body)
         self.min_alpha = StringVar(self.win.body)
         self.min_abc = StringVar(self.win.body)
@@ -6734,19 +6746,33 @@ class SpeedConfig:
         self.win.create(self.frame)
         Label(self.win.body, text="SpeedSheet Configurations", font=macadj("bold", "Helvetica 18"), anchor="w") \
             .grid(row=0, sticky="w", columnspan=4)
+
         Label(self.win.body, text=" ").grid(row=1, column=0)
         self.set_stringvars()
+
         Label(self.win.body, text="NS Day Preferred Mode: ", width=macadj(40, 30), anchor="w") \
-            .grid(row=3, column=0, ipady=5, sticky="w")
+            .grid(row=2, column=0, ipady=5, sticky="w")
         ns_pref = OptionMenu(self.win.body, self.ns_mode, "rotating", "fixed")
         ns_pref.config(width=macadj(9, 9))
         if sys.platform == "win32":
             ns_pref.config(anchor="w")
-        ns_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
+        ns_pref.grid(row=2, column=1, columnspan=2, sticky="w", padx=4)
         Button(self.win.body, width=5, text="change",
-               command=lambda: self.apply_ns_mode()).grid(row=3, column=3, padx=4)
+               command=lambda: self.apply_ns_mode()).grid(row=2, column=3, padx=4)
+
+        Label(self.win.body, text="Show Full Report: ", width=macadj(40, 30), anchor="w") \
+            .grid(row=3, column=0, ipady=5, sticky="w")
+        fullrpt_pref = OptionMenu(self.win.body, self.fullreport, "True", "False")
+        fullrpt_pref.config(width=macadj(9, 9))
+        if sys.platform == "win32":
+            fullrpt_pref.config(anchor="w")
+        fullrpt_pref.grid(row=3, column=1, columnspan=2, sticky="w", padx=4)
+        Button(self.win.body, width=5, text="change",
+               command=lambda: self.apply_fullreport()).grid(row=3, column=3, padx=4)
+
         Label(self.win.body, text="Minimum rows for SpeedSheets", width=macadj(30, 30), anchor="w") \
             .grid(row=4, column=0, ipady=5, sticky="w")
+
         Label(self.win.body, text="Alphabetical Breakdown (multiple tabs)", width=macadj(40, 30), anchor="w") \
             .grid(row=5, column=0, ipady=5, sticky="w")
         opt_breakdown = OptionMenu(self.win.body, self.abc_breakdown, "True", "False")
@@ -6814,6 +6840,15 @@ class SpeedConfig:
             value = False
         msg = "NS Day Preferred Mode updated: {}".format(self.ns_mode.get())
         self.commit_to_base(value, "speedcell_ns_rotate_mode", msg)
+
+    def apply_fullreport(self):
+        """ applies change to full report. """
+        if self.fullreport.get() == "True":
+            value = True
+        else:
+            value = False
+        msg = "Full report setting updated: {}".format(self.fullreport.get())
+        self.commit_to_base(value, "speedsheets_fullreport", msg)
 
     def apply_abc_breakdown(self):
         """ appplies change to abc breakdown preference - True/False. """
@@ -6928,6 +6963,7 @@ class SpeedConfig:
             self.ns_mode.set("rotating")
         else:
             self.ns_mode.set("fixed")
+        self.fullreport.set(str(setting.speedsheet_fullreport))  # convert to str, else you get a 0 or 1
         self.abc_breakdown.set(str(setting.abc_breakdown))  # convert to str, else you get a 0 or 1
         self.min_empid.set(setting.min_empid)
         self.min_alpha.set(setting.min_alpha)

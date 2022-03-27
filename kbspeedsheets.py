@@ -1045,9 +1045,13 @@ class SpeedCarrierCheck:
         self.parent.add_rpt += len(self.add_array)
         self.parent.fyi_rpt += len(self.fyi_array)
         if not self.parent.interject:
-            master_array = self.error_array + self.attn_array + self.fyi_array  # use these reports for precheck
+            master_array = self.error_array + self.attn_array  # use these reports for precheck
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.fyi_array   # include the fyi messages.
         else:
-            master_array = self.error_array + self.attn_array + self.add_array  # use these reports for input
+            master_array = self.error_array + self.attn_array  # use these reports for input
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.add_array  # include the adds messages.
         if len(master_array) > 0:
             if not self.parent.name_mentioned:
                 self.parent.report.write("\n{}\n".format(self.name))
@@ -1656,9 +1660,13 @@ class SpeedRingCheck:
         self.parent.rings_add_rpt += len(self.add_array)
         self.parent.rings_fyi_rpt += len(self.fyi_array)
         if not self.parent.interject:
-            master_array = self.error_array + self.attn_array + self.fyi_array  # use these reports for precheck
+            master_array = self.error_array + self.attn_array  # use these reports for precheck
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.fyi_array  # also include the fyi messages.
         else:
-            master_array = self.error_array + self.attn_array + self.add_array  # use these reports for input
+            master_array = self.error_array + self.attn_array  # use these reports for input
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.add_array   # also include the adds messages.
         if len(master_array) > 0:
             if not self.parent.name_mentioned:
                 self.parent.report.write("\n{}\n".format(self.parent.name))

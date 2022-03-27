@@ -143,7 +143,8 @@ class DataBase:
             (36, "pb4_nl_wal", "True"),
             (37, "pb4_wal_aux", "True"),
             (38, "pb4_aux_otdl", "True"),
-            (39, "man4_dis_limit", "show all")
+            (39, "man4_dis_limit", "show all"),
+            (40, "speedsheets_fullreport", "False")
         )
         for tol in tolerance_array:
             self.pbar_counter += 1
