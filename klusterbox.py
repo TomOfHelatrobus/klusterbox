@@ -3071,17 +3071,29 @@ class AutoDataEntry:
                         self.name_index.append(tac_str)
                         self.id_index.append(each[0])
                     add += 1
-                    commit(sql)
+                    commit(sql)  # commit the sql
                     self.to_remove.append(each[0])
                     self.name_index.append(tac_str)
                 elif each[0] in self.id_index:  # RECOGNIZED -  the emp id is already in the name index
                     self.to_remove.append(each[0])
                     self.parent.check_these.append(each)
                     rec += 1
+                    self.checkfortacsname(each)  # check to see if the name index record has a tacs name in it.
                 else:
                     out += 1
                 i += 1
             pb.stop()  # stop and destroy the progress bar
+
+        @staticmethod
+        def checkfortacsname(carrier_rec):
+            """ check to see if the name index record has a tacs name in it.
+                insert the tac name if the name index record does not have it. """
+            sql = "SELECT tacs_name FROM name_index WHERE emp_id = '%s'" % carrier_rec[0]
+            results = inquire(sql)  # execute the query
+            if not results[0][0]:  # if there is no name in the tacs_name column
+                tacs_str = carrier_rec[1] + ", " + carrier_rec[2]
+                sql = "UPDATE name_index SET tacs_name = '%s' WHERE emp_id = '%s'" % (tacs_str, carrier_rec[0])
+                commit(sql)  # commit the sql to the database
 
         def get_new_carrier(self):
             """ find the carriers in name_index who have records w/ eff dates in the future """
@@ -7275,7 +7287,7 @@ class NameIndex:
 
     def name_index_screen(self, frame):
         """ creates a screen which shows all records in the name index. """
-        sql = "SELECT * FROM name_index ORDER BY tacs_name"
+        sql = "SELECT * FROM name_index ORDER BY kb_name"
         results = inquire(sql)
         self.win = MakeWindow()
         self.win.create(frame)
