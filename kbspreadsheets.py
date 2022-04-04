@@ -3,7 +3,7 @@ a klusterbox module: Klusterbox Improper Mandates and 12 and 60 Hour Violations 
 klusterbox classes for spreadsheets: the improper mandate worksheet and the 12 and 60 hour violations spreadsheets
 """
 import projvar  # custom libraries
-from kbtoolbox import inquire, CarrierList, dir_path, isfloat, Convert, Rings, ProgressBarDe
+from kbtoolbox import inquire, CarrierList, dir_path, isfloat, Convert, Rings, ProgressBarDe, Moves
 # standard libraries
 from tkinter import messagebox
 import os
@@ -2989,6 +2989,355 @@ class ImpManSpreadsheet4:
                 subprocess.call(["xdg-open", 'kb_sub/mandates_4/' + xl_filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('mandates_4') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not opened. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=self.frame)
+        self.pb.stop()
+
+
+class OffbidSpreadsheet:
+    """
+    Create a spreadsheet for calculating and detecting situations where carriers do no get 8 hours of work
+    on their own bid assignments due to off route assignments.
+    """
+    def __init__(self):
+        self.frame = None  # the frame of parent
+        self.pb = None  # progress bar object
+        self.pbi = 0  # progress bar count index
+        self.startdate = None  # start date of the investigation
+        self.enddate = None  # ending date of the investigation
+        self.dates = []  # all days of the investigation
+        self.carrierlist = []  # all carriers in carrier list
+        self.wb = None  # the workbook object
+        self.row = 1
+        self.violation_number = 0
+        self.ws_header = None  # style
+        # self.list_header = None  # style
+        self.date_dov = None  # style
+        self.date_dov_title = None  # style
+        self.name_header = None  # style
+        self.col_header = None  # style
+        self.input_name = None  # style
+        self.input_s = None  # style
+        self.calcs = None  # style
+        self.offbid = None  # worksheet for the analysis of off bid violations
+        self.instructions = None  # worksheet for instructions
+        self.carrier = ""  # carrier name
+        self.route = ""  # carrier route
+        self.rings = []  # carrier rings queried from database
+        self.totalhours = ""  # carrier rings - 5200 time
+        self.codes = ""  # carrier rings - code/note
+        # self.rs = ""  # carrier rings - return to station
+        self.moves = ""  # carrier rings - moves on and off route with route
+        # self.lvtype = ""  # carrier rings - leave type
+        # self.lvtime = ""  # carrier rings - leave time
+        # self.movesarray = []
+        self.move_i = 0  # increments rows for multiple move functionality
+        self.i = 0  # the day being investigated as a number 0 - 6.
+        self.max_pivot = 2.0  # the maximum allowed pivot.
+        self.distinct_pages = True
+        self.move_set = 0  # extra rows used by the multiple moves display
+
+    def create(self, frame):
+        """ a master method for running the other methods in proper order. """
+        self.frame = frame
+        if not self.ask_ok():  # abort if user selects cancel from askokcancel
+            return
+        self.pb = ProgressBarDe(label="Building Improper Mandates Spreadsheet")
+        self.pb.max_count(100)  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
+        self.get_dates()
+        self.get_pb_max_count()
+        self.get_carrierlist()
+
+        self.get_styles()
+        self.build_workbook()
+        self.carrierloop()
+        self.save_open()
+
+    def ask_ok(self):
+        """ ends process if user cancels """
+        if messagebox.askokcancel("Spreadsheet generator",
+                                  "Do you want to generate an \n"
+                                  "Off Bid Assignment Spreadsheet?",
+                                  parent=self.frame):
+            return True
+        return False
+
+    def get_dates(self):
+        """ get the dates from the project variables """
+        self.startdate = projvar.invran_date  # set daily investigation range as default - get start date
+        self.enddate = projvar.invran_date  # get end date
+        self.dates = [projvar.invran_date, ]  # create an array of days - only one day if daily investigation range
+        if projvar.invran_weekly_span:  # if the investigation range is weekly
+            date = projvar.invran_date_week[0]
+            self.startdate = projvar.invran_date_week[0]
+            self.enddate = projvar.invran_date_week[6]
+            self.dates = []
+            for i in range(7):  # create an array with all the days in the weekly investigation range
+                self.dates.append(date)
+                date += timedelta(days=1)
+
+    def get_pb_max_count(self):
+        """ set length of progress bar """
+        self.pb.max_count((len(self.dates)*4)+3)  # once for each list in each day, plus reference, summary and saving
+
+    def get_carrierlist(self):
+        """ get record sets for all carriers """
+        self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
+
+    def get_styles(self):
+        """ Named styles for workbook """
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        # self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                         alignment=Alignment(horizontal='right'))
+        self.name_header = NamedStyle(name="name_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
+                                     alignment=Alignment(horizontal='right'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
+                                     alignment=Alignment(horizontal='center'),
+                                     border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        self.input_name = NamedStyle(name="input_name", font=Font(bold=True, name='Arial', size=10),
+                                     alignment=Alignment(horizontal='left'))
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
+        self.calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
+                                border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                alignment=Alignment(horizontal='right'))
+
+    def build_workbook(self):
+        """ creates the workbook object """
+        self.wb = Workbook()  # define the workbook
+        self.offbid = self.wb.active  # create first worksheet
+        self.offbid.title = "off bid"  # title first worksheet
+        self.offbid.oddFooter.center.text = "&A"
+        self.instructions = self.wb.create_sheet("instructions")
+
+    def carrierloop(self):
+        """ loop for each carrier """
+        # self.display_counter = 0  # count the number of rows displayed
+        for carrier in self.carrierlist:
+            self.carrier = carrier[0][1]  # current iteration of carrier list is assigned self.carrier
+            self.route = carrier[0][4]  # get the route of the carrier
+            self.get_rings()  # get individual carrier rings for the day - define self.rings
+            if self.qualify():  # test the rings to see if there is a violation during the week
+                self.conditional_header()  # insert the header if proper conditions apply
+                self.violation_number += 1  # increment the row number
+                self.display_recs()  # build the carrier and the rings row into the spreadsheet
+                self.conditional_pagebreak()
+
+    def conditional_header(self):
+        """ insert the header on certain conditions"""
+        if self.violation_number == 0 or self.distinct_pages:
+            self.build_headers()
+
+    def build_headers(self):
+        """ worksheet headers """
+        cell = self.offbid.cell(row=self.row, column=1)
+        cell.value = "Off Bid Assignment Worksheet"
+        cell.style = self.ws_header
+        self.offbid.merge_cells('A' + str(self.row) + ':E' + str(self.row))
+        self.row += 2
+        cell = self.offbid.cell(row=self.row, column=1)
+        cell.value = "Date:  "  # create date/ pay period/ station header
+        cell.style = self.date_dov_title
+        cell = self.offbid.cell(row=self.row, column=2)
+        date_string = self.dates[0].strftime("%x")
+        # The date can be one day or a service week (a range of 7 days)
+        if len(self.dates) > 1:
+            date_string = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
+        cell.value = date_string  # fill in the date/s
+        cell.style = self.date_dov
+        self.offbid.merge_cells('B' + str(self.row) + ':D' + str(self.row))
+        cell = self.offbid.cell(row=self.row, column=5)
+        cell.value = "Pay Period:  "
+        cell.style = self.date_dov_title
+        self.offbid.merge_cells('E' + str(self.row) + ':F' + str(self.row))
+        cell = self.offbid.cell(row=self.row, column=7)
+        cell.value = projvar.pay_period
+        cell.style = self.date_dov
+        self.offbid.merge_cells('G' + str(self.row) + ':H' + str(self.row))
+        self.row += 1
+        cell = self.offbid.cell(row=self.row, column=1)
+        cell.value = "Station:  "
+        cell.style = self.date_dov_title
+        cell = self.offbid.cell(row=self.row, column=2)
+        cell.value = projvar.invran_station
+        cell.style = self.date_dov
+        self.offbid.merge_cells('B' + str(self.row) + ':D' + str(self.row))
+        self.row += 2
+
+    def get_rings(self):
+        """ get individual carrier rings for the day - define self.rings"""
+        self.rings = []
+        for date in self.dates:
+            rings = Rings(self.carrier, date).get_for_day()  # assign as rings
+            totalhours = 0.0  # set default as an empty string
+            codes = ""
+            moves = ""
+            if rings[0]:  # if rings record is not blank
+                totalhours = float(Convert(rings[0][2]).zero_not_empty())
+                codes = rings[0][4]
+                moves = rings[0][5]
+            to_add = [date, totalhours, codes, moves]
+            self.rings.append(to_add)
+
+    def qualify(self):
+        """ test to see if the carrier/rings need to be displayed. """
+        qualify = False
+        for i in range(len(self.rings)):  # loops for each day in the investigation range
+            if self.number_crunching(i):  # returns True if there is a violation
+                qualify = True
+            else:  # if there is no violations for the day - insert False into self.rings
+                self.rings[i].append(False)
+        if qualify:  # if there is a violation for at least one day
+            return True
+        return False
+
+    def number_crunching(self, i):
+        """ do calculations to determine off route, on route and violation values.
+            returns True if there is a violation. Adds violation boolean to self.rings. """
+        offroute = 0.0  # this is the total time spent off the carrier's route
+        if not self.rings[i][1]:  # if the total hours is zero - the violation is zero
+            return False
+        if self.rings[i][2] == "ns day":  # if it is the carrier's ns day - violation is zero
+            return False
+        if not self.rings[i][3]:  # if the moves is empty, then the violation is zero
+            return False
+        index = 0  # set the index to 1. This will point to an element in the moves array.
+        totalhours = self.rings[i][1]  # simplify the variable name
+        moves = Convert(self.rings[i][3]).string_to_array()  # simplify the variable name
+        while index < len(moves):  # calculate the total time off route
+            offroute += float(moves[index+1]) - float(moves[index])
+            index += 3
+        ownroute = max(totalhours - offroute, 0)   # calculate the total time spent on route
+        violation = max(8 - ownroute, 0)  # calculate the total violation
+        if violation > self.max_pivot:
+            self.rings[i].append(True)
+            return True
+        return False
+
+    def display_recs(self):
+        """ build the carrier and ring recs into the spreadsheet. """
+        print(self.carrier)
+        print(self.rings)
+        cell = self.offbid.cell(row=self.row, column=1)  # carrier label
+        cell.value = "carrier:  "
+        cell.style = self.name_header
+        cell = self.offbid.cell(row=self.row, column=2)  # carrier name input
+        cell.value = self.carrier
+        cell.style = self.input_name
+        self.offbid.merge_cells('B' + str(self.row) + ':E' + str(self.row))
+        cell = self.offbid.cell(row=self.row, column=6)  # route label
+        cell.value = "route:  "
+        cell.style = self.name_header
+        cell = self.offbid.cell(row=self.row, column=7)  # route input
+        cell.value = self.route
+        cell.style = self.input_name
+        self.offbid.merge_cells('G' + str(self.row) + ':J' + str(self.row))
+        self.row += 1
+        # use loops and an array to build the column headers
+        column_headers = ("day", "date", "5200", "mv off", "mv on", "route", "off rt", "on rt", "violation")
+        for i in range(9):
+            cell = self.offbid.cell(row=self.row, column=i + 2)  # column headers
+            cell.value = column_headers[i]
+            cell.style = self.col_header
+        self. row += 1
+        self.display_daily()  # create a row/s to display the daily information on the violation
+        self.row += 1
+
+    def display_daily(self):
+        """ display the daily ring recs for the carrier. """
+        for i in range(len(self.rings)):
+            if self.rings[i][4]:
+                cell = self.offbid.cell(row=self.row, column=2)  # day
+                cell.value = self.rings[i][0].strftime("%a")
+                cell.style = self.input_s
+                cell = self.offbid.cell(row=self.row, column=3)  # date
+                cell.value = self.rings[i][0].strftime("%m/%d/%Y")
+                cell.style = self.input_s
+                cell = self.offbid.cell(row=self.row, column=4)  # 5200
+                cell.value = self.rings[i][1]
+                cell.style = self.input_s
+                self.display_moves(i)
+                cell = self.offbid.cell(row=self.row, column=9)  # on route
+                formula = "=MAX(D" + str(self.row) + "-H" + str(self.row) + ",0)"
+                cell.value = formula
+                cell.style = self.calcs
+                cell = self.offbid.cell(row=self.row, column=10)  # violation
+                formula = "=IF(AND(D" + str(self.row) + ">0,H" + str(self.row) + ">0),8-I" + str(self.row) + ",0)"
+                cell.value = formula
+                cell.style = self.calcs
+                self.row += (self.move_set - 1)  # correct for increment after last move set.
+                self.row += 1
+
+    def display_moves(self, i):
+        """ display the moves. include contingencies for multiple moves. """
+        moves = Convert(self.rings[i][3]).string_to_array()
+        set_count = Moves().count_movesets(moves)
+        if len(moves) > 3:
+            moves = ["*", "*", "*"] + moves
+        move_place = 0
+        self.move_set = 0  # extra rows used to display multiple moves/ incremented in self.display_moves()
+        for move in moves:
+            cell = self.offbid.cell(row=self.row + self.move_set, column=5 + move_place)  # move off
+            cell.value = move
+            cell.style = self.input_s
+            if move_place == 2:
+                formulacell = self.offbid.cell(row=self.row + self.move_set, column=8)  # formula cell
+                formulacell.style = self.calcs
+                if not self.move_set and set_count > 1:  # if this is the first row of a multiple row
+                    formula = "=SUM(H" + str(self.row + 1) + ":H" + str(self.row + set_count) + ")"
+                else:
+                    formula = "=SUM(F" + str(self.row + self.move_set) + "-E" + str(self.row + self.move_set) + ")"
+                formulacell.value = formula
+                move_place = 0
+                self.move_set += 1
+            else:
+                move_place += 1
+
+    def conditional_pagebreak(self):
+        """ insert a page break if the correct conditions apply """
+        if self.distinct_pages:
+            try:
+                self.offbid.page_breaks.append(Break(id=self.row))
+                self.row += 1
+            except AttributeError:
+                self.offbid.row_breaks.append(Break(id=self.row))  # effective for windows
+                self.row += 1
+
+    def save_open(self):
+        """ name and open the excel file """
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving...")
+        r = "_w"
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            r = "_d"
+        xl_filename = "kb_offbid_" + str(format(self.dates[0], "_%y_%m_%d")) + r + ".xlsx"
+        try:
+            self.wb.save(dir_path('spreadsheets') + xl_filename)
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.frame)
+            if sys.platform == "win32":
+                os.startfile(dir_path('spreadsheets') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/spreadsheets/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('spreadsheets') + xl_filename])
         except PermissionError:
             messagebox.showerror("Spreadsheet generator",
                                  "The spreadsheet was not opened. \n"

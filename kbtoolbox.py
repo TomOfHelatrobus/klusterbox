@@ -1288,6 +1288,18 @@ class Moves:
             self.timeoff += (float(self.moves[i+1]) - float(self.moves[i]))
         return self.checksforzero()
 
+    def count_movesets(self, moves):
+        """ get a count of how many move sets there are as an integer. """
+        self.moves = moves
+        move_place = 0
+        move_set = 0
+        for move in self.moves:
+            move_place += 1
+            if move_place == 3:
+                move_place = 0
+                move_set += 1
+        return move_set
+
 
 class Overtime:
     """
