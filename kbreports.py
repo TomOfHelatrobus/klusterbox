@@ -554,4 +554,13 @@ class Messenger:
                    "carrier's assignment are calculated as overtime.\n\n" \
                    "(Overtime for OTDL carriers with no assignment will \n" \
                    "automatically use the \"all\" overtime calculation.)\n"
+        if switch == "offbid_distinctpage":
+            text = "Create distinct pages for each carrier. \n\n" \
+                   "Selecting 'on' creates a distinct pages for each \n" \
+                   "carrier. Selecting 'off' will place all carriers \n" \
+                   "on one page. "
+        if switch == "offbid_maxpivot":
+            text = "Sets the maximum pivot which will count as a \n" \
+                   "violation of the carrier's off bid assignment. \n\n" \
+                   "Enter a value between 0 and 8"
         messagebox.showinfo("About Tolerances and Settings", text, parent=self.frame)

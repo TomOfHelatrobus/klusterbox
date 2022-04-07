@@ -4921,6 +4921,7 @@ class Archive:
             'over_max_spreadsheet',
             'speedsheets',
             'over_max',
+            'off_bid',
             'ot_equitability',
             'ot_distribution',
             'ee_reader',
@@ -6029,6 +6030,8 @@ class SpreadsheetConfig:
         self.pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
         self.man4_dis_limit = None
         self.min_overmax = 0.0
+        self.offbid_distinctpages = None  # off bid distinct page
+        self.offbid_maxpivot = None  # off bid maximum pivot
         self.min_ot_equit = None  # minimum rows for ot equitability spreadsheet
         self.ot_calc_pref = None  # overtime calcuations preference for otdl equitability
         self.min_ot_dist = None  # minimum rows for ot distribution spreadsheet
@@ -6040,7 +6043,6 @@ class SpreadsheetConfig:
         self.pb_nl_wal_var = None  # page break between no list and work assignment
         self.pb_wal_otdl_var = None  # page break between work assignment and otdl
         self.pb_otdl_aux_var = None  # page break between otdl and auxiliary
-
         self.min4_nl_var = None  # stringvar for mandates no.4
         self.min4_wal_var = None
         self.min4_otdl_var = None
@@ -6049,8 +6051,10 @@ class SpreadsheetConfig:
         self.pb4_wal_aux_var = None  # page break between work assignment and aux for mandates no.4
         self.pb4_aux_otdl_var = None  # page break between auxiliary and otdl for mandates no.4
         self.man4_dis_limit_var = None  # mandates no.4 display limiter
-        self.min_overmax_var = None
-        self.min_otdl_var = None
+        self.min_overmax_var = None  # minimum rows for overmax
+        self.offbid_distinctpages_var = None  # off bid spreadsheet: creates distinct pages for each carrier
+        self.offbid_maxpivot_var = None  # off bid spreadsheet: maximum pivot
+        self.min_otdl_var = None  # minimum rows for ot equitability
         self.min_ot_equit_var = None  # minimum rows for ot equitability spreadsheet
         self.ot_calc_pref_var = None  # overtime calcuations preference for otdl equitability
         self.min_ot_dist_var = None  # minimum rows for ot distribution spreadsheet
@@ -6074,6 +6078,8 @@ class SpreadsheetConfig:
         self.add_pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
         self.add_man4_dis_limit = None  # mandates no.4 display limiter
         self.add_min_overmax = 0.0
+        self.add_offbid_maxpivot = 0.0
+        self.add_offbid_distinctpages = None
         self.add_min_ot_equit = None
         self.add_ot_calc_pref = None
         self.add_min_ot_dist = None  # minimum rows for ot distribution spreadsheet
@@ -6100,6 +6106,9 @@ class SpreadsheetConfig:
         self.min_otdl = results[5][0]
         self.min_aux = results[6][0]
         self.min_overmax = results[14][0]
+        # get values for off bid assignment spreadsheets
+        self.offbid_distinctpages = results[41][0]  # off bid distinct pages
+        self.offbid_maxpivot = results[42][0]  # off bid maximum pivot
         self.pb_nl_wal = results[21][0]  # page break between no list and work assignment
         self.pb_wal_otdl = results[22][0]  # page break between work assignment and otdl
         self.pb_otdl_aux = results[23][0]  # page break between otdl and auxiliary
@@ -6119,6 +6128,7 @@ class SpreadsheetConfig:
         self.pb4_nl_wal = Convert(self.pb4_nl_wal).strbool_to_onoff()
         self.pb4_wal_aux = Convert(self.pb4_wal_aux).strbool_to_onoff()
         self.pb4_aux_otdl = Convert(self.pb4_aux_otdl).strbool_to_onoff()
+        self.offbid_distinctpages = Convert(self.offbid_distinctpages).strbool_to_onoff()
         # otdl equitability vars
         self.min_ot_equit = results[25][0]  # minimum rows
         self.ot_calc_pref = results[26][0]  # ot calculation preference
@@ -6133,10 +6143,11 @@ class SpreadsheetConfig:
         self.min_otdl_var = StringVar(self.win.body)
         self.min_aux_var = StringVar(self.win.body)
         self.min_overmax_var = StringVar(self.win.body)
+        self.offbid_distinctpages_var = StringVar(self.win.body)
+        self.offbid_maxpivot_var = StringVar(self.win.body)
         self.pb_nl_wal_var = StringVar(self.win.body)
         self.pb_wal_otdl_var = StringVar(self.win.body)
         self.pb_otdl_aux_var = StringVar(self.win.body)
-
         self.min4_nl_var = StringVar(self.win.body)
         self.min4_wal_var = StringVar(self.win.body)
         self.min4_otdl_var = StringVar(self.win.body)
@@ -6145,7 +6156,6 @@ class SpreadsheetConfig:
         self.pb4_wal_aux_var = StringVar(self.win.body)
         self.pb4_aux_otdl_var = StringVar(self.win.body)
         self.man4_dis_limit_var = StringVar(self.win.body)
-
         self.min_ot_equit_var = StringVar(self.win.body)
         self.ot_calc_pref_var = StringVar(self.win.body)
         self.min_ot_dist_var = StringVar(self.win.body)
@@ -6158,10 +6168,11 @@ class SpreadsheetConfig:
         self.min_otdl_var.set(self.min_otdl)
         self.min_aux_var.set(self.min_aux)
         self.min_overmax_var.set(self.min_overmax)
+        self.offbid_distinctpages_var.set(self.offbid_distinctpages)
+        self.offbid_maxpivot_var.set(self.offbid_maxpivot)
         self.pb_nl_wal_var.set(self.pb_nl_wal)
         self.pb_wal_otdl_var.set(self.pb_wal_otdl)
         self.pb_otdl_aux_var.set(self.pb_otdl_aux)
-
         self.min4_nl_var.set(self.min4_nl)
         self.min4_wal_var.set(self.min4_wal)
         self.min4_otdl_var.set(self.min4_otdl)
@@ -6170,7 +6181,6 @@ class SpreadsheetConfig:
         self.pb4_wal_aux_var.set(self.pb4_wal_aux)
         self.pb4_aux_otdl_var.set(self.pb4_aux_otdl)
         self.man4_dis_limit_var.set(self.man4_dis_limit)
-
         self.min_ot_equit_var.set(self.min_ot_equit)
         self.ot_calc_pref_var.set(self.ot_calc_pref)
         self.min_ot_dist_var.set(self.min_ot_dist)
@@ -6340,10 +6350,34 @@ class SpreadsheetConfig:
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_overmax"))\
             .grid(row=row, column=2, padx=4)
         row += 1
+
         Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
+        text = macadj("Off Bid Assignment Violations Spreadsheets _______________________________",
+                      "Off Bid Assignment Violations Spreadsheets ______________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=row, column=0, columnspan=14, sticky="w")
+        row += 1
+        Label(self.win.body, text="Distinct Pages for Violations", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_offbid = OptionMenu(self.win.body, self.offbid_distinctpages_var, "on", "off")
+        om_offbid.config(width=7)
+        om_offbid.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("offbid_distinctpage")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Maximum Pivot", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.offbid_maxpivot_var).grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("offbid_maxpivot")) \
+            .grid(row=row, column=2, padx=4)
         row += 1
 
         # Display header for OTDL Equitability Spread Sheet
+        Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
         text = macadj("OTDL Equitability Spreadsheets ____________________________________________",
                       "OTDL Equitability Spreadsheets __________________________________")
         Label(self.win.body, text=text, anchor="w",
@@ -6513,31 +6547,64 @@ class SpreadsheetConfig:
             return False
         return True
 
+    def check_float(self, var):
+        """ checks entries for floating values. """
+        current_var = ("Off bid maximum pivot", )
+        if RingTimeChecker(var).check_for_zeros():  # skip all checks if the value is zero or empty
+            return True
+        if not RingTimeChecker(var).check_numeric():
+            text = "{} must be a number".format(current_var[self.check_i])
+            messagebox.showerror("Data Entry Error", text, parent=self.win.body)
+            return False
+        if not RingTimeChecker(var).over_8():
+            text = "{} must be an 8 or zero or a number in between +.".format(current_var[self.check_i])
+            messagebox.showerror("Data Entry Error", text, parent=self.win.body)
+            return False
+        if not RingTimeChecker(var).less_than_zero():
+            text = "{} must be an 8 or zero or a number in between -.".format(current_var[self.check_i])
+            messagebox.showerror("Data Entry Error", text, parent=self.win.body)
+            return False
+        if not RingTimeChecker(var).count_decimals_place():
+            text = "The Make up value for {} can not have more than two decimal places."\
+                .format(current_var[self.check_i])
+            messagebox.showerror("Data Entry Error", text, parent=self.win.body)
+            return False
+        return True
+
     def apply(self, go_home):
         """ checks and updates spreadsheet settings """
         onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux,
                       self.min4_nl, self.min4_wal, self.min4_otdl, self.min4_aux,
                       self.min_overmax, self.min_ot_equit,
                       self.min_ot_dist)
+        onrecs_float = (self.offbid_maxpivot, )
+        # current records for page breaks and distinct pages options
         onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux,
-                         self.pb4_nl_wal, self.pb4_wal_aux, self.pb4_aux_otdl)
+                         self.pb4_nl_wal, self.pb4_wal_aux, self.pb4_aux_otdl, self.offbid_distinctpages)
         onrecs_misc = (self.man4_dis_limit, self.ot_calc_pref, self.ot_calc_pref_dist)
         check_these = (self.min_nl_var.get(), self.min_wal_var.get(), self.min_otdl_var.get(), self.min_aux_var.get(),
                        self.min4_nl_var.get(), self.min4_wal_var.get(), self.min4_otdl_var.get(),
                        self.min4_aux_var.get(), self.min_overmax_var.get(), self.min_ot_equit_var.get(),
                        self.min_ot_dist_var.get())
+        check_float = (self.offbid_maxpivot_var.get(), )
         add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux,
                      self.add_min4_nl, self.add_min4_wal, self.add_min4_otdl, self.add_min4_aux,
                      self.add_min_overmax, self.add_min_ot_equit, self.add_min_ot_dist]
+        add_float = [self.add_offbid_maxpivot, ]
         categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux",
                       "min4_ss_nl", "min4_ss_wal", "min4_ss_otdl", "min4_ss_aux",
                       "min_ss_overmax", "min_ot_equit", "min_ot_dist")
+        float_categories = ("offbid_maxpivot", )
+        # page breaks and distinct pages option menu items
         pbs = (self.pb_nl_wal_var.get(), self.pb_wal_otdl_var.get(), self.pb_otdl_aux_var.get(),
-               self.pb4_nl_wal_var.get(), self.pb4_wal_aux_var.get(), self.pb4_aux_otdl_var.get())
+               self.pb4_nl_wal_var.get(), self.pb4_wal_aux_var.get(), self.pb4_aux_otdl_var.get(),
+               self.offbid_distinctpages_var.get())
         add_pbs = [self.add_pb_nl_wal, self.add_pb_wal_otdl, self.add_pb_otdl_aux,
-                   self.add_pb4_nl_wal, self.add_pb4_wal_aux, self.add_pb4_aux_otdl]
+                   self.add_pb4_nl_wal, self.add_pb4_wal_aux, self.add_pb4_aux_otdl,
+                   self.add_offbid_distinctpages]
+        # the settings as they are named in the tolerances table of the database
         pb_categories = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux",
-                         "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl")
+                         "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl", "offbid_distinctpage")
         # misc stringvars
         misc = (self.man4_dis_limit_var.get(), self.ot_calc_pref_var.get(), self.ot_calc_pref_dist_var.get())
         # misc values to update to database
@@ -6549,11 +6616,24 @@ class SpreadsheetConfig:
             if not self.check(var):  # if any fail
                 return  # stop the method
             self.check_i += 1
+        self.check_i = 0
+        for var in check_float:  # check each of the float value stringvars - off route max pivot
+            if not self.check_float(var):  # if any fail
+                return  # stop the method
+            self.check_i += 1
         for i in range(len(check_these)):
             add_this = Convert(check_these[i]).zero_not_empty()  # replace empty strings with a zero
             add_these[i] = Handler(add_this).format_str_as_int()  # format the string as an int
             if onrecs_min[i] != add_these[i]:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_these[i], categories[i])
+                commit(sql)
+                self.report_counter += 1
+        for i in range(len(check_float)):
+            add_this = Convert(check_float[i]).zero_not_empty()  # replace empty string with a zero
+            add_float[i] = Handler(add_this).format_str_as_float()  # format the string as a float
+            if onrecs_float[i] != add_float[i]:
+                sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" \
+                      % (add_float[i], float_categories[i])
                 commit(sql)
                 self.report_counter += 1
         for i in range(len(pbs)):  # loop through pagebreak stringvars
@@ -9171,6 +9251,8 @@ class MainFrame:
                                         command=lambda: Archive().file_dialogue(dir_path('speedsheets')))
         reportsarchive_menu.add_command(label="Over Max Finder",
                                         command=lambda: Archive().file_dialogue(dir_path('over_max')))
+        reportsarchive_menu.add_command(label="Off Bid Assignment",
+                                        command=lambda: Archive().file_dialogue(dir_path('off_bid')))
         reportsarchive_menu.add_command(label="OT Equitability",
                                         command=lambda: Archive().file_dialogue(dir_path('ot_equitability')))
         reportsarchive_menu.add_command(label="OT Distribution",
@@ -9193,6 +9275,8 @@ class MainFrame:
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'speedsheets'))
         cleararchive.add_command(label="Over Max Finder",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'over_max'))
+        cleararchive.add_command(label="Off Bid Assignment",
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'off_bid'))
         cleararchive.add_command(label="OT Equitability",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'ot_equitability'))
         cleararchive.add_command(label="OT Distribution",

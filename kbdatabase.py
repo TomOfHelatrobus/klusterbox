@@ -144,7 +144,9 @@ class DataBase:
             (37, "pb4_wal_aux", "True"),
             (38, "pb4_aux_otdl", "True"),
             (39, "man4_dis_limit", "show all"),
-            (40, "speedsheets_fullreport", "False")
+            (40, "speedsheets_fullreport", "False"),
+            (41, "offbid_distinctpage", "True"),
+            (42, "offbid_maxpivot", 2.0)
         )
         for tol in tolerance_array:
             self.pbar_counter += 1

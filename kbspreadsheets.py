@@ -902,6 +902,7 @@ class ImpManSpreadsheet:
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving...")
+        self.pb.stop()
         r = "_w"
         if not projvar.invran_weekly_span:  # if investigation range is daily
             r = "_d"
@@ -925,7 +926,6 @@ class ImpManSpreadsheet:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
-        self.pb.stop()
 
 
 class OvermaxSpreadsheet:
@@ -2973,6 +2973,7 @@ class ImpManSpreadsheet4:
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving...")
+        self.pb.stop()
         r = "_w"
         if not projvar.invran_weekly_span:  # if investigation range is daily
             r = "_d"
@@ -2996,7 +2997,6 @@ class ImpManSpreadsheet4:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
-        self.pb.stop()
 
 
 class OffbidSpreadsheet:
@@ -3016,7 +3016,6 @@ class OffbidSpreadsheet:
         self.row = 1
         self.violation_number = 0
         self.ws_header = None  # style
-        # self.list_header = None  # style
         self.date_dov = None  # style
         self.date_dov_title = None  # style
         self.name_header = None  # style
@@ -3024,6 +3023,7 @@ class OffbidSpreadsheet:
         self.input_name = None  # style
         self.input_s = None  # style
         self.calcs = None  # style
+        self.list_header = None  # style
         self.offbid = None  # worksheet for the analysis of off bid violations
         self.instructions = None  # worksheet for instructions
         self.carrier = ""  # carrier name
@@ -3031,35 +3031,34 @@ class OffbidSpreadsheet:
         self.rings = []  # carrier rings queried from database
         self.totalhours = ""  # carrier rings - 5200 time
         self.codes = ""  # carrier rings - code/note
-        # self.rs = ""  # carrier rings - return to station
         self.moves = ""  # carrier rings - moves on and off route with route
-        # self.lvtype = ""  # carrier rings - leave type
-        # self.lvtime = ""  # carrier rings - leave time
-        # self.movesarray = []
         self.move_i = 0  # increments rows for multiple move functionality
         self.i = 0  # the day being investigated as a number 0 - 6.
-        self.max_pivot = 2.0  # the maximum allowed pivot.
-        self.distinct_pages = True
+        self.max_pivot = 0.0  # the maximum allowed pivot.
+        self.distinct_pages = None
         self.move_set = 0  # extra rows used by the multiple moves display
+        self.no_qualifiers = True  # is True as long as no violations have been found for any carriers.
 
     def create(self, frame):
         """ a master method for running the other methods in proper order. """
         self.frame = frame
         if not self.ask_ok():  # abort if user selects cancel from askokcancel
             return
-        self.pb = ProgressBarDe(label="Building Improper Mandates Spreadsheet")
-        self.pb.max_count(100)  # set length of progress bar
+        self.pb = ProgressBarDe(label="Building Off Bid Assignment Spreadsheet")
+        self.pb.max_count(1000)  # set length of progress bar
         self.pb.start_up()  # start the progress bar
         self.pbi = 1
         self.pb.move_count(self.pbi)  # increment progress bar
-        self.pb.change_text("Gathering Data... ")
+        self.pb.change_text("Initializing... ")
         self.get_dates()
-        self.get_pb_max_count()
         self.get_carrierlist()
-
+        self.get_pb_max_count()
+        self.get_maxpivot_distinctpage()
         self.get_styles()
         self.build_workbook()
         self.carrierloop()
+        if self.no_qualifiers:
+            self.no_violations()
         self.save_open()
 
     def ask_ok(self):
@@ -3085,19 +3084,27 @@ class OffbidSpreadsheet:
                 self.dates.append(date)
                 date += timedelta(days=1)
 
-    def get_pb_max_count(self):
-        """ set length of progress bar """
-        self.pb.max_count((len(self.dates)*4)+3)  # once for each list in each day, plus reference, summary and saving
-
     def get_carrierlist(self):
         """ get record sets for all carriers """
         self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
+
+    def get_maxpivot_distinctpage(self):
+        """ get the maximum pivot and distinct page value from the database. """
+        sql = "SELECT tolerance FROM tolerances WHERE category = 'offbid_maxpivot'"
+        result = inquire(sql)
+        self.max_pivot = float(result[0][0])
+        sql = "SELECT tolerance FROM tolerances WHERE category = 'offbid_distinctpage'"
+        result = inquire(sql)
+        self.distinct_pages = Convert(result[0][0]).str_to_bool()
+
+    def get_pb_max_count(self):
+        """ set length of progress bar """
+        self.pb.max_count(len(self.carrierlist)+1)  # once for each list in each day, plus reference, summary and saving
 
     def get_styles(self):
         """ Named styles for workbook """
         bd = Side(style='thin', color="80808080")  # defines borders
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-        # self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
         self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                          alignment=Alignment(horizontal='right'))
@@ -3115,6 +3122,7 @@ class OffbidSpreadsheet:
                                 border=Border(left=bd, top=bd, right=bd, bottom=bd),
                                 fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
                                 alignment=Alignment(horizontal='right'))
+        self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
 
     def build_workbook(self):
         """ creates the workbook object """
@@ -3126,12 +3134,15 @@ class OffbidSpreadsheet:
 
     def carrierloop(self):
         """ loop for each carrier """
-        # self.display_counter = 0  # count the number of rows displayed
         for carrier in self.carrierlist:
             self.carrier = carrier[0][1]  # current iteration of carrier list is assigned self.carrier
+            self.pbi += 1
+            self.pb.move_count(self.pbi)  # increment progress bar
+            self.pb.change_text("Checking: {}".format(self.carrier))
             self.route = carrier[0][4]  # get the route of the carrier
             self.get_rings()  # get individual carrier rings for the day - define self.rings
             if self.qualify():  # test the rings to see if there is a violation during the week
+                self.no_qualifiers = False
                 self.conditional_header()  # insert the header if proper conditions apply
                 self.violation_number += 1  # increment the row number
                 self.display_recs()  # build the carrier and the rings row into the spreadsheet
@@ -3230,8 +3241,6 @@ class OffbidSpreadsheet:
 
     def display_recs(self):
         """ build the carrier and ring recs into the spreadsheet. """
-        print(self.carrier)
-        print(self.rings)
         cell = self.offbid.cell(row=self.row, column=1)  # carrier label
         cell.value = "carrier:  "
         cell.style = self.name_header
@@ -3270,20 +3279,24 @@ class OffbidSpreadsheet:
                 cell = self.offbid.cell(row=self.row, column=4)  # 5200
                 cell.value = self.rings[i][1]
                 cell.style = self.input_s
+                cell.number_format = "#,###.00;[RED]-#,###.00"
                 self.display_moves(i)
                 cell = self.offbid.cell(row=self.row, column=9)  # on route
                 formula = "=MAX(D" + str(self.row) + "-H" + str(self.row) + ",0)"
                 cell.value = formula
                 cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
                 cell = self.offbid.cell(row=self.row, column=10)  # violation
                 formula = "=IF(AND(D" + str(self.row) + ">0,H" + str(self.row) + ">0),8-I" + str(self.row) + ",0)"
                 cell.value = formula
                 cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
                 self.row += (self.move_set - 1)  # correct for increment after last move set.
                 self.row += 1
 
     def display_moves(self, i):
-        """ display the moves. include contingencies for multiple moves. """
+        """ display the moves. include contingencies for multiple moves.
+            also displays the off route formula column as that changes with multiple moves"""
         moves = Convert(self.rings[i][3]).string_to_array()
         set_count = Moves().count_movesets(moves)
         if len(moves) > 3:
@@ -3302,10 +3315,12 @@ class OffbidSpreadsheet:
                 else:
                     formula = "=SUM(F" + str(self.row + self.move_set) + "-E" + str(self.row + self.move_set) + ")"
                 formulacell.value = formula
+                formulacell.number_format = "#,###.00;[RED]-#,###.00"
                 move_place = 0
                 self.move_set += 1
             else:
                 move_place += 1
+                cell.number_format = "#,###.00;[RED]-#,###.00"
 
     def conditional_pagebreak(self):
         """ insert a page break if the correct conditions apply """
@@ -3317,27 +3332,37 @@ class OffbidSpreadsheet:
                 self.offbid.row_breaks.append(Break(id=self.row))  # effective for windows
                 self.row += 1
 
+    def no_violations(self):
+        """ if self.no_qualifiers is True after all carriers have been checked, this will display a message
+            saying that no violations occured. """
+        self.build_headers()
+        cell = self.offbid.cell(row=self.row, column=2)  # No off bid violation found
+        cell.value = "No off bid violations found"
+        cell.style = self.list_header
+        self.offbid.merge_cells('B' + str(self.row) + ':J' + str(self.row))
+
     def save_open(self):
         """ name and open the excel file """
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving...")
+        self.pb.stop()
         r = "_w"
         if not projvar.invran_weekly_span:  # if investigation range is daily
             r = "_d"
         xl_filename = "kb_offbid_" + str(format(self.dates[0], "_%y_%m_%d")) + r + ".xlsx"
         try:
-            self.wb.save(dir_path('spreadsheets') + xl_filename)
+            self.wb.save(dir_path('off_bid') + xl_filename)
             messagebox.showinfo("Spreadsheet generator",
                                 "Your spreadsheet was successfully generated. \n"
                                 "File is named: {}".format(xl_filename),
                                 parent=self.frame)
             if sys.platform == "win32":
-                os.startfile(dir_path('spreadsheets') + xl_filename)
+                os.startfile(dir_path('off_bid') + xl_filename)
             if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/spreadsheets/' + xl_filename])
+                subprocess.call(["xdg-open", 'kb_sub/off_bid/' + xl_filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('spreadsheets') + xl_filename])
+                subprocess.call(["open", dir_path('off_bid') + xl_filename])
         except PermissionError:
             messagebox.showerror("Spreadsheet generator",
                                  "The spreadsheet was not opened. \n"
@@ -3345,4 +3370,3 @@ class OffbidSpreadsheet:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
-        self.pb.stop()

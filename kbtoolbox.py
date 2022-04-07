@@ -1106,6 +1106,11 @@ class Handler:
         num = int(self.data)
         return str(num)
 
+    def format_str_as_float(self):
+        """ returns a string as a number string """
+        num = float(self.data)
+        return str(num)
+
     def str_to_int_or_str(self):
         """ returns an integer is the data is numeric, else returns the argument. """
         if self.data.isnumeric():
