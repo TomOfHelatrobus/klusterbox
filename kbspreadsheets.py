@@ -935,6 +935,8 @@ class OvermaxSpreadsheet:
     """
     def __init__(self):
         self.frame = None
+        self.pb = None  # progress bar object
+        self.pbi = 0  # progress bar count index
         self.carrier_list = []
         self.wb = None  # workbook object
         self.violations = None  # workbook object sheet
@@ -963,6 +965,12 @@ class OvermaxSpreadsheet:
         self.frame = frame
         if not self.ask_ok():
             return
+        self.pb = ProgressBarDe(label="Building Improper Mandates Spreadsheet")
+        self.pb.max_count(100)  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
         self.get_dates()
         self.get_carrierlist()
         self.get_rings()
@@ -974,8 +982,8 @@ class OvermaxSpreadsheet:
         self.build_violations()
         self.build_instructions()
         self.violated_recs()
+        self.get_pb_len()
         self.show_violations()
-        # self.build_joint()
         self.save_open()
 
     def ask_ok(self):
@@ -1049,6 +1057,7 @@ class OvermaxSpreadsheet:
 
     def build_workbook(self):
         """ creates the workbook object """
+        self.pb.change_text("Building workbook...")
         self.wb = Workbook()  # define the workbook
         self.violations = self.wb.active  # create first worksheet
         self.violations.title = "violations"  # title first worksheet
@@ -1091,6 +1100,7 @@ class OvermaxSpreadsheet:
 
     def build_summary(self):
         """ summary worksheet - format cells """
+        self.pb.change_text("Building summary")
         self.summary.merge_cells('A1:R1')
         self.summary['A1'] = "12 and 60 Hour Violations Summary"
         self.summary['A1'].style = self.ws_header
@@ -1119,6 +1129,7 @@ class OvermaxSpreadsheet:
 
     def build_violations(self):
         """ self.violations worksheet - format cells """
+        self.pb.change_text("Building violations...")
         self.violations.merge_cells('A1:R1')
         self.violations['A1'] = "12 and 60 Hour Violations Worksheet"
         self.violations['A1'].style = self.ws_header
@@ -1193,6 +1204,7 @@ class OvermaxSpreadsheet:
 
     def build_instructions(self):
         """ format the instructions cells """
+        self.pb.change_text("Building instructions")
         self.instructions.merge_cells('A1:R1')
         self.instructions['A1'] = "12 and 60 Hour Violations Instructions"
         self.instructions['A1'].style = self.ws_header
@@ -1655,12 +1667,19 @@ class OvermaxSpreadsheet:
             violation_recset = [carrier_array, totals_array, leavetype_array, leavetime_array]  # combine
             self.violation_recsets.append(violation_recset)  # append these empty recs into the violations rec sets
 
+    def get_pb_len(self):
+        """ get the lenght of the progress bar. """
+        self.pb.max_count(len(self.violation_recsets))  # set length of progress bar
+
     def show_violations(self):
         """ generates the rows of the violations worksheet. """
         summary_i = 7
         i = 10
         for line in self.violation_recsets:
             carrier_name = line[0][0]
+            self.pbi += 1
+            self.pb.move_count(self.pbi)  # increment progress bar
+            self.pb.change_text("Building display for {}".format(carrier_name))
             carrier_list = line[0][1]
             total = line[0][2]
             totals_array = line[1]
@@ -1900,6 +1919,10 @@ class OvermaxSpreadsheet:
 
     def save_open(self):
         """ save the spreadsheet and open """
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving...")
+        self.pb.stop()
         xl_filename = "kb_om" + str(format(projvar.invran_date_week[0], "_%y_%m_%d")) + ".xlsx"
         try:
             self.wb.save(dir_path('over_max_spreadsheet') + xl_filename)
