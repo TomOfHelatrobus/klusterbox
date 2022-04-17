@@ -6557,11 +6557,11 @@ class SpreadsheetConfig:
             messagebox.showerror("Data Entry Error", text, parent=self.win.body)
             return False
         if not RingTimeChecker(var).over_8():
-            text = "{} must be an 8 or zero or a number in between +.".format(current_var[self.check_i])
+            text = "{} must be an 8 or zero or a number in between.".format(current_var[self.check_i])
             messagebox.showerror("Data Entry Error", text, parent=self.win.body)
             return False
         if not RingTimeChecker(var).less_than_zero():
-            text = "{} must be an 8 or zero or a number in between -.".format(current_var[self.check_i])
+            text = "{} must be an 8 or zero or a number in between.".format(current_var[self.check_i])
             messagebox.showerror("Data Entry Error", text, parent=self.win.body)
             return False
         if not RingTimeChecker(var).count_decimals_place():

@@ -3048,7 +3048,7 @@ class OffbidSpreadsheet:
         self.calcs = None  # style
         self.list_header = None  # style
         self.offbid = None  # worksheet for the analysis of off bid violations
-        self.instructions = None  # worksheet for instructions
+        # self.instructions = None  # worksheet for instructions
         self.carrier = ""  # carrier name
         self.route = ""  # carrier route
         self.rings = []  # carrier rings queried from database
@@ -3153,7 +3153,7 @@ class OffbidSpreadsheet:
         self.offbid = self.wb.active  # create first worksheet
         self.offbid.title = "off bid"  # title first worksheet
         self.offbid.oddFooter.center.text = "&A"
-        self.instructions = self.wb.create_sheet("instructions")
+        # self.instructions = self.wb.create_sheet("instructions")
 
     def carrierloop(self):
         """ loop for each carrier """
