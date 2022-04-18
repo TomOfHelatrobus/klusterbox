@@ -1,7 +1,7 @@
 
 Creating DMG Installer for Mac OS Distribution
 
-___  1. go to the project folder and copy/paste kb_install.png to the desktop.
+___  1. go to the project folder and copy/paste (or move) kb_install.png to the desktop.
 
 ___  2. navigate to the klusterbox.app for mac OS. copy/paste the file on the desktop.
 
