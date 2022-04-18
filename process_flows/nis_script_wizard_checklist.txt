@@ -27,7 +27,7 @@ ___ 3. Click "Next".
 	____ a. Delete the examples by selecting them and hitting the Remove Directory(X) button. 
 	____ b. Click the "Add Directory Tree" button. 
 	____ c. In the EditDirectory dialog press the "..." button next to SelectDirectory. 
-	____ d. Navigate to the klusterbox directory in the dist directory created by pyinstaller. thomas > klusterbox > kb_install > dist > klusterbox
+	____ d. Navigate to the klusterbox directory in the dist directory created by pyinstaller. thomas > klusterbox > kb_install > dist
 	____ e. Select klusterbox and press OK. 
 	____ f. In the EditDirectory dialog, leave all other settings as default. 
 	____ g. Press Next. 
