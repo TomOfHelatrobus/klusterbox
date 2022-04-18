@@ -174,10 +174,10 @@ ___ ___  #. (in explorer) make sure the following files are in the kb_install fo
 
 	leave the kb_sub folder alone if it is in there.
 
-___ ___  2. (in explorer) make sure the above files and the following are in the datas list of the spec file. 
+___ ___  2. (in explorer) make sure the above files (except klusterwin.spec) and the following are in the datas list of the spec file. 
 	Pyinstaller will pull them from the project file, so there is no need to move them to 
 	kb_install. 
-	___ ___  a license.txt
+	___ ___  a. license.txt
 	___ ___  b. readme.txt
 	___ ___  c. history.txt
 	___ ___  d. speedsheet_instructions.txt
