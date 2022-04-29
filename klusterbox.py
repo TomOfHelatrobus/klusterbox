@@ -646,7 +646,7 @@ class OtEquitability:
                   "VALUES('%s', '%s', '%s', '%s', '%s')" \
                   % (self.quarter, carrier, "12", self.station, "")
             commit(sql)
-            return ('12',)
+            return ['12', ]
         else:
             return pref[0]
 
@@ -1153,8 +1153,11 @@ class RefusalWin:
 
 class SpeedWorkBookGet:
     """
-    this class gets the spreedsheet and opens it.
+    this class gets the speedsheet and opens it.
     """
+    def __init__(self):
+        pass
+
     @staticmethod
     def get_filepath():
         """ get the file path"""
@@ -1379,10 +1382,10 @@ class SpeedSheetCheck:
         self.pb.max_count(self.row_count() - count_diff)  # get total count of rows for the progress bar
         self.pb.start_up()  # start up the progress bar
         pb_counter = 0  # initialize the progress bar counter
-        for i in range(self.sheet_count):
+        for i in range(self.sheet_count):  # loop once for each worksheet in the workbook
             ws = self.wb[self.sheets[i]]  # assign the worksheet object
             row_count = ws.max_row  # get the total amount of rows in the worksheet
-            for ii in range(self.start_row, row_count):  # loop through all rows, start with row 5 or 6 until the end
+            for ii in range(self.start_row, row_count+1):  # loop through all rows, start with row 5 or 6 until the end
                 self.pb.move_count(pb_counter)
                 if (ii + self.step) % self.modulus == 0:  # if the row is a carrier record
                     if ws.cell(row=ii, column=2).value is not None:  # if the carrier record has a carrier name
@@ -6432,7 +6435,7 @@ class SpreadsheetConfig:
         dashcount = 77
         if sys.platform == "darwin":
             dashcount = 60
-        for i in range(dashcount):
+        for _ in range(dashcount):
             dashes += "_"
         Label(self.win.body, text=dashes, pady=5, fg="blue").grid(row=row, columnspan=14, sticky="w")
         row += 1

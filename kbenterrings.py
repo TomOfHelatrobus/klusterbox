@@ -50,23 +50,29 @@ class EnterRings:
         self.wed_mm = []
         self.thu_mm = []
         self.fri_mm = []
-        self.moves_array = [self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm]
-        # self.move_string = ""
+        self.daily_mm = []  # holds daily stringvars for moves when invran is daily
+        if projvar.invran_weekly_span:
+            self.moves_array = [self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm,
+                                self.fri_mm]
+        else:
+            self.moves_array = [self.daily_mm, ]
         self.daily_moves = []
         self.ot_rings_limiter = None
         self.tourrings = None  # True if user wants to display the BT (begin tour) and ET (end tour)
         self.chg_these = []
         self.addrings = []
         if projvar.invran_weekly_span:
-            for i in range(7):
+            for _ in range(7):
                 self.addrings.append([])
+        else:
+            self.addrings.append([])
         self.status_update = ""
         self.delete_report = 0
         self.update_report = 0
         self.insert_report = 0
         self.day = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         self.days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
-        self.i_range = 0
+        self.i_range = 0  # loop 7 times for week or once for day
         self.frame = []
 
     def start(self, frame=None):
@@ -126,14 +132,21 @@ class EnterRings:
         self.wed_mm = []
         self.thu_mm = []
         self.fri_mm = []
-        self.moves_array = [self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm, self.fri_mm]
+        self.daily_mm = []  # holds daily stringvars for moves when invran is daily
+        if projvar.invran_weekly_span:
+            self.moves_array = [self.sat_mm, self.sun_mm, self.mon_mm, self.tue_mm, self.wed_mm, self.thu_mm,
+                                self.fri_mm]
+        else:
+            self.moves_array = [self.daily_mm, ]
         self.daily_moves = []
         self.chg_these = []
         self.addrings = []
         if projvar.invran_weekly_span:
-            for i in range(7):
+            for _ in range(7):
                 self.addrings.append([])
-        self.i_range = 0
+        else:
+            self.addrings.append([])
+        self.i_range = 0  # loop 7 times for week or once for day
         self.frame = []
 
     def get_carrecs(self):
@@ -224,7 +237,7 @@ class EnterRings:
     
     def build_frames(self):
         """ build the frames that nest inside the body frame. There is one frame per day. """
-        for i in range(self.i_range):
+        for _ in range(self.i_range):
             self.frame.append(Frame(self.win.body, width=500))
 
     def get_onrecs(self):
@@ -456,6 +469,8 @@ class EnterRings:
             mm = self.thu_mm
         elif self.days[i] == "fri":
             mm = self.fri_mm
+        if not projvar.invran_weekly_span:  # if the invran is daily, not weekly - use daily multi moves holder
+            mm = self.daily_mm  # holds daily stringvars for moves when invran is daily
         if not self.now_moves:  # if first time or button pushed.
             for _ in range(3):
                 self.now_moves.append("")
@@ -616,6 +631,7 @@ class EnterRings:
     def check_moves(self):
         """ checks the moves for errors """
         cc = 0  # index: increments one for each day
+        print(self.moves_array)
         for d in self.moves_array:  # check for bad inputs in moves
             if not self.check_moves_daily(d, cc):
                 return False

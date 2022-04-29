@@ -2808,7 +2808,6 @@ class ImpManSpreadsheet4:
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
             column += 1
-            # =IF($wednesday.J124 = "", "", IF($wednesday.C16 ="", "no dov", MAX($wednesday.C16-$wednesday.J124, 0)))
             formula = "=IF(%s!J%s = \"\", \"\", IF(%s!C%s = \"\", \"no dov\", MAX(%s!C%s-%s!J%s, 0)))" % \
                       (self.day_of_week[self.i], str(self.row),
                        self.day_of_week[self.i], "16",
