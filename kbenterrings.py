@@ -631,7 +631,6 @@ class EnterRings:
     def check_moves(self):
         """ checks the moves for errors """
         cc = 0  # index: increments one for each day
-        print(self.moves_array)
         for d in self.moves_array:  # check for bad inputs in moves
             if not self.check_moves_daily(d, cc):
                 return False

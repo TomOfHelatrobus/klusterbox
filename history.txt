@@ -56,5 +56,6 @@ Version 5.01 (04/17/2022)
 	A Speedsheet settings was added "Show Full Report" which allows the user to limit the output of the report for checking/inputing the Speedsheet. True will yield only the errors. The Speedsheets were also modified so that the fields for clock ring times are formatted as with two decimal places when appropriate. 
 	The Automatic Data Entry will back fill carrier's TACS names if the run and the names are not recorded (as in the case where the steward was using Speedsheets prior). The names are also sorted by kb name as opposed to TACS name in the name index. 
 
-
+Version 5.02 (04/30/2022)
+	This is a fix for two bugs. 1. A bug in the enter rings screen when the investigation range was set to day which would not input data into the database when the Apply/Submit button was pressed. 2. A bug in Speedsheets which would not input the very last row of any speedsheet. Both bugs were fixed with 30 lines of code added or altered. 
  

@@ -8,12 +8,12 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 5.01		
-released: Apr 17, 2022
+most recent version: 5.02		
+released: Apr 30, 2022
 
 Caution: 
 
-To ensure proper operation of Klusterbox in Windows Legacy versions, make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder.  
+To ensure proper operation of Klusterbox in Windows Legacy versions, make sure to keep the Klusterbox.exe and the kb_sub folder in the same folder. This does not apply to non-Legacy versions.  
 
 Overview:
 

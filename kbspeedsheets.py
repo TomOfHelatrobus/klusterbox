@@ -170,7 +170,7 @@ class SpeedSheetGen:
         if not self.db.abc_breakdown:
             minrow_array.append(self.db.min_alpha)  # get minimum rows for alphabetical sheet
         else:
-            for i in range(len(self.car_recs) - 1):  # get minimum rows for abc breakdown sheets
+            for _ in range(len(self.car_recs) - 1):  # get minimum rows for abc breakdown sheets
                 minrow_array.append(self.db.min_abc)
         return minrow_array
 
