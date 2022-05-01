@@ -240,39 +240,45 @@ Running pyinstaller and making app bundle.
 
 if you are creating a distribution for mac OS. 
 
+___  1. (in terminal)  activate the virtual environment:
+		type: "pipenv shell" in the command line
+
 ___  #. (in finder) copy and paste the klustermac.spec file from the klusterbox project folder to the kb_install folder. 
 
 ___  1. (in terminal) make sure you are in the kb_install folder
 
-___  2. (in finder) make sure the following files are in the kb_install folder:
+___  2. (in finder) make sure the python source files are in the kb_install folder:
 
-	___ a. klusterbox.py
-	___ b. projvar.py
-	___ c. kbtoolbox.py
-	___ d. kbdatabase.py
-	___ e. kbreports.py
-	___ f. kbspreadsheets.py
-	___ g. kbspeedsheets.py
-	___ h. kbequitability.py
-	___ i. kbcsv_reader.py
-	___ j. kbcsv_repair.py
-	___ k. kbpdfhandler.py
-	___ l. kbenterrings.py
-	___ m. kbfixes.py
-	___ n. kbinformalc.py
-	___ o. klusterwin.spec
+	___ 1. klusterbox.py
+	___ 2. projvar.py
+	___ 3. kbtoolbox.py
+	___ 4. kbdatabase.py
+	___ 5. kbreports.py
+	___ 6. kbspreadsheets.py
+	___ 7. kbspeedsheets.py
+	___ 8. kbequitability.py
+	___ 9. kbcsv_reader.py
+	___ 10. kbcsv_repair.py
+	___ 11. kbpdfhandler.py
+	___ 12. kbenterrings.py
+	___ 13. kbfixes.py
+	___ 14. kbinformalc.py
+
+___  2. (in finder) make sure the spec file is also in the kb_install folder:
+
+	___ 1. klustermac.spec
 
 	leave the kb_sub folder alone if it is in there.
 
 ___ 3. (in finder) make sure the above files and the following are in the datas list of the spec file. 
 	Pyinstaller will pull them from the project file, so there is no need to move them to 
 	kb_install. 
-	___ a. license.txt
-	___ b. readme.txt
-	___ c. history.txt
-	___ d. speedsheet_instructions.txt
-	___ e. cheatsheet.txt
-	___ f. requirements.txt (list of necessary libraries for running klusterbox.py)
+	___ 1. license.txt
+	___ 2. readme.txt
+	___ 3. history.txt
+	___ 4. speedsheet_instructions.txt
+	___ 5. cheatsheet.txt
+	___ 6. requirements.txt (list of necessary libraries for running klusterbox.py)
 	
 ___ 4. (in finder) make sure the image files are listed in the datas list of the spec file
 	(this references the kb_sub folder in the project folder):
