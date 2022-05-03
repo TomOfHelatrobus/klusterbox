@@ -396,6 +396,9 @@ def pdf_converter(frame):
                 datainput = "Pay Period Week: {}\n".format(pp_wk)
                 kbpc_rpt.write(datainput)
             pp += pp_wk  # join the pay period and the week
+            if len(pp)>3:
+                pp = input("Enter the pay period as three digits: ")
+            print(year, pp, yyppwk)
             first_date = find_pp(int(year), pp)  # get the first day of the pay period
             if gen_error_report == "on":
                 datainput = "{}\n".format(str(first_date))
@@ -1053,3 +1056,5 @@ def pdf_converter(frame):
                         "The PDF Convertion is complete. "
                         "The file name is {}. ".format(short_file_name),
                         parent=frame)
+
+

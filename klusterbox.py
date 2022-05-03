@@ -26,6 +26,7 @@ from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
 from kbcsv_reader import MaxHr, ee_skimmer
 from kbpdfhandling import pdf_converter
+from kbpdfhandling2 import PdfConverter
 from kbenterrings import EnterRings
 from kbinformalc import InformalC
 from kbfixes import Fixes
@@ -9188,6 +9189,7 @@ class MainFrame:
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: pdf_converter(self.win.topframe))
+        automated_menu.add_command(label="PDF Converter 2", command=lambda: PdfConverter().run(self.win.topframe))
         automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
         menubar.add_cascade(label="Readers", menu=automated_menu)
         # reports menu

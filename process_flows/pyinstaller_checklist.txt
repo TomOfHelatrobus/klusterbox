@@ -266,6 +266,7 @@ ___  2. (in finder) make sure the python source files are in the kb_install fold
 
 ___  2. (in finder) make sure the spec file is also in the kb_install folder:
 
+
 	___ 1. klustermac.spec
 
 	leave the kb_sub folder alone if it is in there.
