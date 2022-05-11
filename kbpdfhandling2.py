@@ -64,6 +64,7 @@ class PdfConverter:
         self.found_days = []  # array for holding days worked
         self.base_time = []  # array for holding hours worked during the day
         self.eid = ""  # hold the employee id
+        self.prime_info = ""  # the first part of the csv line
         self.lastname = ""  # holds the last name of the employee
         self.fi = ""
         self.jobs = []  # holds the d/a code
@@ -456,601 +457,779 @@ class PdfConverter:
                     self.kbpc_rpt.write(datainput)
                 self.saved_pp = self.yyppwk  # hold the year/pp to check if it changes
             self.page_num += 1
+            self.anaylse_c(a)
+            self.write_a()
+        self.endtime = time.time()
 
-            b = a.split("\n\n")
-            for c in b:
-                # find, categorize and record daily times
-                if self.lookfortimes:
-                    if re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}$", c):
+    def anaylse_c(self, a):
+        """ anaylse the c  """
+        b = a.split("\n\n")
+        for c in b:
+            # find, categorize and record daily times
+            if self.lookfortimes:
+                if re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}$", c):
+                    to_add = [self.base_counter, c]
+                    self.base_time.append(to_add)
+                    self.base_chg = self.base_counter  # value to check for errors+
+                # solve for robertson basetime problem / Base followed by H/L
+                elif re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}\n0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}", c):
+                    if "\n" not in c:  # check that there are no multiple times in the line
                         to_add = [self.base_counter, c]
                         self.base_time.append(to_add)
-                        self.base_chg = self.base_counter  # value to check for errors+
-                    # solve for robertson basetime problem / Base followed by H/L
-                    elif re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}\n0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}", c):
-                        if "\n" not in c:  # check that there are no multiple times in the line
-                            to_add = [self.base_counter, c]
-                            self.base_time.append(to_add)
+                        self.base_chg = self.base_counter  # value to check for errors
+                        self.robert_rpt.append(self.lastname)  # data for robertson baseline problem
+                    elif "\n" in c:  # if there are multiple times in the line
+                        split_base = c.split("\n")  # split the times by the line break
+                        for sb in split_base:  # add each time individually
+                            to_add = [self.base_counter, sb]  # combine the base counter with the time
+                            self.base_time.append(to_add)  # add that time to the array of base times
                             self.base_chg = self.base_counter  # value to check for errors
-                            self.robert_rpt.append(self.lastname)  # data for robertson baseline problem
-                        elif "\n" in c:  # if there are multiple times in the line
-                            split_base = c.split("\n")  # split the times by the line break
-                            for sb in split_base:  # add each time individually
-                                to_add = [self.base_counter, sb]  # combine the base counter with the time
-                                self.base_time.append(to_add)  # add that time to the array of base times
-                                self.base_chg = self.base_counter  # value to check for errors
-                    else:
-                        self.base_counter += 1
-                        self.lookfortimes = False
-                if re.match(r"Base", c):
-                    self.lookfortimes = True
-                # solve for stevens problem / H/L base times not being read
-                if len(self.finance_holder) == 0 and re.match(r"H/L\s", c):  # set trap to catch daily times
-                    self.lookfortimes = True
-                    self.stevens_rpt.append(self.lastname)
-                checker = False
-                one_mistake = False
-                underscore_slash = c.split("\n")
-                for us in underscore_slash:  # loop through items to detect matches
-                    if re.match(r"[0-1][0-9]\/[0-9][0-9]", us) or us == "__/__":
-                        checker = True
-                    else:
-                        one_mistake = True
-                if len(underscore_slash) > 1 and checker and not one_mistake:
-                    self.daily_underscoreslash.append(underscore_slash)
-                # underscore_slash = []
+                else:
+                    self.base_counter += 1
+                    self.lookfortimes = False
 
-                d = c.split("\n")
-                for e in d:
-                    try:
-                        # build the daily array
-                        # get the route following the chain
-                        if re.match(r"[0-9]{6}$", e) and len(self.movecode_holder) != 0:
-                            self.movecode_holder.append(e)
-                            route_holder = self.movecode_holder
-                            if self.unprocessedrings == "":
-                                self.daily_array.append(route_holder)
-                            else:
-                                self.unprocessed_counter += 1  # handle carroll problem
-                                self.carroll_rpt.append(self.lastname)  # append carroll report
-                        self.movecode_holder = []
-                        if len(self.finance_holder) != 0:  # get the move code following the chain
-                            if re.match(r"[0-9]{4}\-[0-9]{2}$", e):
-                                self.finance_holder.append(e)
-                                self.movecode_holder = self.finance_holder
-                            # solve for robertson problem / "H/L" is in move code
-                            if re.match(r"H/L", e):  # if the move code is a higher level assignment
-                                self.finance_holder.append(e)
-                                self.finance_holder.append("000000")  # insert zeros for route number
-                                if self.unprocessedrings == "":
-                                    self.daily_array.append(
-                                        self.finance_holder)  # skip getting the route and create append daily array
-                                else:
-                                    self.unprocessed_counter += 1  # handle carroll problem
-                                    self.carroll_rpt.append(self.lastname)  # append carroll report
-                        self.finance_holder = []
-                        if len(self.timezone_holder) != 0:  # get the finance number following the chain
-                            self.timezone_holder.append(e)
-                            self.finance_holder = self.timezone_holder
-                        self.timezone_holder = []
-                        if re.match(r"[A-Z]{2}T", e) and len(
-                                self.time_holder) != 0:  # look for the time zone following chain
-                            self.time_holder.append(e)
-                            self.timezone_holder = self.time_holder
-                        # solve for salih problem / missing time zone in ...
-                        elif len(self.time_holder) != 0 and self.unprocessedrings != "":
-                            self.unprocessed_counter += 1  # unprocessed rings
-                            self.salih_rpt.append(self.lastname)
-                        self.time_holder = []
-                        # look for time following date/mv desig
-                        if re.match(r" [0-2][0-9]\.[0-9][0-9]$", e) and len(self.date_holder) != 0:
-                            self.date_holder.append(e)
-                            self.time_holder = self.date_holder
-                        # look for items in franklin array to solve for franklin problem
-                        if len(self.franklin_array) > 0 and re.match(r"[0-1][0-9]\/[0-3][0-9]$",
-                                                                e):  # if franklin array and date
-                            frank = self.franklin_array.pop(0)  # pop out the earliest mv desig
-                            self.mv_holder = [self.eid, frank]
-                        # solve for rodriguez problem / multiple consecutive mv desigs
-                        if len(self.franklin_array) > 0:
-                            if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                                      e) or e in self.mv_desigs:  # look for move desig
-                                self.franklin_array.append(e)
-                                self.rod_rpt.append(self.lastname)
-                        self.date_holder = []
-                        if re.match(r"[0-1][0-9]\/[0-3][0-9]$", e) and len(
-                                self.mv_holder) != 0:  # look for date following move desig
-                            self.mv_holder.append(e)
-                            self.date_holder = self.mv_holder
-                        # solve for franklin problem: two mv desigs appear consecutively
-                        if len(self.mv_holder) > 0:
-                            if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                                      e) or e in self.mv_desigs:  # look for move desig
-                                self.franklin_array.append(self.mv_holder[1])
-                                self.franklin_array.append(e)
-                                self.frank_rpt.append(self.lastname)
-                        self.mv_holder = []
-                        if len(self.franklin_array) == 0:
-                            if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
-                                                                      e) or e in self.mv_desigs:  # look for move desig
-                                self.mv_holder.append(self.eid)
-                                self.mv_holder.append(e)  # place in a holder and check the next line for a date
-                        # solve for rose problem: mv desig and date appearing on same line
-                        if re.match(r"0[0-9]{4}\s[0-2][0-9]\/[0-9][0-9]$", e):
-                            rose = e.split(" ")
-                            self.mv_holder.append(self.eid)  # add the emp id to the daily array
-                            self.mv_holder.append(rose[0])  # add the mv desig to the daily array
-                            self.mv_holder.append(rose[1])  # add the date to the mv desig array
-                            self.date_holder = self.mv_holder  # transfer array items to date holder
-                            self.rose_rpt.append(self.lastname)
-                        if e in self.days:  # find and record all days on the report
-                            if self.eid_label:
-                                self.found_days.append(e)
-                            if not self.eid_label:
-                                self.foundday_holder.append(e)
-                        if e == "Processed Clock Rings":
-                            self.eid_count = 0
-                        if e == "Employee ID":
-                            self.eid_label = True
-                            if self.gen_error_report:
-                                if len(self.jobs) > 0:
-                                    datainput = "Jobs: {}\n".format(self.jobs)
-                                    self.kbpc_rpt.write(datainput)
-                                if len(self.routes) > 0:
-                                    datainput = "Routes: {}\n".format(self.routes)
-                                    self.kbpc_rpt.write(datainput)
-                                if len(self.level) > 0:
-                                    datainput = "Levels: {}\n".format(self.level)
-                                    self.kbpc_rpt.write(datainput)
-                                if len(self.base_time) > 0:
-                                    self.kbpc_rpt.write("Base / Times:")
-                                    for bt in self.base_time:
-                                        datainput = "{}\n".format(bt)
-                                        self.kbpc_rpt.write(datainput)
-                            if len(self.daily_underscoreslash) > 0:  # bind all underscore slash items in one array
-                                self.underscore_slash_result = sum(self.daily_underscoreslash, [])
-                            # write to csv file
-                            prime_info = [self.yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
-                                          '"{}"'.format("0000"), '"{}"'.format(self.eid), '"{}"'.format(self.lastname),
-                                          '"{}"'.format(self.fi[:1]),
-                                          '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"',
-                                          '"0"']
-                            count = 0
-                            for array in self.daily_array:
-                                array.append(self.underscore_slash_result[count])
-                                array.append(self.underscore_slash_result[count + 1])
-                                count += 2
-                            if self.base_chg + 1 != len(self.found_days):  # add to basecounter error array
-                                to_add = (self.lastname, self.base_chg, len(self.found_days))
-                                if len(self.found_days) > 0:
-                                    self.basecounter_error.append(to_add)
-                            # set up array for each day in the week
-                            csv_sat = []
-                            csv_sun = []
-                            csv_mon = []
-                            csv_tue = []
-                            csv_wed = []
-                            csv_thr = []
-                            csv_fri = []
-                            csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
-                            # reorder the found days to ensure the correct order
-                            self.found_days = self.pdf_converter_reorder_founddays()
-                            # fix problem with miscounted base times
-                            high_array = []
-                            for bt in self.base_time:
-                                high_array.append(bt[0])
-                            if len(high_array) > 0:
-                                high_num = max(high_array)
-                                comp_array = []
-                                for i in range(high_num + 1):
-                                    comp_array.append(i)
-                                del_array = []
-                                for num in comp_array:
-                                    if num in high_array:
-                                        del_array.append(num)
-                                error_array = comp_array
-                                error_array = [x for x in error_array if x not in del_array]
-                                error_array.reverse()
-                                if len(error_array) > 0:
-                                    for error_num in error_array:
-                                        for bt in self.base_time:
-                                            if bt[0] > error_num:
-                                                bt[0] -= 1
-                            # load the multi array with array for each day
-                            if len(self.foundday_holder) > 0:
-                                # solve for nguyen problem / day of week occurs prior to "employee id" label
-                                self.found_days += self.foundday_holder
-                                ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
-                                                "Friday"]
-                                for day in self.days:  # re order days into correct order
-                                    if day not in self.found_days:
-                                        ordered_days.remove(day)
-                                self.found_days = ordered_days
-                                # self.foundday_holder = []
-                                self.nguyen_rpt.append(self.lastname)
-                            if len(self.found_days) > 0:  # printe out found days
-                                # reorder the found days to ensure the correct order
-                                self.found_days = self.pdf_converter_reorder_founddays()
-                                if self.gen_error_report:
-                                    datainput = "Found days: {}\n".format(self.found_days)
-                                    self.kbpc_rpt.write(datainput)
-                            if self.gen_error_report:
-                                datainput = "proto emp id counter: {}\n".format(self.eid_count)
-                                self.kbpc_rpt.write(datainput)
-                            for i in range(7):
-                                for bt in self.base_time:
-                                    if self.found_days[bt[0]] == self.days[i]:
-                                        csv_output[i].append(bt)
-                                for da in self.daily_array:
-                                    if da[2] == self.pp_days[i].strftime("%m/%d"):
-                                        csv_output[i].append(da)
-                            for co in csv_output:  # for each time in the array, printe a line
-                                for array in co:
-                                    if self.gen_error_report:
-                                        datainput = "{}\n".format(array)
-                                        self.kbpc_rpt.write(datainput)
-                                    # put the data into the csv file
-                                    if len(array) == 2:  # if the line comes from base/time data
-                                        add_this = [self.found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
-                                        whole_line = prime_info + add_this
-                                        with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
-                                            self.writer = csv.writer(writeFile, dialect='myDialect')
-                                            self.writer.writerow(whole_line)
-                                    if len(array) == 10:  # if the line comes from daily array
-                                        if array[9] != "__/__":
-                                            end_notes = "(W)Ring Deleted From PC"
-                                        else:
-                                            end_notes = ""
-                                        add_this = ["000-00", '"{}"'.format(array[1]),
-                                                    '"{}"'.format(
-                                                        self.pp_days[self.daily_array_days.index(array[2])].strftime(
-                                                            "%d-%b-%y").upper()),
-                                                    '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]),
-                                                    '"{}"'.format(array[6]),
-                                                    '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
-                                                    '"{}"'.format(end_notes)]
-                                        whole_line = prime_info + add_this
-                                        with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
-                                            self.writer = csv.writer(writeFile, dialect='myDialect')
-                                            self.writer.writerow(whole_line)
-                            # define csv writer parameters
-                            # csv.register_dialect('myDialect',
-                            #                      delimiter=',',
-                            #                      quotechar="'",
-                            #                      skipinitialspace=True,
-                            #                      lineterminator=",\r"
-                            #                     )
-                            if len(self.jobs) > 0:
-                                for i in range(len(self.jobs)):
-                                    base_line = [self.base_temp[i], '"{}"'.format(self.jobs[i].replace("-", "").strip()),
-                                                 '"0000"', '"7220-10"',
-                                                 '"Q0"', '"{}"'.format(self.level[i]), '"N"',
-                                                 '"{}"'.format(self.routes[i]), '""',
-                                                 '"0000000"',
-                                                 '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
-                                    whole_line = prime_info + base_line
-                                    with open(self.new_file_path, 'a') as writeFile:
-                                        self.writer = csv.writer(writeFile, dialect='myDialect')
-                                        self.writer.writerow(whole_line)
-                            self.found_days = []  # initialized arrays
-                            self.lookfortimes = False
-                            self.base_time = []
-                            self.eid = ""
-                            self.base_chg = 0
-                            self.base_counter = 0
-                            self.daily_array = []
-                            self.daily_underscoreslash = []
-                            self.unprocessed_counter = 0
-                            self.jobs = []
-                            self.level = []
-                            if self.gen_error_report:
-                                datainput = "{}\n".format(e)
-                                self.kbpc_rpt.write(datainput)
-                            self.eid_count = 0
-                        if self.lookforfi:  # look for first initial
-                            if re.fullmatch("[A-Z]\s[A-Z]", e) or re.fullmatch("([A-Z])", e):
-                                if self.gen_error_report:
-                                    datainput = "FI: {}\n".format(e)
-                                    self.kbpc_rpt.write(datainput)
-                                self.fi = e
-                                self.lookforfi = False
-                        if self.lookforname:  # look for the name
-                            if re.fullmatch(r"([A-Z]+)", e) \
-                                    or re.fullmatch(r"([A-Z]+.[A-Z]+)", e) \
-                                    or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+)", e) \
-                                    or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
-                                    or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
-                                self.lastname = e.replace("'", " ")
-                                if self.gen_error_report:
-                                    datainput = "Name: {}\n".format(e)
-                                    self.kbpc_rpt.write(datainput)
-                                self.lookforname = False
-                                self.lookforfi = True
-                        if re.match(r"\s[0-9]{2}\-[0-9]$", e):  # find the job or d/a code - there might be two
-                            self.jobs.append(e)
-                        if self.lookfor2route:  # look for temp route
-                            if re.match(r"[0-9]{6}$", e):
-                                self.routes.append(e)  # add route to routes array
-                            self.lookfor2route = False
-                        if self.lookforroute:  # look for main route
-                            if re.match(r"[0-9]{6}$", e):  #
-                                self.routes.append(e)  # add route to routes array
-                                self.lookfor2route = True
-                            self.lookforroute = False
-                        if e == "Route #":  # set trap to catch route # on the next line
-                            self.lookforroute = True
-                        if self.lookfor2level:  # intercept the second level
-                            if re.match(r"[0-9]{2}$", e):
-                                self.level.append(e)
-                            self.lookfor2level = False
-                        if self.lookforlevel:  # intercept the level
-                            if re.match(r"[0-9]{2}$", e):
-                                self.level.append(e)
-                                self.lookfor2level = True  # set trap to catch the second level next line
-                            self.lookforlevel = False
-                        if e == "Lvl":  # set trap to catch Lvl on the next line
-                            self.lookforlevel = True
-                        if self.eid != "" and self.new_page == False:
-                            if re.match(r"[0-9]{8}", e):  # find the underscore dash string
-                                self.eid_count += 1
-                            if re.match(r"xxx\-xx\-[0-9]{4}", e):
-                                self.eid_count += 1
-                            if re.match(r"XXX\-XX\-[0-9]{4}", e):
-                                self.eid_count += 1
-                            if e == "___-___-____":
-                                self.eid_count += 1
-                            # solve for rose problem: time object is fused to emp id object - just increment the
-                            # eid counter
-                            if re.match(r"\s[0-9]{2}\.[0-9]{10}", e) \
-                                    or re.match(r"__.__[0-9]{8}", e) \
-                                    or re.match(r"__._____-___-____", e):
-                                self.eid_count += 1
-                                self.rose_rpt.append(self.lastname)
-                        # solve for carroll problem/ unprocessed rings do not have underscore slash counterparts
-                        if e == "Un-Processed Rings":  # after unprocessed rings label, add no new rings to daily array
-                            self.unprocessedrings = self.eid
-                        if re.match(r"[0-9]{8}", e):  # find the emp id / it is the first 8 digit number on the page
-                            if self.eid_count == 0:
-                                self.eid = e
-                                if self.gen_error_report:
-                                    datainput = "Employee ID: {}\n".format(e)
-                                    self.kbpc_rpt.write(datainput)
-                                self.lookforname = True
-                                if self.eid != self.unprocessedrings:  # set unprocessedrings and new_page variables
-                                    self.unprocessedrings = ""
-                                    self.new_page = False
-                                else:
-                                    self.new_page = True
-                                    # increment the self.eid counter to stop new self.eid from being set
-                                    self.eid_count += 1
-                                    if self.gen_error_report:
-                                        self.kbpc_rpt.write("NEW PAGE!!!\n")
-                    except:
-                        self.failed.append(self.lastname)
-                        datainput = "READING FAILURE: {}\n".format(e)
-                        self.kbpc_rpt.write(datainput)
-            if self.gen_error_report:  # write to error report
-                datainput = "Station: {}\n".format(station)
-                self.kbpc_rpt.write(datainput)
-                datainput = "Pay Period: {}\n".format(self.yyppwk)
-                self.kbpc_rpt.write(datainput)  # show the pay period
-                if len(self.jobs) > 0:
-                    datainput = "Jobs: {}\n".format(self.jobs)
-                    self.kbpc_rpt.write(datainput)
-                if len(self.routes) > 0:
-                    datainput = "Routes: {}\n".format(self.routes)
-                    self.kbpc_rpt.write(datainput)
-                if len(self.level) > 0:
-                    datainput = "Levels: {}\n".format(self.level)
-                    self.kbpc_rpt.write(datainput)
-            # define csv writer parameters
-            # csv.register_dialect('myDialect',
-            #                      delimiter=',',
-            #                      quotechar="'",
-            #                      skipinitialspace=True,
-            #                      lineterminator=",\r"
-            #                      )
-            # write to csv file
-            prime_info = [self.yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
-                          '"{}"'.format("0000"), '"{}"'.format(self.eid), '"{}"'.format(self.lastname),
-                          '"{}"'.format(self.fi[:1]),
-                          '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"', '"0"']
-            if len(self.jobs) > 0:
-                # if the route count is less than the jobs count, fill the route count
-                self.routes = PdfConverterFix(self.routes).route_filler(len(self.jobs))
-                for i in range(len(self.jobs)):
-                    base_line = [self.base_temp[i], '"{}"'.format(self.jobs[i].replace("-", "").strip()),
-                                 '"0000"', '"7220-10"',
-                                 '"Q0"', '"{}"'.format(self.level[i]), '"N"', '"{}"'.format(self.routes[i]),
-                                 '""', '"0000000"',
-                                 '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
-                    whole_line = prime_info + base_line
-                    with open(self.new_file_path, 'a') as writeFile:
-                        self.writer = csv.writer(writeFile, dialect='myDialect')
-                        self.writer.writerow(whole_line)
-            if len(self.foundday_holder) > 0:
-                # solve for nguyen problem / day of week occurs prior to "employee id" label
-                self.found_days += self.foundday_holder
-                ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-                for day in self.days:  # re order days into correct order
-                    if day not in self.found_days:
-                        ordered_days.remove(day)
-                self.found_days = ordered_days
-                # self.foundday_holder = []
-                self.nguyen_rpt.append(self.lastname)
-            if len(self.found_days) > 0:  # printe out found days
-                # reorder the found days to ensure the correct order
-                self.found_days = self.pdf_converter_reorder_founddays()
-                if self.gen_error_report:
-                    datainput = "Found days: {}\n".format(self.found_days)
-                    self.kbpc_rpt.write(datainput)
-            if self.gen_error_report:
-                datainput = "proto emp id counter: {}\n".format(self.eid_count)
-                self.kbpc_rpt.write(datainput)
-            if len(self.daily_underscoreslash) > 0:  # bind all underscore slash items in one array
-                self.underscore_slash_result = sum(self.daily_underscoreslash, [])
-            if self.mcgrath_indicator and len(self.underscore_slash_result) > 0:  # solve for mcgrath indicator
-                self.mcgrath_carryover.append(self.underscore_slash_result[0])  # add underscore slash to carryover
-                self.mcgrath_indicator = False  # reset the indicator
-                if self.gen_error_report:
-                    datainput = "MCGRATH CARRYOVER: {}\n".format(self.mcgrath_carryover)
-                    self.kbpc_rpt.write(datainput)  # printe out a notice.
-                del self.underscore_slash_result[0]  # delete the ophan underscore slash
-            count = 0
-            for array in self.daily_array:
-                array.append(self.underscore_slash_result[count])
-                try:
-                    array.append(self.underscore_slash_result[count + 1])
-                except:  # solve for the mcgrath problem
-                    self.mcgrath_carryover = array
-                    self.mcgrath_indicator = True
-                    self.mcgrath_rpt.append(self.lastname)
-                    if self.gen_error_report:
-                        self.kbpc_rpt.write("MCGRATH ERROR DETECTED!!!\n")
-                # if self.mcgrath_indicator == False:
-                count += 2
-            # if there is a carryover, remove the daily array item from the list
-            if self.mcgrath_carryover in self.daily_array:
-                self.daily_array.remove(self.mcgrath_carryover)
-            if not self.mcgrath_indicator and self.mcgrath_carryover != "":  # if there is a carryover to be added
-                self.daily_array.insert(0, self.mcgrath_carryover)  # put the carryover at the front of the daily array
-                self.mcgrath_carryover = ""  # reset the carryover
-                self.eid_count += 1  # increment the emp id counter
-            # set up array for each day in the week
-            csv_sat = []
-            csv_sun = []
-            csv_mon = []
-            csv_tue = []
-            csv_wed = []
-            csv_thr = []
-            csv_fri = []
-            csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
-            # reorder the found days to ensure the correct order
-            self.found_days = self.pdf_converter_reorder_founddays()
-            # fix problem with miscounted base times
-            high_array = []
-            for bt in self.base_time:
-                high_array.append(bt[0])
-            if len(high_array) > 0:
-                high_num = max(high_array)
-                comp_array = []
-                for i in range(high_num + 1):
-                    comp_array.append(i)
-                del_array = []
-                for num in comp_array:
-                    if num in high_array:
-                        del_array.append(num)
-                error_array = comp_array
-                error_array = [x for x in error_array if x not in del_array]
-                error_array.reverse()
-                if len(error_array) > 0:
-                    for error_num in error_array:
-                        for bt in self.base_time:
-                            if bt[0] > error_num:
-                                bt[0] -= 1
-            # load the multi array with array for each day
-            for i in range(7):
-                for bt in self.base_time:
-                    if self.found_days[bt[0]] == self.days[i]:
-                        csv_output[i].append(bt)
-                for da in self.daily_array:
-                    if da[2] == self.pp_days[i].strftime("%m/%d"):
-                        csv_output[i].append(da)
-            for co in csv_output:  # for each time in the array, printe a line
-                for array in co:
-                    if self.gen_error_report:
-                        datainput = "{}\n".format(str(array))
-                        self.kbpc_rpt.write(datainput)
-                    # put the data into the csv file
-                    if len(array) == 2:  # if the line comes from base/time data
-                        add_this = [self.found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
-                        whole_line = prime_info + add_this
-                        with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
-                            self.writer = csv.writer(writeFile, dialect='myDialect')
-                            self.writer.writerow(whole_line)
-                    if len(array) == 10:  # if the line comes from daily array
-                        if array[9] != "__/__":
-                            end_notes = "(W)Ring Deleted From PC"
-                        else:
-                            end_notes = ""
-                        add_this = ["000-00", '"{}"'.format(array[1]),
-                                    '"{}"'.format(self.pp_days[self.daily_array_days.index(array[2])].
-                                                  strftime("%d-%b-%y").upper()),
-                                    '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]), '"{}"'.format(array[6]),
-                                    '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
-                                    '"{}"'.format(end_notes)]
-                        whole_line = prime_info + add_this
-                        with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
-                            self.writer = csv.writer(writeFile, dialect='myDialect')
-                            self.writer.writerow(whole_line)
-            # Handle Carroll problems
-            if not self.mcgrath_indicator:
-                if self.eid_count == 1:  # handle widows
+            if re.match(r"Base", c):
+                self.lookfortimes = True
+
+            # solve for stevens problem / H/L base times not being read
+            if len(self.finance_holder) == 0 and re.match(r"H/L\s", c):  # set trap to catch daily times
+                self.lookfortimes = True
+                self.stevens_rpt.append(self.lastname)
+
+            checker = False
+            one_mistake = False
+            underscore_slash = c.split("\n")
+            for us in underscore_slash:  # loop through items to detect matches
+                if re.match(r"[0-1][0-9]\/[0-9][0-9]", us) or us == "__/__":
+                    checker = True
+                else:
+                    one_mistake = True
+            if len(underscore_slash) > 1 and checker and not one_mistake:
+                self.daily_underscoreslash.append(underscore_slash)
+            # underscore_slash = []
+
+            self.anaylse_e(c)
+
+    def anaylse_e(self, c):
+        """ anaylse c """
+        d = c.split("\n")
+        for e in d:
+            try:
+                # build the daily array
+                self.get_routeholder()  # get the route following the chain
+                self.get_movecode(e)  # get the move code following the chain
+                self.get_financeholder()
+                self.get_timeholder()  # look for the time zone following chain
+                self.get_dateholder()  # look for time following date/mv desig
+                self.find_franklin()  # look for items in franklin array to solve for franklin problem
+                self.fix_rodriguez(e)  # solve for rodriguez problem / multiple consecutive mv desigs
+                self.get_dateholder2(e)  # look for date following move desig
+                self.fix_franklin(e)
+                self.find_movedesig(e)
+                self.find_rose(e)
+                self.find_days(e)  # find and record all days on the report
+                if e == "Processed Clock Rings":
                     self.eid_count = 0
+                # when "Employee ID" is read, activate the write loop
+                if e == "Employee ID":
+                    self.eid_label = True
+                    self.writeloop_errorreport()  # write to the klusterbox pdf converter report
+                    self.bind_underscores()  # bind all underscore slash items in one array
+                    self.write_primeinfo()  # write the first part of the csv line
+                    self.add_underscoreslash()  # adds the underscore slash results to the daily array
+                    self.detect_basecounter_error()
+
+                    # set up array for each day in the week
+                    csv_sat = []
+                    csv_sun = []
+                    csv_mon = []
+                    csv_tue = []
+                    csv_wed = []
+                    csv_thr = []
+                    csv_fri = []
+                    csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
+                    # reorder the found days to ensure the correct order
+                    self.found_days = self.pdf_converter_reorder_founddays()
+                    # fix problem with miscounted base times
+                    high_array = []
+                    for bt in self.base_time:
+                        high_array.append(bt[0])
+                    if len(high_array) > 0:
+                        high_num = max(high_array)
+                        comp_array = []
+                        for i in range(high_num + 1):
+                            comp_array.append(i)
+                        del_array = []
+                        for num in comp_array:
+                            if num in high_array:
+                                del_array.append(num)
+                        error_array = comp_array
+                        error_array = [x for x in error_array if x not in del_array]
+                        error_array.reverse()
+                        if len(error_array) > 0:
+                            for error_num in error_array:
+                                for bt in self.base_time:
+                                    if bt[0] > error_num:
+                                        bt[0] -= 1
+                    # load the multi array with array for each day
+                    if len(self.foundday_holder) > 0:
+                        # solve for nguyen problem / day of week occurs prior to "employee id" label
+                        self.found_days += self.foundday_holder
+                        ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+                                        "Friday"]
+                        for day in self.days:  # re order days into correct order
+                            if day not in self.found_days:
+                                ordered_days.remove(day)
+                        self.found_days = ordered_days
+                        # self.foundday_holder = []
+                        self.nguyen_rpt.append(self.lastname)
+                    if len(self.found_days) > 0:  # printe out found days
+                        # reorder the found days to ensure the correct order
+                        self.found_days = self.pdf_converter_reorder_founddays()
+                        if self.gen_error_report:
+                            datainput = "Found days: {}\n".format(self.found_days)
+                            self.kbpc_rpt.write(datainput)
                     if self.gen_error_report:
-                        datainput = "WIDOW HANDLING: Carroll Mod emp id counter: {}\n".format(self.eid_count)
+                        datainput = "proto emp id counter: {}\n".format(self.eid_count)
                         self.kbpc_rpt.write(datainput)
-                elif self.eid_count % 2 != 0:  # handle self.eid counts where there has been a cut off
+                    for i in range(7):
+                        for bt in self.base_time:
+                            if self.found_days[bt[0]] == self.days[i]:
+                                csv_output[i].append(bt)
+                        for da in self.daily_array:
+                            if da[2] == self.pp_days[i].strftime("%m/%d"):
+                                csv_output[i].append(da)
+                    for co in csv_output:  # for each time in the array, write a line
+                        for array in co:
+                            if self.gen_error_report:
+                                datainput = "{}\n".format(array)
+                                self.kbpc_rpt.write(datainput)
+                            # put the data into the csv file
+                            if len(array) == 2:  # if the line comes from base/time data
+                                add_this = [self.found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
+                                whole_line = self.prime_info + add_this
+                                with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
+                                    self.writer = csv.writer(writeFile, dialect='myDialect')
+                                    self.writer.writerow(whole_line)
+                            if len(array) == 10:  # if the line comes from daily array
+                                if array[9] != "__/__":
+                                    end_notes = "(W)Ring Deleted From PC"
+                                else:
+                                    end_notes = ""
+                                add_this = ["000-00", '"{}"'.format(array[1]),
+                                            '"{}"'.format(
+                                                self.pp_days[self.daily_array_days.index(array[2])].strftime(
+                                                    "%d-%b-%y").upper()),
+                                            '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]),
+                                            '"{}"'.format(array[6]),
+                                            '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
+                                            '"{}"'.format(end_notes)]
+                                whole_line = self.prime_info + add_this
+                                with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
+                                    self.writer = csv.writer(writeFile, dialect='myDialect')
+                                    self.writer.writerow(whole_line)
+                    # define csv writer parameters
+                    # csv.register_dialect('myDialect',
+                    #                      delimiter=',',
+                    #                      quotechar="'",
+                    #                      skipinitialspace=True,
+                    #                      lineterminator=",\r"
+                    #                     )
+                    if len(self.jobs) > 0:
+                        for i in range(len(self.jobs)):
+                            base_line = [self.base_temp[i], '"{}"'.format(self.jobs[i].replace("-", "").strip()),
+                                         '"0000"', '"7220-10"',
+                                         '"Q0"', '"{}"'.format(self.level[i]), '"N"',
+                                         '"{}"'.format(self.routes[i]), '""',
+                                         '"0000000"',
+                                         '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
+                            whole_line = self.prime_info + base_line
+                            with open(self.new_file_path, 'a') as writeFile:
+                                self.writer = csv.writer(writeFile, dialect='myDialect')
+                                self.writer.writerow(whole_line)
+                    self.writeloop_init()  # initialize arrays
+                    self.report_eid(e)  # write employee id to error report
+                    self.eid_count = 0  # reset eid count to zero
+
+                self.lookforfi(e)  # look for first initial
+                self.lookforname(e)  # look for the last name
+                self.find_job(e)  # find the job or d/a code - there might be two
+                self.find_temproute(e)  # look for temp route
+                self.find_mainroute(e)  # look for the main route
+                self.trap_route(e)  # set trap to catch route # on the next line
+                self.find_secondlevel(e)  # intercept the second level
+                self.find_level(e)  # intercept the level
+                self.trap_lvl(e)  # set trap to catch Lvl on the next line
+                self.find_underscore(e)  # find the underscore dash string
+                self.find_unprocessed(e)  # after unprocessed rings label, add no new rings to daily array
+                self.find_eid(e)  # find the emp id / it is the first 8 digit number on the page
+            except:
+                self.failed.append(self.lastname)
+                datainput = "READING FAILURE: {}\n".format(e)
+                self.kbpc_rpt.write(datainput)
+
+    def get_routeholder(self):
+        """ get the route following the chain """
+        if re.match(r"[0-9]{6}$", e) and len(self.movecode_holder) != 0:
+            self.movecode_holder.append(e)
+            route_holder = self.movecode_holder
+            if self.unprocessedrings == "":
+                self.daily_array.append(route_holder)
+            else:
+                self.unprocessed_counter += 1  # handle carroll problem
+                self.carroll_rpt.append(self.lastname)  # append carroll report
+
+    def get_movecode(self, e):
+        """ get the move code following the chain """
+        self.movecode_holder = []
+        if len(self.finance_holder) != 0:  # get the move code following the chain
+            if re.match(r"[0-9]{4}\-[0-9]{2}$", e):
+                self.finance_holder.append(e)
+                self.movecode_holder = self.finance_holder
+            # solve for robertson problem / "H/L" is in move code
+            if re.match(r"H/L", e):  # if the move code is a higher level assignment
+                self.finance_holder.append(e)
+                self.finance_holder.append("000000")  # insert zeros for route number
+                if self.unprocessedrings == "":
+                    self.daily_array.append(
+                        self.finance_holder)  # skip getting the route and create append daily array
+                else:
+                    self.unprocessed_counter += 1  # handle carroll problem
+                    self.carroll_rpt.append(self.lastname)  # append carroll report
+
+    def get_financeholder(self):
+        """ get the finance number following the chain """
+        self.finance_holder = []
+        if len(self.timezone_holder) != 0:  # get the finance number following the chain
+            self.timezone_holder.append(e)
+            self.finance_holder = self.timezone_holder
+
+    def get_timeholder(self):
+        """ look for the time zone following chain """
+        self.timezone_holder = []
+        if re.match(r"[A-Z]{2}T", e) and len(
+                self.time_holder) != 0:  # look for the time zone following chain
+            self.time_holder.append(e)
+            self.timezone_holder = self.time_holder
+        # solve for salih problem / missing time zone in ...
+        elif len(self.time_holder) != 0 and self.unprocessedrings != "":
+            self.unprocessed_counter += 1  # unprocessed rings
+            self.salih_rpt.append(self.lastname)
+        self.time_holder = []
+
+    def get_dateholder(self):
+        """ look for time following date/mv desig """
+        if re.match(r" [0-2][0-9]\.[0-9][0-9]$", e) and len(self.date_holder) != 0:
+            self.date_holder.append(e)
+            self.time_holder = self.date_holder
+
+    def find_franklin(self):
+        """ look for items in franklin array to solve for franklin problem """
+        if len(self.franklin_array) > 0 and re.match(r"[0-1][0-9]\/[0-3][0-9]$",
+                                                     e):  # if franklin array and date
+            frank = self.franklin_array.pop(0)  # pop out the earliest mv desig
+            self.mv_holder = [self.eid, frank]
+
+    def fix_rodriguez(self, e):
+        """ solve for rodriguez problem / multiple consecutive mv desigs """
+        if len(self.franklin_array) > 0:
+            if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
+                                                      e) or e in self.mv_desigs:  # look for move desig
+                self.franklin_array.append(e)
+                self.rod_rpt.append(self.lastname)
+
+    def get_dateholder2(self, e):
+        """ look for date following move desig """
+        self.date_holder = []
+        if re.match(r"[0-1][0-9]\/[0-3][0-9]$", e) and len(
+                self.mv_holder) != 0:  # look for date following move desig
+            self.mv_holder.append(e)
+            self.date_holder = self.mv_holder
+
+    def fix_franklin(self, e):
+        """ solve for franklin problem: two mv desigs appear consecutively """
+        if len(self.mv_holder) > 0:
+            if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
+                                                      e) or e in self.mv_desigs:  # look for move desig
+                self.franklin_array.append(self.mv_holder[1])
+                self.franklin_array.append(e)
+                self.frank_rpt.append(self.lastname)
+
+    def find_movedesig(self, e):
+        """ look for move desig and add to mv_holder """
+        self.mv_holder = []
+        if len(self.franklin_array) == 0:
+            if re.match(r"0[0-9]{4}$", e) or re.match(r"0[0-9]{2}$",
+                                                      e) or e in self.mv_desigs:  # look for move desig
+                self.mv_holder.append(self.eid)
+                self.mv_holder.append(e)  # place in a holder and check the next line for a date
+
+    def find_rose(self, e):
+        """ solve for rose problem: mv desig and date appearing on same line """
+        if re.match(r"0[0-9]{4}\s[0-2][0-9]\/[0-9][0-9]$", e):
+            rose = e.split(" ")
+            self.mv_holder.append(self.eid)  # add the emp id to the daily array
+            self.mv_holder.append(rose[0])  # add the mv desig to the daily array
+            self.mv_holder.append(rose[1])  # add the date to the mv desig array
+            self.date_holder = self.mv_holder  # transfer array items to date holder
+            self.rose_rpt.append(self.lastname)
+
+    def find_days(self, e):
+        """ find and record all days on the report """
+        if e in self.days:
+            if self.eid_label:
+                self.found_days.append(e)
+            if not self.eid_label:
+                self.foundday_holder.append(e)
+
+    # the write loop
+
+    def write_primeinfo(self):
+        """ write to csv file. Since the first columns of the csv line are the same for distinct carriers,
+         create the first part of the line. This is called prime info"""
+        self.prime_info = [self.yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
+                      '"{}"'.format("0000"), '"{}"'.format(self.eid), '"{}"'.format(self.lastname),
+                      '"{}"'.format(self.fi[:1]),
+                      '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"',
+                      '"0"']
+
+    def add_underscoreslash(self):
+        """ adds the underscore slash results to the daily array """
+        count = 0
+        for array in self.daily_array:
+            array.append(self.underscore_slash_result[count])
+            array.append(self.underscore_slash_result[count + 1])
+            count += 2
+
+    def detect_basecounter_error(self):
+        """ finds basecounter errors and writes the error to a report.  """
+        if self.base_chg + 1 != len(self.found_days):  # add to basecounter error array
+            to_add = (self.lastname, self.base_chg, len(self.found_days))
+            if len(self.found_days) > 0:
+                self.basecounter_error.append(to_add)
+
+    def bind_underscores(self):
+        """ bind all underscore slash items in one array """
+        if len(self.daily_underscoreslash) > 0:
+            self.underscore_slash_result = sum(self.daily_underscoreslash, [])
+
+    def writeloop_errorreport(self):
+        """ write to the klusterbox pdf converter report """
+        if self.gen_error_report:
+            if len(self.jobs) > 0:
+                datainput = "Jobs: {}\n".format(self.jobs)
+                self.kbpc_rpt.write(datainput)
+            if len(self.routes) > 0:
+                datainput = "Routes: {}\n".format(self.routes)
+                self.kbpc_rpt.write(datainput)
+            if len(self.level) > 0:
+                datainput = "Levels: {}\n".format(self.level)
+                self.kbpc_rpt.write(datainput)
+            if len(self.base_time) > 0:
+                self.kbpc_rpt.write("Base / Times:")
+                for bt in self.base_time:
+                    datainput = "{}\n".format(bt)
+                    self.kbpc_rpt.write(datainput)
+
+    def writeloop_init(self):
+        """ initialize arrays """
+        self.found_days = []
+        self.lookfortimes = False
+        self.base_time = []
+        self.eid = ""
+        self.base_chg = 0
+        self.base_counter = 0
+        self.daily_array = []
+        self.daily_underscoreslash = []
+        self.unprocessed_counter = 0
+        self.jobs = []
+        self.level = []
+
+    def report_eid(self, e):
+        """ write employee id to error report """
+        if self.gen_error_report:
+            datainput = "{}\n".format(e)
+            self.kbpc_rpt.write(datainput)
+
+    def lookforfi(self, e):
+        """ look for first initial """
+        if self.lookforfi:
+            if re.fullmatch("[A-Z]\s[A-Z]", e) or re.fullmatch("([A-Z])", e):
+                if self.gen_error_report:
+                    datainput = "FI: {}\n".format(e)
+                    self.kbpc_rpt.write(datainput)
+                self.fi = e
+                self.lookforfi = False
+
+    def lookforname(self, e):
+        """ look for the last name """
+        if self.lookforname:  # look for the name
+            if re.fullmatch(r"([A-Z]+)", e) \
+                    or re.fullmatch(r"([A-Z]+.[A-Z]+)", e) \
+                    or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+)", e) \
+                    or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e) \
+                    or re.fullmatch(r"([A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+.[A-Z]+)", e):
+                self.lastname = e.replace("'", " ")
+                if self.gen_error_report:
+                    datainput = "Name: {}\n".format(e)
+                    self.kbpc_rpt.write(datainput)
+                self.lookforname = False
+                self.lookforfi = True
+
+    def find_job(self, e):
+        """ find the job or d/a code - there might be two """
+        if re.match(r"\s[0-9]{2}\-[0-9]$", e):
+            self.jobs.append(e)
+
+    def find_temproute(self, e):
+        """ look for temp route """
+        if self.lookfor2route:
+            if re.match(r"[0-9]{6}$", e):
+                self.routes.append(e)  # add route to routes array
+            self.lookfor2route = False
+
+    def find_mainroute(self, e):
+        """ look for main route """
+        if self.lookforroute:
+            if re.match(r"[0-9]{6}$", e):  #
+                self.routes.append(e)  # add route to routes array
+                self.lookfor2route = True
+            self.lookforroute = False
+
+    def find_secondlevel(self, e):
+        """ intercept the second level """
+        if self.lookfor2level:
+            if re.match(r"[0-9]{2}$", e):
+                self.level.append(e)
+            self.lookfor2level = False
+
+    def trap_route(self, e):
+        """ set trap to catch route # on the next line """
+        if e == "Route #":
+            self.lookforroute = True
+
+    def find_level(self, e):
+        """ intercept the level """
+        if self.lookforlevel:
+            if re.match(r"[0-9]{2}$", e):
+                self.level.append(e)
+                self.lookfor2level = True  # set trap to catch the second level next line
+            self.lookforlevel = False
+
+    def trap_lvl(self, e):
+        """ set trap to catch Lvl on the next line """
+        if e == "Lvl":
+            self.lookforlevel = True
+
+    def find_underscore(self, e):
+        """ find the underscore dash string """
+        if self.eid != "" and self.new_page == False:
+            if re.match(r"[0-9]{8}", e):
+                self.eid_count += 1
+            if re.match(r"xxx\-xx\-[0-9]{4}", e):
+                self.eid_count += 1
+            if re.match(r"XXX\-XX\-[0-9]{4}", e):
+                self.eid_count += 1
+            if e == "___-___-____":
+                self.eid_count += 1
+            # solve for rose problem: time object is fused to emp id object - just increment the eid counter
+            if re.match(r"\s[0-9]{2}\.[0-9]{10}", e) \
+                    or re.match(r"__.__[0-9]{8}", e) \
+                    or re.match(r"__._____-___-____", e):
+                self.eid_count += 1
+                self.rose_rpt.append(self.lastname)
+
+    def find_unprocessed(self, e):
+        """ solve for carroll problem/ unprocessed rings do not have underscore slash counterparts """
+        if e == "Un-Processed Rings":  # after unprocessed rings label, add no new rings to daily array
+            self.unprocessedrings = self.eid
+
+    def find_eid(self, e):
+        """ find the emp id / it is the first 8 digit number on the page """
+        if re.match(r"[0-9]{8}", e):
+            if self.eid_count == 0:
+                self.eid = e
+                if self.gen_error_report:
+                    datainput = "Employee ID: {}\n".format(e)
+                    self.kbpc_rpt.write(datainput)
+                self.lookforname = True
+                if self.eid != self.unprocessedrings:  # set unprocessedrings and new_page variables
+                    self.unprocessedrings = ""
+                    self.new_page = False
+                else:
+                    self.new_page = True
+                    # increment the self.eid counter to stop new self.eid from being set
                     self.eid_count += 1
                     if self.gen_error_report:
-                        datainput = "CUT OFF CONTROL: Carroll Mod emp id counter: {}\n".format(self.eid_count)
-                        self.kbpc_rpt.write(datainput)
-            else:
-                self.eid_count -= 1
-            self.eid_count -= self.unprocessed_counter * 2
+                        self.kbpc_rpt.write("NEW PAGE!!!\n")
 
-            if self.unprocessed_counter > 0:
-                if self.gen_error_report:
-                    datainput = "Unprocessed Rings: {}\n".format(self.unprocessed_counter)
-                    self.kbpc_rpt.write(datainput)
-                if len(self.daily_array) == self.eid_count / 2:
-                    pass
-                # Solve for Unruh error / when a underscore dash is missing after unprocessed rings
-                elif len(self.daily_array) == max((self.eid_count + 2) / 2, 0):
-                    if self.gen_error_report:
-                        datainput = "Unruh Mod emp id counter: {}\n".format(self.eid_count + 2)
-                        self.kbpc_rpt.write(datainput)
-                        self.kbpc_rpt.write("UNRUH PROBLEM DETECTED!!!")
-                    self.unruh_rpt.append(self.lastname)
-                else:
-                    if self.gen_error_report:
-                        self.kbpc_rpt.write(
-                            "FRANKLIN ERROR DETECTED!!! ALERT! (Unprocessed counter)!\n")
-                    self.unresolved.append(self.lastname)
-            else:
-                if len(self.daily_array) != max(self.eid_count / 2, 0):
-                    if self.gen_error_report:
-                        self.kbpc_rpt.write("FRANKLIN ERROR DETECTED!!! ALERT! ALERT!\n")
-                    self.unresolved.append(self.lastname)
-            if self.base_chg + 1 != len(self.found_days):  # add to basecounter error array
-                to_add = (self.lastname, self.base_chg, len(self.found_days))
-                if len(self.found_days) > 0:
-                    self.basecounter_error.append(to_add)
-            if self.gen_error_report:
-                datainput = "daily array lenght: {}\n".format(len(self.daily_array))
-                self.kbpc_rpt.write(datainput)
-            # initialize arrays
-            self.found_days = []
-            self.foundday_holder = []
-            self.base_time = []
-            self.eid = ""
-            self.eid_label = False
-            # perez_switch = False
-            self.base_counter = 0
-            self.base_chg = 0
-            self.daily_array = []
-            self.daily_underscoreslash = []
-            self.unprocessed_counter = 0
-            self.jobs = []
-            self.routes = []
-            self.level = []
-            self.franklin_array = []
-            if self.gen_error_report:
-                datainput = "emp id counter: {}\n".format(max(self.eid_count, 0))
-                self.kbpc_rpt.write(datainput)
-            self.pb.move_count(self.pbi)
-            self.pbi += 1
+    def end_loop(self):
+        """ pass """
+        pass
+
+    def write_a(self):
+        """ use the collected info to make the csv and reports. """
+        self.write_errorreport()
+        self.write_baseline()
+        self.reorder_days()
+        self.handle_underscoreslash()
+        self.carroll_handler()
+        self.problem_handling()
+        self.increment_basechg()
+        self.dailyarraylenght()
+        self.reinitialize()
+        self.pbi += 1
         # end loop
-        self.endtime = time.time()
+
+    def write_errorreport(self):
+        """ write error report. """
+        if self.gen_error_report:  # write to error report
+            datainput = "Station: {}\n".format(station)
+            self.kbpc_rpt.write(datainput)
+            datainput = "Pay Period: {}\n".format(self.yyppwk)
+            self.kbpc_rpt.write(datainput)  # show the pay period
+            if len(self.jobs) > 0:
+                datainput = "Jobs: {}\n".format(self.jobs)
+                self.kbpc_rpt.write(datainput)
+            if len(self.routes) > 0:
+                datainput = "Routes: {}\n".format(self.routes)
+                self.kbpc_rpt.write(datainput)
+            if len(self.level) > 0:
+                datainput = "Levels: {}\n".format(self.level)
+                self.kbpc_rpt.write(datainput)
+
+    def write_baseline(self):
+        """ write the base line """
+        # define csv writer parameters
+        csv.register_dialect('myDialect',
+                             delimiter=',',
+                             quotechar="'",
+                             skipinitialspace=True,
+                             lineterminator=",\r"
+                             )
+        # write to csv file
+        prime_info = [self.yyppwk.replace("-", ""), '"{}"'.format("000000"), '"{}"'.format(station),
+                      '"{}"'.format("0000"), '"{}"'.format(self.eid), '"{}"'.format(self.lastname),
+                      '"{}"'.format(self.fi[:1]),
+                      '"_"', '"010/0000"', '"N"', '"N"', '"N"', '"0"', '"0"', '"0"', '"0"', '"0"', '"0"']
+        if len(self.jobs) > 0:
+            # if the route count is less than the jobs count, fill the route count
+            self.routes = PdfConverterFix(self.routes).route_filler(len(self.jobs))
+            for i in range(len(self.jobs)):
+                base_line = [self.base_temp[i], '"{}"'.format(self.jobs[i].replace("-", "").strip()),
+                             '"0000"', '"7220-10"',
+                             '"Q0"', '"{}"'.format(self.level[i]), '"N"', '"{}"'.format(self.routes[i]),
+                             '""', '"0000000"',
+                             '"0000000"', '"0"', '"0"', '"0"', '"N"', '"N"', '"N"', '"MDT"', '"N"']
+                whole_line = prime_info + base_line
+                with open(self.new_file_path, 'a') as writeFile:
+                    self.writer = csv.writer(writeFile, dialect='myDialect')
+                    self.writer.writerow(whole_line)
+
+    def reorder_days(self):
+        """ make sure the days are in the correct order"""
+        if len(self.foundday_holder) > 0:
+            # solve for nguyen problem / day of week occurs prior to "employee id" label
+            self.found_days += self.foundday_holder
+            ordered_days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            for day in self.days:  # re order days into correct order
+                if day not in self.found_days:
+                    ordered_days.remove(day)
+            self.found_days = ordered_days
+            # self.foundday_holder = []
+            self.nguyen_rpt.append(self.lastname)
+        if len(self.found_days) > 0:  # printe out found days
+            # reorder the found days to ensure the correct order
+            self.found_days = self.pdf_converter_reorder_founddays()
+            if self.gen_error_report:
+                datainput = "Found days: {}\n".format(self.found_days)
+                self.kbpc_rpt.write(datainput)
+        if self.gen_error_report:
+            datainput = "proto emp id counter: {}\n".format(self.eid_count)
+            self.kbpc_rpt.write(datainput)
+
+    def handle_underscoreslash(self):
+        """ handles the underscore slashes. """
+        if len(self.daily_underscoreslash) > 0:  # bind all underscore slash items in one array
+            self.underscore_slash_result = sum(self.daily_underscoreslash, [])
+        if self.mcgrath_indicator and len(self.underscore_slash_result) > 0:  # solve for mcgrath indicator
+            self.mcgrath_carryover.append(self.underscore_slash_result[0])  # add underscore slash to carryover
+            self.mcgrath_indicator = False  # reset the indicator
+            if self.gen_error_report:
+                datainput = "MCGRATH CARRYOVER: {}\n".format(self.mcgrath_carryover)
+                self.kbpc_rpt.write(datainput)  # printe out a notice.
+            del self.underscore_slash_result[0]  # delete the ophan underscore slash
+
+        count = 0
+        for array in self.daily_array:
+            array.append(self.underscore_slash_result[count])
+            try:
+                array.append(self.underscore_slash_result[count + 1])
+            except:  # solve for the mcgrath problem
+                self.mcgrath_carryover = array
+                self.mcgrath_indicator = True
+                self.mcgrath_rpt.append(self.lastname)
+                if self.gen_error_report:
+                    self.kbpc_rpt.write("MCGRATH ERROR DETECTED!!!\n")
+            # if self.mcgrath_indicator == False:
+            count += 2
+        # if there is a carryover, remove the daily array item from the list
+        if self.mcgrath_carryover in self.daily_array:
+            self.daily_array.remove(self.mcgrath_carryover)
+        if not self.mcgrath_indicator and self.mcgrath_carryover != "":  # if there is a carryover to be added
+            self.daily_array.insert(0, self.mcgrath_carryover)  # put the carryover at the front of the daily array
+            self.mcgrath_carryover = ""  # reset the carryover
+            self.eid_count += 1  # increment the emp id counter
+
+        # set up array for each day in the week
+        csv_sat = []
+        csv_sun = []
+        csv_mon = []
+        csv_tue = []
+        csv_wed = []
+        csv_thr = []
+        csv_fri = []
+        csv_output = [csv_sat, csv_sun, csv_mon, csv_tue, csv_wed, csv_thr, csv_fri]
+        # reorder the found days to ensure the correct order
+        self.found_days = self.pdf_converter_reorder_founddays()
+        # fix problem with miscounted base times
+        high_array = []
+        for bt in self.base_time:
+            high_array.append(bt[0])
+        if len(high_array) > 0:
+            high_num = max(high_array)
+            comp_array = []
+            for i in range(high_num + 1):
+                comp_array.append(i)
+            del_array = []
+            for num in comp_array:
+                if num in high_array:
+                    del_array.append(num)
+            error_array = comp_array
+            error_array = [x for x in error_array if x not in del_array]
+            error_array.reverse()
+            if len(error_array) > 0:
+                for error_num in error_array:
+                    for bt in self.base_time:
+                        if bt[0] > error_num:
+                            bt[0] -= 1
+
+        # load the multi array with array for each day
+        for i in range(7):
+            for bt in self.base_time:
+                if self.found_days[bt[0]] == self.days[i]:
+                    csv_output[i].append(bt)
+            for da in self.daily_array:
+                if da[2] == self.pp_days[i].strftime("%m/%d"):
+                    csv_output[i].append(da)
+        for co in csv_output:  # for each time in the array, printe a line
+            for array in co:
+                if self.gen_error_report:
+                    datainput = "{}\n".format(str(array))
+                    self.kbpc_rpt.write(datainput)
+                # put the data into the csv file
+                if len(array) == 2:  # if the line comes from base/time data
+                    add_this = [self.found_days[int(array[0])], '"_0-00"', '"{}"'.format(array[1])]
+                    whole_line = self.prime_info + add_this
+                    with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
+                        self.writer = csv.writer(writeFile, dialect='myDialect')
+                        self.writer.writerow(whole_line)
+                if len(array) == 10:  # if the line comes from daily array
+                    if array[9] != "__/__":
+                        end_notes = "(W)Ring Deleted From PC"
+                    else:
+                        end_notes = ""
+                    add_this = ["000-00", '"{}"'.format(array[1]),
+                                '"{}"'.format(self.pp_days[self.daily_array_days.index(array[2])].
+                                              strftime("%d-%b-%y").upper()),
+                                '"{}"'.format(array[3].strip()), '"{}"'.format(array[5]), '"{}"'.format(array[6]),
+                                '"{}"'.format(array[7]), '""', '""', '""', '"0"', '""', '""', '"0"',
+                                '"{}"'.format(end_notes)]
+                    whole_line = self.prime_info + add_this
+                    with open(self.new_file_path, 'a') as writeFile:  # add the line to the csv file
+                        self.writer = csv.writer(writeFile, dialect='myDialect')
+                        self.writer.writerow(whole_line)
+
+    def carroll_handler(self):
+        """ Handle Carroll problems """
+        if not self.mcgrath_indicator:
+            if self.eid_count == 1:  # handle widows
+                self.eid_count = 0
+                if self.gen_error_report:
+                    datainput = "WIDOW HANDLING: Carroll Mod emp id counter: {}\n".format(self.eid_count)
+                    self.kbpc_rpt.write(datainput)
+            elif self.eid_count % 2 != 0:  # handle self.eid counts where there has been a cut off
+                self.eid_count += 1
+                if self.gen_error_report:
+                    datainput = "CUT OFF CONTROL: Carroll Mod emp id counter: {}\n".format(self.eid_count)
+                    self.kbpc_rpt.write(datainput)
+        else:
+            self.eid_count -= 1
+        self.eid_count -= self.unprocessed_counter * 2
+
+    def problem_handling(self):
+        """
+        detect Franklin Problems: Consecutive MV Desigs
+        detect Unruh Problem: Underscore dash cut off in unprecessed rings.
+        """
+        if self.unprocessed_counter > 0:
+            if self.gen_error_report:
+                datainput = "Unprocessed Rings: {}\n".format(self.unprocessed_counter)
+                self.kbpc_rpt.write(datainput)
+            if len(self.daily_array) == self.eid_count / 2:
+                pass
+            # Solve for Unruh error / when a underscore dash is missing after unprocessed rings
+            elif len(self.daily_array) == max((self.eid_count + 2) / 2, 0):
+                if self.gen_error_report:
+                    datainput = "Unruh Mod emp id counter: {}\n".format(self.eid_count + 2)
+                    self.kbpc_rpt.write(datainput)
+                    self.kbpc_rpt.write("UNRUH PROBLEM DETECTED!!!")
+                self.unruh_rpt.append(self.lastname)
+            else:
+                if self.gen_error_report:
+                    self.kbpc_rpt.write(
+                        "FRANKLIN ERROR DETECTED!!! ALERT! (Unprocessed counter)!\n")
+                self.unresolved.append(self.lastname)
+        else:
+            if len(self.daily_array) != max(self.eid_count / 2, 0):
+                if self.gen_error_report:
+                    self.kbpc_rpt.write("FRANKLIN ERROR DETECTED!!! ALERT! ALERT!\n")
+                self.unresolved.append(self.lastname)
+
+    def increment_basechg(self):
+        """ increment base change """
+        if self.base_chg + 1 != len(self.found_days):  # add to basecounter error array
+            to_add = (self.lastname, self.base_chg, len(self.found_days))
+            if len(self.found_days) > 0:
+                self.basecounter_error.append(to_add)
+
+    def dailyarraylenght(self):
+        """ write daily array lenght to report"""
+        if self.gen_error_report:
+            datainput = "daily array lenght: {}\n".format(len(self.daily_array))
+            self.kbpc_rpt.write(datainput)
+
+    def reinitialize(self):
+        """ initialize arrays """
+        self.found_days = []
+        self.foundday_holder = []
+        self.base_time = []
+        self.eid = ""
+        self.eid_label = False
+        # perez_switch = False
+        self.base_counter = 0
+        self.base_chg = 0
+        self.daily_array = []
+        self.daily_underscoreslash = []
+        self.unprocessed_counter = 0
+        self.jobs = []
+        self.routes = []
+        self.level = []
+        self.franklin_array = []
+        if self.gen_error_report:
+            datainput = "emp id counter: {}\n".format(max(self.eid_count, 0))
+            self.kbpc_rpt.write(datainput)
+        self.pb.move_count(self.pbi)
 
     def pdf_converter_reorder_founddays(self):
         """ makes sure the days are in the proper order. """
