@@ -236,6 +236,8 @@ class NewWindow:
 
 class Globals:
     """ this class sets and resets the project variables called projvars which can be found in projvar.py """
+    def __init__(self):
+        pass
 
     @staticmethod
     def set(s_year, s_mo, s_day, i_range, station, frame):
@@ -268,7 +270,7 @@ class Globals:
         d = datetime(int(projvar.invran_year), int(projvar.invran_month), int(projvar.invran_day))
         # set the projvar.invran_date_week variable
         projvar.invran_date_week.append(d)
-        for i in range(6):
+        for _ in range(6):
             d += timedelta(days=1)
             projvar.invran_date_week.append(d)
         # define color sequence tuple
@@ -1243,7 +1245,7 @@ class Rings:
     def get_for_week(self):
         """ get the rings record for the week. """
         sat_range = SaturdayInRange(self.date).get()
-        for i in range(7):
+        for _ in range(7):
             ring = self.get(sat_range)
             if not ring:  # if the results are empty
                 self.ring_recs.append(ring)  # return empty list
@@ -1298,7 +1300,7 @@ class Moves:
         self.moves = moves
         move_place = 0
         move_set = 0
-        for move in self.moves:
+        for _ in self.moves:
             move_place += 1
             if move_place == 3:
                 move_place = 0

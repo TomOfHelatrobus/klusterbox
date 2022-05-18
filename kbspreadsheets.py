@@ -121,7 +121,7 @@ class ImpManSpreadsheet:
             self.startdate = projvar.invran_date_week[0]
             self.enddate = projvar.invran_date_week[6]
             self.dates = []
-            for i in range(7):  # create an array with all the days in the weekly investigation range
+            for _ in range(7):  # create an array with all the days in the weekly investigation range
                 self.dates.append(date)
                 date += timedelta(days=1)
 
@@ -1000,7 +1000,7 @@ class OvermaxSpreadsheet:
         date = projvar.invran_date_week[0]
         self.startdate = projvar.invran_date_week[0]
         self.enddate = projvar.invran_date_week[6]
-        for i in range(7):
+        for _ in range(7):
             self.dates.append(date)
             date += timedelta(days=1)
 
@@ -2090,7 +2090,7 @@ class ImpManSpreadsheet4:
             self.startdate = projvar.invran_date_week[0]
             self.enddate = projvar.invran_date_week[6]
             self.dates = []
-            for i in range(7):  # create an array with all the days in the weekly investigation range
+            for _ in range(7):  # create an array with all the days in the weekly investigation range
                 self.dates.append(date)
                 date += timedelta(days=1)
 
@@ -3102,7 +3102,7 @@ class OffbidSpreadsheet:
             self.startdate = projvar.invran_date_week[0]
             self.enddate = projvar.invran_date_week[6]
             self.dates = []
-            for i in range(7):  # create an array with all the days in the weekly investigation range
+            for _ in range(7):  # create an array with all the days in the weekly investigation range
                 self.dates.append(date)
                 date += timedelta(days=1)
 
