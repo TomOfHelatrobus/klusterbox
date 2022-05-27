@@ -997,7 +997,6 @@ class PdfConverter:
                             self.parent.csv_output[i].append(bt)
                     except IndexError:
                         # this handles an error where the found days can not be detected by the normal means
-                        print("It's an error!: ", self.parent.lastname)
                         self.alt_founddays()  # get the found days by alternate means.
                         self.parent.denton_rpt.append(self.parent.lastname)
                         if self.parent.found_days[bt[0]] == self.parent.days[i]:

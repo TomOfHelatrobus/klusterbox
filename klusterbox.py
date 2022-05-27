@@ -25,7 +25,6 @@ from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingC
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
 from kbcsv_reader import MaxHr, ee_skimmer
-# from kbpdfhandling import pdf_converter
 from kbpdfhandling import PdfConverter
 from kbenterrings import EnterRings
 from kbinformalc import InformalC

@@ -22,6 +22,10 @@ class CsvRepair:
         self.a_file = None
         self.baseid = []  # an array of employee ids where Base line has been read
         self.tempid = []  # an array of employee ids where Temp line has been read
+        self.eid = ""  # the employee id, fourth column in the row.
+        self.build_i = 0  # build index - tracks the number of lines written. on 3 get first employee id.
+        self.write_it = True  # if True, will write rows instead of caching them for further analysis
+        self.cache = []  # a cache of rows saved for analysis
 
     def run(self, file_path):
         """ this runs the classes when called. """
@@ -64,6 +68,7 @@ class CsvRepair:
         with open(self.new_filepath, 'a') as f:
             writer = csv.writer(f, dialect='myDialect')
             writer.writerow(line)
+        self.build_i += 1  # keep track of how many lines have been written to the new csv file
 
     def csvrowcount(self):
         """ gets the number of rows from the csv file """
@@ -77,7 +82,7 @@ class CsvRepair:
         pb.max_count(rowcount)  # set length of progress bar
         pb.start_up()
         firstline = True
-        i = 0
+        i = 0  # index - used for undating the process bar
         for line in self.a_file:
             pb.move_count(i)  # increment progress bar
             update = "row: " + str(i) + "/" + str(rowcount)  # build string for status message update
@@ -95,8 +100,56 @@ class CsvRepair:
             elif self.testforduptemp(line):  # returns True if redundant Temp lines are found
                 pass
             else:
-                self.build_csv(line)  # writes lines to the csv file
+                self.get_firsteid(line)  # get the first employee id number from the third line - column 4
+                self.checkforneweid(line)  # check if the row has a new employee id.
+                if self.write_it:
+                    self.build_csv(line)  # writes lines to the csv file
+                else:
+                    self.cache_rows(line)
         pb.stop()  # stop and destroy the progress bar
+
+    def get_firsteid(self, line):
+        """
+        get_firsteid, checkforneweid, checkforbase, cache_rows and cache_analysis all work together to
+        repair the Denton Problem which can be created in the pdf converter. This happens when the csv file
+        is generated in a such a way that the Base and Temp lines occur in the middle of the times and
+        rings. these methods work to indentify when base is not the first row, collects all lines for that
+        carrier, then re arranges them in proper order.
+
+        get the first employee id number from the third line - column 4 """
+        if self.build_i == 2:  # this is the first row of carrier information
+            self.eid = line[4]
+
+    def checkforneweid(self, line):
+        """ check for a new employee id """
+        if self.eid != line[4]:
+            if self.cache:  # if there is something in the cache
+                self.cache_analysis()
+            # get the base and temp lines of the carrier with the new employee id.
+            self.checkforbase(line)
+        self.eid = line[4]
+
+    def checkforbase(self, line):
+        """ checks that the first line of a carrier's information is a base line """
+        if line[18] not in ("Base", ):
+            self.write_it = False
+
+    def cache_rows(self, line):
+        """ cache rows if the base line is not the first line. """
+        self.cache.append(line)
+
+    def cache_analysis(self):
+        """ go through the cache to put it in the correct order """
+        basetemp = ("Base", "Temp")
+        for type_ in basetemp:  # look for "base" first, then "temp" next
+            for row in self.cache:
+                if row[18] == type_:  # if base/temp are found
+                    self.build_csv(row)  # write the line
+        for row in self.cache:  # write the remaining rows, omitting base/temp rows.
+            if row[18] not in basetemp:
+                self.build_csv(row)
+        self.cache = []  # empty out the cache
+        self.write_it = True  # reset the write_it variable so the cache is not appended.
 
     @staticmethod
     def testforblank(line):  # returns True if the line is blank
