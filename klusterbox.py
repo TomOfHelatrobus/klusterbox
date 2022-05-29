@@ -52,11 +52,11 @@ from PIL import ImageTk, Image  # Pillow Library
 from openpyxl import load_workbook
 
 __author__ = "Thomas Weeks"
-__author_email__ = "tomandsusan4ever@msn.com"
+__author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
 version = "5.03"  # version number must be convertable to a float and should increase for Fixes()
-release_date = "undetermined"  # format is Jan 1, 2022
+release_date = "May 30, 2022"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -7618,10 +7618,7 @@ class AboutKlusterbox:
         r += 1
         Label(self.win.body, text="Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
-        Label(self.win.body, text="    tomandsusan4ever@msn.com", anchor=W) \
-            .grid(row=r, column=0, sticky="w", columnspan=6)
-        r += 1
-        Label(self.win.body, text="    (please put \"klusterbox\" in the subject line)", anchor=W) \
+        Label(self.win.body, text="    tomweeks@klusterbox.com", anchor=W) \
             .grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
         Label(self.win.body, text="I've found that some emails get filtered out by the junk folder so", anchor=W) \

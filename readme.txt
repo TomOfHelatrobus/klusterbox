@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 5.02		
-released: Apr 30, 2022
+most recent version: 5.03		
+released: May 30, 2022
 
 Caution: 
 
@@ -29,7 +29,7 @@ Contact:
 
 Feed back and comments are welcome. My contact information is:
 Thomas Weeks
-tomandsusan4ever@msn.com
+tomweeks@klusterbox.com
 720.280.0415 - call or text.
 message me on facebook: facebook.com/thomas.weeks.artist 
 

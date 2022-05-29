@@ -374,6 +374,8 @@ class CheatSheet:
     This class generates a cheatsheet which allows the user to view a generated document showing codes they need to
     read TACS reports.
     """
+    def __init__(self):
+        pass
 
     @staticmethod
     def tacs_cheatsheet():

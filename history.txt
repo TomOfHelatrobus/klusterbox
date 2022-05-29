@@ -58,4 +58,7 @@ Version 5.01 (04/17/2022)
 
 Version 5.02 (04/30/2022)
 	This is a fix for two bugs. 1. A bug in the enter rings screen when the investigation range was set to day which would not input data into the database when the Apply/Submit button was pressed. 2. A bug in Speedsheets which would not input the very last row of any speedsheet. Both bugs were fixed with 30 lines of code added or altered. 
+
+Version 5.03 (05/30/2022)
+	In this version I overhauled and improved the pdf converter. The PDF Converter will now convert employee everything reports containing more than one week and output multiple csv files when needed. Prior to the overhaul, the code was mostly one 1000 line long function. I broke up the code into classes and methods and conformed to PEP 8 standards. I implemented error handling to keep the program from crashing with try/except statements. I also switched my email address to tomweeks@klusterbox.com
  
