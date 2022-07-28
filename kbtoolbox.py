@@ -831,6 +831,8 @@ class BuildPath:
     def __init__(self):
         self.delimiter = ""
         self.newpath = ""
+        self.path = ""
+        self.extension = ""
 
     def get_delimiter(self):
         """ returns / for mac and \\ for windows"""
@@ -849,6 +851,37 @@ class BuildPath:
             if i < len(path_array)-1:
                 self.newpath += self.delimiter
         return self.newpath
+
+    @staticmethod
+    def location_dbase():
+        """ provides the location of the program """
+        if sys.platform == "darwin":
+            if projvar.platform == "macapp":
+                return os.path.expanduser("~") + '/Documents/.klusterbox/' + 'mandates.sqlite'
+            if projvar.platform == "py":
+                return os.getcwd() + '/kb_sub/mandates.sqlite'
+        else:
+            if projvar.platform == "winapp":
+                return os.path.expanduser("~") + '\Documents\.klusterbox\\' + 'mandates.sqlite'
+            else:
+                return os.getcwd() + '\kb_sub\mandates.sqlite'
+
+    def add_extension(self, path, ext):
+        """ returns a path with the extension.
+        when passing the extension (ext), do not add a '.' to the beginning of the extension. """
+        self.extension = ext
+        self.path = path
+        path_header = os.path.split(self.path)[0]
+        file_name = os.path.split(self.path)[1]  # split the path/file name
+        file_array = file_name.split(".")  # spliting by ".", create an array from the file name
+        if len(file_array) > 1:  # if there is an extension
+            if file_array[-1] != self.extension:
+                file_name = file_name + "." + self.extension
+            else:
+                pass
+        else:
+            file_name = file_name + "." + self.extension
+        return path_header + "/" + file_name
 
 
 class SaturdayInRange:

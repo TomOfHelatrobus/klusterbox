@@ -172,7 +172,7 @@ ___ ___  2. (in explorer) make sure the python source files are in the kb_instal
 	___ ___  14. kbpdfhandler.py
 
 ___ ___  3. (in explorer) make sure the spec file is in the kb_install folder too:
-	___ ___  1. klusterwin.spec
+	___ ___  1. klusterwin.spec or (klusterwin32.spec for 32 bit)
 
 	leave the kb_sub folder alone if it is in there.
 

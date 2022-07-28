@@ -61,4 +61,8 @@ Version 5.02 (04/30/2022)
 
 Version 5.03 (05/30/2022)
 	In this version I overhauled and improved the pdf converter. The PDF Converter will now convert employee everything reports containing more than one week and output multiple csv files when needed. Prior to the overhaul, the code was mostly one 1000 line long function. I broke up the code into classes and methods and conformed to PEP 8 standards. I implemented error handling to keep the program from crashing with try/except statements. I also switched my email address to tomweeks@klusterbox.com
+
+Version 5.04 (07/28/2022)
+	This is a fix for a error which causes Klusterbox to crash if a certain condition is present when the  Pdf Converter is run (a variable was improperly named). 
+	I added "Open Database Location" and "Back up your database" functionality to the Database Maintenance Tools. This will make it easier for users to open/ save/ move the database. 
  

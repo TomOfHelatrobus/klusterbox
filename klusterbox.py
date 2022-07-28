@@ -18,7 +18,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
     find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
-    RouteChecker
+    RouteChecker, BuildPath
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -55,8 +55,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = "5.03"  # version number must be convertable to a float and should increase for Fixes()
-release_date = "May 30, 2022"  # format is Jan 1, 2022
+version = "5.04"  # version number must be convertable to a float and should increase for Fixes()
+release_date = "July 28, 2022"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -1467,6 +1467,7 @@ class DatabaseAdmin:
     """
     def __init__(self):
         self.win = None
+        self.dbase_location = None
 
     def run(self, frame):
         """ a screen for controlling database maintenance. """
@@ -1599,9 +1600,47 @@ class DatabaseAdmin:
             results = inquire(sql)
             Label(self.win.body, text=results, anchor="e", fg="red").grid(row=r, column=0, sticky="e")
             Label(self.win.body, text=" distinct carrier names in carriers table").grid(row=r, column=1, sticky=W)
-            r += 1
-            Label(self.win.body, text="").grid(row=r)
-            r += 1
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
+        #  Backup database
+        backup_frame = Frame(self.win.body)
+        backup_frame.grid(row=r, column=0, columnspan=6, sticky=W)
+        rr = 0
+        Label(backup_frame, text="Open Database Location:").grid(row=rr, column=0, columnspan=6, sticky=W)
+        rr += 1
+        Label(backup_frame, text="This will open the (hidden) .klusterbox folder containing the Klusterbox "
+                                 "database. The Klusterbox database is an \'.sqlite\' file which is generated "
+                                 "when Klusterbox starts. The file must be located in the .klusterbox folder "
+                                 "and named \'mandates.sqlite\' in order for it to be recognized by Klusterbox. ",
+              wraplength=500, justify=LEFT, anchor="w", fg="grey").grid(row=rr, sticky="w", columnspan=6, column=0)
+        rr += 1
+        Label(backup_frame, text="").grid(row=rr)
+        rr += 1
+        Label(backup_frame, text="Find Database: ").grid(row=rr, column=0, sticky=W)
+        Button(backup_frame, text="Find", width=8,
+               command=lambda: self.file_dialogue()).grid(row=rr, column=1, sticky=W, padx=20)
+        rr += 1
+        Label(backup_frame, text="").grid(row=rr)
+        rr += 1
+        Label(backup_frame, text="Back up your database:").grid(row=rr, column=0, columnspan=6, sticky=W)
+        rr += 1
+        Label(backup_frame, text="You can save a copy of your database to anywhere you want in you want within your "
+                                 "computer or an external drive. You can give the database any name you like, but "
+                                 "you must rename it \'mandates.sqlite\'. and return it to the .klusterbox "
+                                 "folder in order for Klusterbox to recognize it.",
+              wraplength=500, justify=LEFT, anchor="w", fg="grey").grid(row=rr, sticky="w", columnspan=6, column=0)
+        rr += 1
+        Label(backup_frame, text="").grid(row=rr)
+        rr += 1
+        Label(backup_frame, text="Back Up: ").grid(row=rr, column=0, sticky=W)
+        Button(backup_frame, text="Save As", width=8,
+               command=lambda: self.backup(self.win.topframe)).grid(row=rr, column=1, sticky=W, padx=20)
+        rr += 1
+        Label(backup_frame, text="").grid(row=rr)
+        r += 1
+        Label(self.win.body, text="").grid(row=r)
+        r += 1
         #  Clock Rings summary
         rings_frame = Frame(self.win.body)
         rings_frame.grid(row=r, column=0, columnspan=6, sticky=W)
@@ -1853,6 +1892,8 @@ class DatabaseAdmin:
         try:
             if os.path.exists(path_):
                 os.remove(path_)
+        except FileNotFoundError:
+            pass
         except (sqlite3.OperationalError, PermissionError):
             messagebox.showerror("Access Error",
                                  "Klusterbox can not delete the database as it is being used by another "
@@ -2403,6 +2444,41 @@ class DatabaseAdmin:
                                 "No redundancies have been found in the carrier list.",
                                 parent=frame)
         del duplicates[:]
+
+    @staticmethod
+    def backup(frame):
+        """ create a copy of the database and save it in a folder designated by the user """
+        filepath = filedialog.asksaveasfilename(filetypes=[("sqlite files", '*.sqlite')])
+        filepath = BuildPath().add_extension(filepath, "sqlite")
+        dbasepath = BuildPath().location_dbase()
+        try:
+            shutil.copyfile(dbasepath, filepath)
+            messagebox.showinfo("Klusterbox Database Back Up",
+                                 "Database back up successful. The location of the database back up file "
+                                 "is at {}".format(filepath),
+                                 parent=frame)
+        except PermissionError:
+            pass
+
+    def dbase_loc(self):
+        """ provides the location of the program """
+        if sys.platform == "darwin":
+            if projvar.platform == "macapp":
+                self.dbase_location = os.path.expanduser("~") + '/Documents/.klusterbox'
+            if projvar.platform == "py":
+                self.dbase_location = os.getcwd() + '/kb_sub'
+        else:
+            if projvar.platform == "winapp":
+                self.dbase_location = os.path.expanduser("~") + '\Documents\.klusterbox'
+            else:
+                self.dbase_location = os.getcwd() + '\kb_sub'
+
+    def file_dialogue(self):
+        """ opens file folders to access generated kbreports """
+        self.dbase_loc()  # get the location of the dbase and put it in the self.dbase_location var
+        if not os.path.isdir(self.dbase_location):
+            os.makedirs(self.dbase_location)
+        filedialog.askopenfilename(initialdir=self.dbase_location)
 
 
 class RptWin:
@@ -9067,8 +9143,9 @@ class MainFrame:
         Label(self.main_frame, text="The carrier list is empty. ", font=macadj("bold", "Helvetica 18")) \
             .grid(row=1, column=0, sticky="w")
         Label(self.main_frame, text="").grid(row=2, column=0)
-        Label(self.main_frame, text="Build the carrier list with the New Carrier feature\nor by running "
-                                    "the Automatic Data Entry Feature.").grid(row=3, column=0)
+        Label(self.main_frame, text="Build the carrier list either with the New Carrier feature, Speedsheets or "
+                                    "by running the Automatic Data Entry Feature.", wraplength=500,
+              justify=LEFT, anchor="w").grid(row=3, column=0)
 
     def show_carrierlist(self):
         """ investigation range is set and carrier list is not empty """

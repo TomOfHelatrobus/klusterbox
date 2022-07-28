@@ -127,9 +127,12 @@ class PdfConverter:
     def run(self, frame):
         """ this is a master method for running the other methods in the proper order. """
         self.frame = frame
+        # run the process to get settings, create the csv, error report and check the text
         if not self.StartUp(self).run():
-            return
+            return  # return if there no file selected or if there is an error
         self.PageAnalysis(self).run()  # will analyse groups and lines in loops
+        # this class finishes up by generating an summary at the end of the error report and showing one or two
+        #         messageboxes.
         self.FinishUp(self).run()
         
     def get_path(self, add_on, extension):
@@ -837,7 +840,7 @@ class PdfConverter:
             # solve for salih problem / missing time zone in ...
             elif len(self.parent.time_holder) != 0 and self.parent.unprocessedrings != "":
                 self.parent.unprocessed_counter += 1  # unprocessed rings
-                self.parent.salih_rpt.append(self.lastname)
+                self.parent.salih_rpt.append(self.parent.lastname)
             self.parent.time_holder = []
 
         def get_dateholder(self, e):
