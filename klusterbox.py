@@ -2449,6 +2449,8 @@ class DatabaseAdmin:
     def backup(frame):
         """ create a copy of the database and save it in a folder designated by the user """
         filepath = filedialog.asksaveasfilename(filetypes=[("sqlite files", '*.sqlite')])
+        if not filepath:
+            return
         filepath = BuildPath().add_extension(filepath, "sqlite")
         dbasepath = BuildPath().location_dbase()
         try:
