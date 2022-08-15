@@ -461,24 +461,29 @@ class SpeedSheetGen:
                 cell = self.ws_list[i].cell(row=row, column=2)  # carrier name
                 cell.value = car_name
                 cell.style = self.bold_name
+                cell.number_format = "@"
                 cell.protection = Protection(locked=False)
                 self.ws_list[i].merge_cells('B' + str(row) + ':' + 'E' + str(row))
                 cell = self.ws_list[i].cell(row=row, column=6)  # carrier list status
                 cell.value = car_list
                 cell.style = self.input_name
+                cell.number_format = "@"
                 cell.protection = Protection(locked=False)
                 cell = self.ws_list[i].cell(row=row, column=7)  # carrier ns day
                 cell.value = car_ns
                 cell.style = self.input_name
+                cell.number_format = "@"
                 cell.protection = Protection(locked=False)
                 cell = self.ws_list[i].cell(column=8, row=row)  # carrier route
                 cell.value = car_route
                 cell.style = self.input_name
+                cell.number_format = "@"
                 cell.protection = Protection(locked=False)
                 self.ws_list[i].merge_cells('H' + str(row) + ':' + 'K' + str(row))
                 cell = self.ws_list[i].cell(column=12, row=row)  # carrier emp id
                 cell.value = car_empid
                 cell.style = self.input_name
+                cell.number_format = "@"
                 cell.protection = Protection(locked=False)
                 row += 1
                 ring_recs = []
@@ -760,7 +765,8 @@ class SpeedCarrierCheck:
             self.parent.allowaddrecs = False
 
     def add_list_status(self, dlsn_array, dlsn_day_array):
-        """ checks for list status. """
+        """ checks for list status.
+        enters dynamic list status notation array and dynamic list status notation day array. """
         if not self.filtered_recset:  # if the carrier is new
             self.addlist = dlsn_array
             self.addday = dlsn_day_array
@@ -810,7 +816,7 @@ class SpeedCarrierCheck:
         # check days
         self.day = str(self.day)
         self.day = self.day.strip()
-        dlsn_day_array = []
+        dlsn_day_array = []  # dynamic list status notation day array
         if self.day != "":
             dlsn_day_array = Convert(self.day).string_to_array()
         if len(dlsn_day_array) > 7:
@@ -1457,10 +1463,10 @@ class SpeedRingCheck:
     def check_codes(self):
         """ checks the codes. """
         all_codes = ("none", "ns day", "no call", "light", "sch chg", "annual", "sick", "excused")
-        self.codes = self.codes.strip()
-        self.codes = str(self.codes)
-        self.codes = self.codes.lower()
-        if not self.codes:
+        self.codes = self.codes.strip()  # strip any whitespace away from the code valve
+        self.codes = str(self.codes)  # convert any code value into a string datatype
+        self.codes = self.codes.lower()  # convert any code value to lowercase
+        if not self.codes:  # if the code is blank, then return
             self.codes = "none"
             self.add_codes()
             return
@@ -1474,7 +1480,9 @@ class SpeedRingCheck:
             if self.codes in ("no call", "light", "sch chg", "annual", "sick", "excused"):
                 attn = "     ATTENTION: The code/note you entered is not consistant with the list status \n" \
                        "                for the day. Only \"none\" and \"ns day\" are useful for {} carriers. \n" \
-                       "                Got instead: {}\n".format(self.onrec_list, self.codes)  # report
+                       "                Got instead: {}\n"\
+                       "                Ignore this message if there are multiple list statuses for the week\n"\
+                    .format(self.onrec_list, self.codes)  # report
                 self.attn_array.append(attn)
         # deleted otdl from list below. as of version 4.003 otdl carrier are allowed the ns day code.
         if self.onrec_list in ("aux", "ptf"):
@@ -1482,7 +1490,9 @@ class SpeedRingCheck:
                 attn = "     ATTENTION: The code/note you entered is not consistant with the list status \n" \
                        "                for the day. Only \"none\", \"no call\", \"light\", \"sch chg\", \n" \
                        "                \"annual\", \"sick\", \"excused\" are useful for {} carriers. \n" \
-                       "                Got instead: {}\n".format(self.onrec_list, self.codes)
+                       "                Got instead: {}\n" \
+                       "                Ignore this message if there are multiple list statuses for the week\n"\
+                       .format(self.onrec_list, self.codes)
                 self.attn_array.append(attn)
         self.add_codes()
 

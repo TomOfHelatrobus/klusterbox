@@ -219,7 +219,7 @@ class MaxHr:
         weekly_max = []  # array hold each carrier's hours for the week
         daily_max = []  # array hold each carrier's sum of maximum daily hours for the week
         if len(self.maxhour) > 0 or len(self.max_ft_day) > 0 or len(self.max_aux_day) > 0:
-            self.report.write("12 and 60 Hour Violations self.report\n\n")
+            self.report.write("12 and 60 Hour Violations\n\n")
             # disply pay period
             self.report.write("pay period: " + self.pp[:-3] + " " + self.pp[4] + self.pp[5] + "-" + self.pp[6] + "\n")
             pp_date = find_pp(int(self.pp[:-3]), self.pp[-3:])  # send year and pp to get the date

@@ -4621,7 +4621,8 @@ class AutoDataEntry:
             et_array = []  # holds end tour lines
             for move in moves_holder:  # loop through the BT, MV or ET lines
                 if move[19] == "BT":
-                    bt_array.append(move)  # capture begin tours in an array
+                    if not bt_array:  # only proceed if the bt array is empty - capture earliest valve
+                        bt_array.append(move)  # capture begin tours in an array
                 if move[19] == "MV":
                     mv_array.append(move)  # capture moves in an array
                 if move[19] == "ET":

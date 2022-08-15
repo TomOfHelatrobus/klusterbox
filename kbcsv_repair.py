@@ -26,6 +26,8 @@ class CsvRepair:
         self.build_i = 0  # build index - tracks the number of lines written. on 3 get first employee id.
         self.write_it = True  # if True, will write rows instead of caching them for further analysis
         self.cache = []  # a cache of rows saved for analysis
+        self.lastgoodid = None  # the last good id seen
+        self.lastgoodname = None  # the last good name seen - not ET, MV a timezone or anything lowercase
 
     def run(self, file_path):
         """ this runs the classes when called. """
@@ -102,7 +104,8 @@ class CsvRepair:
             else:
                 self.get_firsteid(line)  # get the first employee id number from the third line - column 4
                 self.checkforneweid(line)  # check if the row has a new employee id.
-                if self.write_it:
+                if self.write_it:  # if the first line is a Base line then write, otherwise cache
+                    line = self.testforbadname(line)  # rewrite line if the name is BT or MV
                     self.build_csv(line)  # writes lines to the csv file
                 else:
                     self.cache_rows(line)
@@ -144,9 +147,11 @@ class CsvRepair:
         for type_ in basetemp:  # look for "base" first, then "temp" next
             for row in self.cache:
                 if row[18] == type_:  # if base/temp are found
+                    row = self.testforbadname(row)  # rewrite row if the name is BT or MV
                     self.build_csv(row)  # write the line
         for row in self.cache:  # write the remaining rows, omitting base/temp rows.
             if row[18] not in basetemp:
+                row = self.testforbadname(row)  # rewrite row if the name is BT or MV
                 self.build_csv(row)
         self.cache = []  # empty out the cache
         self.write_it = True  # reset the write_it variable so the cache is not appended.
@@ -185,6 +190,18 @@ class CsvRepair:
                 self.tempid.append(line[4])  # add to list of carriers with a temp line
                 return False
             return True
+
+    def testforbadname(self, line):
+        """ check to see if the name is BT or MV. If so, then swap it for the lastgoodname, lastgoodid. """
+        if line[5] not in ("BT", "MV", "CDT", "CST", "MDT", "MST", "PDT", "PST", "HDT", "HST") \
+                and line[5].isupper():
+            self.lastgoodname = line[5]
+            self.lastgoodid = line[4]
+            return line
+        else:
+            line[4] = self.lastgoodid
+            line[5] = self.lastgoodname
+            return line
 
     def destroy(self):
         """ remove the new file when it is no longer needed """
