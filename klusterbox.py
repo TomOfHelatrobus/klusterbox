@@ -55,8 +55,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = "5.04"  # version number must be convertable to a float and should increase for Fixes()
-release_date = "July 28, 2022"  # format is Jan 1, 2022
+version = "5.05"  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Sep 3, 2022"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -1625,7 +1625,7 @@ class DatabaseAdmin:
         rr += 1
         Label(backup_frame, text="Back up your database:").grid(row=rr, column=0, columnspan=6, sticky=W)
         rr += 1
-        Label(backup_frame, text="You can save a copy of your database to anywhere you want in you want within your "
+        Label(backup_frame, text="You can save a copy of your database to anywhere you want within your "
                                  "computer or an external drive. You can give the database any name you like, but "
                                  "you must rename it \'mandates.sqlite\'. and return it to the .klusterbox "
                                  "folder in order for Klusterbox to recognize it.",
