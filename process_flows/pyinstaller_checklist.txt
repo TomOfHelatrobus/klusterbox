@@ -215,6 +215,7 @@ if there is a script already exist and you have not added libraries, documents o
 	___ ___  2. Change the value of the PRODUCT_VERSION variable to the current version.
 
 	___ ___  3. Save changes and close NS Edit.
+	___ ___  4. Repeat the steps for the 32 bit version to save time. 
 
 ___ ___  11. Open the NSIS program.
 
@@ -232,7 +233,9 @@ ___ ___  16. (in explorer) navigate to the klusterbox program file to find the S
 
 ___ ___  17. (in explorer) select the setup_klusterbox.exe and rename it by right clicking and selecting "Rename". Use the naming convention of 'Setup_klusterbox_v...' putting the version number where the ellipse is; e.g. 'Setup_klusterbox_v3.003.exe'. 
 
-___ ___  18. This is ready for distribution. 
+___ ___  18. This is ready for distribution.
+
+___ ___  19. Update changes to the github repo.  
 
 ----------------------------------------------------------------------
 
