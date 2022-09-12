@@ -2501,7 +2501,7 @@ class RptWin:
         """ fills the screen with widgets. """
         win = MakeWindow()
         win.create(self.frame)
-        Label(win.body, text="Carriers Status History", font=macadj("bold", "Helvetica 18")) \
+        Label(win.body, text="Carriers History", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
         Label(win.body, text="").grid(row=1, column=0)
         Label(win.body, text="Select the station to see all carriers who have ever worked "
@@ -2557,7 +2557,11 @@ class RptWin:
             Button(results_frame, text="Report", anchor="w",
                    command=lambda in_line=name: Reports(self.frame).rpt_carrier_history(in_line[0])) \
                 .grid(row=i, column=5, sticky="w")
-            Label(results_frame, text="         ", anchor="w").grid(row=i, column=6, sticky="w")
+            Label(results_frame, text=" ", anchor="w").grid(row=i, column=6, sticky="w")
+            Button(results_frame, text="Rings", anchor="w",
+                   command=lambda in_line=name: Reports(self.frame).rpt_all_rings(in_line[0])) \
+                .grid(row=i, column=7, sticky="w")
+            Label(results_frame, text="         ", anchor="w").grid(row=i, column=8, sticky="w")
             i += 1
         # apply and close buttons
         button = Button(win.buttons)
@@ -9281,7 +9285,7 @@ class MainFrame:
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_nsday())
         reports_menu.add_command(label="Carrier by List", 
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_by_list())
-        reports_menu.add_command(label="Carrier Status History", 
+        reports_menu.add_command(label="Carrier History",
                                  command=lambda: RptWin(self.win.topframe).rpt_find_carriers(projvar.invran_station))
         reports_menu.add_separator()
         reports_menu.add_command(label="Clock Rings Summary", 

@@ -275,6 +275,63 @@ class Reports:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
 
+    @staticmethod
+    def rpt_all_rings(carrier):
+        """ this will generate a report showing all rings for a selected carrier """
+        sql = "SELECT rings_date, total, code, bt, rs, et, moves, leave_type, leave_time" \
+              " FROM rings3 WHERE carrier_name = '%s' ORDER BY rings_date" % carrier
+        results = inquire(sql)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "report_all_rings" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier All Rings History\n\n")
+        report.write('   Showing all clock rings in the Klusterbox database for {}\n\n'.format(carrier))
+        if not results:  # if there are no rings, show a message
+            report.write("   No clock rings for {} were found in the Klusterbox database. ".format(carrier))
+        else:  # if there are rings, then write the column headers
+            report.write('{:<11}|{:>6} {:>8}|{:>6}|{:>6} {:>6} {:>6}|{:>6}|{:>6}|{:>8} {:>6}\n'
+                         .format("Date ", "5200", "Code", "BT", "MV off", "MV on", "Route", "RS", "ET", "Leave", ""))
+            report.write('-------------------------------------------------------------------------------------\n')
+        i = 1
+        for line in results:
+            date = dt_converter(line[0]).strftime("%m/%d/%Y")
+            total = Convert(line[1]).empty_or_hunredths()
+            code = Convert(line[2]).empty_not_none()
+            bt = Convert(line[3]).empty_or_hunredths()
+            rs = Convert(line[4]).empty_or_hunredths()
+            et = Convert(line[5]).empty_or_hunredths()
+            lv_type = Convert(line[7]).empty_not_none()
+            lv_time = Convert(line[8]).empty_or_hunredths()
+            moves = []
+            mvoff = ""
+            mvon = ""
+            rte = ""
+            if line[6]:  # if there are moves
+                moves = Convert(line[6]).string_to_array()  # change string to an array
+                mvoff = Convert(moves[0]).zero_or_hundredths()  # format first move off time
+                mvon = Convert(moves[1]).zero_or_hundredths()  # format first move on time
+                rte = moves[2]
+            report.write('{:<11}|{:>6} {:>8}|{:>6}|{:>6} {:>6} {:>6}|{:>6}|{:>6}|{:>8} {:>6}\n'
+                         .format(date, total, code, bt, mvoff, mvon, rte, rs, et, lv_type, lv_time))
+            if len(moves) > 3:  # if there is more than one move triad, output move triads on new line
+                for ii in range(3, len(moves), 3):
+                    mvoff = Convert(moves[ii]).zero_or_hundredths()
+                    mvon = Convert(moves[ii + 1]).zero_or_hundredths()
+                    rte = moves[ii + 2]
+                    report.write('{:<11}|{:>6} {:>8}|{:>6}|{:>6} {:>6} {:>6}|{:>6}|{:>6}|{:>8} {:>6}\n'
+                                 .format("", "", "", "", mvoff, mvon, rte, "", "", "", ""))
+            if i % 3 == 0:
+                report.write('-----------------------------------------------------------------------------------'
+                             '--\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
     def pay_period_guide(self):
         """
         creates a txt file which is saved in the archive which list out the pay periods for a year.
