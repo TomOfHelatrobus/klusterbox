@@ -262,7 +262,9 @@ class InformalC:
                 dt_dates = [in_start, in_end, d_sign]
                 i = 0
                 for date in dates:
-                    d = date.get().split("/")
+                    date = date.get()  # get the data from the stringvar
+                    date = date.strip()  # strip out white space
+                    d = date.split("/")  # convert the date into an array
                     new_date = datetime(int(d[2].lstrip("0")), int(d[0].lstrip("0")), int(d[1].lstrip("0")))
                     dt_dates[i] = new_date
                     i += 1
@@ -283,19 +285,25 @@ class InformalC:
                 for result in results:
                     for grv in result:
                         existing_grv.append(grv)
-                if self.grv_no.get() in existing_grv:
+                grv_no = self.grv_no.get()  # get the value from the string var
+                grv_no = grv_no.strip()  # strip out the white space
+                grv_no = grv_no.lower()  # convert to all lowercase
+                description = self.description.get()
+                description = description.strip()
+                description = description.lower()
+                if grv_no in existing_grv:
                     messagebox.showerror("Data Entry Error",
                                          "The Grievance Number {} is already present in the database. You can not "
-                                         "create a duplicate.".format(self.grv_no.get()),
+                                         "create a duplicate.".format(grv_no),
                                          parent=self.win.topframe)
                     return
                 sql = "INSERT INTO informalc_grv (grv_no, indate_start, indate_end, date_signed, station, " \
                       "gats_number, docs, description, level) " \
                       "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s')" % \
-                      (self.grv_no.get().lower(), dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(),
-                      self.gats_number.get().strip(), self.docs.get(), self.description.get(), self.lvl.get())
+                      (grv_no, dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(),
+                      self.gats_number.get().strip(), self.docs.get(), description, self.lvl.get())
                 commit(sql)
-                self.msg = "Grievance Settlement Added: #{}.".format(self.grv_no.get().lower())
+                self.msg = "Grievance Settlement Added: #{}.".format(grv_no)
                 self.informalc_new(self.win.topframe)
 
         def informalc_check_grv(self):
@@ -305,23 +313,26 @@ class InformalC:
                                      "You must select a station.",
                                      parent=self.win.topframe)
                 return False
-            if self.grv_no.get().strip() == "":
+            grv_no = self.grv_no.get()  # get the value from the stringvar
+            grv_no = grv_no.strip()  # strip out white space
+            grv_no = grv_no.lower()
+            if grv_no == "":
                 messagebox.showerror("Invalid Data Entry",
                                      "You must enter a grievance number",
                                      parent=self.win.topframe)
                 return False
-            if re.search('[^1234567890abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ,]', self.grv_no.get()):
+            if re.search('[^1234567890abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ,]', grv_no):
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number can only contain numbers and letters. No other "
                                      "characters are allowed",
                                      parent=self.win.topframe)
                 return False
-            if len(self.grv_no.get()) < 8:
+            if len(grv_no) < 8:
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number must be at least eight characters long",
                                      parent=self.win.topframe)
                 return False
-            if len(self.grv_no.get()) > 20:
+            if len(grv_no) > 20:
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number must not exceed 20 characters in length.",
                                      parent=self.win.topframe)
@@ -334,6 +345,7 @@ class InformalC:
             date_ids = ("starting incident date", "ending incident date", "date signed")
             i = 0
             for date in dates:
+                date = date.strip()
                 d = date.split("/")
                 if len(d) != 3:
                     messagebox.showerror("Invalid Data Entry",
@@ -851,6 +863,7 @@ class InformalC:
             date_ids = ("starting incident date", "ending incident date", "date signed")
             i = 0
             for date in dates:
+                date = date.strip()
                 d = date.split("/")
                 if len(d) != 3:
                     messagebox.showerror("Invalid Data Entry",
@@ -928,6 +941,7 @@ class InformalC:
             dt_dates = [in_start, in_end, d_sign]
             i = 0
             for date in dates:
+                date = date.strip()
                 d = date.split("/")
                 new_date = datetime(int(d[2].lstrip("0")), int(d[0].lstrip("0")), int(d[1].lstrip("0")))
                 dt_dates[i] = new_date
@@ -943,10 +957,13 @@ class InformalC:
                                      "The Incident Start Date can not be later that the Date Signed.",
                                      parent=self.win.topframe)
                 return
+            description = self.description.get()
+            description = description.strip()
+            description = description.lower()
             sql = "UPDATE informalc_grv SET indate_start='%s',indate_end='%s',date_signed='%s',station='%s'," \
                   "gats_number='%s', docs='%s',description='%s', level='%s' WHERE grv_no='%s'" % \
                   (dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(), self.gats_number.get().strip(),
-                   self.edit_docs.get(), self.description.get(), self.lvl.get(), self.grv_no.get())
+                   self.edit_docs.get(), description, self.lvl.get(), self.grv_no.get())
             commit(sql)
             messagebox.showerror("Sucessful Update",
                                  "Grievance number: {} succesfully updated.".format(self.grv_no.get()),
@@ -979,28 +996,31 @@ class InformalC:
                                       "This will change the grievance number from {} to {} in all "
                                       "records. Are you sure you want to proceed?".format(old_num, new_num.get()),
                                       parent=self.win.topframe):
-                if new_num.get().strip() == "":
+                new_number = new_num.get()  # get the value from the passed new_num stringvar
+                new_number = new_number.strip()  # strip out all whitespace in front and back
+                new_number = new_number.lower()  # change all upper case to lower case
+                if new_number == "":
                     messagebox.showerror("Invalid Data Entry",
                                          "You must enter a grievance number",
                                          parent=self.win.topframe)
                     return "fail"
-                if not new_num.get().isalnum():
+                if not new_number.isalnum():
                     messagebox.showerror("Invalid Data Entry",
                                          "The grievance number can only contain numbers and letters. No other "
                                          "characters are allowed",
                                          parent=self.win.topframe)
                     return "fail"
-                if len(new_num.get()) < 8:
+                if len(new_number) < 8:
                     messagebox.showerror("Invalid Data Entry",
                                          "The grievance number must be at least eight characters long",
                                          parent=self.win.topframe)
                     return "fail"
-                if len(new_num.get()) > 16:
+                if len(new_number) > 16:
                     messagebox.showerror("Invalid Data Entry",
                                          "The grievance number must not exceed 16 characters in length.",
                                          parent=self.win.topframe)
                     return "fail"
-                sql = "SELECT grv_no FROM informalc_grv WHERE grv_no = '%s'" % new_num.get().lower()
+                sql = "SELECT grv_no FROM informalc_grv WHERE grv_no = '%s'" % new_number
                 result = inquire(sql)
                 if result:
                     messagebox.showerror("Grievance Number Error",
@@ -1008,16 +1028,16 @@ class InformalC:
                                          parent=self.win.topframe)
                     return "fail"
 
-                sql = "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_num.get().lower(), old_num)
+                sql = "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
                 commit(sql)
-                sql = "UPDATE informalc_awards SET grv_no = '%s' WHERE grv_no = '%s'" % (new_num.get().lower(), old_num)
+                sql = "UPDATE informalc_awards SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
                 commit(sql)
                 for record in l_passed_result:
                     if record[0] == old_num:
-                        record[0] = new_num.get().lower()
+                        record[0] = new_number
                 self.msg = "The grievance number has been changed."
                 self.search_result = l_passed_result[:]
-                self.edit(new_num.get().lower())
+                self.edit(new_number)
 
         def addaward(self, grv_no):
             """ adds carrier to the add award screen from the companion screen. """
