@@ -121,6 +121,9 @@ class V5000FixA:
     also replace null values in rings 3 in leave type and time with empty string and empty float.
     """
 
+    def __init__(self):
+        pass
+
     def run(self):
         """ master method for running other methods in proper order. """
         if self.check_for_null():

@@ -2301,12 +2301,12 @@ class MakeWindow:
         self.c.config(scrollregion=self.c.bbox("all"))
         try:
             mainloop()  # the window object will loop if it exist.
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, AttributeError):
             try:  # if the object has already been destroyed
                 if root:
                     root.destroy()  # destroy it.
             except TclError:
-                pass  # else do no nothing. 
+                pass  # else do no nothing.
 
     def fill(self, last, count):
         """ fill bottom of screen to for scrolling. """

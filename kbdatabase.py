@@ -51,6 +51,7 @@ class DataBase:
             'code varchar, moves varchar, leave_type varchar, leave_time varchar, refusals varchar, bt varchar, '
             'et varchar)',
             'CREATE table IF NOT EXISTS name_index (tacs_name varchar, kb_name varchar, emp_id varchar)',
+            'CREATE table IF NOT EXISTS seniority (name varchar, senior_date varchar)',
             'CREATE table IF NOT EXISTS station_index (tacs_station varchar, kb_station varchar, finance_num varchar)',
             'CREATE table IF NOT EXISTS skippers (code varchar primary key, description varchar)',
             'CREATE table IF NOT EXISTS ns_configuration (ns_name varchar primary key, fill_color varchar, '
@@ -76,6 +77,7 @@ class DataBase:
             "Setting up: Tables - Carriers",
             "Setting up: Tables - Rings",
             "Setting up: Tables - Name Indexes",
+            "Setting up: Tables - Seniority",
             "Setting up: Tables - Station Indexes",
             "Setting up: Tables - Skippers",
             "Setting up: Tables - NS Configurations",

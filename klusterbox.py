@@ -18,7 +18,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
     find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
-    RouteChecker, BuildPath
+    RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -1704,7 +1704,7 @@ class DatabaseAdmin:
         Entry(cleaner_frame2, textvariable=clean1_date, width=macadj(12, 8), justify='right') \
             .grid(row=rrr, column=1, sticky="w")
         Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
-        table_options = ("carriers + index", "carriers", "name index", "clock rings", "all")
+        table_options = ("carriers + index", "carriers", "name index", "seniority", "clock rings", "all")
         om1_table = OptionMenu(cleaner_frame2, clean1_table, *table_options)
         clean1_table.set(table_options[-1])
         if sys.platform != "darwin":
@@ -1942,13 +1942,15 @@ class DatabaseAdmin:
             station_array = [stations.get()]
         # define the table array to loop
         if table.get() == "all":
-            table_array = ["rings3", "name_index", "carriers", "stations", "station_index"]
+            table_array = ["rings3", "name_index", "seniority", "carriers", "stations", "station_index"]
         elif table.get() == "carriers + index":
-            table_array = ["carriers", "name_index"]
+            table_array = ["carriers", "name_index", "seniority"]
         elif table.get() == "carriers":
             table_array = ["carriers"]
         elif table.get() == "name index":
             table_array = ["name_index"]
+        elif table.get() == "seniority":
+            table_array = ["seniority"]
         elif table.get() == "clock rings":
             table_array = ["rings3"]
         #  short cuts to delete all records in table
@@ -1962,6 +1964,9 @@ class DatabaseAdmin:
                     commit(sql)
                 if tab == "name_index":
                     sql = "DELETE FROM name_index"
+                    commit(sql)
+                if tab == "seniority":
+                    sql = "DELETE FROM seniority"
                     commit(sql)
                 if tab == "carriers":
                     sql = "DELETE FROM carriers"
@@ -2304,6 +2309,8 @@ class DatabaseAdmin:
                     sql = "DELETE FROM carriers WHERE carrier_name = '%s'" % name
                     commit(sql)
                     sql = "DELETE FROM name_index WHERE kb_name = '%s'" % name
+                    commit(sql)
+                    sql = "DELETE FROM seniority WHERE name = '%s'" % name
                     commit(sql)
                 pb.stop()  # stop and destroy the progress bar
                 pb_label.destroy()  # destroy the label for the progress bar
@@ -8160,6 +8167,7 @@ class CarrierInput:
         self.input_type = None  # 3 types: new, edit, update
         self.carrier = ""  # a string for the carrier's name used only in edit and update
         self.win = None
+        self.status_label = None  # the label widget in the buttons method.
         self.ns_dict = None
         self.ns_color_dict = None
         # set up vars
@@ -8168,6 +8176,8 @@ class CarrierInput:
         self.year = None
         self.name = None  # last name only or full name with first initial
         self.fname = None   # first initial (only used with new input type)
+        self.id = None
+        self.seniority = None
         self.ls = None
         self.ns = None
         self.route = None
@@ -8178,6 +8188,8 @@ class CarrierInput:
         self.onrec_ns = None
         self.onrec_route = None
         self.onrec_station = None
+        self.onrecs_id = None
+        self.onrecs_seniority = None
         self.name_set = []  # get a list of carrier names for new carriers and name changes (edit).
         # new carrier specific
         self.carrier_set = []  # get a list of carriers and effective dates for new carriers.
@@ -8195,6 +8207,8 @@ class CarrierInput:
         self.name = StringVar(self.win.body)  # can be last name or full name
         self.fname = StringVar(self.win.body)  # used only for new carriers
         self.chg_name = StringVar(self.win.body)  # used only for edit carriers
+        self.id = StringVar(self.win.body)
+        self.seniority = StringVar(self.win.body)
         self.ls = StringVar(self.win.body)
         self.route = StringVar(self.win.body)
         self.ns = StringVar(self.win.body)
@@ -8207,6 +8221,8 @@ class CarrierInput:
         self.day.set(projvar.invran_day)
         self.name.set("")   # all other information is blank
         self.fname.set("")
+        self.id.set("")
+        self.seniority.set("")
         self.ls.set(value="nl")  # default is 'no list'
         self.route.set("")
         self.ns.set("none")  # default non schedule day is none
@@ -8221,6 +8237,18 @@ class CarrierInput:
         self.onrec_ns = self.onrecs[0][3]
         self.onrec_route = self.onrecs[0][4]
         self.onrec_station = self.onrecs[0][5]
+        sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % self.carrier
+        name_result = inquire(sql)  # the employee id on record
+        self.onrecs_id = ""  # employee id default value is an empty string
+        if name_result:  # if there is a record
+            self.onrecs_id = name_result[0][0]
+        sql = "SELECT senior_date FROM seniority WHERE name = '%s'" % self.carrier
+        senior_result = inquire(sql)  # the seniority date on record
+        self.onrecs_seniority = ""  # seniority date default value is an empty string
+        if senior_result:  # if there is a record
+            if senior_result[0][0]:  # if the seniority date is not an empty string
+                # convert the datetime obj string into a backslash date
+                self.onrecs_seniority = Convert(senior_result[0][0]).dtstring_to_backslashdate()
 
     def set_edit_vars(self):
         """ set the vars for an existing carrier. """
@@ -8229,6 +8257,8 @@ class CarrierInput:
         self.day.set(projvar.invran_day)
         self.name.set(self.carrier)   # set the to carrier name
         self.chg_name.set(self.carrier)
+        self.id.set(self.onrecs_id)
+        self.seniority.set(self.onrecs_seniority)
         self.ls.set(self.onrec_ls)  # default is 'no list'
         self.route.set(self.onrec_route)
         self.ns.set(self.onrec_ns)  # default non schedule day is none
@@ -8270,8 +8300,11 @@ class CarrierInput:
         self.month = None
         self.day = None
         self.year = None
+        self.carrier = ""
         self.name = None
         self.fname = None
+        self.id = None
+        self.seniority = None
         self.ls = None
         self.ns = None
         self.route = None
@@ -8291,6 +8324,7 @@ class CarrierInput:
         self.title()
         self.date()
         self.get_name()
+        self.id_seniority()
         self.list_status()
         self.nsday()
         self.get_route()
@@ -8307,6 +8341,8 @@ class CarrierInput:
         self.day = None
         self.year = None
         self.name = None  # last name only or full name with first initial
+        self.id = None
+        self.seniority = None
         self.ls = None
         self.ns = None
         self.route = None
@@ -8334,6 +8370,7 @@ class CarrierInput:
         self.title()
         self.date()
         self.get_name()
+        self.id_seniority()
         self.list_status()
         self.nsday()
         self.get_route()
@@ -8362,28 +8399,16 @@ class CarrierInput:
         self.buttons()
         self.win.finish()
 
-        """
-        month.set(int(a[0][5:7]))
-        day.set(int(a[0][8:10]))
-        year.set(int(a[0][:4]))
-        name = a[1]  # name value if name is not changed
-        ls.set(value=a[2])
-        ns.set(a[3])
-        route.set(a[4])
-        station.set(a[5])  # default value
-        rowid = a[6]
-        """
-
     def title(self):
         """ set the title for new carrier input"""
         title_f = Frame(self.win.body)
+        title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
         text = "Enter New Carrier"  # default for new input type.
         if self.input_type == "edit":
             text = "Edit Carrier Information"
         if self.input_type == "update":
             text = "Update Carrier Record"
         Label(title_f, text=text, font=macadj("bold", "Helvetica 18")).grid(row=0, column=0, columnspan=4)
-        title_f.grid(row=0, sticky=W, pady=5)  # put frame on grid
 
     def date(self):
         """ set up the date widgets. """
@@ -8435,11 +8460,28 @@ class CarrierInput:
                   background=macadj("gray95", "white"), fg=macadj("black", "black"), width=30) \
                 .grid(row=1, column=0, columnspan=4, sticky=W)
 
+    def id_seniority(self):
+        """ display widgets for the employee id and seniority date """
+        id_frame = Frame(self.win.body, pady=5)
+        id_frame.grid(row=3, sticky=W, pady=5)
+        Label(id_frame, text=" Employee ID:   ", anchor="w").grid(row=0, column=0, sticky="w")
+        length = 10
+        if self.input_type == "new":
+            length = 21
+        Entry(id_frame, width=macadj(length, length), textvariable=self.id).grid(row=0, column=1, sticky=W)
+        Label(id_frame, text=" Seniority Date:   ", anchor="w").grid(row=1, column=0, sticky="w")
+        Entry(id_frame, width=macadj(length, length), textvariable=self.seniority).grid(row=1, column=1, sticky=W)
+        if self.input_type == "edit":
+            Button(id_frame, width=7, text="Update",
+                   command=lambda: self.id_change()).grid(row=0, column=2, sticky=W, padx=12)
+            Button(id_frame, width=7, text="Update",
+                   command=lambda: self.seniority_change()).grid(row=1, column=2, sticky=W, padx=12)
+
     def list_status(self):
         """ set up the list status """
         list_frame = Frame(self.win.body, pady=5)
-        list_frame.grid(row=3, sticky=W, pady=5)
-        text = macadj("List Status ________________________________",
+        list_frame.grid(row=4, sticky=W, pady=5)
+        text = macadj("List Status _________________________________",
                       "List Status ___________________________")
         Label(list_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
 
@@ -8457,7 +8499,7 @@ class CarrierInput:
     def nsday(self):
         """ set up the ns day"""
         ns_frame = Frame(self.win.body, pady=5)
-        ns_frame.grid(row=4, sticky=W, pady=5)
+        ns_frame.grid(row=5, sticky=W, pady=5)
         text = macadj("Non Scheduled Day ________________________",
                       "Non Scheduled Day ____________________")
         Label(ns_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
@@ -8514,7 +8556,7 @@ class CarrierInput:
     def get_route(self):
         """ set route entry field """
         route_frame = Frame(self.win.body, pady=2)
-        route_frame.grid(row=5, sticky=W)
+        route_frame.grid(row=6, sticky=W)
         text = macadj("Route _______________________________________",
                       "Route _______________________________")
         Label(route_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
@@ -8525,7 +8567,7 @@ class CarrierInput:
     def get_station(self):
         """ set station option menu"""
         station_frame = Frame(self.win.body, pady=5)
-        station_frame.grid(row=6, sticky=W, pady=5)
+        station_frame.grid(row=7, sticky=W, pady=5)
         text = macadj("Station _____________________________________",
                       "Station ______________________________")
         Label(station_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
@@ -8536,7 +8578,7 @@ class CarrierInput:
     def delete_button(self):
         """ delete button - allows user to delete all records of the carrier. """
         delete_frame = Frame(self.win.body, pady=5)
-        delete_frame.grid(row=7, sticky=W, pady=5)
+        delete_frame.grid(row=8, sticky=W, pady=5)
         text = macadj("Delete Carrier ______________________________",
                       "Delete Carrier ________________________")
         Label(delete_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
@@ -8545,12 +8587,11 @@ class CarrierInput:
         Button(delete_frame, text="Delete", width=15,
                bg=macadj("red3", "white"), fg=macadj("white", "red"),
                command=lambda: self.purge_carrier()).grid(row=3, column=0, sticky=W, padx=8)
-        delete_frame.grid(row=7, sticky=W, pady=5)
 
     def reports(self):
         """ create a button that allows the user to view all the carrier's records. """
         report_frame = Frame(self.win.body, pady=5)
-        report_frame.grid(row=8, sticky=W, pady=5)
+        report_frame.grid(row=9, sticky=W, pady=5)
         text = macadj("Status Change Report _______________________",
                       "Status Change Report __________________")
         Label(report_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
@@ -8562,7 +8603,7 @@ class CarrierInput:
     def status_history(self):
         """ History of status changes """
         history_frame = Frame(self.win.body, pady=5)
-        history_frame.grid(row=9, sticky=W, pady=5)
+        history_frame.grid(row=10, sticky=W, pady=5)
         text = macadj("Status Change History ______________________",
                       "Status Change History _________________")
         Label(history_frame, text=text, anchor="w", fg="blue").grid(row=0, column=0, columnspan=3, sticky="w")
@@ -8593,7 +8634,6 @@ class CarrierInput:
                 .grid(row=row_line, column=1, sticky=W)
             Label(history_frame, text="                             ").grid(row=row_line, column=2, sticky=W)
             row_line += 1
-        history_frame.grid(row=9, sticky=W, pady=5)
 
     def buttons(self):
         """ define and display the buttons on the bottom of the screen. """
@@ -8623,7 +8663,8 @@ class CarrierInput:
         button_submit.pack(side=LEFT)
         button_apply.pack(side=LEFT)
         button_back.pack(side=LEFT)
-        Label(self.win.buttons, text=self.status, fg="red").pack(side=LEFT)
+        self.status_label = Label(self.win.buttons, text=self.status, fg="red")
+        self.status_label.pack(side=LEFT)
 
     def nc_apply(self, goback=False):
         """ executes to check then enter in new carrier information into the database. """
@@ -8651,15 +8692,31 @@ class CarrierInput:
                                        "\"edit\" to the right of the carrier's name. ",
                                        parent=self.win.topframe)
                 return
+        new_id = self.id.get().strip()  # get the employee id
+        if not EmpIdChecker().run_newcarrier(new_id, self.win.body):  # run all checks for employee id
+            return  # return if error
+        new_senior_date = self.seniority.get().strip()  # get the seniority date
+        if not SeniorityChecker().run_manual(new_senior_date, self.win.body):  # run all checks for seniority date
+            return  # will give error messages and return if False
         if not self.check_route():  # check the carrier route
-            return
+            return  # return if error
+        # once all checks have be completed and passed, input data into database
         addroute = Handler(self.route.get()).routes_adj()  # convert 5 digit route numbers to 4 digits.
         if addroute == "0000":  # convert route 0000 to empty string.
             addroute = ""
+        # add record for carrier table
         sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
               " VALUES('%s','%s','%s','%s','%s','%s')" \
               % (adddate, addname, self.ls.get(), self.ns.get(), addroute, self.station.get())
         commit(sql)
+        # add record for name_index table
+        if new_id:
+            sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) " \
+                  "VALUES('%s', '%s', '%s')" \
+                  % ("", addname, new_id)
+            commit(sql)
+        self.carrier = addname  # input seniority relies on self.carrier to name carrier
+        self.input_seniority()  # add record for seniority
         self.status = "{} was added.".format(addname)
         if goback:
             MainFrame().start(frame=self.win.topframe)
@@ -8787,6 +8844,79 @@ class CarrierInput:
             return False
         return True
 
+    def id_change(self):
+        """ enter or change the employee id number """
+        if not EmpIdChecker().run_manual(self.id.get(), self.onrecs_id, self.win.body):
+            self.id.set(self.onrecs_id)  # revert field to emp id in dbase or empty string.
+            return
+        self.input_id()  # if all checks pass, input into database
+        if self.input_type == "edit":
+            self.status = "Employee ID updated"
+            self.status_label.config(text=self.status)
+            projvar.root.update()
+
+    def input_id(self):
+        """ input the employee id into the name_index table. """
+        new_id = self.id.get().strip()
+        sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % self.carrier
+        result = inquire(sql)  # the employee id on record
+        if result and not new_id:  # if the field is blank - delete the record for the carrier
+            sql = "DELETE FROM name_index WHERE kb_name = '%s'" % self.carrier
+            commit(sql)
+            self.onrecs_id = ""
+            self.id.set("")
+            return
+        elif not result:  # if there is no record in the name_index table
+            sql = "INSERT INTO name_index (tacs_name, kb_name, emp_id) " \
+                  "VALUES('%s', '%s', '%s')" \
+                  % ("", self.carrier, new_id)
+            commit(sql)
+        else:
+            sql = "UPDATE name_index SET emp_id = '%s' WHERE kb_name = '%s'" % (new_id, self.carrier)
+            commit(sql)
+        sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % self.carrier
+        result = inquire(sql)
+        self.onrecs_id = result[0][0]
+        self.id.set(result[0][0])
+
+    def seniority_change(self):
+        """ enter or change the employee seniority date """
+        new_senior_date = self.seniority.get().strip()
+        if not SeniorityChecker().run_manual(new_senior_date, self.win.body):  # run all checks
+            self.seniority.set(self.onrecs_seniority)  # revert field to semiority in dbase or empty string.
+            return  # will give error messages and return if False
+        self.input_seniority()  # if all checks pass, input into database
+        if self.input_type == "edit":
+            sql = "SELECT senior_date FROM seniority WHERE name = '%s'" % self.carrier
+            result = inquire(sql)  # retrieve the seniority date you just created/ modified
+            senior_date = result[0][0]
+            date_ = ""  # the default is an empty string
+            if senior_date:  # if the result inquiry is not an empty string
+                date_ = Convert(senior_date).dtstring_to_backslashdate()  # convert the datetime to a backslash date
+            self.onrecs_seniority = date_  # update the seniority date on record
+            self.seniority.set(date_)  # update the seniority date field
+            self.status = "Seniority Date updated"  # update the status label on bottom of the screen
+            self.status_label.config(text=self.status)
+            projvar.root.update()  # root update
+
+    def input_seniority(self):
+        """ input the seniority into the seniority table """
+        new_senior_date = self.seniority.get().strip()
+        date_ = ""
+        if not new_senior_date:  # do not reformat if the string is empty
+            pass
+        else:
+            date_ = Convert(new_senior_date).backslashdate_to_datetime()  # create a datetime object string
+        sql = "SELECT senior_date FROM seniority WHERE name = '%s'" % self.carrier
+        result = inquire(sql)  # the seniordate on record
+        if not result:  # if there is no record in the seniority table
+            sql = "INSERT INTO seniority (name, senior_date) " \
+                  "VALUES('%s', '%s')" % (self.carrier, date_)
+            commit(sql)  # since no record exist - create it
+        else:
+            sql = "UPDATE seniority SET senior_date = '%s' WHERE name = '%s'" % (date_, self.carrier)
+            commit(sql)  # since a record does exist - modify it
+
     def name_change(self):
         """ change the name of the carrier in the Edit input type """
         c_name = self.chg_name.get()  # get name from the stringvar
@@ -8831,6 +8961,11 @@ class CarrierInput:
         if result:
             sql = "UPDATE name_index SET kb_name = '%s' WHERE kb_name = '%s'" % (c_name, self.carrier)
             commit(sql)
+        sql = "SELECT name FROM seniority WHERE name = '%s'" % self.carrier
+        result = inquire(sql)
+        if result:
+            sql = "UPDATE seniority SET name = '%s' WHERE name = '%s'" % (c_name, self.carrier)
+            commit(sql)
         self.status = "Carrier name change applied."
         self.restart_edit_carriers(self.win.topframe, c_name)
 
@@ -8849,6 +8984,8 @@ class CarrierInput:
         sql = "DELETE FROM rings3 WHERE carrier_name= '%s'" % self.carrier
         commit(sql)
         sql = "DELETE FROM name_index WHERE kb_name = '%s'" % self.carrier
+        commit(sql)
+        sql = "DELETE FROM seniority WHERE name = '%s'" % self.carrier
         commit(sql)
         MainFrame().start(frame=self.win.topframe)
 
@@ -9287,6 +9424,10 @@ class MainFrame:
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_by_list())
         reports_menu.add_command(label="Carrier History",
                                  command=lambda: RptWin(self.win.topframe).rpt_find_carriers(projvar.invran_station))
+        reports_menu.add_command(label="Carrier Seniority",
+                                 command=lambda: Reports(self.win.topframe).rpt_carrier_seniority())
+        reports_menu.add_command(label="Carrier Seniority and ID",
+                                 command=lambda: Reports(self.win.topframe).rpt_carrier_seniority_id())
         reports_menu.add_separator()
         reports_menu.add_command(label="Clock Rings Summary", 
                                  command=lambda: DatabaseAdmin().database_rings_report(self.win.topframe,
@@ -9299,7 +9440,9 @@ class MainFrame:
             reports_menu.entryconfig(3, state=DISABLED)
             reports_menu.entryconfig(4, state=DISABLED)
             reports_menu.entryconfig(5, state=DISABLED)
+            reports_menu.entryconfig(7, state=DISABLED)
             reports_menu.entryconfig(8, state=DISABLED)
+            reports_menu.entryconfig(10, state=DISABLED)
         menubar.add_cascade(label="Reports", menu=reports_menu)
         # speedsheeet menu
         speed_menu = Menu(menubar, tearoff=0)

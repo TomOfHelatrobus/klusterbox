@@ -11,6 +11,7 @@ import os
 import sys
 import subprocess
 from datetime import datetime, timedelta
+from operator import itemgetter
 
 
 class Reports:
@@ -25,6 +26,9 @@ class Reports:
             self.start_date = projvar.invran_date_week[0]
             self.end_date = projvar.invran_date_week[6]
         self.carrier_list = []
+        self.seniority_list = []
+        self.positivedate = []
+        self.negativedate = []
 
     def get_carrierlist(self):
         """ gets the carrier list for the investigation range. """
@@ -331,6 +335,143 @@ class Reports:
             subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
+
+    def rpt_carrier_seniority_id(self):
+        """ Generate and display a report of carrier routes """
+        self.get_empid_seniority_list()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "report_carrier_seniority" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier Seniority Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+        else:
+            report.write('      Date: {} through {}\n'
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
+                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
+
+        report.write('{:>4}  {:<25} {:<12} {:<14} {:<4}\n'.
+                     format("", "Carrier Name", "Employee ID", "Seniority Date", "Rank"))
+        report.write('      ------------------------- -----------  -------------- ---- \n')
+        i = 1
+        for line in self.seniority_list:
+            report.write('{:>4}  {:<25} {:<12} {:<14} {:>4}\n'.format(i, line[0], line[3], line[1], line[2]))
+            if i % 3 == 0:
+                report.write('      ------------------------- -----------  -------------- ----\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+    def rpt_carrier_seniority(self):
+        """ Generate and display a report of carrier routes """
+        self.get_seniority_list()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "report_carrier_seniority" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nCarrier Seniority Report\n\n\n")
+        report.write('   Showing results for:\n')
+        report.write('      Station: {}\n'.format(projvar.invran_station))
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            f_date = projvar.invran_date
+            report.write('      Date: {}\n'.format(f_date.strftime("%m/%d/%Y")))
+        else:
+            report.write('      Date: {} through {}\n'
+                         .format(projvar.invran_date_week[0].strftime("%m/%d/%Y"),
+                                 projvar.invran_date_week[6].strftime("%m/%d/%Y")))
+        report.write('      Pay Period: {}\n\n'.format(projvar.pay_period))
+
+        report.write('{:>4}  {:<30} {:<10}\n'.format("", "Carrier Name", "Seniority Date"))
+        report.write('      ------------------------------ --------------\n')
+        i = 1
+        for line in self.seniority_list:
+            report.write('{:>4}  {:<30} {:<10}\n'.format(i, line[0], line[1]))
+            if i % 3 == 0:
+                report.write('      ------------------------------ --------------\n')
+            i += 1
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+    def get_seniority_list(self):
+        """ returns a carrier list of seniority dates ordered by date """
+        self.build_pos_neg()  # creates the positvedate and negative date arrays
+        i = 0
+        for rec in self.positivedate:
+            backslashdate = Convert(rec[1]).dtstring_to_backslashdate()
+            self.positivedate[i][1] = backslashdate
+            i += 1
+        i = 0
+        for _ in self.negativedate:
+            self.negativedate[i][1] = "no record"
+            i += 1
+        self.seniority_list = self.positivedate + self.negativedate
+
+    def get_empid_seniority_list(self):
+        """ returns a list with employee id, seniority rank and date"""
+        self.build_pos_neg()  # creates the positvedate and negative date arrays
+        i = 0
+        rank = 1
+        # rec[0] is the carrier name, rec[1] is the seniority date. append seniority rank and employee id
+        for rec in self.positivedate:
+            backslashdate = Convert(rec[1]).dtstring_to_backslashdate()
+            self.positivedate[i][1] = backslashdate
+            self.positivedate[i].append(str(rank))
+            empid = self.get_empid(rec[0])
+            self.positivedate[i].append(empid)
+            rank += 1
+            i += 1
+        i = 0
+        for rec in self.negativedate:
+            self.negativedate[i][1] = "no record"
+            self.negativedate[i].append("?")
+            empid = self.get_empid(rec[0])
+            self.negativedate[i].append(empid)
+            i += 1
+        self.seniority_list = self.positivedate + self.negativedate
+        self.seniority_list.sort(key=itemgetter(0))  # sort by name
+
+    @staticmethod
+    def get_empid(carrier):
+        """ return the employee id for a carrier name """
+        sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+        result = inquire(sql)
+        if result:
+            if result[0][0] == "":
+                return "no record"
+            else:
+                return result[0][0]
+        else:
+            return "no record"
+
+    def build_pos_neg(self):
+        """ build a positive and negative arrays """
+        self.positivedate = []
+        self.negativedate = []
+        self.get_carrierlist()  # assigns self.carrier_list for investigation range
+        for carrier in self.carrier_list:
+            sql = "SELECT senior_date FROM seniority WHERE name = '%s'" % carrier[0][1]
+            result = inquire(sql)
+            if result:  # build an array with seniority dates
+                sen_date = result[0][0]
+                to_add = [carrier[0][1], sen_date]
+                self.positivedate.append(to_add)
+            else:  # build an array without seniority dates
+                to_add = [carrier[0][1], ""]
+                self.negativedate.append(to_add)
+        self.positivedate.sort(key=itemgetter(1))  # sort the list with seniority dates by date.
 
     def pay_period_guide(self):
         """

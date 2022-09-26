@@ -220,7 +220,7 @@ class NewWindow:
         self.c.config(scrollregion=self.c.bbox("all"))
         try:
             mainloop()  # the window object will loop if it exist.
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, AttributeError):
             try:  # if the object has already been destroyed
                 if self.root:
                     self.root.destroy()  # destroy it.
@@ -974,6 +974,12 @@ class Convert:
         date = self.data.split("/")
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
         return dt_converter(string)
+
+    def dtstring_to_backslashdate(self):
+        """ converts a datetime string into a backslash date """
+        self.data = self.str_to_dt()  # convert the string to a proper datetime
+        array = self.datetime_separation()  # converts a datetime object into an array
+        return array[1] + "/" + array[2] + "/" + array[0]
 
     def array_to_string(self):
         """ make an array into a string (with commas) """
@@ -1820,11 +1826,15 @@ class BackSlashDateChecker:
         """ returns False if the month is greater than 12. """
         if int(self.month) > 12:
             return False
+        if len(self.month) > 2:
+            return False
         return True
 
     def check_day(self):
         """ return False if the day is greater than 31. """
         if int(self.day) > 31:
+            return False
+        if len(self.day) > 2:
             return False
         return True
 
@@ -1841,6 +1851,141 @@ class BackSlashDateChecker:
             return True
         except (ValueError, TypeError):
             return False
+
+
+class EmpIdChecker:
+    """ checks the employee id"""
+
+    def __init__(self):
+        self.data = None
+        self.onrec = None  # value for record in database - "on record"
+        self.frame = None
+
+    def run_manual(self, empid, onrec, frame):
+        """ checks employee ids for manual data entry and displays error messages is there is an error"""
+        self.data = empid.strip()
+        self.onrec = onrec
+        self.frame = frame
+        if not self.check_onrec():
+            return False
+        if not self.check_basic():
+            return False
+        return True
+
+    def run_newcarrier(self, empid, frame):
+        """ checks employee ids for new carrier entries and displays error messages is there is an error"""
+        self.data = empid.strip()
+        self.frame = frame
+        if not self.check_basic():
+            return False
+        return True
+
+    def check_onrec(self):
+        """ checks employee ids for manual data entry and displays error messages is there is an error"""
+        if self.data == "" and not self.onrec:
+            messagebox.showerror("Carrier Information Error",
+                                 "The carrier has no employee id on file. No action was taken. ",
+                                 parent=self.frame)
+            return False
+        return True
+
+    def check_basic(self):
+        """ checks employee ids for manual data entry and displays error messages is there is an error"""
+        if self.data == "":  # skip checks if the employee id is left blank.
+            return True
+        if not self.length_check():
+            messagebox.showerror("Carrier Information Error",
+                                 "Employee IDs must be 8 characters long. Be sure to include leading zeros. ",
+                                 parent=self.frame)
+            return False
+        if not self.numeric_check():
+            messagebox.showerror("Carrier Information Error",
+                                 "Employee IDs must be numeric and can not contain letters or special characters. ",
+                                 parent=self.frame)
+            return False
+        if not self.existing_id_check():
+            messagebox.showerror("Carrier Information Error",
+                                 "The entered employee ID already exist in the database and is being used for "
+                                 "another carrier. ",
+                                 parent=self.frame)
+            return False
+        return True
+
+    def length_check(self):
+        """ check the length of the employee id. """
+        if len(self.data) != 8:
+            return False
+        return True
+
+    def numeric_check(self):
+        """ checks that the employee id is numeric """
+        for each in self.data:
+            if not each.isnumeric():
+                return False
+        return True
+
+    def existing_id_check(self):
+        """ checks that the employee id is not already in the name index """
+        empidlist = []
+        if self.data == self.onrec:  # if there is no change to the employee id
+            return True
+        sql = "SELECT emp_id FROM name_index"  # pull all employee ids from the database
+        results = inquire(sql)
+        for each in results:  # create a list of employee ids
+            if each[0] != self.onrec:  # not including the employee id currently on record for the carrier
+                empidlist.append(each[0])
+        if self.data in empidlist:  # error if the employee id is already used by another carrier
+            return False
+        return True
+
+
+class SeniorityChecker:
+    """ check the seniority date to ensure it is properly formatted and a valid date. """
+    def __init__(self):
+        self.data = None
+        self.frame = None
+
+    def run_manual(self, date, frame):
+        """ master method for managing checks and messages """
+        self.data = date
+        self.frame = frame
+        if self.data == "":
+            return True
+        msg_rear = "\n Seniority date must be formatted as \"mm/dd/yyyy\".\n" \
+                   "Month must be expressed as number between 1 and 12.\n" \
+                   "Day must be expressed as a number between 1 and 31.\n" \
+                   "Year must be have four digits and be above 0010. "
+        breakdown = BackSlashDateChecker(date)
+        if not breakdown.count_backslashes():
+            msg = "The seniority date must have 2 backslashes. " + msg_rear
+            messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        breakdown.breaker()  # fully form the backslashdatechecker object
+        if not breakdown.check_numeric():
+            msg = "All values for month, day and year must be numbers for seniority. " + msg_rear
+            messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        if not breakdown.check_minimums():
+            msg = "All values for month, day and year must be greater than zero for seniority . " + msg_rear
+            messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        if not breakdown.check_month():
+            msg = "The value provided for the seniority month is not acceptable. " + msg_rear
+            messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        if not breakdown.check_day():
+            msg = "The value provided for the seniority day is not acceptable. " + msg_rear
+            messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        if not breakdown.check_year():
+            msg = "The value provided for the seniority year is not acceptable. " + msg_rear
+            messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        if not breakdown.valid_date():
+            msg = "The seniority date is not valid. " + msg_rear
+            messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        return True
 
 
 def informalc_date_checker(frame, date, typee):
