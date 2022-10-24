@@ -27,10 +27,10 @@ class MaxHr:
         self.file_path = None
         self.filename = None
         self.report = None
-        self.day_xlr = {"Saturday": "sat", "Sunday": "sun", "Monday": "mon", "Tuesday": "tue", "Wednesday": "wed",
-                   "Thursday": "thr", "Friday": "fri"}
-        self.leave_xlr = {"49": "owcp   ", "55": "annual ", "56": "sick   ", "58": "holiday", "59": "lwop   ",
-                     "60": "lwop   "}
+        self.day_xlr = {"Saturday": "sat", "Sunday": "sun", "Monday": "mon", "Tuesday": "tue",
+                        "Wednesday": "wed", "Thursday": "thr", "Friday": "fri"}
+        self.leave_xlr = {"49": "owcp   ", "55": "annual ", "56": "sick   ", "58": "holiday",
+                          "59": "lwop   ", "60": "lwop   "}
         self.maxhour = []
         self.max_aux_day = []
         self.max_ft_day = []
@@ -240,13 +240,12 @@ class MaxHr:
                     period += tabs * "."
                     diff = float(item[2]) - 60
                     diff_total += diff
-                    self.report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2]))
-                                 + "   " + "{0:.2f}".format(float(diff)).rjust(5, " ") + "\n")
+                    self.report.write(item[0] + ", " + item[1] + period + "{0:.2f}".format(float(item[2])) + "   "
+                                      + "{0:.2f}".format(float(diff)).rjust(5, " ") + "\n")
                     wmax_add = [item[0], item[1], diff]
                     weekly_max.append(wmax_add)  # catch totals of violations for the week
                 self.report.write("\n" + "                                   total:  " +
-                                  "{0:.2f}".format(float(diff_total))
-                             + "\n")
+                                  "{0:.2f}".format(float(diff_total)) + "\n")
             self.all_extra.sort(key=itemgetter(0))
             self.report.write("\nNon 5200 codes contributing to 60 hour violations  \n\n")
             self.report.write("day   name                            hr type   hours\n")
@@ -257,12 +256,9 @@ class MaxHr:
                 tabs = 28 - (len(self.all_extra[i][0]))
                 period = "."
                 period += tabs * "."
-                self.report.write(self.day_xlr[self.all_extra[i][2]] + "   " +
-                             self.all_extra[i][0] + ", " +
-                             self.all_extra[i][1] + period +
-                             self.leave_xlr[self.all_extra[i][3]] + "  " +
-                             "{0:.2f}".format(float(self.all_extra[i][4])).rjust(5, " ")
-                             + "\n")
+                self.report.write(self.day_xlr[self.all_extra[i][2]] + "   " + self.all_extra[i][0] +
+                                  ", " + self.all_extra[i][1] + period + self.leave_xlr[self.all_extra[i][3]] +
+                                  "  " + "{0:.2f}".format(float(self.all_extra[i][4])).rjust(5, " ") + "\n")
             self.report.write("\n\n12 hour full time carrier violations \n\n")
             self.report.write("day   name                        total   over   sum\n")
             self.report.write("-----------------------------------------------------\n")

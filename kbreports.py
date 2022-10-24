@@ -653,12 +653,12 @@ class Messenger:
         else:
             if projvar.platform == "winapp":
                 path = os.getcwd()
-                dbase = os.path.expanduser("~") + '\Documents\.klusterbox\\' + 'mandates.sqlite'
-                archive = os.path.expanduser("~") + '\Documents\klusterbox'
+                dbase = os.path.expanduser("~") + '\\Documents\\.klusterbox\\' + 'mandates.sqlite'
+                archive = os.path.expanduser("~") + '\\Documents\\klusterbox'
             else:
                 path = os.getcwd()
-                dbase = os.getcwd() + '\kb_sub\mandates.sqlite'
-                archive = os.getcwd() + '\kb_sub'
+                dbase = os.getcwd() + '\\kb_sub\\mandates.sqlite'
+                archive = os.getcwd() + '\\kb_sub'
 
         messagebox.showinfo("KLUSTERBOX ",
                             "On this computer Klusterbox is located at:\n"

@@ -37,6 +37,8 @@ class SpeedSheetGen:
         self.ns_pref = "r"  # "r" for rotating
         if not self.rotate_mode:
             self.ns_pref = "f"  # "f" for fixed
+        # speedsheet move triads are configured to 'time/time/route' for false or 'route/time/time for true
+        self.triad_routefirst = self.db.triad_routefirst  # move notation preference: True - route first
         self.dlsn_dict = {"sat": "sat", "mon": "mon", "tue": "tue", "wed": "wed", "thu": "thu", "fri": "fri",
                           "rsat": "sat", "rmon": "mon", "rtue": "tue", "rwed": "wed", "rthu": "thu", "rfri": "fri",
                           "fsat": "sat", "fmon": "mon", "ftue": "tue", "fwed": "wed", "fthu": "thu", "ffri": "fri",
@@ -197,8 +199,20 @@ class SpeedSheetGen:
         """ format mv triads for output to speedsheets """
         if triset == "":
             return triset  # do nothing if blank
-        else:
-            return self.mv_format(triset)  # send to mv_format for formating if not blank
+        triset = self.triad_reorder(triset)
+        return self.mv_format(triset)  # send to mv_format for formating if not blank
+
+    def triad_reorder(self, triset):
+        """ reorders the triad to the 'route, time, time' order if self.triad_routefirst is true. """
+        if not self.triad_routefirst:  # if the triad route first setting is off
+            return triset  # skip the process, return original string
+        mv_array = triset.split(",")  # split by commas
+        fixed_array = []
+        for i in range(0, len(mv_array), 3):  # loop through all elements in groups of three
+            fixed_array.append(mv_array[i + 2])  # the last shall be first
+            fixed_array.append(mv_array[i])  # and the first shall be second from last
+            fixed_array.append(mv_array[i + 1])  # the second if pushed to the last place
+        return Convert(fixed_array).array_to_string()  # convert the array back into a string and return it.
 
     @staticmethod
     def mv_format(triset):
@@ -363,69 +377,81 @@ class SpeedSheetGen:
                 cell.value = "Carriers listed Alphabetically: {}".format(self.ws_titles[i])
             cell.style = self.list_header
             self.ws_list[i].merge_cells('A3:F3')
+            row = 3
             if i == 0:  # only execute on the first sheet of the workbook
-                cell = self.ws_list[i].cell(row=3, column=7)  #
+                cell = self.ws_list[i].cell(row=row, column=7)  # ns day preference title and field
                 cell.value = "ns day preference (r=rotating/f=fixed): "  # ns day preference
                 cell.style = self.date_dov_title
-                self.ws_list[i].merge_cells('G3:K3')
-                cell = self.ws_list[i].cell(row=3, column=12)  #
+                self.ws_list[i].merge_cells('G' + str(row) + ':' + 'K' + str(row))
+                cell = self.ws_list[i].cell(row=row, column=12)  #
                 cell.value = self.ns_pref
                 cell.style = self.date_dov
+            row += 1
+            # only display the moves notation preference if the speedsheet is 'all inclusive'
+            if i == 0 and self.title() != "Speedsheet - Carriers":
+                cell = self.ws_list[i].cell(row=row, column=7)  # move notation title and field
+                cell.value = "move notation - route first: "  # title
+                cell.style = self.date_dov_title
+                self.ws_list[i].merge_cells('G' + str(row) + ':' + 'K' + str(row))
+                cell = self.ws_list[i].cell(row=row, column=12)  # value is True or False
+                cell.value = str(self.triad_routefirst)
+                cell.style = self.date_dov
+                row += 1
             # Headers for Carrier List
-            cell = self.ws_list[i].cell(row=4, column=1)  # header day
+            cell = self.ws_list[i].cell(row=row, column=1)  # header day
             cell.value = "Days"
             cell.style = self.car_col_header
-            cell = self.ws_list[i].cell(row=4, column=2)  # header carrier name
+            cell = self.ws_list[i].cell(row=row, column=2)  # header carrier name
             cell.value = "Carrier Name"
             cell.style = self.car_col_header
-            self.ws_list[i].merge_cells('B4:E4')
-            cell = self.ws_list[i].cell(row=4, column=6)  # header list type
+            self.ws_list[i].merge_cells('B' + str(row) + ':' + 'E' + str(row))
+            cell = self.ws_list[i].cell(row=row, column=6)  # header list type
             cell.value = "List"
             cell.style = self.car_col_header
-            cell = self.ws_list[i].cell(row=4, column=7)  # header ns day
+            cell = self.ws_list[i].cell(row=row, column=7)  # header ns day
             cell.value = "NS Day"
             cell.style = self.car_col_header
-            cell = self.ws_list[i].cell(row=4, column=8)  # header route
+            cell = self.ws_list[i].cell(row=row, column=8)  # header route
             cell.value = "Route/s"
             cell.style = self.car_col_header
-            self.ws_list[i].merge_cells('H4:K4')
-            cell = self.ws_list[i].cell(row=4, column=12)  # header emp id
+            self.ws_list[i].merge_cells('H' + str(row) + ':' + 'K' + str(row))
+            cell = self.ws_list[i].cell(row=row, column=12)  # header emp id
             cell.value = "Emp id"
             cell.style = self.car_col_header
-            row = 5  # start at row 5 after the page header display
+            row += 1  # start at row 5 after the page header display
             if self.full_report:  # only include rings headers on all inclusive not carrier only
                 # Headers for Rings
-                cell = self.ws_list[i].cell(row=5, column=1)  # header day
+                cell = self.ws_list[i].cell(row=row, column=1)  # header day
                 cell.value = "Day"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=2)  # header 5200
+                cell = self.ws_list[i].cell(row=row, column=2)  # header 5200
                 cell.value = "5200"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=3)  # header BT
+                cell = self.ws_list[i].cell(row=row, column=3)  # header BT
                 cell.value = "BT"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=4)  # header MOVES
+                cell = self.ws_list[i].cell(row=row, column=4)  # header MOVES
                 cell.value = "MOVES"
                 cell.style = self.col_header
-                self.ws_list[i].merge_cells('D5:G5')
-                cell = self.ws_list[i].cell(row=5, column=8)  # header RS
+                self.ws_list[i].merge_cells('D' + str(row) + ':' + 'G' + str(row))
+                cell = self.ws_list[i].cell(row=row, column=8)  # header RS
                 cell.value = "RS"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=9)  # header ET
+                cell = self.ws_list[i].cell(row=row, column=9)  # header ET
                 cell.value = "ET"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=10)  # header codes
+                cell = self.ws_list[i].cell(row=row, column=10)  # header codes
                 cell.value = "CODE"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=11)  # header leave type
+                cell = self.ws_list[i].cell(row=row, column=11)  # header leave type
                 cell.value = "LV type"
                 cell.style = self.col_header
-                cell = self.ws_list[i].cell(row=5, column=12)  # header leave time
+                cell = self.ws_list[i].cell(row=row, column=12)  # header leave time
                 cell.value = "LV time"
                 cell.style = self.col_header
-                row = 6  # update start at row 6 after the page header display if all inclusive
+                row += 1  # update start at row 7 after the page header display if all inclusive
             # freeze panes
-            self.ws_list[i].freeze_panes = self.ws_list[i].cell(row=row, column=1)  # ['A5] or ['A6']
+            self.ws_list[i].freeze_panes = self.ws_list[i].cell(row=row, column=1)  # ['A6'] or ['A7']
             if i == 0:
                 rowcount = self.db.min_empid  # get minimum speedcell count for employee id tab
             elif i != 0 and not self.db.abc_breakdown:
@@ -1397,7 +1423,7 @@ class SpeedRingCheck:
             self.allowaddrings = False
             return
         for i in range(len(moves_array)):
-            if i % 3 == 0 or (i + 2) % 3 == 0:  # check the time components of the moves triad
+            if self.triad_elem_istime(i):  # method returns True is the element is in a 'time' place
                 move_ring = RingTimeChecker(moves_array[i]).make_float()  # try to convert moves_array[i] to a float.
                 if move_ring is not False:  # if fail, create error msg and return
                     moves_array[i] = move_ring  # convert the item to a float, if not already
@@ -1422,7 +1448,8 @@ class SpeedRingCheck:
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
-            if (i + 1) % 3 == 0:  # check the route component of the move triad
+            #  if (i + 1) % 3 == 0:  # check the route component of the move triad
+            if not self.triad_elem_istime(i):  # method returns false is the element is in the 'route' place
                 if not RouteChecker(moves_array[i]).check_numeric():
                     error = "     ERROR: Routes in move triads must be numeric. Got instead \"{}\": \n" \
                         .format(moves_array[i])
@@ -1435,10 +1462,11 @@ class SpeedRingCheck:
                     self.error_array.append(error)
                     self.allowaddrings = False
                     return
+        moves_array = self.triad_restoreorder(moves_array)  # if self.triad_routefirst is true - reorder the array
         for i in range(0, len(moves_array), 3):
             if moves_array[i] > moves_array[i + 1]:
-                error = "     ERROR: first value \"{}\" must be lesser than the second \n" \
-                        "            value \"{}\" in moves.\n".format(moves_array[i], moves_array[i + 1])
+                error = "     ERROR: first time \"{}\" must be lesser than the second \n" \
+                        "            time \"{}\" in moves.\n".format(moves_array[i], moves_array[i + 1])
                 self.error_array.append(error)
                 self.allowaddrings = False
                 return
@@ -1447,9 +1475,32 @@ class SpeedRingCheck:
                 moves_array[i] = Convert(moves_array[i]).hundredths()
                 moves_array[i + 1] = str(moves_array[i + 1])
                 moves_array[i + 1] = Convert(moves_array[i + 1]).hundredths()
-
         baseready = Convert(moves_array).array_to_string()  # convert the moves array to a baseready string
         self.add_moves(baseready)
+
+    def triad_elem_istime(self, i):
+        """ finds if the triad element is a time or a route - returns true for time. """
+        if not self.parent.triad_routefirst:  # if the triad route first setting is off
+            if i % 3 == 0 or (i + 2) % 3 == 0:  # if the first or second value
+                return True
+            if (i + 1) % 3 == 0:  # if the third value
+                return False
+        else:  # if the triad route first setting is on
+            if i % 3 == 0:  # if the first value
+                return False
+            if (i + 2) % 3 == 0 or (i + 1) % 3 == 0:  # if the second or third value.
+                return True
+
+    def triad_restoreorder(self, moves_array):
+        """ restores the triad to the 'time, time, route' order if self.parent.triad_routefirst is true. """
+        if not self.parent.triad_routefirst:  # if the triad route first setting is off
+            return moves_array  # skip the process
+        fixed_array = []
+        for i in range(0, len(moves_array), 3):
+            fixed_array.append(moves_array[i + 1])
+            fixed_array.append(moves_array[i + 2])
+            fixed_array.append(moves_array[i])
+        return fixed_array
 
     def add_codes(self):
         """ adds to the codes varible and writes to the report. """

@@ -378,7 +378,7 @@ class EnterRings:
                 if "tourrings" in widgetlist:  # move moves button text is conditional on if tourrings
                     mactext = "+mv"  # if tourrings use a shorter version
                 mv_button = Button(self.frame[i], text=macadj("more moves", mactext), fg=macadj("black", "grey"),
-                       command=lambda x=i: self.more_moves(x, ww, widgetlist))
+                                   command=lambda x=i: self.more_moves(x, ww, widgetlist))
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
                     mv_button.grid(row=grid_i, column=colcount)
                     colcount += 1

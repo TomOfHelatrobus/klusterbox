@@ -140,11 +140,11 @@ class MakeWindow:
         self.c.configure(yscrollcommand=self.s.set)
         # link the mousewheel - implementation varies by platform
         if sys.platform == "win32":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * (event.delta / 120)), "units"))
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                            yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
         elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * event.delta), "units"))
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                            yview_scroll(int(projvar.mousewheel * event.delta), "units"))
         elif sys.platform == "linux":
             self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
             self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
@@ -204,11 +204,11 @@ class NewWindow:
         self.c.configure(yscrollcommand=self.s.set)
         # link the mousewheel - implementation varies by platform
         if sys.platform == "win32":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * (event.delta / 120)), "units"))
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                            yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
         elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * event.delta), "units"))
+            self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                            yview_scroll(int(projvar.mousewheel * event.delta), "units"))
         elif sys.platform == "linux":
             self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
             self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
@@ -862,9 +862,9 @@ class BuildPath:
                 return os.getcwd() + '/kb_sub/mandates.sqlite'
         else:
             if projvar.platform == "winapp":
-                return os.path.expanduser("~") + '\Documents\.klusterbox\\' + 'mandates.sqlite'
+                return os.path.expanduser("~") + '\\Documents\\.klusterbox\\' + 'mandates.sqlite'
             else:
-                return os.getcwd() + '\kb_sub\mandates.sqlite'
+                return os.getcwd() + '\\kb_sub\\mandates.sqlite'
 
     def add_extension(self, path, ext):
         """ returns a path with the extension.
@@ -1425,6 +1425,7 @@ class SpeedSettings:
         self.min_abc = int(results[18][0])
         self.speedcell_ns_rotate_mode = Convert(results[19][0]).str_to_bool()
         self.speedsheet_fullreport = Convert(results[40][0]).str_to_bool()
+        self.triad_routefirst = Convert(results[43][0]).str_to_bool()
 
 
 class DateChecker:

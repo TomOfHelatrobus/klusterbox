@@ -17,7 +17,7 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(67)
+        self.pbar.max_count(68)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 14
@@ -148,7 +148,9 @@ class DataBase:
             (39, "man4_dis_limit", "show all"),
             (40, "speedsheets_fullreport", "False"),
             (41, "offbid_distinctpage", "True"),
-            (42, "offbid_maxpivot", 2.0)
+            (42, "offbid_maxpivot", 2.0),
+            (43, "triad_routefirst", "False")  # when False, the route is displayed at the end of the route triad
+            # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:
             self.pbar_counter += 1
