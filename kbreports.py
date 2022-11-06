@@ -627,6 +627,66 @@ class CheatSheet:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
 
+    @staticmethod
+    def spdsht_cheatsheet():
+        """ generate a speed sheet cheatsheet for the user. """
+        stamp = datetime.now().strftime("%d%H%M%S")  # create a file name
+        filename = "speedsheet_cheatsheet" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("Klusterbox SpeedSheet CheatSheet\n")
+        report.write("\n\n")
+        report.write("________________________Carrier Information___________________________\n")
+        report.write("\n")
+        report.write("Days: \"sat\", \"mon\", \"tue\", \"wed\", \"thu\", \"fri\" --> default is \"none\"\n")
+        report.write("\n")
+        report.write("Carrier Name: full last name, first initial separated by comma\n")
+        report.write("\n")
+        report.write("List: \"otdl\", \"wal\", \"nl\", \"aux\", \"ptf\" --> default is \"nl\"\n")
+        report.write("\n")
+        report.write("NS Day: \"sat\", \"mon\", \"tue\", \"wed\", \"thu\", \"fri\" --> default is \"none\"\n")
+        report.write("	if rotating:\n")
+        report.write("		\"rsat\", \"rmon\", \"rtue\", \"rwed\", \"rthu\", \"rfri\"\n")
+        report.write("	if fixed:\n")
+        report.write("		\"fsat\", \"fmon\", \"ftue\", \"fwed\", \"fthu\", \"ffri\"\n")
+        report.write("\n")
+        report.write("Route/s: 4 or 5 digits. 1st and 2nd place are zone\n")
+        report.write("			3rd, 4th and 5th are route\n")
+        report.write("	e.g. 1024 or 10124 or 0924\n")
+        report.write("\n")
+        report.write("Emp id: 8 digit employee id number\n")
+        report.write("\n\n")
+        report.write("_________________________Rings Information____________________________\n")
+        report.write("\n")
+        report.write("5200: Hours worked: number between 0 and 24\n")
+        report.write("\n")
+        report.write("MOVES: if \"moves notation route first\" is False:\n")
+        report.write("	time move off route + time move on route + route number\n")
+        report.write("       move sets separated by \"/\"\n")
+        report.write("       e.g. 14.52+15.88+0152/15.89+16.32+0155\n")
+        report.write("\n")
+        report.write("	if \"moves notation route first\" is True:\n")
+        report.write("	route number + time move off route + time move on route\n")
+        report.write("       move sets separated by \"/\"\n")
+        report.write("       e.g. 0152+14.52+15.88/0155+15.89+16.32\n")
+        report.write("\n")
+        report.write("RS: Return to station time: number between 0 and 24\n")
+        report.write("\n")
+        report.write("CODE: if List Status is \"wal\" or \"nl\":\n")
+        report.write("           \"none\", \"ns day\"\n")
+        report.write("      if List Status is \"otdl\", \"aux\", or \"ptf\":\n")
+        report.write("           \"none\", \"no call\", \"light\", \"sch chg\", \"annual\", \"sick\", \"excused\"\n")
+        report.write("\n")
+        report.write("LV type: Leave type: \"none\", \"annual\", \"sick\", \"holiday\", \"other\"\n")
+        report.write("\n")
+        report.write("LV time: Hours of paid leave: number between 0 and 8\n")
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", dir_path('report') + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
 
 class Messenger:
     """
