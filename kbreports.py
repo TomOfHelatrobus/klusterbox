@@ -603,6 +603,7 @@ class CheatSheet:
         report.write("5800 .......... Holiday Leave\n")
         report.write("59## .......... Leave Without Pay (LWOP) - Part Day\n")
         report.write("60## .......... Leave Without Pay (LWOP) - Full Day\n")
+        report.write("61## .......... Court Leave (paid)\n")
         report.write("2400 .......... Absent Without Leave (AWOL)\n")
         report.write("\nOperation Codes:\n\n")
         report.write("721 ........... Street Time\n")

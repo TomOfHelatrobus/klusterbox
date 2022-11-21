@@ -23,7 +23,7 @@ ___ 3. Click "Next".
 	____ d. Click Open.
 	____ e. Leave all other settings as default.
 
-7. In the Application Files dialog:e
+7. In the Application Files dialog:
 	____ a. Delete the examples by selecting them and hitting the Remove Directory(X) button. 
 	____ b. Click the "Add Directory Tree" button. 
 	____ c. In the EditDirectory dialog press the "..." button next to SelectDirectory. 

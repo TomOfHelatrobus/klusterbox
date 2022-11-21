@@ -9393,9 +9393,6 @@ class MainFrame:
                     Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
                     Button(self.main_frame, text=rec[1], width=macadj(25, 23), bg=color, anchor="w",
                            command=lambda x=rec: EnterRings(x[1]).start()).grid(row=r, column=1)
-                    # Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
-                    #        command=lambda x=rec[1]: [self.win.topframe.destroy(), edit_carrier(x)]) \
-                    #     .grid(row=r, column=5)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
                            command=lambda x=rec[1]: CarrierInput().edit_carriers(self.win.topframe, x)) \
                         .grid(row=r, column=5)

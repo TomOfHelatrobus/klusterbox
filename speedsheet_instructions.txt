@@ -89,11 +89,21 @@ Rings Information has 7 elements:
    1. Day: This is pre-entered by Klusterbox. Do not change this value. 
    2. 5200: This is a number from .01 to 24.00 which expresses hours worked 
 	for the the day. The value can also be blank.
-   3. MOVES: This is a set of three values. First value is time off route, 
+   3. MOVES: This is a set of three values. Two of the values are times and one
+	is a route. These values will establish when, how long and where a carrier
+	worked off their route. The correct order of the values depend on the Moves 	Notation - route first setting in SpeedSheet Configurations.
+  
+	If "route first" is True: First value is time off route, 
 	second value is time when off route assignment ends, the third value
 	is the number of the route expressed as four or five digits. Values are 
 	separated by "+" and sets are separated by "/". 
 	e.g. 14.52+15.88+0152/15.89+16.32+0155
+
+	If "route first" is False: First value is the number of the route expressed 
+	as four or five digits is time off route, the second value is time off route, 
+	the third value is the time when off route assignment ends.
+	. Values are separated by "+" and sets are separated by "/". 
+	e.g. 0152+14.52+15.88/0155+15.89+16.32
    4. RS: This is a number from .01 to 24.00 which expresses the time the carrier 
 	returns to the station. The value can also be blank.
    5. CODE: This is a code/note designating a special condition. Options for 
