@@ -4,7 +4,6 @@ this module contains the pdf converter which reads employee everything reports i
 into csv formatted employee everything reports which can be read by the automatic data entry, auto overmax finder and
 the employee everything reader.
 """
-import projvar
 from kbtoolbox import inquire, dir_filedialog, find_pp, PdfConverterFix, titlebar_icon, Convert, ProgressBarDe
 # Standard Libraries
 from tkinter import messagebox, filedialog, ttk, Label, Tk
@@ -135,7 +134,7 @@ class PdfConverter:
         # this class finishes up by generating an summary at the end of the error report and showing one or two
         #         messageboxes.
         self.FinishUp(self).run()
-        
+
     def get_path(self, add_on, extension):
         """ generate csv file name and path """
         file_parts = self.file_path.split("/")  # split path into folders and file
@@ -171,12 +170,12 @@ class PdfConverter:
         except PermissionError:
             messagebox.showerror("PDF Converter",
                                  "The file written to must be closed. Close {}, then rerun "
-                                                  "Automatic Data Entry".format(self.new_file_path),
+                                 "Automatic Data Entry".format(self.new_file_path),
                                  parent=self.frame)
             try:  # handle error if the files don't exist
                 self.csv_doc.close()  # close the csv document before returning
-                if self.parent.gen_error_report:
-                    self.parent.kbpc_rpt.close()  # close the error report before returning
+                if self.gen_error_report:
+                    self.kbpc_rpt.close()  # close the error report before returning
             except (PermissionError, AttributeError):
                 pass
             return False
@@ -193,14 +192,45 @@ class PdfConverter:
         self.writer.writerow(line)
         return True
 
+    def validation_error(self, _type):
+        """ if self.validate_text returns False then display messagebox.
+        the kbpc rpt is closed and destroyed. """
+        msg = "This file does not appear to be an Employee Everything Report. \n\n " \
+              "The PDF Converter will not generate a file "
+        if _type == "nostation":
+            msg = "No station could be indentified in this Employee Everything Report. \n\n" \
+                  "The PDF Converter will not generate a file "
+        if _type == "nopayperiod":
+            msg = "No pay period could be indentified in this Employee Everything Report. \n\n" \
+                  "The PDF Converter can not process page {} ".format(self.page_num)
+        messagebox.showerror("Klusterbox PDF Converter", msg, parent=self.frame)
+        if _type in ("general", "nostation"):
+            self.close_destroy()  # close and destroy files if the conversion process fails.
+
+    def close_destroy(self):
+        """ close and destroy files if the conversion process fails. """
+        if os.path.exists(self.new_file_path):  # destroy the new csv file
+            self.csv_doc.close()
+            os.remove(self.new_file_path)
+        if self.gen_error_report:  # close and destroy the error report
+            if self.kbpc_rpt:
+                self.kbpc_rpt.close()
+            if self.kbpc_rpt_file_path is not None:
+                if os.path.exists(self.kbpc_rpt_file_path):
+                    os.remove(self.kbpc_rpt_file_path)
+        if self.gen_raw_report:  # destroy the raw pdf miner file
+            if self.kbpc_raw_rpt_file_path is not None:
+                if os.path.exists(self.kbpc_raw_rpt_file_path):
+                    os.remove(self.kbpc_raw_rpt_file_path)
+
     class StartUp:
         """
         run the process to get settings, create the csv, error report and check the text
         """
-        
+
         def __init__(self, parent):
             self.parent = parent
-            
+
         def run(self):
             """ master method for running other methods in proper sequence. """
             self.get_settings()  # gets preferences from tolerances table.
@@ -228,7 +258,7 @@ class PdfConverter:
             return True
 
         def get_settings(self):
-            """ inquire as to if the pdf converter reports have been opted for by the user """ 
+            """ inquire as to if the pdf converter reports have been opted for by the user """
             sql = "SELECT tolerance FROM tolerances WHERE category ='%s'" % "pdf_error_rpt"
             result = inquire(sql)
             self.parent.gen_error_report = Convert(result[0][0]).onoff_to_bool()
@@ -278,7 +308,7 @@ class PdfConverter:
         def readfrom_pdf(self):
             """ get a pdf file and translate it to something readable to be stored in the self.text variable. """
             try:
-                self.parent.file_path = filedialog.\
+                self.parent.file_path = filedialog. \
                     askopenfilename(initialdir=dir_filedialog(), filetypes=[("PDF files", "*.pdf")])  # get the pdf file
             except FileNotFoundError:  # end process if the user fails to select a valid file.
                 return False  # end the process
@@ -311,7 +341,7 @@ class PdfConverter:
                                               parent=self.parent.frame):
                     return False
             return True
-    
+
         def pdf_to_text(self):
             """ Called by pdf_converter() to read pdfs with pdfminer """
             text = None
@@ -350,7 +380,7 @@ class PdfConverter:
                     pb_root.title("Klusterbox PDF Converter - reading pdf")
                     titlebar_icon(pb_root)  # place icon in titlebar
                     Label(pb_root, text="This process takes several minutes. Please wait for results.\n"
-                                         "Don't use Klusterbox until the process is finished") \
+                                        "Don't use Klusterbox until the process is finished") \
                         .grid(row=0, column=0, columnspan=2, sticky="w")
                     pb_label = Label(pb_root, text="Reading PDF: ")  # make label for progress bar
                     pb_label.grid(row=1, column=0, sticky="w")
@@ -390,12 +420,11 @@ class PdfConverter:
                     break
                 else:
                     if i < 1:
-                        msg = "PDF Conversion has failed and will not generate a file.  \n\n " \
+                        msg = "PDF Conversion has failed and will not generate a file.  \n\n" \
                               "We will try again."
                         result = messagebox.askokcancel("Klusterbox PDF Converter", msg, parent=self.parent.frame)
                         if not result:
                             return "Fail"
-    
                     else:  # if the second attempt failed
                         messagebox.showerror("Klusterbox PDF Converter",
                                              "PDF Conversion has failed and will not generate a file.  \n\n"
@@ -443,7 +472,7 @@ class PdfConverter:
                 return False
             kbpc_raw_rpt.close()
             return True
-        
+
         def create_error_report(self):
             """ create text document for data extracted from the raw pdfminer output """
             self.parent.kbpc_rpt_file_path = self.parent.get_path("_kbpc", ".txt")
@@ -460,50 +489,17 @@ class PdfConverter:
             self.parent.pages = self.parent.text.split("")  # split the document into pages
 
         def validate_text(self, field):
-            """ search for key terms 'Restricted USPS T&A Information' and 'Employee Everything Report'
-            to make sure the doc is an ee report. if both terms are not found on the first page, terminate the process.
-            """
+            """ search for key terms Restricted USPS T&A Information and Employee Everything Report to make sure
+            the doc is an ee report. if both terms are not found on the first page, terminate the process. """
             result = re.search('Restricted USPS T&A Information', field, re.DOTALL)
             if not result:
-                self.validation_error("general")  # show error message and terminate process.
+                self.parent.validation_error("general")  # show error message and terminate process.
                 return False
             result = re.search('Employee Everything Report', field, re.DOTALL)
             if not result:
-                self.validation_error("general")  # show error message and terminate process.
+                self.parent.validation_error("general")  # show error message and terminate process.
                 return False
             return True
-
-        def validation_error(self, type):
-            """
-            if self.validate_text returns False then display messagebox.
-            the kbpc rpt is closed and destroyed. """
-            msg = "This file does not appear to be an Employee Everything Report. \n\n " \
-                  "The PDF Converter will not generate a file "
-            if type == "nostation":
-                msg = "No station could be indentified in this Employee Everything Report. \n\n" \
-                      "The PDF Converter will not generate a file "
-            if type == "nopayperiod":
-                msg = "No pay period could be indentified in this Employee Everything Report. \n\n" \
-                      "The PDF Converter can not process page {} ".format(self.parent.page_num)
-            messagebox.showerror("Klusterbox PDF Converter", msg, parent=self.parent.frame)
-            if type in ("general", "nostation"):
-                self.close_destroy()  # close and destroy files if the conversion process fails.
-
-        def close_destroy(self):
-            """ close and destroy files if the conversion process fails. """
-            if os.path.exists(self.parent.new_file_path):  # destroy the new csv file
-                self.parent.csv_doc.close()
-                os.remove(self.parent.new_file_path)
-            if self.parent.gen_error_report:  # close and destroy the error report
-                if self.parent.kbpc_rpt:
-                    self.parent.kbpc_rpt.close()
-                if self.parent.kbpc_rpt_file_path is not None:
-                    if os.path.exists(self.parent.kbpc_rpt_file_path):
-                        os.remove(self.parent.kbpc_rpt_file_path)
-            if self.parent.gen_raw_report:  # destroy the raw pdf miner file
-                if self.parent.kbpc_raw_rpt_file_path is not None:
-                    if os.path.exists(self.parent.kbpc_raw_rpt_file_path):
-                        os.remove(self.parent.kbpc_raw_rpt_file_path)
 
         def get_station(self):
             """ get the station. terminate the process if a station can not be found. """
@@ -517,10 +513,10 @@ class PdfConverter:
                     self.parent.station = result.group(1).strip()
                     self.parent.station = self.parent.station.split('\n')[0]
             except AttributeError:
-                self.validation_error("nostation")  # show error message and terminate process.
+                self.parent.validation_error("nostation")  # show error message and terminate process.
                 return False
             if not self.parent.station:
-                self.validation_error("nostation")  # show error message and terminate process.
+                self.parent.validation_error("nostation")  # show error message and terminate process.
                 return False
             return True
 
@@ -539,7 +535,7 @@ class PdfConverter:
                   "in the csv format from management or manually enter in the " \
                   "information"
             messagebox.showerror("PDF Converter", msg, parent=self.parent.frame)
-            self.close_destroy()  # close and destroy files if the conversion process fails.
+            self.parent.close_destroy()  # close and destroy files if the conversion process fails.
 
     class PageAnalysis:
         """ this class breaks the document into pages and then loops to anaylse each page"""
@@ -559,6 +555,7 @@ class PdfConverter:
             self.parent.pb.move_count(self.parent.pbi)  # increment progress bar
             self.parent.pb.change_text("This process is underway. Please wait for results.")
             if not self.start_analysis():  # go page by page for analysis.
+                self.parent.pb.stop()  # stop and destroy the progress bar
                 return False
             self.parent.pb.stop()
             return True
@@ -581,7 +578,7 @@ class PdfConverter:
             if self.find_pp_findall():
                 return True
             if not self.parent.yyppwk:
-                self.validation_error("nopayperiod")
+                self.parent.validation_error("nopayperiod")
                 return False
             # find pay period using search - criteria four
             start = "YrPPWk:\n\n"
@@ -696,9 +693,10 @@ class PdfConverter:
         """
         this class will separate the page into groups separated by empty lines and then anaylse those groups
         """
+
         def __init__(self, parent):
             self.parent = parent
-            
+
         def run(self):
             """ anaylse the c. This will process groups of text """
             b = self.parent.page.split("\n\n")
@@ -710,20 +708,20 @@ class PdfConverter:
                 self.find_stevens(c)  # solve for stevens problem / H/L base times not being read
                 self.build_underscoreslasharray(c)  # build daily underscoreslash array
                 self.parent.LineAnalysis(self.parent).run(c)
-    
+
         def find_base(self, c):
             """ resets the lookfortimes to True if Base is read"""
             if re.match(r"Base", c):
                 self.parent.lookfortimes = True  # resets the lookfortimes to True
-    
+
         def get_times(self, c):
             """ if lookfortimes is true, then process the input to look for times information. """
-            if re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}$", c):
+            if re.match(r"0[0-9]{4}:\s0[0-9]{2}\.[0-9]{2}$", c):
                 to_add = [self.parent.base_counter, c]
                 self.parent.base_time.append(to_add)
                 self.parent.base_chg = self.parent.base_counter  # value to check for errors+
             # solve for robertson basetime problem / Base followed by H/L
-            elif re.match(r"0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}\n0[0-9]{4}\:\s0[0-9]{2}\.[0-9]{2}", c):
+            elif re.match(r"0[0-9]{4}:\s0[0-9]{2}\.[0-9]{2}\n0[0-9]{4}:\s0[0-9]{2}\.[0-9]{2}", c):
                 if "\n" not in c:  # check that there are no multiple times in the line
                     to_add = [self.parent.base_counter, c]
                     self.parent.base_time.append(to_add)
@@ -738,20 +736,20 @@ class PdfConverter:
             else:
                 self.parent.base_counter += 1
                 self.parent.lookfortimes = False
-    
+
         def find_stevens(self, c):
             """ find the stevens problem and fix it """
             if len(self.parent.finance_holder) == 0 and re.match(r"H/L\s", c):  # set trap to catch daily times
                 self.parent.lookfortimes = True
                 self.parent.stevens_rpt.append(self.parent.lastname)
-    
+
         def build_underscoreslasharray(self, c):  #
             """ build daily underscoreslash array """
             checker = False
             one_mistake = False
             underscore_slash = c.split("\n")
             for us in underscore_slash:  # loop through items to detect matches
-                if re.match(r"[0-1][0-9]\/[0-9][0-9]", us) or us == "__/__":
+                if re.match(r"[0-1][0-9]/[0-9][0-9]", us) or us == "__/__":
                     checker = True
                 else:
                     one_mistake = True
@@ -762,6 +760,7 @@ class PdfConverter:
         """
         this class will separate the groups into individual lines and then anaylse those lines
         """
+
         def __init__(self, parent):
             self.parent = parent
 
@@ -833,7 +832,7 @@ class PdfConverter:
             """ get the move code following the chain """
             self.parent.movecode_holder = []
             if len(self.parent.finance_holder) != 0:  # get the move code following the chain
-                if re.match(r"[0-9]{4}\-[0-9]{2}$", e):
+                if re.match(r"[0-9]{4}-[0-9]{2}$", e):
                     self.parent.finance_holder.append(e)
                     self.parent.movecode_holder = self.parent.finance_holder
                 # solve for robertson problem / "H/L" is in move code
@@ -842,7 +841,7 @@ class PdfConverter:
                     self.parent.finance_holder.append("000000")  # insert zeros for route number
                     if self.parent.unprocessedrings == "":
                         # skip getting the route and create append daily array
-                        self.parent.daily_array.append(self.parent.finance_holder)  
+                        self.parent.daily_array.append(self.parent.finance_holder)
                     else:
                         self.parent.unprocessed_counter += 1  # handle carroll problem
                         self.parent.carroll_rpt.append(self.parent.lastname)  # append carroll report
@@ -876,7 +875,7 @@ class PdfConverter:
         def find_franklin(self, e):
             """ look for items in franklin array to solve for franklin problem """
             # if franklin array and date
-            if len(self.parent.franklin_array) > 0 and re.match(r"[0-1][0-9]\/[0-3][0-9]$", e):  
+            if len(self.parent.franklin_array) > 0 and re.match(r"[0-1][0-9]/[0-3][0-9]$", e):
                 frank = self.parent.franklin_array.pop(0)  # pop out the earliest mv desig
                 self.parent.mv_holder = [self.parent.eid, frank]
 
@@ -892,7 +891,7 @@ class PdfConverter:
         def get_dateholder2(self, e):
             """ look for date following move desig """
             self.parent.date_holder = []
-            if re.match(r"[0-1][0-9]\/[0-3][0-9]$", e) and len(
+            if re.match(r"[0-1][0-9]/[0-3][0-9]$", e) and len(
                     self.parent.mv_holder) != 0:  # look for date following move desig
                 self.parent.mv_holder.append(e)
                 self.parent.date_holder = self.parent.mv_holder
@@ -918,7 +917,7 @@ class PdfConverter:
 
         def find_rose(self, e):
             """ solve for rose problem: mv desig and date appearing on same line """
-            if re.match(r"0[0-9]{4}\s[0-2][0-9]\/[0-9][0-9]$", e):
+            if re.match(r"0[0-9]{4}\s[0-2][0-9]/[0-9][0-9]$", e):
                 rose = e.split(" ")
                 self.parent.mv_holder.append(self.parent.eid)  # add the emp id to the daily array
                 self.parent.mv_holder.append(rose[0])  # add the mv desig to the daily array
@@ -962,10 +961,10 @@ class PdfConverter:
         def write_primeinfo(self):
             """ write to csv file. Since the first columns of the csv line are the same for distinct carriers,
              create the first part of the line. This is called prime info"""
-            self.parent.prime_info = [self.parent.yyppwk.replace("-", ""), '"{}"'.format("000000"), 
-                                      '"{}"'.format(self.parent.station), '"{}"'.format("0000"), 
-                                      '"{}"'.format(self.parent.eid), '"{}"'.format(self.parent.lastname), 
-                                      '"{}"'.format(self.parent.fi[:1]), '"_"', '"010/0000"', '"N"', '"N"', 
+            self.parent.prime_info = [self.parent.yyppwk.replace("-", ""), '"{}"'.format("000000"),
+                                      '"{}"'.format(self.parent.station), '"{}"'.format("0000"),
+                                      '"{}"'.format(self.parent.eid), '"{}"'.format(self.parent.lastname),
+                                      '"{}"'.format(self.parent.fi[:1]), '"_"', '"010/0000"', '"N"', '"N"',
                                       '"N"', '"0"', '"0"', '"0"', '"0"', '"0"', '"0"']
 
         def add_underscoreslash(self):
@@ -992,8 +991,9 @@ class PdfConverter:
             self.parent.csv_wed = []
             self.parent.csv_thr = []
             self.parent.csv_fri = []
-            self.parent.csv_output = [self.parent.csv_sat, self.parent.csv_sun, self.parent.csv_mon, self.parent.csv_tue,
-                               self.parent.csv_wed, self.parent.csv_thr, self.parent.csv_fri]
+            self.parent.csv_output = [self.parent.csv_sat, self.parent.csv_sun, self.parent.csv_mon,
+                                      self.parent.csv_tue,
+                                      self.parent.csv_wed, self.parent.csv_thr, self.parent.csv_fri]
 
         def fix_basetimes(self):
             """ fix problem with miscounted base times """
@@ -1164,7 +1164,7 @@ class PdfConverter:
 
         def find_job(self, e):
             """ find the job or d/a code - there might be two """
-            if re.match(r"\s[0-9]{2}\-[0-9]$", e):
+            if re.match(r"\s[0-9]{2}-[0-9]$", e):
                 self.parent.jobs.append(e)
 
         def find_temproute(self, e):
@@ -1212,9 +1212,9 @@ class PdfConverter:
             if self.parent.eid != "" and self.parent.new_page == False:
                 if re.match(r"[0-9]{8}", e):
                     self.parent.eid_count += 1
-                if re.match(r"xxx\-xx\-[0-9]{4}", e):
+                if re.match(r"xxx-xx-[0-9]{4}", e):
                     self.parent.eid_count += 1
-                if re.match(r"XXX\-XX\-[0-9]{4}", e):
+                if re.match(r"XXX-XX-[0-9]{4}", e):
                     self.parent.eid_count += 1
                 if e == "___-___-____":
                     self.parent.eid_count += 1
@@ -1248,15 +1248,15 @@ class PdfConverter:
                         self.parent.eid_count += 1
                         if self.parent.gen_error_report:
                             self.parent.kbpc_rpt.write("NEW PAGE!!!\n")
-                            
+
     class WriteReport:
         """
         This class writes the error report. This is called in PageAnalysis and runs at the end of each page. It
         adds information about the page to the error report.
         """
-        
+
         def __init__(self, parent):
-            self.parent = parent    
+            self.parent = parent
 
         def run(self):
             """ use the collected info to make the csv and reports. """
@@ -1271,7 +1271,7 @@ class PdfConverter:
             self.reinitialize()
             self.parent.pbi += 1
             # end loop
-    
+
         def write_errorreport(self):
             """ write error report. """
             if self.parent.gen_error_report:  # write to error report
@@ -1288,7 +1288,7 @@ class PdfConverter:
                 if len(self.parent.level) > 0:
                     datainput = "Levels: {}\n".format(self.parent.level)
                     self.parent.kbpc_rpt.write(datainput)
-    
+
         def write_baseline(self):
             """ write the base line """
             csv.register_dialect('myDialect',
@@ -1317,7 +1317,7 @@ class PdfConverter:
                     whole_line = self.parent.prime_info + base_line
                     self.parent.writer = csv.writer(self.parent.csv_doc, dialect='myDialect')
                     self.parent.writer.writerow(whole_line)
-    
+
         def reorder_days(self):
             """ make sure the days are in the correct order"""
             if len(self.parent.foundday_holder) > 0:
@@ -1338,7 +1338,7 @@ class PdfConverter:
             if self.parent.gen_error_report:
                 datainput = "proto emp id counter: {}\n".format(self.parent.eid_count)
                 self.parent.kbpc_rpt.write(datainput)
-    
+
         def handle_underscoreslash(self):
             """ handles the underscore slashes. """
             if len(self.parent.daily_underscoreslash) > 0:  # bind all underscore slash items in one array
@@ -1352,7 +1352,7 @@ class PdfConverter:
                     datainput = "MCGRATH CARRYOVER: {}\n".format(self.parent.mcgrath_carryover)
                     self.parent.kbpc_rpt.write(datainput)  # printe out a notice.
                 del self.parent.underscore_slash_result[0]  # delete the ophan underscore slash
-    
+
             count = 0
             for array in self.parent.daily_array:
                 array.append(self.parent.underscore_slash_result[count])
@@ -1370,10 +1370,11 @@ class PdfConverter:
             if self.parent.mcgrath_carryover in self.parent.daily_array:
                 self.parent.daily_array.remove(self.parent.mcgrath_carryover)
             if not self.parent.mcgrath_indicator and self.parent.mcgrath_carryover != "":  # if there is a carryover to be added
-                self.parent.daily_array.insert(0, self.parent.mcgrath_carryover)  # put the carryover at the front of the daily array
+                self.parent.daily_array.insert(0,
+                                               self.parent.mcgrath_carryover)  # put the carryover at the front of the daily array
                 self.parent.mcgrath_carryover = ""  # reset the carryover
                 self.parent.eid_count += 1  # increment the emp id counter
-    
+
             # set up array for each day in the week
             self.parent.csv_sat = []
             self.parent.csv_sun = []
@@ -1382,8 +1383,9 @@ class PdfConverter:
             self.parent.csv_wed = []
             self.parent.csv_thr = []
             self.parent.csv_fri = []
-            self.parent.csv_output = [self.parent.csv_sat, self.parent.csv_sun, self.parent.csv_mon, self.parent.csv_tue, self.parent.csv_wed,
-                               self.parent.csv_thr, self.parent.csv_fri]
+            self.parent.csv_output = [self.parent.csv_sat, self.parent.csv_sun, self.parent.csv_mon,
+                                      self.parent.csv_tue, self.parent.csv_wed,
+                                      self.parent.csv_thr, self.parent.csv_fri]
             # reorder the found days to ensure the correct order
             self.parent.found_days = self.parent.pdf_converter_reorder_founddays()
             # fix problem with miscounted base times
@@ -1440,7 +1442,7 @@ class PdfConverter:
                         whole_line = self.parent.prime_info + add_this
                         self.parent.writer = csv.writer(self.parent.csv_doc, dialect='myDialect')
                         self.parent.writer.writerow(whole_line)
-    
+
         def carroll_handler(self):
             """ Handle Carroll problems """
             if not self.parent.mcgrath_indicator:
@@ -1457,7 +1459,7 @@ class PdfConverter:
             else:
                 self.parent.eid_count -= 1
             self.parent.eid_count -= self.parent.unprocessed_counter * 2
-    
+
         def problem_handling(self):
             """
             detect Franklin Problems: Consecutive MV Desigs
@@ -1486,20 +1488,20 @@ class PdfConverter:
                     if self.parent.gen_error_report:
                         self.parent.kbpc_rpt.write("FRANKLIN ERROR DETECTED!!! ALERT! ALERT!\n")
                     self.parent.unresolved.append(self.parent.lastname)
-    
+
         def increment_basechg(self):
             """ increment base change """
             if self.parent.base_chg + 1 != len(self.parent.found_days):  # add to basecounter error array
                 to_add = (self.parent.lastname, self.parent.base_chg, len(self.parent.found_days))
                 if len(self.parent.found_days) > 0:
                     self.parent.basecounter_error.append(to_add)
-    
+
         def dailyarraylenght(self):
             """ write daily array lenght to report"""
             if self.parent.gen_error_report:
                 datainput = "daily array lenght: {}\n".format(len(self.parent.daily_array))
                 self.parent.kbpc_rpt.write(datainput)
-    
+
         def reinitialize(self):
             """ initialize arrays """
             self.parent.found_days = []
@@ -1521,16 +1523,16 @@ class PdfConverter:
                 datainput = "emp id counter: {}\n".format(max(self.parent.eid_count, 0))
                 self.parent.kbpc_rpt.write(datainput)
             self.parent.pb.move_count(self.parent.pbi)
-            
+
     class FinishUp:
         """
         this class finishes up by generating an summary at the end of the error report and showing one or two 
         messageboxes. 
         """
-        
+
         def __init__(self, parent):
             self.parent = parent
-            
+
         def run(self):
             """ this is a master method for running other methods in proper order """
             self.build_error_report()  # if the error report is opted - generate it.
@@ -1538,7 +1540,7 @@ class PdfConverter:
             self.completion_messagebox()  # prompt user with messagebox to show successful completion.
             self.close_errorreport()  # close the error report if it was being generated.
             self.parent.csv_doc.close()
-            
+
         def build_error_report(self):
             """ create a text document with the data stored in variables to show detected errors which are
             corrected by the their respective handlings. """
@@ -1557,15 +1559,15 @@ class PdfConverter:
                 datainput = "\t>>> {}\n".format(self.parent.rose_rpt)
                 self.parent.kbpc_rpt.write(datainput)
                 self.parent.kbpc_rpt.write("Robertson Baseline Problem: The base count is jumping when H/L basetimes "
-                                    "are put into the basetime array.\n")
+                                           "are put into the basetime array.\n")
                 datainput = "\t>>> {}\n".format(self.parent.robert_rpt)
                 self.parent.kbpc_rpt.write(datainput)
                 self.parent.kbpc_rpt.write("Stevens Problem: Basetimes begining with H/L do not show up and are "
-                                    "not entered into the basetime array.\n")
+                                           "not entered into the basetime array.\n")
                 datainput = "\t>>> {}\n".format(self.parent.stevens_rpt)
                 self.parent.kbpc_rpt.write(datainput)
                 self.parent.kbpc_rpt.write("Carroll Problem: Unprocessed rings at the end of the page do not "
-                                    "contain __/__ or times.'n")
+                                           "contain __/__ or times.'n")
                 datainput = ">>> {}\n".format(self.parent.carroll_rpt)
                 self.parent.kbpc_rpt.write(datainput)
                 self.parent.kbpc_rpt.write("Nguyen Problem: Found day appears above the Emp ID.\n")
@@ -1622,4 +1624,3 @@ class PdfConverter:
             """ close the error report document if that option was selected. """
             if self.parent.gen_error_report:
                 self.parent.kbpc_rpt.close()
-

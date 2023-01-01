@@ -280,9 +280,9 @@ class MaxHr:
                         period = "."
                         period += tabs * "."
                         self.report.write(self.day_xlr[self.max_ft_day[i][2]] + "   " +
-                                     self.max_ft_day[i][0] + ", " +
-                                     self.max_ft_day[i][1] +
-                                     period + "{0:.2f}".format(
+                                          self.max_ft_day[i][0] + ", " +
+                                          self.max_ft_day[i][1] +
+                                          period + "{0:.2f}".format(
                             float(self.max_ft_day[i][3])) + "   " + "{0:.2f}".format(float(diff)) + "\n")
                 if jump == "no":
                     tabs = 24 - (len(self.max_ft_day[i][0]))
@@ -300,7 +300,7 @@ class MaxHr:
                     diff_sum = 0
             self.report.write("\n" + "                                         total:  " +
                               "{0:.2f}".format(float(sum_total))
-                         + "\n")
+                              + "\n")
             self.report.write("\n11.50 hour auxiliary carrier violations \n\n")
             self.report.write("day   name                        total   over   sum\n")
             self.report.write("-----------------------------------------------------\n")
@@ -322,20 +322,20 @@ class MaxHr:
                         period = "."
                         period += tabs * "."
                         self.report.write(self.day_xlr[self.max_aux_day[i][2]] + "   " +
-                                     self.max_aux_day[i][0] + ", " +
-                                     self.max_aux_day[i][1] + period +
-                                     "{0:.2f}".format(float(self.max_aux_day[i][3])) + "   " +
-                                     "{0:.2f}".format(float(diff)) + "\n")
+                                          self.max_aux_day[i][0] + ", " +
+                                          self.max_aux_day[i][1] + period +
+                                          "{0:.2f}".format(float(self.max_aux_day[i][3])) + "   " +
+                                          "{0:.2f}".format(float(diff)) + "\n")
                 if jump == "no":
                     tabs = 24 - (len(self.max_aux_day[i][0]))
                     period = "."
                     period += tabs * "."
                     self.report.write(self.day_xlr[self.max_aux_day[i][2]] + "   " +
-                                 self.max_aux_day[i][0] + ", " +
-                                 self.max_aux_day[i][1] + period +
-                                 "{0:.2f}".format(float(self.max_aux_day[i][3])) + "   " +
-                                 "{0:.2f}".format(float(diff)) + "   " +
-                                 "{0:.2f}".format(float(diff_sum)) + "\n")
+                                      self.max_aux_day[i][0] + ", " +
+                                      self.max_aux_day[i][1] + period +
+                                      "{0:.2f}".format(float(self.max_aux_day[i][3])) + "   " +
+                                      "{0:.2f}".format(float(diff)) + "   " +
+                                      "{0:.2f}".format(float(diff_sum)) + "\n")
                     dmax_add = [self.max_aux_day[i][0], self.max_aux_day[i][1], diff_sum]
                     daily_max.append(dmax_add)  # catch sum of daily violations for the week
                     sum_total += diff_sum
