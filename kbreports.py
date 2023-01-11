@@ -817,6 +817,12 @@ class Messenger:
                    "carrier's assignment are calculated as overtime.\n\n" \
                    "(Overtime for OTDL carriers with no assignment will \n" \
                    "automatically use the \"all\" overtime calculation.)\n"
+        if switch == "wal_12_hour":
+            text = "Work Assignment List 12 Hour Violation: \n\n" \
+                   "on: Violations for carriers on the Work Assignment \n" \
+                   "List will occur after the carrier works 12 hours.  \n\n" \
+                   "off: Violations for carriers on the Work Assignment \n" \
+                   "List will occur after the carrier works 11.50 hours"
         if switch == "offbid_distinctpage":
             text = "Create distinct pages for each carrier. \n\n" \
                    "Selecting 'on' creates a distinct pages for each \n" \

@@ -149,7 +149,8 @@ class DataBase:
             (40, "speedsheets_fullreport", "False"),
             (41, "offbid_distinctpage", "True"),
             (42, "offbid_maxpivot", 2.0),
-            (43, "triad_routefirst", "False")  # when False, the route is displayed at the end of the route triad
+            (43, "triad_routefirst", "False"),  # when False, the route is displayed at the end of the route triad
+            (44, "wal_12_hour", "True")  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:

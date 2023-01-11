@@ -301,7 +301,7 @@ class InformalC:
                       "gats_number, docs, description, level) " \
                       "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s')" % \
                       (grv_no, dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(),
-                      self.gats_number.get().strip(), self.docs.get(), description, self.lvl.get())
+                       self.gats_number.get().strip(), self.docs.get(), description, self.lvl.get())
                 commit(sql)
                 self.msg = "Grievance Settlement Added: #{}.".format(grv_no)
                 self.informalc_new(self.win.topframe)
@@ -778,8 +778,8 @@ class InformalC:
             
             Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
                 .grid(row=2, column=1, sticky="w")
-            Button(self.win.body, width=9, text="update", command=lambda:
-            self.grvchange(self.grv_num, self.grv_no)).grid(row=3, column=1, sticky="e")
+            Button(self.win.body, width=9, text="update",
+                   command=lambda: self.grvchange(self.grv_num, self.grv_no)).grid(row=3, column=1, sticky="e")
             self.grv_no.set(self.grv_num)
             Label(self.win.body, text="Incident Date", background=macadj("gray95", "grey"),
                   fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
@@ -1798,7 +1798,7 @@ class InformalC:
                 .grid(row=0, column=1, sticky="w")
             Button(self.win.buttons, text="Apply", width=20, anchor=button_alignment,
                    command=lambda: self.apply_search(self.win.topframe, the_year,
-                                                                   the_station, backdate)) \
+                                                     the_station, backdate)) \
                 .grid(row=0, column=2, sticky="w")
             self.win.finish()
 
@@ -2060,7 +2060,7 @@ class InformalC:
                 self.add_plus(self.win.body, payouts)
             else:
                 Label(self.win.body, text="Select a carrier from the carrier list.").grid(row=2, column=0, sticky="w",
-                                                                                  columnspan=5)
+                                                                                          columnspan=5)
                 name = "none"
             if msg != "":  # display a message when there is a message
                 Label(self.win.buttons, text=msg, fg="red", width=60, anchor="w")\
@@ -2285,11 +2285,11 @@ class MakeWindow:
         self.c.configure(yscrollcommand=self.s.set)
         # link the mousewheel - implementation varies by platform
         if sys.platform == "win32":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * (event.delta / 120)), "units"))
+            self.c.bind_all('<MouseWheel>',
+                            lambda event: self.c.yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
         elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.yview_scroll
-            (int(projvar.mousewheel * event.delta), "units"))
+            self.c.bind_all('<MouseWheel>',
+                            lambda event: self.c.yview_scroll(int(projvar.mousewheel * event.delta), "units"))
         elif sys.platform == "linux":
             self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
             self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))

@@ -50,7 +50,7 @@ class ImpManSpreadsheet:
         self.lsi = 0  # list loop iteration
         self.pref = ("nl", "wal", "otdl", "aux")
         self.ot_list = ("No List Carriers", "Work Assignment Carriers", "Overtime Desired List Carriers",
-                   "Auxiliary Assistance")  # list loop iteration
+                        "Auxiliary Assistance")  # list loop iteration
         self.row = 0  # list loop iteration/ the row placement
         self.mod_carrierlist = []  # carrier list with empty recs added to reach minimum row quantity
         self.carrier = []  # carrier name
@@ -599,8 +599,8 @@ class ImpManSpreadsheet:
     def display_formulas_non(self):
         """ fill the formulas columns for non list carriers. """
         ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
-                  % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                     self.day_of_week[self.i], str(self.row))
+                     % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                        self.day_of_week[self.i], str(self.row))
         if self.pref[self.lsi] == "nl":  # use alternate formula for non list carriers
             ot_formula = "=IF(%s!B%s =\"ns day\",%s!C%s," \
                          "IF(%s!C%s <= 8 + reference!C$3, 0, MAX(%s!C%s - 8, 0)))" \
@@ -608,15 +608,15 @@ class ImpManSpreadsheet:
                             self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
         off_rt_formula = "=%s!H%s" % (self.day_of_week[self.i], str(self.row))  # copy data from column H/ MV total
         ot_off_rt_formula = "=IF(%s!C%s=\"\",0, " \
-                    "IF(OR(%s!B%s=\"ns day\",%s!J%s>=%s!C%s),%s!C%s, " \
-                    "IF(%s!C%s<=8+reference!C4,0, " \
-                    "MIN(MAX(%s!C%s-8,0), " \
-                    "IF(%s!J%s<=reference!C4,0,%s!J%s)))))" \
-                    % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                     self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                     self.day_of_week[self.i], str(self.row))
+                            "IF(OR(%s!B%s=\"ns day\",%s!J%s>=%s!C%s),%s!C%s, " \
+                            "IF(%s!C%s<=8+reference!C4,0, " \
+                            "MIN(MAX(%s!C%s-8,0), " \
+                            "IF(%s!J%s<=reference!C4,0,%s!J%s)))))" \
+                            % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                               self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                               self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                               self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                               self.day_of_week[self.i], str(self.row))
         formulas = (ot_formula, off_rt_formula, ot_off_rt_formula)
         column_i = 0
         for formula in formulas:
@@ -632,23 +632,23 @@ class ImpManSpreadsheet:
         if self.pref[self.lsi] == "aux":  # alter formula by list preference
             max_hrs = 11.5  # maximux hours for auxiliary carriers
         formula_ten = "=IF(OR(%s!B%s = \"light\", %s!B%s = \"excused\", %s!B%s = \"sch chg\", " \
-                     "%s!B%s = \"annual\", %s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, " \
-                     "IF(%s!B%s = \"no call\", 10, " \
-                     "IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % \
-                     (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                      self.day_of_week[self.i], str(self.row))
+                      "%s!B%s = \"annual\", %s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, " \
+                      "IF(%s!B%s = \"no call\", 10, " \
+                      "IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % \
+                      (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                       self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                       self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                       self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                       self.day_of_week[self.i], str(self.row))
         formula_max = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
                       "%s!B%s = \"sick\", %s!C%s >= %s - reference!C5), 0, IF(%s!B%s = \"no call\", %s, " \
                       "IF(%s!C%s = 0, 0, MAX(%s - %s!C%s, 0))))" % \
                       (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                      self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                      max_hrs, self.day_of_week[self.i], str(self.row),
-                      max_hrs, self.day_of_week[self.i], str(self.row),
-                      max_hrs, self.day_of_week[self.i], str(self.row))
+                       self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                       self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                       max_hrs, self.day_of_week[self.i], str(self.row),
+                       max_hrs, self.day_of_week[self.i], str(self.row),
+                       max_hrs, self.day_of_week[self.i], str(self.row))
         formulas = (formula_ten, formula_max)
         column_i = 0
         for formula in formulas:
@@ -874,8 +874,8 @@ class ImpManSpreadsheet:
             self.summary['C' + str(row)].style = self.input_s
             self.summary['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
             formula = "=IF(%s!B%s<%s!C%s,%s!B%s,%s!C%s)" \
-                                      % ('summary', str(row), 'summary', str(row), 'summary',
-                                         str(row), 'summary', str(row))
+                      % ('summary', str(row), 'summary', str(row), 'summary',
+                         str(row), 'summary', str(row))
             self.summary['D' + str(row)] = formula
             self.summary['D' + str(row)].style = self.calcs
             self.summary['D' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
@@ -890,8 +890,8 @@ class ImpManSpreadsheet:
             self.summary['G' + str(row)].style = self.input_s
             self.summary['G' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
             formula = "=IF(%s!F%s<%s!G%s,%s!F%s,%s!G%s)" \
-                                      % ('summary', str(row), 'summary', str(row), 'summary',
-                                         str(row), 'summary', str(row))
+                      % ('summary', str(row), 'summary', str(row), 'summary',
+                         str(row), 'summary', str(row))
             self.summary['H' + str(row)] = formula
             self.summary['H' + str(row)].style = self.calcs
             self.summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
@@ -947,6 +947,9 @@ class OvermaxSpreadsheet:
         self.dates = []  # all the dates of the investigation range
         self.rings = []  # all rings for all carriers in the carrier list
         self.min_rows = 0  # the minimum number of rows set by user preferences
+        self.non_otdl_violation = 11.5  # Hours that non-otdl carriers work before 12/60 violation
+        self.wal_12hour = None
+        self.wal_12hr_mod = ""  # text inserted into formulas which varies depending on wal_12hour setting
         self.ws_header = None  # style
         self.date_dov = None  # style
         self.date_dov_title = None  # style
@@ -975,6 +978,7 @@ class OvermaxSpreadsheet:
         self.get_carrierlist()
         self.get_rings()
         self.get_minrows()
+        self.set_wal12hrmod()
         self.get_styles()
         self.build_workbook()
         self.set_dimensions()
@@ -1021,6 +1025,16 @@ class OvermaxSpreadsheet:
         sql = "SELECT tolerance FROM tolerances"
         result = inquire(sql)
         self.min_rows = int(result[14][0])
+        #  get the work assignment list 12 hour violation setting -
+        #  if True: violation occurs after 12 hours.
+        #  if False: violation occurs after 11.50 hours
+        self.wal_12hour = Convert(result[44][0]).str_to_bool()
+
+    def set_wal12hrmod(self):
+        """ if the wal_12hour setting is True, don't include 'wal' in formula"""
+        self.wal_12hr_mod = "no"  #
+        if not self.wal_12hour:
+            self.wal_12hr_mod = "wal"
 
     def get_styles(self):
         """ Named styles for workbook """
@@ -1028,32 +1042,32 @@ class OvermaxSpreadsheet:
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
         self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
-                                    alignment=Alignment(horizontal='right'))
+                                         alignment=Alignment(horizontal='right'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                alignment=Alignment(horizontal='left'))
+                                     border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                     alignment=Alignment(horizontal='left'))
         self.col_center_header = NamedStyle(name="col_center_header", font=Font(bold=True, name='Arial', size=8),
-                                       alignment=Alignment(horizontal='center'),
-                                       border=Border(left=bd, right=bd, top=bd, bottom=bd))
+                                            alignment=Alignment(horizontal='center'),
+                                            border=Border(left=bd, right=bd, top=bd, bottom=bd))
         self.vert_header = NamedStyle(name="vert_header", font=Font(bold=True, name='Arial', size=8),
-                                 border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                 alignment=Alignment(horizontal='right', text_rotation=90))
+                                      border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                      alignment=Alignment(horizontal='right', text_rotation=90))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                alignment=Alignment(horizontal='left'))
+                                     border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                     alignment=Alignment(horizontal='left'))
         self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                             border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                             alignment=Alignment(horizontal='right'))
+                                  border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
         self.calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
-                           border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                           fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                           alignment=Alignment(horizontal='right'))
-        self.vert_calcs = NamedStyle(name="vert_calcs", font=Font(name='Arial', size=8),
                                 border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                 fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                                alignment=Alignment(horizontal='right', text_rotation=90))
+                                alignment=Alignment(horizontal='right'))
+        self.vert_calcs = NamedStyle(name="vert_calcs", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                     fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                     alignment=Alignment(horizontal='right', text_rotation=90))
         self.instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=8),
-                                   alignment=Alignment(horizontal='left', vertical='top'))
+                                        alignment=Alignment(horizontal='left', vertical='top'))
 
     def build_workbook(self):
         """ creates the workbook object """
@@ -1216,33 +1230,33 @@ class OvermaxSpreadsheet:
                                   "does not support vertical text or hidden fields, both of which are used in the " \
                                   "12 and 60 Hour Violations Spreadsheet. If you are using Mac, you can download " \
                                   "Libre Office Calc, which is recommended, for free. Microsoft Excel or Google Docs " \
-                                  "will also work properly. \n\n" \
-                              "Instructions: \n" \
-                              "1. Fill in the name \n" \
-                              "2. Fill in the list. Enter either “otdl”,”wal”,”nl”,“aux” or “ptf” in list columns. " \
-                              "Use only lowercase. \n" \
-                              "   If you do not enter anything, the default is “otdl. \n" \
-                              "\totdl = overtime desired list\n" \
-                              "\twal = work assignment list\n" \
-                              "\tnl = no list \n" \
-                              "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
-                              "\tptf = part time flexible" \
-                              "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours " \
-                              "or if the sum of all daily non 5200 times (all fields D) plus \n" \
-                              "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
-                              "4. Fill in any daily non 5200 times and types in fields D and E. " \
-                              "Enter only paid leave types such as sick leave, annual\n" \
-                              "   leave and holiday leave. Do not enter unpaid leave types such as LWOP " \
-                              "(leave without pay) or AWOL (absent \n" \
-                              "   without leave).\n" \
-                              "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers " \
-                              "or 11.50 hours for any other carrier in fields F.\n" \
-                              "   Failing to fill out the daily values for Wednesday, Thursday and Friday " \
-                              "could cause errors in calculating the adjustments,\n" \
-                              "   so fill those in.\n" \
-                              "6. The gray fields will fill automatically. Do not enter an information in " \
-                              "these fields as it will delete the formulas.\n" \
-                              "7. Field O will show the violation in hours which you should seek a remedy for. \n"
+                                  "will also work properly. \n\n " \
+                                  "Instructions: \n" \
+                                  "1. Fill in the name \n" \
+                                  "2. Fill in the list. Enter either “otdl”,”wal”,”nl”,“aux” or “ptf” in list " \
+                                  "columns. Use only lowercase. \n" \
+                                  "   If you do not enter anything, the default is “otdl. \n" \
+                                  "\totdl = overtime desired list\n" \
+                                  "\twal = work assignment list\n" \
+                                  "\tnl = no list \n" \
+                                  "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
+                                  "\tptf = part time flexible" \
+                                  "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours " \
+                                  "or if the sum of all daily non 5200 times (all fields D) plus \n" \
+                                  "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
+                                  "4. Fill in any daily non 5200 times and types in fields D and E. " \
+                                  "Enter only paid leave types such as sick leave, annual\n" \
+                                  "   leave and holiday leave. Do not enter unpaid leave types such as LWOP " \
+                                  "(leave without pay) or AWOL (absent \n" \
+                                  "   without leave).\n" \
+                                  "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers " \
+                                  "or 11.50 hours for any other carrier in fields F.\n" \
+                                  "   Failing to fill out the daily values for Wednesday, Thursday and Friday " \
+                                  "could cause errors in calculating the adjustments,\n" \
+                                  "   so fill those in.\n" \
+                                  "6. The gray fields will fill automatically. Do not enter an information in " \
+                                  "these fields as it will delete the formulas.\n" \
+                                  "7. Field O will show the violation in hours which you should seek a remedy for. \n"
         self.instructions['A3'].alignment = Alignment(wrap_text=True, vertical='top')
         for x in range(4, 20):
             self.instructions.row_dimensions[x].height = 10  # adjust all row height
@@ -1449,23 +1463,33 @@ class OvermaxSpreadsheet:
         # instructions weekly self.violations
         self.instructions.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
         formula = "=IF(%s!B%s = \"aux\",0,MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
-                    % (page, str(i), page, str(i), page, str(i + 1), page, str(i),
-                       page, str(i + 1))
+                  % (page, str(i), page, str(i), page, str(i + 1), page, str(i),
+                     page, str(i + 1))
         self.instructions['S10'] = formula
         self.instructions['S10'].style = self.calcs
         self.instructions['S10'].number_format = "#,###.00;[RED]-#,###.00"
         # instructions daily self.violations
-        formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                    "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!H%s>11.5,%s!H%s-11.5,0)+IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
-                    "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
+        formula_d = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
+                    "(SUM(IF(%s!D%s>%s,%s!D%s-%s,0)+IF(%s!H%s>%s,%s!H%s-%s,0)+IF(%s!J%s>%s,%s!J%s-%s,0)" \
+                    "+IF(%s!L%s>%s,%s!L%s-%s,0)+IF(%s!N%s>%s,%s!N%s-%s,0)+IF(%s!P%s>%s,%s!P%s-%s,0)))," \
                     "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)+IF(%s!J%s>12,%s!J%s-12,0)" \
                     "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                    % (page, str(i), page, str(i), page, str(i), page, str(i),
-                       page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                       page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                       page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                       page, str(i + 1), page, str(i + 1), page, str(i + 1),
-                       page, str(i + 1), page, str(i + 1), page, str(i + 1),
+                    % (page, str(i), self.wal_12hr_mod,
+                       page, str(i), page, str(i), page, str(i),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1),
+                       page, str(i + 1), page, str(i + 1),
                        page, str(i + 1), page, str(i + 1), page, str(i + 1),
                        page, str(i + 1), page, str(i + 1), page, str(i + 1),
                        page, str(i + 1), page, str(i + 1), page, str(i + 1))
@@ -1475,19 +1499,23 @@ class OvermaxSpreadsheet:
         self.instructions['T' + str(i)].number_format = "#,###.00"
         # instructions wed adjustment
         self.instructions.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-        formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                    "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
+        formula_e = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
+                    "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>%s)," \
+                    "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-%s,%s!L%s-%s,%s!S%s-" \
                     "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                     "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
                     "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
                     "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                    % (page, str(i), page, str(i), page, str(i), page, str(i),
+                    % (page, str(i), self.wal_12hr_mod,
+                       page, str(i), page, str(i), page, str(i),
                        page, str(i), page, str(i + 1), page, str(i),
                        page, str(i + 1), page, str(i), page, str(i + 1),
+                       str(self.non_otdl_violation),
                        page, str(i), page, str(i + 1), page, str(i),
                        page, str(i + 1), page, str(i), page, str(i + 1),
-                       page, str(i + 1), page, str(i), page, str(i + 1),
+                       str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i), page, str(i + 1),
                        page, str(i), page, str(i + 1), page, str(i),
                        page, str(i), page, str(i + 1), page, str(i),
                        page, str(i + 1), page, str(i), page, str(i + 1),
@@ -1499,20 +1527,21 @@ class OvermaxSpreadsheet:
         self.instructions['U' + str(i)].style = self.vert_calcs
         self.instructions['U' + str(i)].number_format = "#,###.00"
         # instructions thr adjustment
-        formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                    "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
-                    "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
+        formula_f = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
+                    "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>%s)," \
+                    "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-%s,%s!N%s-%s,%s!S%s-(%s!P%s+%s!P%s)),0)," \
                     "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
                     "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                    % (page, str(i), page, str(i), page, str(i), page, str(i),
+                    % (page, str(i), self.wal_12hr_mod,
+                       page, str(i), page, str(i), page, str(i),
                        page, str(i), page, str(i + 1), page, str(i),
-                       page, str(i + 1),
+                       page, str(i + 1), str(self.non_otdl_violation),
                        page, str(i), page, str(i + 1), page, str(i),
-                       page, str(i + 1), page, str(i + 1), page, str(i),
-                       page, str(i + 1), page, str(i),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
                        page, str(i), page, str(i + 1), page, str(i),
-                       page, str(i + 1),
                        page, str(i), page, str(i + 1), page, str(i),
+                       page, str(i + 1), page, str(i), page, str(i + 1), page, str(i),
                        page, str(i + 1), page, str(i + 1), page, str(i),
                        page, str(i + 1), page, str(i)
                        )
@@ -1522,15 +1551,17 @@ class OvermaxSpreadsheet:
         self.instructions['V' + str(i)].number_format = "#,###.00"
         # instructions fri adjustment
         self.instructions.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-        formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"aux\",%s!B%s=\"ptf\")," \
-                    "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
-                    "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
+        formula_g = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"aux\",%s!B%s=\"ptf\")," \
+                    "IF(AND(%s!S%s>0,%s!P%s>%s)," \
+                    "IF(%s!S%s>%s!P%s-%s,%s!P%s-%s,%s!S%s),0)," \
                     "IF(AND(%s!S%s>0,%s!P%s>12)," \
                     "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                    % (page, str(i), page, str(i), page, str(i), page, str(i),
-                       page, str(i), page, str(i + 1), page, str(i),
-                       page, str(i + 1), page, str(i + 1), page, str(i),
-                       page, str(i), page, str(i + 1), page, str(i),
+                    % (page, str(i), self.wal_12hr_mod,
+                       page, str(i), page, str(i), page, str(i),
+                       page, str(i), page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i), page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i + 1), str(self.non_otdl_violation),
+                       page, str(i), page, str(i), page, str(i + 1), page, str(i),
                        page, str(i + 1), page, str(i + 1), page, str(i))
         self.instructions['W' + str(i)] = formula_g
         self.instructions['W' + str(i)].style = self.vert_calcs
@@ -1565,37 +1596,44 @@ class OvermaxSpreadsheet:
         self.instructions['P12'].style = self.col_center_header
         self.instructions.merge_cells('P12:Q12')
         # legend section
+        # create text for daily violations:
+        text_k_a = "wal, "
+        text_k_b = ""
+        if self.wal_12hr_mod:
+            text_k_a = ""
+            text_k_b = " and wal"
         self.instructions.row_dimensions[14].height = 210
         self.instructions['A14'].style = self.instruct_text
         self.instructions.merge_cells('A14:X14')
-        self.instructions['A14'] = "Legend: \n" \
-                           "A.  Name \n" \
-                           "B.  List: Either otdl, wal, nl, ptf or aux (always use lowercase to preserve " \
-                           "operation of the formulas).\n" \
-                           "C.  Weekly 5200 Time: Enter the 5200 time for the week. \n" \
-                           "D.  Daily Non 5200 Time: Enter daily hours for either holiday, annual sick leave or " \
-                           "other type of paid leave.\n" \
-                           "E.  Daily Non 5200 Type: Enter “a” for annual, “s” for sick, “h” for holiday, etc. \n" \
-                           "F.  Daily 5200 Hours: Enter 5200 hours or hours worked for the day. \n" \
-                           "G.  No value allowed: No non 5200 times allowed for Sundays.\n" \
-                           "J.   Weekly Violations: This is the total of self.violations over 60 hours in a week.\n" \
-                           "K.  Daily Violations: This is the total of daily violations which have exceeded 11.50 " \
-                           "(for wal, nl, ptf or aux)\n" \
-                           "     or 12 hours in a day (for otdl).\n" \
-                           "L.  Wednesday Adjustment: In cases were the 60 hour limit is reached " \
-                           "and a daily violation happens (on Wednesday),\n" \
-                           "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                           "M.  Thursday Adjustment: In cases were the 60 hour limit is reached and " \
-                           "a daily violation happens (on Thursday), \n" \
-                           "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                           "N.  Friday Adjustment: In cases were the 60 hour limit is reached and " \
-                           "a daily violation happens (on Friday),\n" \
-                           "     this column deducts one of the violations so to provide a correct remedy.\n" \
-                           "O.  Total Violation: This field is the end result of the calculation. " \
-                           "This is the addition of the total daily  " \
-                           "violations and the\n" \
-                           "     weekly violation, it shows the sum of the two. " \
-                           "This is the value which the steward should seek a remedy for."
+        self.instructions['A14'] = \
+            "Legend: \n" \
+            "A.  Name \n" \
+            "B.  List: Either otdl, wal, nl, ptf or aux (always use lowercase to preserve " \
+            "operation of the formulas).\n" \
+            "C.  Weekly 5200 Time: Enter the 5200 time for the week. \n" \
+            "D.  Daily Non 5200 Time: Enter daily hours for either holiday, annual sick leave or " \
+            "other type of paid leave.\n" \
+            "E.  Daily Non 5200 Type: Enter “a” for annual, “s” for sick, “h” for holiday, etc. \n" \
+            "F.  Daily 5200 Hours: Enter 5200 hours or hours worked for the day. \n" \
+            "G.  No value allowed: No non 5200 times allowed for Sundays.\n" \
+            "J.  Weekly Violations: This is the total of self.violations over 60 hours in a week.\n" \
+            "K.  Daily Violations: This is the total of daily violations which have exceeded 11.50 " \
+            "(for {}nl, ptf or aux)\n" \
+            "     or 12 hours in a day (for otdl{}).\n" \
+            "L.  Wednesday Adjustment: In cases were the 60 hour limit is reached " \
+            "and a daily violation happens (on Wednesday),\n" \
+            "     this column deducts one of the violations so to provide a correct remedy.\n" \
+            "M.  Thursday Adjustment: In cases were the 60 hour limit is reached and " \
+            "a daily violation happens (on Thursday), \n" \
+            "     this column deducts one of the violations so to provide a correct remedy.\n" \
+            "N.  Friday Adjustment: In cases were the 60 hour limit is reached and " \
+            "a daily violation happens (on Friday),\n" \
+            "     this column deducts one of the violations so to provide a correct remedy.\n" \
+            "O.  Total Violation: This field is the end result of the calculation. " \
+            "This is the addition of the total daily  " \
+            "violations and the\n" \
+            "     weekly violation, it shows the sum of the two. " \
+            "This is the value which the steward should seek a remedy for.".format(text_k_a, text_k_b)
         self.instructions['A14'].alignment = Alignment(wrap_text=True, vertical='top')
 
     def violated_recs(self):
@@ -1624,7 +1662,7 @@ class OvermaxSpreadsheet:
                             totals_array[cc] = float(ring[2])  # if hours worked is a number, add it as a number
                             if float(ring[2]) > 12 and self.carrier_list[i][2] == "otdl":
                                 daily_violation = True
-                            if float(ring[2]) > 11.5 and self.carrier_list[i][2] != "otdl":
+                            if float(ring[2]) > self.non_otdl_violation and self.carrier_list[i][2] != "otdl":
                                 daily_violation = True
                         else:
                             totals_array[cc] = ring[2]  # if hours worked is empty string, add empty string
@@ -1792,32 +1830,39 @@ class OvermaxSpreadsheet:
             formula_c = "=IF(%s!B%s = \"aux\",0,MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
                         % ("violations", str(i), "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1))
-            # formula_c = "=MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0)" \
-            #             % ("violations", str(i), "violations", str(i + 1), "violations", str(i),
-            #                "violations", str(i + 1))
             self.violations['S' + str(i)] = formula_c
             self.violations['S' + str(i)].style = self.calcs
             self.violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # daily violation
-            formula_d = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "(SUM(IF(%s!D%s>11.5,%s!D%s-11.5,0)+IF(%s!F%s>11.5,%s!F%s-11.5,0)" \
-                        "+IF(%s!H%s>11.5,%s!H%s-11.5,0)+" \
-                        "IF(%s!J%s>11.5,%s!J%s-11.5,0)" \
-                        "+IF(%s!L%s>11.5,%s!L%s-11.5,0)+IF(%s!N%s>11.5,%s!N%s-11.5,0)+" \
-                        "IF(%s!P%s>11.5,%s!P%s-11.5,0)))," \
+            formula_d = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
+                        "(SUM(IF(%s!D%s>%s,%s!D%s-%s,0)+IF(%s!F%s>%s,%s!F%s-%s,0)" \
+                        "+IF(%s!H%s>%s,%s!H%s-%s,0)+" \
+                        "IF(%s!J%s>%s,%s!J%s-%s,0)" \
+                        "+IF(%s!L%s>%s,%s!L%s-%s,0)+IF(%s!N%s>%s,%s!N%s-%s,0)+" \
+                        "IF(%s!P%s>%s,%s!P%s-%s,0)))," \
                         "(SUM(IF(%s!D%s>12,%s!D%s-12,0)+IF(%s!F%s>12,%s!F%s-12,0)+IF(%s!H%s>12,%s!H%s-12,0)" \
                         "+IF(%s!J%s>12,%s!J%s-12,0)" \
-                        "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
+                        "+IF(%s!L%s>12,%s!L%s-12,0)+IF(%s!N%s>12,%s!N%s-12,0)+IF(%s!P%s>12,%s!P%s-12,0))))"\
+                        % ("violations", str(i), self.wal_12hr_mod,
+                           "violations", str(i), "violations", str(i), "violations", str(i),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i + 1),
                            "violations", str(i + 1), "violations", str(i + 1))
             self.violations['T' + str(i)] = formula_d
             self.violations.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
@@ -1825,19 +1870,24 @@ class OvermaxSpreadsheet:
             self.violations['T' + str(i)].number_format = "#,###.00"
             # wed adjustment
             self.violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
-            formula_e = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>11.5)," \
-                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-11.5,%s!L%s-11.5,%s!S%s-" \
+            formula_e = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
+                        "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>%s)," \
+                        "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-%s,%s!L%s-%s,%s!S%s-" \
                         "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0)," \
                         "IF(AND(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>0,%s!L%s>12)," \
                         "IF(%s!S%s-(%s!N%s+%s!N%s+%s!P%s+%s!P%s)>%s!L%s-12,%s!L%s-12,%s!S%s-" \
                         "(%s!N%s+%s!N%s+%s!P%s+%s!P%s)),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
+                        % ("violations", str(i), self.wal_12hr_mod,
+                           "violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                           str(self.non_otdl_violation),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
-                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
+                           str(self.non_otdl_violation),
+                           "violations", str(i + 1),
+                           str(self.non_otdl_violation),
+                           "violations", str(i), "violations", str(i + 1),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i), "violations", str(i + 1),
@@ -1849,16 +1899,19 @@ class OvermaxSpreadsheet:
             self.violations['U' + str(i)].style = self.vert_calcs
             self.violations['U' + str(i)].number_format = "#,###.00"
             # thr adjustment
-            formula_f = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>11.5)," \
-                        "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-11.5,%s!N%s-11.5,%s!S%s-(%s!P%s+%s!P%s)),0)," \
+            formula_f = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
+                        "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>%s)," \
+                        "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-%s,%s!N%s-%s,%s!S%s-(%s!P%s+%s!P%s)),0)," \
                         "IF(AND(%s!S%s-(%s!P%s+%s!P%s)>0,%s!N%s>12)," \
                         "IF(%s!S%s-(%s!P%s+%s!P%s)>%s!N%s-12,%s!N%s-12,%s!S%s-(%s!P%s+%s!P%s)),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
+                        % ("violations", str(i), self.wal_12hr_mod,
+                           "violations", str(i), "violations", str(i), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i + 1), str(self.non_otdl_violation),
+                           "violations", str(i),
                            "violations", str(i + 1), "violations", str(i),
                            "violations", str(i), "violations", str(i + 1), "violations", str(i),
                            "violations", str(i + 1),
@@ -1872,15 +1925,21 @@ class OvermaxSpreadsheet:
             self.violations['V' + str(i)].number_format = "#,###.00"
             # fri adjustment
             self.violations.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
-            formula_g = "=IF(OR(%s!B%s=\"wal\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
-                        "IF(AND(%s!S%s>0,%s!P%s>11.5)," \
-                        "IF(%s!S%s>%s!P%s-11.5,%s!P%s-11.5,%s!S%s),0)," \
+            formula_g = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
+                        "IF(AND(%s!S%s>0,%s!P%s>%s)," \
+                        "IF(%s!S%s>%s!P%s-%s,%s!P%s-%s,%s!S%s),0)," \
                         "IF(AND(%s!S%s>0,%s!P%s>12)," \
                         "IF(%s!S%s>%s!P%s-12,%s!P%s-12,%s!S%s),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i), "violations", str(i + 1), "violations", str(i),
+                        % ("violations", str(i), self.wal_12hr_mod,
+                           "violations", str(i), "violations", str(i),
+                           "violations", str(i),
+                           "violations", str(i), "violations", str(i + 1),
+                           str(self.non_otdl_violation),
+                           "violations", str(i), "violations", str(i + 1),
+                           str(self.non_otdl_violation),
+                           "violations", str(i + 1),
+                           str(self.non_otdl_violation),
+                           "violations", str(i), "violations", str(i), "violations",  str(i + 1), "violations", str(i),
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i))
             self.violations['W' + str(i)] = formula_g
             self.violations['W' + str(i)].style = self.vert_calcs
@@ -2180,7 +2239,7 @@ class ImpManSpreadsheet4:
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                          alignment=Alignment(horizontal='right'))
         self.col_header_left = NamedStyle(name="col_header_left", font=Font(bold=True, name='Arial', size=8),
-                                     alignment=Alignment(horizontal='left', vertical='bottom'))
+                                          alignment=Alignment(horizontal='left', vertical='bottom'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
                                      alignment=Alignment(horizontal='center', vertical='bottom'))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
@@ -2197,20 +2256,20 @@ class ImpManSpreadsheet4:
                                    alignment=Alignment(horizontal='left', vertical='top'),
                                    border=Border(left=bd, top=bd, right=bd))
         self.quad_bottom = NamedStyle(name="quad_bottom", font=Font(name='Arial', size=10),
-                                   alignment=Alignment(horizontal='right'),
-                                   border=Border(left=bd, bottom=bd, right=bd))
+                                      alignment=Alignment(horizontal='right'),
+                                      border=Border(left=bd, bottom=bd, right=bd))
         self.quad_left = NamedStyle(name="quad_left", font=Font(name='Arial', size=10),
-                                   alignment=Alignment(horizontal='left', vertical='top'),
-                                   border=Border(left=bd, bottom=bd, top=bd))
-        self.quad_right = NamedStyle(name="quad_right", font=Font(name='Arial', size=10),
-                                    alignment=Alignment(horizontal='right', vertical='top'),
-                                    border=Border(top=bd, bottom=bd, right=bd))
-        self.footer_left = NamedStyle(name="footer_left", font=Font(bold=True, name='Arial', size=8),
-                                     alignment=Alignment(horizontal='left'),
+                                    alignment=Alignment(horizontal='left', vertical='top'),
                                     border=Border(left=bd, bottom=bd, top=bd))
-        self.footer_right = NamedStyle(name="footer_right", font=Font(bold=True, name='Arial', size=8),
-                                     alignment=Alignment(horizontal='right'),
+        self.quad_right = NamedStyle(name="quad_right", font=Font(name='Arial', size=10),
+                                     alignment=Alignment(horizontal='right', vertical='top'),
                                      border=Border(top=bd, bottom=bd, right=bd))
+        self.footer_left = NamedStyle(name="footer_left", font=Font(bold=True, name='Arial', size=8),
+                                      alignment=Alignment(horizontal='left'),
+                                      border=Border(left=bd, bottom=bd, top=bd))
+        self.footer_right = NamedStyle(name="footer_right", font=Font(bold=True, name='Arial', size=8),
+                                       alignment=Alignment(horizontal='right'),
+                                       border=Border(top=bd, bottom=bd, right=bd))
         self.footer_mid = NamedStyle(name="footer_mid", font=Font(bold=True, name='Arial', size=8),
                                      alignment=Alignment(horizontal='right'),
                                      border=Border(top=bd, bottom=bd))
@@ -3131,7 +3190,7 @@ class OffbidSpreadsheet:
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                          alignment=Alignment(horizontal='right'))
         self.name_header = NamedStyle(name="name_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
-                                     alignment=Alignment(horizontal='right'))
+                                      alignment=Alignment(horizontal='right'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
                                      alignment=Alignment(horizontal='center'),
                                      border=Border(left=bd, top=bd, right=bd, bottom=bd))

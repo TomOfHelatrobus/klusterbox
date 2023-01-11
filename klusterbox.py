@@ -6173,6 +6173,7 @@ class SpreadsheetConfig:
         self.pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
         self.man4_dis_limit = None
         self.min_overmax = 0.0
+        self.overmax_12hour = None
         self.offbid_distinctpages = None  # off bid distinct page
         self.offbid_maxpivot = None  # off bid maximum pivot
         self.min_ot_equit = None  # minimum rows for ot equitability spreadsheet
@@ -6195,6 +6196,7 @@ class SpreadsheetConfig:
         self.pb4_aux_otdl_var = None  # page break between auxiliary and otdl for mandates no.4
         self.man4_dis_limit_var = None  # mandates no.4 display limiter
         self.min_overmax_var = None  # minimum rows for overmax
+        self.overmax_12hour_var = None  # 12 and 60 hour option for 12 hour simplication
         self.offbid_distinctpages_var = None  # off bid spreadsheet: creates distinct pages for each carrier
         self.offbid_maxpivot_var = None  # off bid spreadsheet: maximum pivot
         self.min_otdl_var = None  # minimum rows for ot equitability
@@ -6222,6 +6224,7 @@ class SpreadsheetConfig:
         self.add_man4_dis_limit = None  # mandates no.4 display limiter
         self.add_min_overmax = 0.0
         self.add_offbid_maxpivot = 0.0
+        self.add_overmax_12hour = None
         self.add_offbid_distinctpages = None
         self.add_min_ot_equit = None
         self.add_ot_calc_pref = None
@@ -6249,6 +6252,7 @@ class SpreadsheetConfig:
         self.min_otdl = results[5][0]
         self.min_aux = results[6][0]
         self.min_overmax = results[14][0]
+        self.overmax_12hour = results[44][0]
         # get values for off bid assignment spreadsheets
         self.offbid_distinctpages = results[41][0]  # off bid distinct pages
         self.offbid_maxpivot = results[42][0]  # off bid maximum pivot
@@ -6271,6 +6275,7 @@ class SpreadsheetConfig:
         self.pb4_nl_wal = Convert(self.pb4_nl_wal).strbool_to_onoff()
         self.pb4_wal_aux = Convert(self.pb4_wal_aux).strbool_to_onoff()
         self.pb4_aux_otdl = Convert(self.pb4_aux_otdl).strbool_to_onoff()
+        self.overmax_12hour = Convert(self.overmax_12hour).strbool_to_onoff()
         self.offbid_distinctpages = Convert(self.offbid_distinctpages).strbool_to_onoff()
         # otdl equitability vars
         self.min_ot_equit = results[25][0]  # minimum rows
@@ -6286,6 +6291,7 @@ class SpreadsheetConfig:
         self.min_otdl_var = StringVar(self.win.body)
         self.min_aux_var = StringVar(self.win.body)
         self.min_overmax_var = StringVar(self.win.body)
+        self.overmax_12hour_var = StringVar(self.win.body)
         self.offbid_distinctpages_var = StringVar(self.win.body)
         self.offbid_maxpivot_var = StringVar(self.win.body)
         self.pb_nl_wal_var = StringVar(self.win.body)
@@ -6311,6 +6317,7 @@ class SpreadsheetConfig:
         self.min_otdl_var.set(self.min_otdl)
         self.min_aux_var.set(self.min_aux)
         self.min_overmax_var.set(self.min_overmax)
+        self.overmax_12hour_var.set(self.overmax_12hour)
         self.offbid_distinctpages_var.set(self.offbid_distinctpages)
         self.offbid_maxpivot_var.set(self.offbid_maxpivot)
         self.pb_nl_wal_var.set(self.pb_nl_wal)
@@ -6477,7 +6484,6 @@ class SpreadsheetConfig:
                command=lambda: Messenger(self.win.topframe).tolerance_info("man4_dis_limit")) \
             .grid(row=row, column=2, padx=4)
         row += 1
-
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         text = macadj("12 and 60 Hour Violations Spreadsheets ___________________________________",
@@ -6493,7 +6499,16 @@ class SpreadsheetConfig:
                command=lambda: Messenger(self.win.topframe).tolerance_info("min_overmax")) \
             .grid(row=row, column=2, padx=4)
         row += 1
-
+        # Display widget for 12 hour simplification option
+        Label(self.win.body, text="WAL 12 Hour Violation", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_12simple = OptionMenu(self.win.body, self.overmax_12hour_var, "on", "off")
+        om_12simple.config(width=7)
+        om_12simple.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("wal_12_hour")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         text = macadj("Off Bid Assignment Violations Spreadsheets _______________________________",
@@ -6723,7 +6738,8 @@ class SpreadsheetConfig:
         onrecs_float = (self.offbid_maxpivot,)
         # current records for page breaks and distinct pages options
         onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux,
-                         self.pb4_nl_wal, self.pb4_wal_aux, self.pb4_aux_otdl, self.offbid_distinctpages)
+                         self.pb4_nl_wal, self.pb4_wal_aux, self.pb4_aux_otdl, self.overmax_12hour,
+                         self.offbid_distinctpages)
         onrecs_misc = (self.man4_dis_limit, self.ot_calc_pref, self.ot_calc_pref_dist)
         check_these = (self.min_nl_var.get(), self.min_wal_var.get(), self.min_otdl_var.get(), self.min_aux_var.get(),
                        self.min4_nl_var.get(), self.min4_wal_var.get(), self.min4_otdl_var.get(),
@@ -6741,13 +6757,14 @@ class SpreadsheetConfig:
         # page breaks and distinct pages option menu items
         pbs = (self.pb_nl_wal_var.get(), self.pb_wal_otdl_var.get(), self.pb_otdl_aux_var.get(),
                self.pb4_nl_wal_var.get(), self.pb4_wal_aux_var.get(), self.pb4_aux_otdl_var.get(),
-               self.offbid_distinctpages_var.get())
+               self.overmax_12hour_var.get(), self.offbid_distinctpages_var.get())
         add_pbs = [self.add_pb_nl_wal, self.add_pb_wal_otdl, self.add_pb_otdl_aux,
                    self.add_pb4_nl_wal, self.add_pb4_wal_aux, self.add_pb4_aux_otdl,
-                   self.add_offbid_distinctpages]
+                   self.add_overmax_12hour, self.add_offbid_distinctpages]
         # the settings as they are named in the tolerances table of the database
         pb_categories = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux",
-                         "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl", "offbid_distinctpage")
+                         "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl",
+                         "wal_12_hour", "offbid_distinctpage")
         # misc stringvars
         misc = (self.man4_dis_limit_var.get(), self.ot_calc_pref_var.get(), self.ot_calc_pref_dist_var.get())
         # misc values to update to database
@@ -9534,7 +9551,7 @@ class MainFrame:
             speed_menu.entryconfig(1, state=DISABLED)
         speed_menu.add_separator()
         speed_menu.add_command(label="Cheatsheet",
-                               command=lambda: OpenText().open_docs(self.win.body, 'cheatsheet.txt'))
+                               command=lambda: CheatSheet().spdsht_cheatsheet())
         speed_menu.add_command(label="Instructions",
                                command=lambda: OpenText().open_docs(self.win.body, 'speedsheet_instructions.txt'))
         speed_menu.add_command(label="Speedsheet Archive",
