@@ -9,7 +9,7 @@
 Klusterbox
 Copyright 2019 Thomas Weeks
 most recent version: 5.06		
-released: undetermined
+released: Jan 13, 2023
 
 Caution: 
 

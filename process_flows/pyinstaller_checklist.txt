@@ -181,8 +181,7 @@ ___ ___  4. (in explorer) open/view klusterwin.spec and make sure the python sou
 	___ ___  2. readme.txt
 	___ ___  3. history.txt
 	___ ___  4. speedsheet_instructions.txt
-	___ ___  5. cheatsheet.txt
-	___ ___  6. requirements.txt (list of necessary libraries for running klusterbox.py)
+	___ ___  5. requirements.txt (list of necessary libraries for running klusterbox.py)
 	
 ___ ___  5. (in explorer) make sure the image files are listed in the datas list of the spec file
 	(this references the kb_sub folder in the project folder):

@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "klusterbox"
-!define PRODUCT_VERSION "5.05"
+!define PRODUCT_VERSION "5.06"
 !define PRODUCT_PUBLISHER "Thomas Weeks"
 !define PRODUCT_WEB_SITE "klusterbox.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\klusterbox.exe"
@@ -46,7 +46,6 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite try
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\base_library.zip"
-  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\cheatsheet.txt"
   SetOutPath "$INSTDIR\Crypto\Cipher"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Cipher\_ARC4.cp37-win_amd64.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Cipher\_chacha20.cp37-win_amd64.pyd"
@@ -2156,7 +2155,6 @@ Section Uninstall
   Delete "$INSTDIR\Crypto\Cipher\_raw_aes.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_chacha20.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Cipher\_ARC4.cp37-win_amd64.pyd"
-  Delete "$INSTDIR\cheatsheet.txt"
   Delete "$INSTDIR\base_library.zip"
 
   Delete "$SMPROGRAMS\klusterbox\Uninstall.lnk"
