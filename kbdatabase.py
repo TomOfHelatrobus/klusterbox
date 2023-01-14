@@ -17,12 +17,12 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(68)
+        self.pbar.max_count(73)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 14
         self.stations()  # pb increment: 1
-        self.tolerances()  # pb increment: 40
+        self.tolerances()  # pb increment: 45
         self.rings()  # pb increment: 1
         self.skippers()  # pb increment: 1
         self.ns_config()  # pb increment: 6
@@ -150,7 +150,8 @@ class DataBase:
             (41, "offbid_distinctpage", "True"),
             (42, "offbid_maxpivot", 2.0),
             (43, "triad_routefirst", "False"),  # when False, the route is displayed at the end of the route triad
-            (44, "wal_12_hour", "True")  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
+            (44, "wal_12_hour", "True"),  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
+            (45, "wal_dec_exempt", "False")
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:

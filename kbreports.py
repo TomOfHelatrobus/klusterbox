@@ -819,10 +819,19 @@ class Messenger:
                    "automatically use the \"all\" overtime calculation.)\n"
         if switch == "wal_12_hour":
             text = "Work Assignment List 12 Hour Violation: \n\n" \
-                   "on: Violations for carriers on the Work Assignment \n" \
-                   "List will occur after the carrier works 12 hours.  \n\n" \
-                   "off: Violations for carriers on the Work Assignment \n" \
+                   "on: Daily violations for carriers on the Work Assignment \n" \
+                   "List will occur after the carrier works 12 hours.  \n" \
+                   "(on is the default setting.)\n\n" \
+                   "off: Daily violations for carriers on the Work Assignment \n" \
                    "List will occur after the carrier works 11.50 hours"
+        if switch == "wal_dec_exempt":
+            text = "Work Assignment List December Exemption: \n\n" \
+                   "on: Work Assignment List Carriers will be exempted \n" \
+                   "from all daily and weekly violations in the month \n" \
+                   "of December.\n\n" \
+                   "off: Work Assignment List Carriers will not be exempted \n" \
+                   "from any violations during the month of December. \n" \
+                   "(off is the default setting.)"
         if switch == "offbid_distinctpage":
             text = "Create distinct pages for each carrier. \n\n" \
                    "Selecting 'on' creates a distinct pages for each \n" \

@@ -950,6 +950,8 @@ class OvermaxSpreadsheet:
         self.non_otdl_violation = 11.5  # Hours that non-otdl carriers work before 12/60 violation
         self.wal_12hour = None
         self.wal_12hr_mod = ""  # text inserted into formulas which varies depending on wal_12hour setting
+        self.wal_dec_exempt = None  # work assignment list december exemption - true or false
+        self.wal_dec_exempt_mod = ""  # text inserted into formulas which varies depending on wal_dec_exempt setting
         self.ws_header = None  # style
         self.date_dov = None  # style
         self.date_dov_title = None  # style
@@ -979,6 +981,7 @@ class OvermaxSpreadsheet:
         self.get_rings()
         self.get_minrows()
         self.set_wal12hrmod()
+        self.set_waldecexempt()
         self.get_styles()
         self.build_workbook()
         self.set_dimensions()
@@ -1029,12 +1032,22 @@ class OvermaxSpreadsheet:
         #  if True: violation occurs after 12 hours.
         #  if False: violation occurs after 11.50 hours
         self.wal_12hour = Convert(result[44][0]).str_to_bool()
+        #  get the work assignment list december exemption setting -
+        #  if True: treat wal carriers same as otdl carriers for december exemption.
+        self.wal_dec_exempt = Convert(result[45][0]).str_to_bool()
 
     def set_wal12hrmod(self):
         """ if the wal_12hour setting is True, don't include 'wal' in formula"""
-        self.wal_12hr_mod = "no"  #
+        self.wal_12hr_mod = "nl"  #
         if not self.wal_12hour:
             self.wal_12hr_mod = "wal"
+
+    def set_waldecexempt(self):
+        """ if the wal_dec_exempt is True, include 'wal' in formula for total violations.
+        This will treat wal carriers same as otdl carriers durning december."""
+        self.wal_dec_exempt_mod = "otdl"
+        if self.wal_dec_exempt:
+            self.wal_dec_exempt_mod = "wal"
 
     def get_styles(self):
         """ Named styles for workbook """
@@ -1110,7 +1123,7 @@ class OvermaxSpreadsheet:
             sheet.column_dimensions["U"].width = 2
             sheet.column_dimensions["V"].width = 2
             sheet.column_dimensions["W"].width = 2
-            sheet.column_dimensions["X"].width = 5
+            sheet.column_dimensions["X"].width = 6
 
     def build_summary(self):
         """ summary worksheet - format cells """
@@ -1164,6 +1177,12 @@ class OvermaxSpreadsheet:
         self.violations['B4'] = projvar.invran_station
         self.violations['B4'].style = self.date_dov
         self.violations.merge_cells('D7:Q7')
+        self.violations.merge_cells('K4:N4')
+        self.violations['K4'] = "Dec Exception:"  # December exception
+        self.violations['k4'].style = self.date_dov_title
+        self.violations.merge_cells('O4:S4')  # blank field for pay period
+        self.violations['O4'] = "no"  # enter yes or no
+        self.violations['O4'].style = self.date_dov
         self.violations['D7'] = "Daily Paid Leave times with type"
         self.violations['D7'].style = self.col_center_header
         self.violations.merge_cells('D8:Q8')
@@ -1222,41 +1241,47 @@ class OvermaxSpreadsheet:
         self.instructions.merge_cells('A1:R1')
         self.instructions['A1'] = "12 and 60 Hour Violations Instructions"
         self.instructions['A1'].style = self.ws_header
-        self.instructions.row_dimensions[3].height = 260
+        self.instructions.row_dimensions[3].height = 275
         self.instructions['A3'].style = self.instruct_text
         self.instructions.merge_cells('A3:X3')
-        self.instructions['A3'] = "Caution: \n" \
-                                  "Using the Apple Numbers Spreadsheet program is not recommended. Apple Numbers " \
-                                  "does not support vertical text or hidden fields, both of which are used in the " \
-                                  "12 and 60 Hour Violations Spreadsheet. If you are using Mac, you can download " \
-                                  "Libre Office Calc, which is recommended, for free. Microsoft Excel or Google Docs " \
-                                  "will also work properly. \n\n " \
-                                  "Instructions: \n" \
-                                  "1. Fill in the name \n" \
-                                  "2. Fill in the list. Enter either “otdl”,”wal”,”nl”,“aux” or “ptf” in list " \
-                                  "columns. Use only lowercase. \n" \
-                                  "   If you do not enter anything, the default is “otdl. \n" \
-                                  "\totdl = overtime desired list\n" \
-                                  "\twal = work assignment list\n" \
-                                  "\tnl = no list \n" \
-                                  "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
-                                  "\tptf = part time flexible" \
-                                  "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours " \
-                                  "or if the sum of all daily non 5200 times (all fields D) plus \n" \
-                                  "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
-                                  "4. Fill in any daily non 5200 times and types in fields D and E. " \
-                                  "Enter only paid leave types such as sick leave, annual\n" \
-                                  "   leave and holiday leave. Do not enter unpaid leave types such as LWOP " \
-                                  "(leave without pay) or AWOL (absent \n" \
-                                  "   without leave).\n" \
-                                  "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers " \
-                                  "or 11.50 hours for any other carrier in fields F.\n" \
-                                  "   Failing to fill out the daily values for Wednesday, Thursday and Friday " \
-                                  "could cause errors in calculating the adjustments,\n" \
-                                  "   so fill those in.\n" \
-                                  "6. The gray fields will fill automatically. Do not enter an information in " \
-                                  "these fields as it will delete the formulas.\n" \
-                                  "7. Field O will show the violation in hours which you should seek a remedy for. \n"
+        self.instructions['A3'] = \
+            "Caution for Mac Users: \n" \
+            "Using the Apple Numbers Spreadsheet program is not recommended. Apple Numbers " \
+            "does not support vertical text or hidden fields, both of which are used in the " \
+            "12 and 60 Hour Violations Spreadsheet. If you are using Mac, you can download " \
+            "Libre Office Calc, which is recommended, for free. Microsoft Excel or Google Docs " \
+            "will also work properly. \n\n" \
+            "December Exemption Setting: \n" \
+            "Enter \"yes\" in this cell (use lowercase only) to exempt otdl carriers from " \
+            "violations during the month of December. The default is \"no\". " \
+            "Turning WAL December Exemption to \'on\' in Spreadsheet Setting in Klusterbox " \
+            "will modify the formulas to include \"wal\" carriers in the exemption.\n\n" \
+            "Instructions: \n" \
+            "1. Fill in the name \n" \
+            "2. Fill in the list. Enter either \"otdl\",\"wal\",\"nl\",\"aux\" or \"ptf\" in list " \
+            "columns. Use only lowercase. \n" \
+            "   If you do not enter anything, the default is \"otdl\". \n" \
+            "\totdl = overtime desired list\n" \
+            "\twal = work assignment list\n" \
+            "\tnl = no list \n" \
+            "\taux = auxiliary (this would be a cca or city carrier assistant).\n" \
+            "\tptf = part time flexible \n" \
+            "3. Fill in the weekly 5200 time in field C if it exceeds 60 hours " \
+            "or if the sum of all daily non 5200 times (all fields D) plus \n" \
+            "   the weekly 5200 time (field C) will  exceed 60 hours.\n" \
+            "4. Fill in any daily non 5200 times and types in fields D and E. " \
+            "Enter only paid leave types such as sick leave, annual\n" \
+            "   leave and holiday leave. Do not enter unpaid leave types such as LWOP " \
+            "(leave without pay) or AWOL (absent \n" \
+            "   without leave).\n" \
+            "5. Fill in any daily 5200 times which exceed 12 hours for otdl carriers " \
+            "or 11.50 hours for any other carrier in fields F.\n" \
+            "   Failing to fill out the daily values for Wednesday, Thursday and Friday " \
+            "could cause errors in calculating the adjustments,\n" \
+            "   so fill those in.\n" \
+            "6. The gray fields will fill automatically. Do not enter an information in " \
+            "these fields as it will delete the formulas.\n" \
+            "7. Field O will show the violation in hours which you should seek a remedy for. \n"
         self.instructions['A3'].alignment = Alignment(wrap_text=True, vertical='top')
         for x in range(4, 20):
             self.instructions.row_dimensions[x].height = 10  # adjust all row height
@@ -1642,6 +1667,9 @@ class OvermaxSpreadsheet:
         over 60 hours in a week. It consist of 4 arrays: 1. carrier info (name and list), 2. daily hours array,
         3. daily leavetypes and 4 daily leavetimes. The carrier list the status on Saturday.
         """
+        twelvehourlimit = ("otdl",)  # the 12 hour limit only applies to otdl carriers
+        if self.wal_12hour:  # unless the WAL 12 Hour Violation setting is "on"
+            twelvehourlimit = ("otdl", "wal")  # then the 12 hour limit applies to otdl and wal carriers
         i = 0
         while i <= len(self.carrier_list)-1:
             totals_array = ["", "", "", "", "", "", ""]  # daily hours
@@ -1660,9 +1688,10 @@ class OvermaxSpreadsheet:
                         carrier_rings.append(ring)  # add any rings to an array
                         if isfloat(ring[2]):
                             totals_array[cc] = float(ring[2])  # if hours worked is a number, add it as a number
-                            if float(ring[2]) > 12 and self.carrier_list[i][2] == "otdl":
+                            if float(ring[2]) > 12 and self.carrier_list[i][2] in twelvehourlimit:
                                 daily_violation = True
-                            if float(ring[2]) > self.non_otdl_violation and self.carrier_list[i][2] != "otdl":
+                            if float(ring[2]) > self.non_otdl_violation and \
+                                    self.carrier_list[i][2] not in twelvehourlimit:
                                 daily_violation = True
                         else:
                             totals_array[cc] = ring[2]  # if hours worked is empty string, add empty string
@@ -1946,13 +1975,20 @@ class OvermaxSpreadsheet:
             self.violations['W' + str(i)].number_format = "#,###.00"
             # total violation
             self.violations.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
-            formula_h = "=SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
-                        % ("violations", str(i), str(i), "violations", str(i),
+
+            formula_h = "=IF(AND(%s!O4=\"yes\"," \
+                        "OR(%s!B%s=\"otdl\", %s!B%s=\"%s\")),\"exempt\",SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
+                        % ("violations", "violations", str(i),
+                           "violations", str(i), self.wal_dec_exempt_mod,
+                           "violations", str(i), str(i), "violations", str(i),
                            "violations", str(i), "violations", str(i))
+
+            # formula_h = "=SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
+            #             % ("violations", str(i), str(i), "violations", str(i),
+            #                "violations", str(i), "violations", str(i))
             self.violations['X' + str(i)] = formula_h
             self.violations['X' + str(i)].style = self.calcs
             self.violations['X' + str(i)].number_format = "#,###.00"
-            # =IF($violations.A13 = 0,"",$violations.A13)
             formula_i = "=IF(%s!A%s = 0,\"\",%s!A%s)" % ("violations", str(i), "violations", str(i))
             self.summary['A' + str(summary_i)] = formula_i
             self.summary['A' + str(summary_i)].style = self.input_name
