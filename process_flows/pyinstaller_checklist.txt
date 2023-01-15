@@ -66,9 +66,8 @@ ___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_su
 	___ ___  2. readme.txt
 	___ ___  3. history.txt
 	___ ___  4. speedsheet_instructions.txt
-	___ ___  5. cheatsheet.txt
-	___ ___  6. requirements.txt (list of necessary libraries for running klusterbox.py)
-	___ ___  7. Also the kb_images folder with contents
+	___ ___  5. requirements.txt (list of necessary libraries for running klusterbox.py)
+	___ ___  6. Also the kb_images folder with contents
 
 	(added to kb_install from earlier)
 	___ ___  1. klusterbox.py (source code)
