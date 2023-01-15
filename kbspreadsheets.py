@@ -1241,7 +1241,7 @@ class OvermaxSpreadsheet:
         self.instructions.merge_cells('A1:R1')
         self.instructions['A1'] = "12 and 60 Hour Violations Instructions"
         self.instructions['A1'].style = self.ws_header
-        self.instructions.row_dimensions[3].height = 275
+        self.instructions.row_dimensions[3].height = 300
         self.instructions['A3'].style = self.instruct_text
         self.instructions.merge_cells('A3:X3')
         self.instructions['A3'] = \
@@ -1255,7 +1255,8 @@ class OvermaxSpreadsheet:
             "Enter \"yes\" in this cell (use lowercase only) to exempt otdl carriers from " \
             "violations during the month of December. The default is \"no\". " \
             "Turning WAL December Exemption to \'on\' in Spreadsheet Setting in Klusterbox " \
-            "will modify the formulas to include \"wal\" carriers in the exemption.\n\n" \
+            "will modify the formulas to include \"wal\" carriers in the exemption.\n" \
+            "\tWAL 12 Hour Violation Setting is {}\n\n" \
             "Instructions: \n" \
             "1. Fill in the name \n" \
             "2. Fill in the list. Enter either \"otdl\",\"wal\",\"nl\",\"aux\" or \"ptf\" in list " \
@@ -1281,7 +1282,8 @@ class OvermaxSpreadsheet:
             "   so fill those in.\n" \
             "6. The gray fields will fill automatically. Do not enter an information in " \
             "these fields as it will delete the formulas.\n" \
-            "7. Field O will show the violation in hours which you should seek a remedy for. \n"
+            "7. Field O will show the violation in hours which you should seek a remedy for. \n"\
+                .format(Convert(self.wal_12hour).bool_to_onoff())
         self.instructions['A3'].alignment = Alignment(wrap_text=True, vertical='top')
         for x in range(4, 20):
             self.instructions.row_dimensions[x].height = 10  # adjust all row height
@@ -1977,7 +1979,7 @@ class OvermaxSpreadsheet:
             self.violations.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
 
             formula_h = "=IF(AND(%s!O4=\"yes\"," \
-                        "OR(%s!B%s=\"otdl\", %s!B%s=\"%s\")),\"exempt\",SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s)" \
+                        "OR(%s!B%s=\"otdl\", %s!B%s=\"%s\")),\"exempt\",SUM(%s!S%s:T%s)-(%s!U%s+%s!V%s+%s!W%s))" \
                         % ("violations", "violations", str(i),
                            "violations", str(i), self.wal_dec_exempt_mod,
                            "violations", str(i), str(i), "violations", str(i),
