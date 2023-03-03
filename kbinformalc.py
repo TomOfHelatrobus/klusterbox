@@ -20,6 +20,10 @@ import shutil
 import sys
 import subprocess
 import re
+# non standard libraries
+from openpyxl import Workbook
+from openpyxl.worksheet.pagebreak import Break
+from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill
 # define globals
 global root  # used to hold the Tk() root for the new window used by all Informal C windows.
 
@@ -721,6 +725,8 @@ class InformalC:
             Label(self.win.buttons, text="Summary: ", width=macadj(16, 11)).grid(row=1, column=1)
             Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
                    command=lambda: self.grvlist_setsum()).grid(row=1, column=2)
+            Button(self.win.buttons, text="Carrier List", width=macadj(16, 13),
+                   command=lambda: self.RptCarrierId(self).run()).grid(row=1, column=3)
             self.win.finish()
             
         def edit(self, grv_num):
@@ -1749,6 +1755,122 @@ class InformalC:
                         subprocess.call(["open", dir_path('infc_grv') + filename])
                 except PermissionError:
                     messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
+
+        def rptcarrierandid(self):
+            """ generates a text report with only carrier name and employee id number. """
+            if len(self.search_result) == 0:
+                return
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = "infc_grv_list" + "_" + stamp + ".txt"
+            report = open(dir_path('infc_grv') + filename, "w")
+            report.write("Carrier List\n\n")
+            carriers = self.uniquecarrier()  # get a list of carrier names
+            i = 1
+            for carrier in carriers:
+                emp_id = ""
+                sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+                result = inquire(sql)
+                if result:
+                    emp_id = result[0][0]
+                report.write("{:>4} {:<25}{:>8}\n".format(str(i), carrier, emp_id))
+                i += 1
+            report.close()
+            try:
+                if sys.platform == "win32":
+                    os.startfile(dir_path('infc_grv') + filename)
+                if sys.platform == "linux":
+                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+                if sys.platform == "darwin":
+                    subprocess.call(["open", dir_path('infc_grv') + filename])
+            except PermissionError:
+                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
+
+        class RptCarrierId:
+            """
+            Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.
+            """
+
+            def __init__(self, parent):
+                self.parent = parent
+                self.wb = None  # workbook object
+                self.carrierlist = None # workbook name
+                self.ws_header = None  # style
+                self.input_name = None  # style
+                self.input_s = None  # style
+                self.col_header = None  # style
+
+            def run(self):
+                """ this method is the master method for running all other methods in proper order """
+                self.get_styles()
+                self.build_workbook()
+                self.set_dimensions()
+                self.build_header()
+                self.save_open()
+
+            def get_styles(self):
+                """ Named styles for workbook """
+                bd = Side(style='thin', color="80808080")  # defines borders
+                self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+                self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                             border=Border(left=bd, top=bd, right=bd, bottom=bd))
+                self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                          border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                          alignment=Alignment(horizontal='right'))
+                self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                             alignment=Alignment(horizontal='right'))
+
+            def build_workbook(self):
+                """ creates the workbook object """
+                self.wb = Workbook()  # define the workbook
+                self.carrierlist = self.wb.active  # create first worksheet
+                self.carrierlist.title = "carrier list"  # title first worksheet
+                self.carrierlist.oddFooter.center.text = "&A"
+
+            def set_dimensions(self):
+                """ adjust the height and width on the violations/ instructions page """
+                self.carrierlist.column_dimensions["A"].width = 5
+                self.carrierlist.column_dimensions["B"].width = 30
+                self.carrierlist.column_dimensions["C"].width = 15
+
+            def build_header(self):
+                """ build the header of the spreadsheet """
+                self.carrierlist.merge_cells('A1:R1')
+                self.carrierlist['A1'] = "Carrier List with Employee ID Numbers"
+                self.carrierlist['A1'].style = self.ws_header
+                cell = self.carrierlist.cell(row=3, column=2)
+                cell.value = "Carrier Name"
+                cell.style = self.col_header
+                cell = self.carrierlist.cell(row=3, column=3)
+                cell.value = "Employee ID"
+                cell.style = self.col_header
+
+            def save_open(self):
+                """ save the spreadsheet and open """
+                # self.pbi += 1
+                # self.pb.move_count(self.pbi)  # increment progress bar
+                # self.pb.change_text("Saving...")
+                # self.pb.stop()
+                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
+                try:
+                    self.wb.save(dir_path('infc_grv') + xl_filename)
+                    messagebox.showinfo("Spreadsheet generator",
+                                        "Your spreadsheet was successfully generated. \n"
+                                        "File is named: {}".format(xl_filename),
+                                        parent=self.parent.win.topframe)
+                    if sys.platform == "win32":  # open the text document
+                        os.startfile(dir_path('infc_grv') + xl_filename)
+                    if sys.platform == "linux":
+                        subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
+                    if sys.platform == "darwin":
+                        subprocess.call(["open", dir_path('infc_grv') + xl_filename])
+                except PermissionError:
+                    messagebox.showerror("Spreadsheet generator",
+                                         "The spreadsheet was not generated. \n"
+                                         "Suggestion: "
+                                         "Make sure that identically named spreadsheets are closed "
+                                         "(the file can't be overwritten while open).",
+                                         parent=self.parent.win.topframe)
 
     class PayoutEntry:
         """

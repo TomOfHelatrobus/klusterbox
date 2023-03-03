@@ -9065,20 +9065,17 @@ class CarrierInput:
                                       "Are you sure?".format(self.carrier, self.chg_name.get()),
                                       parent=self.win.topframe):
             return
-        sql = "UPDATE carriers SET carrier_name = '%s' WHERE carrier_name = '%s'" % (c_name, self.carrier)
-        commit(sql)
-        sql = "UPDATE rings3 SET carrier_name = '%s' WHERE carrier_name = '%s'" % (c_name, self.carrier)
-        commit(sql)
-        sql = "SELECT kb_name FROM name_index WHERE kb_name = '%s'" % self.carrier
-        result = inquire(sql)
-        if result:
-            sql = "UPDATE name_index SET kb_name = '%s' WHERE kb_name = '%s'" % (c_name, self.carrier)
-            commit(sql)
-        sql = "SELECT name FROM seniority WHERE name = '%s'" % self.carrier
-        result = inquire(sql)
-        if result:
-            sql = "UPDATE seniority SET name = '%s' WHERE name = '%s'" % (c_name, self.carrier)
-            commit(sql)
+        tables = ("carriers", "informalc_awards", "informalc_payouts", "otdl_preference", "refusals", "rings3",
+                  "seniority", "name_index")
+        columns = ("carrier_name", "carrier_name", "carrier_name", "carrier_name", "carrier_name", "carrier_name",
+                   "name", "kb_name")
+        for i in range(len(tables)):
+            sql = "SELECT {} FROM {} WHERE {} = '%s'".format(columns[i], tables[i], columns[i]) % self.carrier
+            result = inquire(sql)  # look for record
+            if result:
+                sql = "UPDATE {} SET {} = '%s' WHERE {} = '%s'".format(tables[i], columns[i], columns[i]) \
+                      % (c_name, self.carrier)
+                commit(sql)
         self.status = "Carrier name change applied."
         self.restart_edit_carriers(self.win.topframe, c_name)
 
