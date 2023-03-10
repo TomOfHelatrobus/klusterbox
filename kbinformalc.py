@@ -22,8 +22,7 @@ import subprocess
 import re
 # non standard libraries
 from openpyxl import Workbook
-from openpyxl.worksheet.pagebreak import Break
-from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment, PatternFill
+from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment
 # define globals
 global root  # used to hold the Tk() root for the new window used by all Informal C windows.
 
@@ -1793,11 +1792,13 @@ class InformalC:
             def __init__(self, parent):
                 self.parent = parent
                 self.wb = None  # workbook object
-                self.carrierlist = None # workbook name
+                self.carrierlist = None  # workbook name
                 self.ws_header = None  # style
                 self.input_name = None  # style
                 self.input_s = None  # style
                 self.col_header = None  # style
+                self.i = 0  # this counts the rows/ number of carriers.
+                self.no_empid = []  # an array for carriers with no employee id
 
             def run(self):
                 """ this method is the master method for running all other methods in proper order """
@@ -1805,6 +1806,8 @@ class InformalC:
                 self.build_workbook()
                 self.set_dimensions()
                 self.build_header()
+                self.fill_body()
+                self.show_noempid()
                 self.save_open()
 
             def get_styles(self):
@@ -1817,7 +1820,7 @@ class InformalC:
                                           border=Border(left=bd, top=bd, right=bd, bottom=bd),
                                           alignment=Alignment(horizontal='right'))
                 self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                                             alignment=Alignment(horizontal='right'))
+                                             alignment=Alignment(horizontal='left'))
 
             def build_workbook(self):
                 """ creates the workbook object """
@@ -1829,8 +1832,8 @@ class InformalC:
             def set_dimensions(self):
                 """ adjust the height and width on the violations/ instructions page """
                 self.carrierlist.column_dimensions["A"].width = 5
-                self.carrierlist.column_dimensions["B"].width = 30
-                self.carrierlist.column_dimensions["C"].width = 15
+                self.carrierlist.column_dimensions["B"].width = 20
+                self.carrierlist.column_dimensions["C"].width = 10
 
             def build_header(self):
                 """ build the header of the spreadsheet """
@@ -1844,12 +1847,50 @@ class InformalC:
                 cell.value = "Employee ID"
                 cell.style = self.col_header
 
+            def fill_body(self):
+                """ this loop will fill the body of the spreadsheet with the carrier list """
+                carriers = self.parent.uniquecarrier()  # get a list of carrier names
+                self.i = 1
+                for carrier in carriers:
+                    sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+                    result = inquire(sql)
+                    if result:
+                        emp_id = result[0][0]
+                        cell = self.carrierlist.cell(row=self.i + 3, column=1)
+                        cell.value = str(self.i)
+                        cell.style = self.input_name
+                        cell = self.carrierlist.cell(row=self.i + 3, column=2)
+                        cell.value = carrier
+                        cell.style = self.input_name
+                        cell = self.carrierlist.cell(row=self.i + 3, column=3)
+                        cell.value = emp_id
+                        cell.style = self.input_s
+                        self.i += 1
+                    else:
+                        self.no_empid.append(carrier)
+
+            def show_noempid(self):
+                """ this will display the a list of carriers with no employee id. """
+                if len(self.no_empid) == 0:
+                    return
+                self.i += 4
+                cell = self.carrierlist.cell(row=self.i, column=2)
+                cell.value = "Carriers without Employee ID"
+                cell.style = self.col_header
+                i = 1
+                self.i += 1
+                for carrier in self.no_empid:
+                    cell = self.carrierlist.cell(row=self.i, column=1)
+                    cell.value = str(i)
+                    cell.style = self.input_name
+                    cell = self.carrierlist.cell(row=self.i, column=2)
+                    cell.value = carrier
+                    cell.style = self.input_name
+                    self.i += 1
+                    i += 1
+
             def save_open(self):
                 """ save the spreadsheet and open """
-                # self.pbi += 1
-                # self.pb.move_count(self.pbi)  # increment progress bar
-                # self.pb.change_text("Saving...")
-                # self.pb.stop()
                 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
                 try:
