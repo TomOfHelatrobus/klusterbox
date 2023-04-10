@@ -84,7 +84,7 @@ class MergeTables:
                    "\t4. Choose sending table \n" \
                    "\t5. Merge \n" \
                    "\t6. Exit \n" \
-                   "\t7. Merge all1"
+                   "\t7. Merge all"
         print(menutext)
         try:
             self.option = input(">>>Enter the number of the option: ")
@@ -331,7 +331,7 @@ class MergeTables:
                         actiontaken = True
                 # the kb_name matches, but the emp_id does not match
                 elif not actiontaken and sendrow[1] == rcvrow[1] and sendrow[2] != rcvrow[2]:
-                    self.delete_from_nameindex(sendrow)  # delete the row from receiving db by emp id
+                    self.delete_from_nameindex(sendrow, both_dbase="yes")  # delete the row from receiving db by emp id
                     sendrow = self.altername(sendrow)  # change the kb_name in the array
                     self.insert_into_nameindex(sendrow)  # insert the array into the receiving name index
                     self.name_change(sendrow[1], rcvrow[1])  # change name in sending db
@@ -360,11 +360,14 @@ class MergeTables:
             return True
         return False
 
-    def delete_from_nameindex(self, rcvrow):
-        """ this will delete the row that is sent to it by the employee id number.  """
+    def delete_from_nameindex(self, rcvrow, both_dbase=None):
+        """ this will delete the row that is sent to it by the employee id number.  if you want the employee id
+        to be deleted from both name indexes, then use both_dbase arg and pass 'yes'. """
         sql = "DELETE FROM name_index WHERE emp_id = '%s'" % rcvrow[2]
         # print(sql)
         self.commit(self.dbase_receiving, sql)
+        if both_dbase:  # if an argument was passed in the both_dbase arg
+            self.commit(self.dbase_sending, sql)  # also delete from sending db
 
     def insert_into_nameindex(self, sendrow):
         """ this will insert the row that is sent to it.  """

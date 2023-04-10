@@ -2518,35 +2518,35 @@ class DatabaseAdmin:
         filedialog.askopenfilename(initialdir=self.dbase_location)
 
 
-class RptWin:
-    """ report window. generatess the carrier status history screen. """
+class CarrierHistory:
+    """ report window. generates the carrier status history screen. """
 
-    def __init__(self, frame):
-        self.frame = frame
+    def __init__(self):
+        self.win = None
+        self.carrier = None  # the carrier name
+        self.effective_date = None  # the effective date - from the investigation range
+        self.station = None  # the station as passed to create
 
-    def rpt_chg_station(self, frame, station):
-        """ gets the station """
-        self.frame = frame
-        if station.get() == "Select a station":
-            station_string = "x"
-        else:
-            station_string = station.get()
-        self.rpt_find_carriers(station_string)
-
-    def rpt_find_carriers(self, station):
+    def create(self, frame, station):
         """ fills the screen with widgets. """
-        win = MakeWindow()
-        win.create(self.frame)
-        Label(win.body, text="Carriers History", font=macadj("bold", "Helvetica 18")) \
+        self.station = station  # this updates the self.station variable
+        self.get_effective_date()  # this will get the effective date from the investigation range
+        self.win = MakeWindow()
+        self.win.create(frame)
+        Label(self.win.body, text="Carriers History", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
-        Label(win.body, text="").grid(row=1, column=0)
-        Label(win.body, text="Select the station to see all carriers who have ever worked "
-                             "at the station - past and present. \n ", justify=LEFT) \
+        Label(self.win.body, text="").grid(row=1, column=0)
+        Label(self.win.body,wraplength=500,
+              text="Select the station to see all carriers who have ever worked "
+              "at the station - past and present.\n\n "
+              "To move carriers back to the station, select Restore or Insert. "
+              "New records for Restored or Inserted carriers will show the carriers with "
+              "no list status, no ns day and no station. ", justify=LEFT)\
             .grid(row=2, column=0, sticky="w", columnspan=6)
-        Label(win.body, text="").grid(row=3, column=0)
-        Label(win.body, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
-        station_selection = StringVar(win.body)
-        om_station = OptionMenu(win.body, station_selection, *projvar.list_of_stations)
+        Label(self.win.body, text="").grid(row=3, column=0)
+        Label(self.win.body, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
+        station_selection = StringVar(self.win.body)
+        om_station = OptionMenu(self.win.body, station_selection, *projvar.list_of_stations)
         if sys.platform != "darwin":
             om_station.config(width=30, anchor="w")
         else:
@@ -2556,16 +2556,16 @@ class RptWin:
             station_selection.set("Select a station")
         else:
             station_selection.set(station)
-        Button(win.body, text="select", width=macadj(14, 12), anchor="w",
-               command=lambda: self.rpt_chg_station(win.topframe, station_selection)) \
+        Button(self.win.body, text="select", width=macadj(14, 12), anchor="w",
+               command=lambda: self.change_station(station_selection)) \
             .grid(row=5, column=2, sticky="w")
-        Label(win.body, text="").grid(row=6, column=0)
+        Label(self.win.body, text="").grid(row=6, column=0)
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
               "ORDER BY carrier_name ASC" % station
         results = inquire(sql)
         if station != "x":
-            Label(win.body, text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
-        results_frame = Frame(win.body)
+            Label(self.win.body, text="Carriers of {}".format(station), anchor="w").grid(row=7, column=0, sticky="w")
+        results_frame = Frame(self.win.body)
         results_frame.grid(row=8, columnspan=4)
         i = 0
         if station != "x":
@@ -2582,31 +2582,85 @@ class RptWin:
                     .grid(row=i, column=0, sticky="w")
         i += 1
         for name in results:
-            sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s'" % name
+            sql = "SELECT MAX(effective_date), station FROM carriers WHERE carrier_name = '%s' and " \
+                  "effective_date <= '%s'" % (name[0], self.effective_date)
             top_rec = inquire(sql)
+            # name label
             Label(results_frame, text=name[0], anchor="w").grid(row=i, column=0, sticky="w")
-            Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
-                .grid(row=i, column=1, sticky="w")
-            Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
-            Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
+            if top_rec[0][0]:  # if there is a record <= the investigation range.
+                # date label
+                Label(results_frame, text=dt_converter(top_rec[0][0]).strftime("%m/%d/%Y"), anchor="w") \
+                    .grid(row=i, column=1, sticky="w")
+                Label(results_frame, text="     ", anchor="w").grid(row=i, column=2, sticky="w")
+                # station label
+                Label(results_frame, text=top_rec[0][1], anchor="w").grid(row=i, column=3, sticky="w")
+            else:  # if there is no current record, display "no record yet"
+                Label(results_frame, text=">>> No record yet", anchor="w",
+                      foreground="blue").grid(row=i, column=1, columnspan=2)
             Label(results_frame, text="     ", anchor="w").grid(row=i, column=4, sticky="w")
+            # report button
             Button(results_frame, text="Report", anchor="w",
-                   command=lambda in_line=name: Reports(self.frame).rpt_carrier_history(in_line[0])) \
+                   command=lambda in_line=name: Reports(self.win.topframe).rpt_carrier_history(in_line[0])) \
                 .grid(row=i, column=5, sticky="w")
             Label(results_frame, text=" ", anchor="w").grid(row=i, column=6, sticky="w")
+            # rings button
             Button(results_frame, text="Rings", anchor="w",
-                   command=lambda in_line=name: Reports(self.frame).rpt_all_rings(in_line[0])) \
+                   command=lambda in_line=name: Reports(self.win.topframe).rpt_all_rings(in_line[0])) \
                 .grid(row=i, column=7, sticky="w")
-            Label(results_frame, text="         ", anchor="w").grid(row=i, column=8, sticky="w")
+            Label(results_frame, text=" ", anchor="w").grid(row=i, column=8, sticky="w")
+            # restore button
+            if station != "out of station":  # do not display if station is 'out of station'
+                if top_rec[0][1] != station:  # do not display if carrier is currently at station.
+                    text = "Restore"  # the default text for the restore button is "restore"
+                    if not top_rec[0][1]:  # if there is no record for the carrier before this date...
+                        text = "Insert"  # change the text in "insert"
+                    Button(results_frame, text=text, anchor="w", width=macadj(6, 7),
+                           command=lambda in_line=name: self.restore(in_line[0])) \
+                        .grid(row=i, column=9, sticky="w")
+            Label(results_frame, text="         ", anchor="w").grid(row=i, column=10, sticky="w")
             i += 1
-        # apply and close buttons
-        button = Button(win.buttons)
+        # close button
+        button = Button(self.win.buttons)
         button.config(text="Go Back", width=macadj(20, 20),
-                      command=lambda: MainFrame().start(frame=win.topframe))
+                      command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-        win.finish()
+        self.win.finish()
+        
+    def change_station(self, station):
+        """ gets the station """
+        if station.get() == "Select a station":
+            new_station = "x"
+        else:
+            new_station = station.get()
+        self.create(self.win.topframe, new_station)
+
+    def restore(self, carrier):
+        """ this method moves the carrier from 'out of station' back to the current station.
+        when the 'restore' button is pressed, the method is called. """
+        self.carrier = carrier  # set the self.carrier var
+        # sql select from carriers table when name and date match
+        sql = "SELECT * FROM carriers WHERE carrier_name = '%s' and effective_date = '%s'" \
+              % (self.carrier, self.effective_date)
+        carrier_rec = inquire(sql)
+        if carrier_rec:  # if there is a record - update the record in the carrier table.
+            sql = "UPDATE carriers SET station = '%s' WHERE carrier_name = '%s' and effective_date = '%s'" \
+                  % (self.station, self.carrier, self.effective_date)
+            commit(sql)
+        else:  # else - if there is no result - insert a record into carrier table.
+            sql = "INSERT INTO carriers (effective_date,carrier_name,list_status,ns_day,route_s,station)" \
+                  " VALUES('%s','%s','%s','%s','%s','%s')" \
+                  % (self.effective_date, self.carrier, "nl", "none", "", self.station)
+            commit(sql)
+        self.create(self.win.topframe, self.station)
+
+    def get_effective_date(self):
+        """ this will get the effective date of the change in carrier status """
+        if projvar.invran_weekly_span:  # if the invran is weekly - go with first day of week
+            self.effective_date = projvar.invran_date_week[0]
+        else:  # if the invran is daily - go with the day.
+            self.effective_date = projvar.invran_date
 
 
 class PdfSplitter:
@@ -6016,7 +6070,7 @@ class SetDov:
             msg += str(self.update_counter) + " record{} updated.  ".format(s)
         if not self.insert_counter and not self.update_counter:
             msg = "No changes made"
-        self.insert_counter = 0  # reset counters 
+        self.insert_counter = 0  # reset counters
         self.update_counter = 0
         return msg
 
@@ -7955,7 +8009,7 @@ class AboutKlusterbox:
 
 class MassInput:
     """
-    creates screen where users can change multiple characteristics for multiple carriers at one time. 
+    creates screen where users can change multiple characteristics for multiple carriers at one time.
     """
 
     def __init__(self):
@@ -8273,7 +8327,7 @@ class MassInput:
 
 class CarrierInput:
     """
-    provides screens for users to view carrier characteristics, add, edit and delete. 
+    provides screens for users to view carrier characteristics, add, edit and delete.
     """
 
     def __init__(self):
@@ -9532,7 +9586,8 @@ class MainFrame:
         reports_menu.add_command(label="Carrier by List",
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_by_list())
         reports_menu.add_command(label="Carrier History",
-                                 command=lambda: RptWin(self.win.topframe).rpt_find_carriers(projvar.invran_station))
+                                 command=lambda: CarrierHistory()
+                                 .create(self.win.topframe, projvar.invran_station))
         reports_menu.add_command(label="Carrier Seniority",
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_seniority())
         reports_menu.add_command(label="Carrier Seniority and ID",
@@ -9549,6 +9604,7 @@ class MainFrame:
             reports_menu.entryconfig(3, state=DISABLED)
             reports_menu.entryconfig(4, state=DISABLED)
             reports_menu.entryconfig(5, state=DISABLED)
+            reports_menu.entryconfig(6, state=DISABLED)
             reports_menu.entryconfig(7, state=DISABLED)
             reports_menu.entryconfig(8, state=DISABLED)
             reports_menu.entryconfig(10, state=DISABLED)
