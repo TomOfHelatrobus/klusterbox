@@ -77,6 +77,11 @@ clone section and copy that to clipboard.
 
 ___ ___  4. In powershell/terminal type: git clone <github repo url>.
 
+to remove a file from the filesystem and the repo:
+___  	git rm <file1.txt>
+___  	git commit -m "remove file1.txt"
+___  	git push origin master
+
 ------------------------------------------------------------------------------------------
 
 use these alternate commands in git if the klusterbox project folder is already 

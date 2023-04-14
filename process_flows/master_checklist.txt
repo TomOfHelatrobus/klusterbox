@@ -7,7 +7,7 @@ MASTER CHECKLIST
  ____ 1. Run Post Development Checklist.
  ____ 2. Run Pre Go Live Checklist on IDE for Windows.
  ____ 3. Correct any errors and re push to git if any changes where made.
- ____ 4. Run Pre Go Live Checklist on IDE for Mac.
+ ____ 4. Do any final checks for the release.
  ____ 5. Correct any errors and re push to git if any changes where made.
 
 

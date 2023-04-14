@@ -55,8 +55,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = "5.06"  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Jan 13, 2023"  # format is Jan 1, 2022
+version = "5.07"  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Apr 16, 2023"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -2536,7 +2536,7 @@ class CarrierHistory:
         Label(self.win.body, text="Carriers History", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
         Label(self.win.body, text="").grid(row=1, column=0)
-        Label(self.win.body,wraplength=500,
+        Label(self.win.body, wraplength=500,
               text="Select the station to see all carriers who have ever worked "
               "at the station - past and present.\n\n "
               "To move carriers back to the station, select Restore or Insert. "
