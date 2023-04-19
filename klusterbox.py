@@ -2536,7 +2536,7 @@ class CarrierHistory:
         Label(self.win.body, text="Carriers History", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
         Label(self.win.body, text="").grid(row=1, column=0)
-        Label(self.win.body, wraplength=macadj(500,550),
+        Label(self.win.body, wraplength=macadj(500, 550),
               text="Select the station to see all carriers who have ever worked "
               "at the station - past and present.\n\n "
               "To move carriers back to the station, select Restore or Insert. "
