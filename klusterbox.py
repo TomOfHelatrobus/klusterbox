@@ -2536,7 +2536,7 @@ class CarrierHistory:
         Label(self.win.body, text="Carriers History", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w")
         Label(self.win.body, text="").grid(row=1, column=0)
-        Label(self.win.body, wraplength=500,
+        Label(self.win.body, wraplength=macadj(500,550),
               text="Select the station to see all carriers who have ever worked "
               "at the station - past and present.\n\n "
               "To move carriers back to the station, select Restore or Insert. "
@@ -2614,7 +2614,7 @@ class CarrierHistory:
                     text = "Restore"  # the default text for the restore button is "restore"
                     if not top_rec[0][1]:  # if there is no record for the carrier before this date...
                         text = "Insert"  # change the text in "insert"
-                    Button(results_frame, text=text, anchor="w", width=macadj(6, 7),
+                    Button(results_frame, text=text, anchor="w", width=macadj(6, 6),
                            command=lambda in_line=name: self.restore(in_line[0])) \
                         .grid(row=i, column=9, sticky="w")
             Label(results_frame, text="         ", anchor="w").grid(row=i, column=10, sticky="w")
