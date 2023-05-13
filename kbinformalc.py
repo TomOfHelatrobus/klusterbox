@@ -13,7 +13,7 @@ from kbtoolbox import commit, dir_path, dir_path_check, dt_converter, find_pp, i
 # standard libraries
 from tkinter import messagebox, ttk, BOTH, BOTTOM, Button, Canvas, END, Entry, Frame, Label, LEFT, \
     Listbox, mainloop, NW, OptionMenu, Radiobutton, RIDGE, RIGHT, Scrollbar, StringVar, TclError, \
-    Tk, VERTICAL, Y
+    Tk, VERTICAL, Y, Menu
 from datetime import datetime, timedelta
 import os
 import shutil
@@ -80,23 +80,41 @@ class InformalC:
         root = self.win.root
         self.stationvar = None  # this is the stringvar for the station.
         self.station = None  # the station
+        self.station_options = []  # the list of station options
 
     def informalc(self, frame):
         """ a master method for running the other methods in proper sequence. """
-        # self.win.create(frame)  # creates the screen object
         self.clear_tempfolders()  # clear contents of temp folder
         self.get_station()  # this uses the investigation range station as the default
+        self.get_station_options()  # this gets the list of stations
         self.build_tables()  # build needed tables if they do not exist.
-        if not self.station:
-            self.station_screen(frame)  # this allows the user to change/select the station
-        else:
-            self.menu_screen(frame)  # this fills the screen with widgets.
-        # self.win.finish()  # this commands the window to loop and persist.
+        if not self.station_screen_autorouting():
+            if not self.station:
+                self.station_screen(frame)  # this allows the user to change/select the station
+            else:
+                self.menu_screen(frame)  # this fills the screen with widgets.
 
     def get_station(self):
         """ this sets the station to what was used for the klusterbox investigation range. """
         if projvar.invran_station:
             self.station = projvar.invran_station
+
+    def get_station_options(self):
+        """ this will get the station options ona place them in self.station_options"""
+        for station in projvar.list_of_stations:
+            self.station_options.append(station)
+        if "out of station" in self.station_options:
+            self.station_options.remove("out of station")
+
+    def pulldown_menu(self):
+        """ create a pulldown menu, and add it to the menu bar """
+        menubar = Menu(self.win.topframe)
+        # speedsheeet menu
+        speed_menu = Menu(menubar, tearoff=0)
+        speed_menu.add_command(label="Generate New Grievances",
+                               command=lambda: SpeedSheetGen(self.win.topframe, self.station).new())
+        menubar.add_cascade(label="Speedsheet", menu=speed_menu)
+        root.config(menu=menubar)
 
     @staticmethod
     def build_tables():
@@ -130,47 +148,6 @@ class InformalC:
         if os.path.isdir(dir_path_check('infc_grv')):
             shutil.rmtree(dir_path_check('infc_grv'))
 
-    @staticmethod
-    def build_tables_2():
-        """ build tables needed if they do no exist. """
-        # build a table to track all grievances
-        sql = 'CREATE table IF NOT EXISTS informalc_grievances ' \
-              '(grv_no varchar, issue, grievant, startdate varchar, enddate varchar, station varchar, ' \
-              'meetingdate varchar)'
-        # commit(sql)
-        # build a table to track all grievance settlements
-        sql = 'CREATE table IF NOT EXISTS informalc_settlements ' \
-              '(grv_no varchar, level varchar, date_signed varchar, docs varchar, gats_number varchar, ' \
-              'decision varchar, proofdue varchar, inpart varchar)'
-        # commit(sql)
-        # build a table to track all individual monetary awards
-        sql = 'CREATE table IF NOT EXISTS informalc_remedies (grv_no varchar, carrier_name varchar, hours varchar, ' \
-              'rate varchar, dollars varchar, gatsverified varchar, payoutverified varchar)'
-        # commit(sql)
-        # build an index to track batch settlements
-        sql = 'CREATE table IF NOT EXISTS informalc_batchindex (main varchar,sub varchar)'
-        # commit(sql)
-        # build an index to track non compliance settlements
-        sql = 'CREATE table IF NOT EXISTS informalc_noncindex (settlement varchar, followup varchar)'
-        # commit(sql)
-        # build an index to track remanded settlements
-        sql = 'CREATE table IF NOT EXISTS informalc_remandindex (remanded varchar, followup varchar)'
-        # commit(sql)
-        # build an table for issue categories
-        sql = 'CREATE table IF NOT EXISTS informalc_issuescategories (issue varchar, standard boolean)'
-        # commit(sql)
-        # build an table for decision categories
-        sql = 'CREATE table IF NOT EXISTS informalc_decisioncategories (decision varchar, standard boolean)'
-        # commit(sql)
-        # build a table to track grievance payouts
-        sql = 'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, ' \
-              'payday varchar, carrier_name varchar,' \
-              'hours varchar,rate varchar,amount varchar)'
-        # commit(sql)
-        # put out of station back into the list of stations in case it has been removed.
-        if "out of station" not in projvar.list_of_stations:
-            projvar.list_of_stations.append("out of station")
-
     def station_screen(self, frame):
         """ this allows the user to change/ select the station """
         self.win.create(frame)  # creates the screen object
@@ -188,13 +165,16 @@ class InformalC:
         Label(self.win.body, text="", height=macadj(1, 2)).grid(row=row, column=1)
         row += 1
         self.stationvar.set("Select a Station")
-        station_options = projvar.list_of_stations
-        if "out of station" in station_options:
-            station_options.remove("out of station")
-        station_om = OptionMenu(self.win.body, self.stationvar, *station_options)
+        station_om = OptionMenu(self.win.body, self.stationvar, *self.station_options)
         station_om.config(width=macadj(40, 34))
         station_om.grid(row=row, column=0, columnspan=2, sticky="e")
-        # self.station_screen_autorouting(station_options)
+        # self.station_screen_autorouting()
+        # configure the submit button
+        button_submit = Button(self.win.buttons)
+        button_submit.config(text="Submit", width=20, command=lambda: self.station_screen_submit())
+        if sys.platform == "win32":
+            button_submit.config(anchor="w")
+        button_submit.grid(row=0, column=1)
         # configure the "quit" button
         button_back = Button(self.win.buttons)
         button_back.config(text="Quit Informal C", width=20, command=lambda: self.win.root.destroy())
@@ -203,11 +183,11 @@ class InformalC:
         button_back.grid(row=0, column=0)
         self.win.finish()  # this commands the window to loop and persist.
 
-    def station_screen_autorouting(self, station_options):
+    def station_screen_autorouting(self):
         """ this will automatically route the user depending on the amount of station options.
         One station option will automatically chose that option,
         Zero station options will show an error message and exit informal c. """
-        if not station_options:
+        if not self.station_options:
             messagebox.showerror("No Stations in Database",
                                  "There are no stations in the Klusterbox Database./n"
                                  "Proper function of Informal C requires at least one "
@@ -216,25 +196,30 @@ class InformalC:
                                  "Informal C will end now. ",
                                  parent=self.win.body)
             self.win.root.destroy()  # terminate informal c
-        if len(station_options) == 1:
-            self.station = station_options[0]
+            return True
+        if len(self.station_options) == 1:
+            self.station = self.station_options[0]
             self.menu_screen(self.win.topframe)
+            return True
+        return False
 
     def station_screen_submit(self):
         """ this will update the station and route the user to the main menu
         or if no selection is made, there will be an error message and the screen will refresh. """
-        if self.stationvar == "Select a Station":
+
+        if self.stationvar.get() == "Select a Station":
             messagebox.showerror("Prohibited Action",
                                  "Please select a station.",
                                  parent=self.win.body)
             self.station_screen(self.win.topframe)  # return to and refresh the station screen
         else:
-            self.station = self.stationvar
+            self.station = self.stationvar.get()
             self.menu_screen(self.win.topframe)
 
     def menu_screen(self, frame):
         """ the main screen for informal c. """
         self.win.create(frame)  # creates the screen object
+        self.pulldown_menu()
         Label(self.win.body, text="Informal C", font=macadj("bold", "Helvetica 18")).grid(row=0, sticky="w")
         Label(self.win.body, text="The C is for Compliance").grid(row=1, sticky="w")
         Label(self.win.body, text="").grid(row=2)
@@ -283,6 +268,7 @@ class InformalC:
             self.incident_end = None  # 5
             self.meeting_date = None  # 6
             self.issue = None  # 7
+            self.article = None
             self.non_c = None  # 8  is the grievance a non compliance grievance
 
         def informalc_new(self, frame):
@@ -302,12 +288,8 @@ class InformalC:
             self.incident_end = StringVar(self.win.body)
             self.meeting_date = StringVar(self.win.body)
             self.issue = StringVar(self.win.body)
+            self.article = StringVar(self.win.body)
             self.non_c = StringVar(self.win.body)
-            # self.date_signed = StringVar(self.win.body)
-            # self.lvl = StringVar(self.win.body)
-            # self.gats_number = StringVar(self.win.body)
-            # self.docs = StringVar(self.win.body)
-            # self.description = StringVar(self.win.body)
 
         def build_screen(self):
             """ screen for entering in new settlements. """
@@ -355,34 +337,9 @@ class InformalC:
             Entry(self.win.body, textvariable=self.meeting_date, justify='right', width=macadj(20, 15)) \
                 .grid(row=row, column=1, sticky="w")
             row += 1
-
-            # select level
-            # Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "white"),
-            #       fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            #     .grid(row=row, column=0, sticky="w")  # select settlement level
-            # lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
-            # lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
-            # lvl_om.config(width=macadj(13, 13))
-            # lvl_om.grid(row=row, column=1)
-            # self.lvl.set("informal a")
-            # row += 1
-
-            # Label(self.win.body, text="GATS Number: ", background=macadj("gray95", "white"),
-            #       fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            #     .grid(row=row, column=0, sticky="w")  # enter gats number
-            # Entry(self.win.body, textvariable=self.gats_number, justify='right', width=macadj(20, 15)) \
-            #     .grid(row=row, column=1, sticky="w")
-            # row += 1
-
-            # Label(self.win.body, text="Documentation?: ", background=macadj("gray95", "white"),
-            #       fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            #     .grid(row=row, column=0, sticky="w")  # select documentation
-            # doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
-            # docs_om = OptionMenu(self.win.body, self.docs, *doc_options)
-            # docs_om.config(width=macadj(13, 13))
-            # docs_om.grid(row=row, column=1)
-            # self.docs.set("no")
-            # row += 1
+            Label(self.win.body, text="Non compliance", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=row, column=0, sticky="w")
 
             # issue
             Label(self.win.body, text="Issue: ", background=macadj("gray95", "white"),
@@ -392,6 +349,13 @@ class InformalC:
             row += 1
             Entry(self.win.body, textvariable=self.issue, width=macadj(48, 36), justify='right') \
                 .grid(row=row, column=0, sticky="w", columnspan=2)
+            row += 1
+
+            Label(self.win.body, text="Article: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.article, justify='right', width=macadj(20, 15)) \
+                .grid(row=row, column=1, sticky="w")
             row += 1
 
             Label(self.win.body, text="", height=macadj(1, 1)).grid(row=row, column=0)
@@ -412,11 +376,11 @@ class InformalC:
             """ applies changes to settlement information. """
             check = self.informalc_check_grv()
             if check:
-                dates = [self.incident_start, self.incident_end, self.date_signed]
+                dates = [self.incident_start, self.incident_end, self.meeting_date]
                 in_start = datetime(1, 1, 1)
                 in_end = datetime(1, 1, 1)
-                d_sign = datetime(1, 1, 1)
-                dt_dates = [in_start, in_end, d_sign]
+                m_date = datetime(1, 1, 1)
+                dt_dates = [in_start, in_end, m_date]
                 i = 0
                 for date in dates:
                     date = date.get()  # get the data from the stringvar
@@ -445,20 +409,20 @@ class InformalC:
                 grv_no = self.grv_no.get()  # get the value from the string var
                 grv_no = grv_no.strip()  # strip out the white space
                 grv_no = grv_no.lower()  # convert to all lowercase
-                description = self.issue.get()
-                description = description.strip()
-                description = description.lower()
+                issue = self.issue.get()
+                issue = issue.strip()
+                issue = issue.lower()
                 if grv_no in existing_grv:
                     messagebox.showerror("Data Entry Error",
                                          "The Grievance Number {} is already present in the database. You can not "
                                          "create a duplicate.".format(grv_no),
                                          parent=self.win.topframe)
                     return
-                sql = "INSERT INTO informalc_grv (grv_no, indate_start, indate_end, date_signed, station, " \
-                      "gats_number, docs, description, level) " \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s')" % \
-                      (grv_no, dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(),
-                       self.gats_number.get().strip(), self.docs.get(), description, self.lvl.get())
+                sql = "INSERT INTO informalc_grievance (grievant, grv_no, startdate, enddate, meetingdate, " \
+                      "station, issue, article) " \
+                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
+                      (self.grievant, grv_no, dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(), issue,
+                       self.article)
                 commit(sql)
                 self.msg = "Grievance Settlement Added: #{}.".format(grv_no)
                 self.informalc_new(self.win.topframe)
@@ -478,7 +442,7 @@ class InformalC:
                                      "You must enter a grievance number",
                                      parent=self.win.topframe)
                 return False
-            if re.search('[^1234567890abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ,]', grv_no):
+            if re.search('[^1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]', grv_no):
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number can only contain numbers and letters. No other "
                                      "characters are allowed",
@@ -498,7 +462,7 @@ class InformalC:
 
         def informalc_check_grv_2(self):
             """ checks the information for informalc grievances. """
-            dates = [self.incident_start.get(), self.incident_end.get(), self.date_signed.get()]
+            dates = [self.incident_start.get(), self.incident_end.get(), self.meeting_date.get()]
             date_ids = ("starting incident date", "ending incident date", "date signed")
             i = 0
             for date in dates:
@@ -549,18 +513,6 @@ class InformalC:
                                          parent=self.win.topframe)
                     return False
                 i += 1
-            if len(self.gats_number.get()) > 50:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The GATS number is limited to no more than 20 characters. ",
-                                     parent=self.win.topframe)
-                return False
-            if self.gats_number.get().strip() != "":
-                if not all(x.isalnum() or x.isspace() for x in self.gats_number.get()):
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The GATS number can only contain letters and numbers. No "
-                                         "special characters are allowed.",
-                                         parent=self.win.topframe)
-                    return False
             if self.issue.get().strip() != "":
                 if not all(x.isalnum() or x.isspace() for x in self.issue.get()):
                     messagebox.showerror("Invalid Data Entry",
@@ -2919,6 +2871,143 @@ class MakeWindow:
         for i in range(count):
             Label(self.body, text="").grid(row=last + i)
         Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
+
+
+class SpeedSheetGen:
+    """ this generates and reads a speedsheet for the informal c grievance tracker """
+
+    def __init__(self, frame, station):
+        self.frame = frame
+        self.station = station
+        self.title = ""
+        self.filename = ""
+        self.wb = Workbook()  # define the workbook
+        self.ws = None  # the worksheet of the workbook
+        self.ws_header = None  # styles for workbook
+        self.list_header = None  # styles for workbook
+        self.date_dov = None  # styles for workbook
+        self.date_dov_title = None  # styles for workbook
+        self.col_header = None  # styles for workbook
+        self.input_s = None  # styles for workbook
+        self.input_ns = None  # styles for workbook
+
+    def run(self):
+        pass
+
+    def new(self):
+        """ this generates a blank speedsheet for new greivances"""
+        self.name_styles()
+        self.get_title()  # generate the title and filename
+        self.make_workbook_object()  # make the workbook object
+        self.stopsaveopen()
+        pass
+
+    def get_title(self):
+        """ generate title and filename """
+        self.title = "New Grievances Speed Sheet"
+        self.filename = "new_grievances_speedsheet" + ".xlsx"
+
+    def name_styles(self):
+        """ Named styles for workbook """
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=9))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=9))
+        self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=9),
+                                         alignment=Alignment(horizontal='right'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=9),
+                                     border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                     alignment=Alignment(horizontal='left'))
+
+    def make_workbook_object(self):
+        """ make the workbook object """
+        self.ws = self.wb.active  # create first worksheet
+        self.ws.title = "new grievances"  # title first worksheet
+        self.ws.oddFooter.center.text = "&A"
+        self.column_formatting()
+        # page headings ------------------------------------------------
+        cell = self.ws.cell(column=1, row=1)
+        cell.value = self.title
+        cell.style = self.ws_header
+        self.ws.merge_cells('A1:G1')
+        cell = self.ws.cell(column=1, row=3)
+        cell.value = "Station: "
+        cell.style = self.date_dov_title
+        cell = self.ws.cell(column=2, row=3)
+        cell.value = self.station
+        cell.style = self.date_dov
+        self.ws.merge_cells('B3:C3')
+        # column headings -----------------------------------------------
+        cell = self.ws.cell(column=1, row=5)
+        cell.value = "Grievant"
+        cell.style = self.col_header
+        cell = self.ws.cell(column=2, row=5)
+        cell.value = "Grievance Number"
+        cell.style = self.col_header
+        cell = self.ws.cell(column=3, row=5)
+        cell.value = "start incident"
+        cell.style = self.col_header
+        cell = self.ws.cell(column=4, row=5)
+        cell.value = "end incident"
+        cell.style = self.col_header
+        cell = self.ws.cell(column=5, row=5)
+        cell.value = "meeting date"
+        cell.style = self.col_header
+        cell = self.ws.cell(column=6, row=5)
+        cell.value = "issue"
+        cell.style = self.col_header
+        cell = self.ws.cell(column=7, row=5)
+        cell.value = "article"
+        cell.style = self.col_header
+
+    def column_formatting(self):
+        """ format the columns. this can be overridden by individually formating the cells. """
+        col = self.ws.column_dimensions["A"]
+        col.width = 25
+        col.font = Font(size=9, name="Arial")
+        col = self.ws.column_dimensions["B"]
+        col.width = 20
+        col.font = Font(size=9, name="Arial")
+        col = self.ws.column_dimensions["C"]
+        col.width = 12
+        col.font = Font(size=9, name="Arial")
+        col.number_format = 'MM/DD/YYYY'
+        col = self.ws.column_dimensions["D"]
+        col.width = 12
+        col.font = Font(size=9, name="Arial")
+        col.number_format = 'MM/DD/YYYY'
+        col = self.ws.column_dimensions["E"]
+        col.width = 12
+        col.font = Font(size=9, name="Arial")
+        col.number_format = 'MM/DD/YYYY'
+        col = self.ws.column_dimensions["F"]
+        col.width = 25
+        col.font = Font(size=9, name="Arial")
+        col = self.ws.column_dimensions["G"]
+        col.width = 6
+        col.font = Font(size=9, name="Arial")
+
+    def stopsaveopen(self):
+        """ save and open the speedsheet. """
+        try:
+            self.wb.save(dir_path('speedsheets') + self.filename)
+            messagebox.showinfo("Speedsheet Generator",
+                                "Your speedsheet was successfully generated. \n"
+                                "File is named: {}".format(self.filename),
+                                parent=self.frame)
+            if sys.platform == "win32":
+                os.startfile(dir_path('speedsheets') + self.filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + self.filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('speedsheets') + self.filename])
+        except PermissionError:
+            messagebox.showerror("Speedsheet generator",
+                                 "The speedsheet was not generated. \n"
+                                 "Suggestion: \n"
+                                 "Make sure that identically named speedsheets are closed \n"
+                                 "(the file can't be overwritten while open).\n",
+                                 parent=self.frame)
 
 
 if __name__ == "__main__":
