@@ -9,22 +9,26 @@ by grievance as well as summaries.
 # custom modules
 import projvar  # defines project variables used in all modules.
 from kbtoolbox import commit, dir_path, dir_path_check, dt_converter, find_pp, inquire, isfloat, macadj, \
-    isint, NewWindow, titlebar_icon, informalc_date_checker
+    isint, NewWindow, titlebar_icon, informalc_date_checker, ProgressBarDe, ReportName, Handler, NameChecker, \
+    GrievanceChecker
 # standard libraries
 from tkinter import messagebox, ttk, BOTH, BOTTOM, Button, Canvas, END, Entry, Frame, Label, LEFT, \
     Listbox, mainloop, NW, OptionMenu, Radiobutton, RIDGE, RIGHT, Scrollbar, StringVar, TclError, \
-    Tk, VERTICAL, Y, Menu
+    Tk, VERTICAL, Y, Menu, filedialog
 from datetime import datetime, timedelta
 import os
 import shutil
 import sys
 import subprocess
 import re
+import time
+from threading import Thread  # run load workbook while progress bar runs
 # non standard libraries
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment
 # define globals
 global root  # used to hold the Tk() root for the new window used by all Informal C windows.
+global pb_flag  #
 
 """ this module has its own MakeWindow() class since it uses a different root. 
 So it is not imported from kbtoolbar. """
@@ -112,7 +116,11 @@ class InformalC:
         # speedsheeet menu
         speed_menu = Menu(menubar, tearoff=0)
         speed_menu.add_command(label="Generate New Grievances",
-                               command=lambda: SpeedSheetGen(self.win.topframe, self.station).new())
+                               command=lambda: SpeedSheetGen(self.win.topframe, self.station, "new").new())
+        speed_menu.add_command(label="Pre-check",
+                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, False))
+        speed_menu.add_command(label="Input to Database",
+                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, True))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         root.config(menu=menubar)
 
@@ -448,9 +456,9 @@ class InformalC:
                                      "characters are allowed",
                                      parent=self.win.topframe)
                 return False
-            if len(grv_no) < 8:
+            if len(grv_no) < 4:
                 messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number must be at least eight characters long",
+                                     "The grievance number must be at least four characters long",
                                      parent=self.win.topframe)
                 return False
             if len(grv_no) > 20:
@@ -2876,11 +2884,14 @@ class MakeWindow:
 class SpeedSheetGen:
     """ this generates and reads a speedsheet for the informal c grievance tracker """
 
-    def __init__(self, frame, station):
+    def __init__(self, frame, station, selection_range):
         self.frame = frame
+        self.selection_range = selection_range
         self.station = station
-        self.title = ""
+        self.titles = ""
         self.filename = ""
+        self.ws_titles = ["grievances", "settlements", "non compliance", "batch settlements", "remanded"]
+        self.ws_list = []
         self.wb = Workbook()  # define the workbook
         self.ws = None  # the worksheet of the workbook
         self.ws_header = None  # styles for workbook
@@ -2890,6 +2901,11 @@ class SpeedSheetGen:
         self.col_header = None  # styles for workbook
         self.input_s = None  # styles for workbook
         self.input_ns = None  # styles for workbook
+        self.index_columns = [
+            ["settlement", "follow up"],  # non compliance index
+            ["main", "sub"],  # batch settlement index
+            ["remanded", "follow up"]  # remanded index
+        ]
 
     def run(self):
         pass
@@ -2897,15 +2913,16 @@ class SpeedSheetGen:
     def new(self):
         """ this generates a blank speedsheet for new greivances"""
         self.name_styles()
-        self.get_title()  # generate the title and filename
+        self.get_titles()  # generate the title and filename
         self.make_workbook_object()  # make the workbook object
+        self.create_ws_headers()
+        self.create_grievance_headers()
+        self.create_settlement_headers()
+        self.create_index_headers()
+        self.column_formatting_grievances()  # format sheet column widths, fonts, numbers
+        self.column_formatting_settlements()  # format sheet column widths, fonts, numbers
+        self.column_formatting_indexes()  # format sheet column widths, fonts, numbers
         self.stopsaveopen()
-        pass
-
-    def get_title(self):
-        """ generate title and filename """
-        self.title = "New Grievances Speed Sheet"
-        self.filename = "new_grievances_speedsheet" + ".xlsx"
 
     def name_styles(self):
         """ Named styles for workbook """
@@ -2919,73 +2936,174 @@ class SpeedSheetGen:
                                      border=Border(left=bd, top=bd, right=bd, bottom=bd),
                                      alignment=Alignment(horizontal='left'))
 
+    def get_titles(self):
+        """ generate title and filename. The titles and file names vary depending on the selection
+        range - new, selected, or all inclusive. This is passed in the command calling SpeedSheetGen. """
+        text = "New"
+        filetext = "new"
+        if self.selection_range == "selected":
+            text = "Selected"
+            filetext = "selected"
+        if self.selection_range == "all":
+            text = "All Inclusive"
+            filetext = "all"
+        self.titles = (
+            "Speedsheet - {} Grievances".format(text),
+            "Speedsheet - {} Settlements ".format(text),
+            "Speedsheet - {} Non Compliance Index".format(text),
+            "Speedsheet - {} Batch Settlement Index".format(text),
+            "Speedsheet - {} Remanded Index".format(text)
+        )
+        self.filename = "{}_grievances_speedsheet".format(filetext) + ".xlsx"
+
     def make_workbook_object(self):
         """ make the workbook object """
-        self.ws = self.wb.active  # create first worksheet
-        self.ws.title = "new grievances"  # title first worksheet
-        self.ws.oddFooter.center.text = "&A"
-        self.column_formatting()
-        # page headings ------------------------------------------------
-        cell = self.ws.cell(column=1, row=1)
-        cell.value = self.title
-        cell.style = self.ws_header
-        self.ws.merge_cells('A1:G1')
-        cell = self.ws.cell(column=1, row=3)
-        cell.value = "Station: "
-        cell.style = self.date_dov_title
-        cell = self.ws.cell(column=2, row=3)
-        cell.value = self.station
-        cell.style = self.date_dov
-        self.ws.merge_cells('B3:C3')
-        # column headings -----------------------------------------------
-        cell = self.ws.cell(column=1, row=5)
-        cell.value = "Grievant"
+        self.ws_list = ["grievances", "settlements", "non compliance", "batch settlements", "remanded"]
+        self.ws_list[0] = self.wb.active  # create first worksheet - this will be for grievances
+        self.ws_list[0].title = self.ws_titles[0]  # title first worksheet - this is for grievances
+        for i in range(1, len(self.ws_list)):  # loop to create all other worksheets
+            self.ws_list[i] = self.wb.create_sheet(self.ws_titles[i])
+
+    def create_ws_headers(self):
+        """ use a loop to create headers for all the worksheets """
+        for i in range(5):  # there are five worksheets
+            cell = self.ws_list[i].cell(column=1, row=1)
+            cell.value = self.titles[i]
+            cell.style = self.ws_header
+            self.ws_list[i].merge_cells('A1:G1')
+            cell = self.ws_list[i].cell(column=1, row=3)
+            cell.value = "Station: "
+            cell.style = self.date_dov_title
+            cell = self.ws_list[i].cell(column=2, row=3)
+            cell.value = self.station
+            cell.style = self.date_dov
+            self.ws_list[i].merge_cells('B3:C3')
+
+    def create_grievance_headers(self):
+        """ create the grievance worksheet. all worksheets must be formatted separately since they all have
+        distinct information. """
+        cell = self.ws_list[0].cell(column=1, row=5)
+        cell.value = "grievant"
         cell.style = self.col_header
-        cell = self.ws.cell(column=2, row=5)
-        cell.value = "Grievance Number"
+        cell = self.ws_list[0].cell(column=2, row=5)
+        cell.value = "grievance number"
         cell.style = self.col_header
-        cell = self.ws.cell(column=3, row=5)
+        cell = self.ws_list[0].cell(column=3, row=5)
         cell.value = "start incident"
         cell.style = self.col_header
-        cell = self.ws.cell(column=4, row=5)
+        cell = self.ws_list[0].cell(column=4, row=5)
         cell.value = "end incident"
         cell.style = self.col_header
-        cell = self.ws.cell(column=5, row=5)
+        cell = self.ws_list[0].cell(column=5, row=5)
         cell.value = "meeting date"
         cell.style = self.col_header
-        cell = self.ws.cell(column=6, row=5)
+        cell = self.ws_list[0].cell(column=6, row=5)
         cell.value = "issue"
         cell.style = self.col_header
-        cell = self.ws.cell(column=7, row=5)
+        cell = self.ws_list[0].cell(column=7, row=5)
         cell.value = "article"
         cell.style = self.col_header
 
-    def column_formatting(self):
+    def create_settlement_headers(self):
+        """ create the grievance worksheet. all worksheets must be formatted separately since they all have
+        distinct information. """
+        cell = self.ws_list[1].cell(column=1, row=5)
+        cell.value = "grievance number"
+        cell.style = self.col_header
+        cell = self.ws_list[1].cell(column=2, row=5)
+        cell.value = "level"
+        cell.style = self.col_header
+        cell = self.ws_list[1].cell(column=3, row=5)
+        cell.value = "date signed"
+        cell.style = self.col_header
+        cell = self.ws_list[1].cell(column=4, row=5)
+        cell.value = "decision"
+        cell.style = self.col_header
+        cell = self.ws_list[1].cell(column=5, row=5)
+        cell.value = "proof due"
+        cell.style = self.col_header
+        cell = self.ws_list[1].cell(column=6, row=5)
+        cell.value = "docs"
+        cell.style = self.col_header
+        cell = self.ws_list[1].cell(column=7, row=5)
+        cell.value = "gats number"
+        cell.style = self.col_header
+
+    def create_index_headers(self):
+        """ use a loop to fill in the index headers using self.index_columns """
+        for i in range(3):
+            cell = self.ws_list[i+2].cell(column=1, row=5)
+            cell.value = self.index_columns[i][0]
+            cell.style = self.col_header
+            cell = self.ws_list[i+2].cell(column=2, row=5)
+            cell.value = self.index_columns[i][1]
+            cell.style = self.col_header
+
+    def column_formatting_grievances(self):
         """ format the columns. this can be overridden by individually formating the cells. """
-        col = self.ws.column_dimensions["A"]
+        self.ws_list[0].oddFooter.center.text = "&A"
+        col = self.ws_list[0].column_dimensions["A"]
         col.width = 25
         col.font = Font(size=9, name="Arial")
-        col = self.ws.column_dimensions["B"]
+        col = self.ws_list[0].column_dimensions["B"]
         col.width = 20
         col.font = Font(size=9, name="Arial")
-        col = self.ws.column_dimensions["C"]
+        col = self.ws_list[0].column_dimensions["C"]
         col.width = 12
         col.font = Font(size=9, name="Arial")
         col.number_format = 'MM/DD/YYYY'
-        col = self.ws.column_dimensions["D"]
+        col = self.ws_list[0].column_dimensions["D"]
         col.width = 12
         col.font = Font(size=9, name="Arial")
         col.number_format = 'MM/DD/YYYY'
-        col = self.ws.column_dimensions["E"]
+        col = self.ws_list[0].column_dimensions["E"]
         col.width = 12
         col.font = Font(size=9, name="Arial")
         col.number_format = 'MM/DD/YYYY'
-        col = self.ws.column_dimensions["F"]
+        col = self.ws_list[0].column_dimensions["F"]
         col.width = 25
         col.font = Font(size=9, name="Arial")
-        col = self.ws.column_dimensions["G"]
+        col = self.ws_list[0].column_dimensions["G"]
         col.width = 6
         col.font = Font(size=9, name="Arial")
+        
+    def column_formatting_settlements(self):
+        """ format the columns. this can be overridden by individually formating the cells. """
+        self.ws_list[1].oddFooter.center.text = "&A"
+        col = self.ws_list[1].column_dimensions["A"]  # grievance number
+        col.width = 20
+        col.font = Font(size=9, name="Arial")
+        col = self.ws_list[1].column_dimensions["B"]  # level
+        col.width = 15
+        col.font = Font(size=9, name="Arial")
+        col = self.ws_list[1].column_dimensions["C"]  # date signed
+        col.width = 12
+        col.font = Font(size=9, name="Arial")
+        col.number_format = 'MM/DD/YYYY'
+        col = self.ws_list[1].column_dimensions["D"]  # decision
+        col.width = 20
+        col.font = Font(size=9, name="Arial")
+        col = self.ws_list[1].column_dimensions["E"]  # proof due
+        col.width = 12
+        col.font = Font(size=9, name="Arial")
+        col.number_format = 'MM/DD/YYYY'
+        col = self.ws_list[1].column_dimensions["F"]  # docs
+        col.width = 8
+        col.font = Font(size=9, name="Arial")
+        col = self.ws_list[1].column_dimensions["G"]  # gats_number
+        col.width = 12
+        col.font = Font(size=9, name="Arial")
+
+    def column_formatting_indexes(self):
+        """ format the columns of all index worksheets - non compliance, batch settlements and remanded"""
+        for i in range(3):
+            self.ws_list[i+2].oddFooter.center.text = "&A"
+            col = self.ws_list[i+2].column_dimensions["A"]  # settlement/main/remanded
+            col.width = 20
+            col.font = Font(size=9, name="Arial")
+            col = self.ws_list[i+2].column_dimensions["B"]  # followup/sub/followup
+            col.width = 20
+            col.font = Font(size=9, name="Arial")
 
     def stopsaveopen(self):
         """ save and open the speedsheet. """
@@ -3008,6 +3126,633 @@ class SpeedSheetGen:
                                  "Make sure that identically named speedsheets are closed \n"
                                  "(the file can't be overwritten while open).\n",
                                  parent=self.frame)
+
+
+class SpeedWorkBookGet:
+    """
+    this class gets the speedsheet and opens it.
+    """
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_filepath():
+        """ get the file path"""
+        if projvar.platform == "macapp" or projvar.platform == "winapp":
+            return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
+        else:
+            return 'kb_sub/speedsheets'
+
+    def get_file(self):
+        """ returns the file path if there is one. else no selection/invalid selection. """
+        path_ = self.get_filepath()
+        file_path = filedialog.askopenfilename(initialdir=path_, filetypes=[("Excel files", "*.xlsx")])
+        if file_path[-5:].lower() == ".xlsx":
+            return file_path
+        elif file_path == "":
+            return "no selection"
+        else:
+            return "invalid selection"
+
+    def open_file(self, frame, interject):
+        """ gets the file and calls the speedsheet check and progress bar. """
+        global pb_flag
+        pb_flag = True
+        file_path = self.get_file()
+        if file_path == "no selection":
+            return
+        elif file_path == "invalid selection":
+            messagebox.showerror("Report Generator",
+                                 "The file you have selected is not an .xlsx file. "
+                                 "You must select a file with a .xlsx extension.",
+                                 parent=frame)
+            return
+        else:
+            pb = ProgressBarIn(title="Klusterbox", label="SpeedSheeets Loading",
+                               text="Loading and reading workbook. This could take a minute")
+            wb = SpeedLoadThread(file_path)  # open workbook in separate thread
+            wb.start()  # start loading workbook
+            pb.start_up()  # start progress bar
+            wb.join()  # wait for loading workbook to finish
+            pb.stop()  # stop the progress bar and destroy the object
+            SpeedSheetCheck(frame, wb.workbook, file_path, interject).check()  # check the speedsheet
+
+
+class SpeedLoadThread(Thread):
+    """ use multithreading to load workbook while progress bar runs """
+
+    def __init__(self, path_):
+        Thread.__init__(self)
+        self.path_ = path_
+        self.workbook = ""
+
+    def run(self):
+        """ runs the speedsheet loading. """
+        global pb_flag  # this will signal when the thread has ended to end the progress bar
+        wb = load_workbook(self.path_)  # load xlsx doc with openpyxl
+        self.workbook = wb
+        pb_flag = False
+
+
+class SpeedSheetCheck:
+    """ a class for checking the informal c grievance speedsheets. """
+    def __init__(self, frame, wb, path_, interject):
+        self.frame = frame
+        self.station = None
+        self.wb = wb
+        self.ws = None  # this hold the worksheet
+        self.path_ = path_
+        self.interject = interject
+        self.sheets = None
+        self.sheet_count = None
+        self.grievance_count = 0  # count of how many grievances have been checked.
+        self.fatal_rpt = 0
+        self.add_rpt = 0
+        self.fyi_rpt = 0
+        self.settlement_count = 0  # count of how many settlements have been checked
+        self.settlement_fatal_rpt = 0
+        self.settlement_add_rpt = 0
+        self.settlement_fyi_rpt = 0
+        self.sheet_rowcount = []
+        self.row_counter = 0  # get the total amount of rows in the worksheet
+        self.start_row = 6  # the row where after the headers
+        self.pb = ProgressBarDe(label="SpeedSheet Checking")
+        self.pb_counter = 0
+        self.filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
+        self.report = open(dir_path('report') + self.filename, "w")  # open the report
+        self.grv_mentioned = False  # keeps grievance numbers from being repeated in reports
+        self.worksheet = ("grievances", "settlements", "non compliance", "batch", "remanded")
+        self.index_columns = [
+            ["settlement", "follow up"],  # non compliance index
+            ["main", "sub"],  # batch settlement index
+            ["remanded", "follow up"]  # remanded index
+        ]
+        self.allowaddrecs = True
+        self.fullreport = True
+        self.name_mentioned = False
+
+    def check(self):
+        """ master method for running other methods and returns to the mainframe. """
+        try:
+            self.set_sheet_facts()
+            self.set_station()
+            self.start_reporter()
+            self.checking()
+            self.reporter()
+        except KeyError:  # if wrong type of file is selected, there will be an error
+            self.pb.delete()  # stop and destroy progress bar
+            self.showerror()
+
+    def set_sheet_facts(self):
+        """ get the worksheet names and number worksheets. """
+        self.sheets = self.wb.sheetnames  # get the names of the worksheets as a list
+        self.sheet_count = len(self.sheets)  # get the number of worksheets
+
+    def set_station(self):
+        """ gets the station from the speedsheet. """
+        self.station = self.wb[self.sheets[0]].cell(row=3, column=2).value  # get the station.
+
+    def start_reporter(self):
+        """ starts the report. """
+        self.report.write("\nSpeedSheet Pre-Check Report \n")
+        self.report.write(">>> {}\n".format(self.path_))
+
+    def row_count(self):
+        """ get a count of all rows for all sheets - need for progress bar """
+        total_rows = 0
+        for i in range(self.sheet_count):
+            ws = self.wb[self.sheets[i]]  # assign the worksheet object
+            row_count = ws.max_row  # get the total amount of rows in the worksheet
+            self.sheet_rowcount.append(row_count)
+            total_rows += row_count
+        return total_rows
+
+    def showerror(self):
+        """ message box for showing errors. """
+        messagebox.showerror("Klusterbox SpeedSheets",
+                             "SpeedSheets Precheck or Input has failed. \n"
+                             "Either you have selected a spreadsheet that is not \n"
+                             "a SpeedSheet or your Speedsheet is corrupted. \n"
+                             "Suggestion: Verify that the file you are selecting \n "
+                             "is a SpeedSheet. \n"
+                             "Suggestion: Try re-generating the SpeedSheet.",
+                             parent=self.frame)
+
+    def checking(self):
+        """ reads rows and send to SpeedCarrierCheck or SpeedRingCheck. """
+        count_diff = self.sheet_count * (self.start_row - 1)  # subtract top five/six rows from the row count
+        self.pb.max_count(self.row_count() - count_diff)  # get total count of rows for the progress bar
+        self.pb.start_up()  # start up the progress bar
+        self.pb_counter = 0  # initialize the progress bar counter
+        for i in range(self.sheet_count):  # loop once for each worksheet in the workbook
+            self.ws = self.wb[self.sheets[i]]  # assign the worksheet object
+            self.row_counter = self.ws.max_row  # get the total amount of rows in the worksheet
+            if self.worksheet[i] == "grievances":  # execute for grievance speedsheet
+                self.scan_grievances(i)
+            if self.worksheet[i] == "settlements":  # execute for settlements speedsheet
+                self.scan_settlements(i)
+        self.pb.stop()
+
+    def scan_grievances(self, i):
+        """ scan the values of the grievances worksheet, line by line. """
+        # loop through all rows, start with row 5 or 6 until the end
+        for ii in range(self.start_row, self.row_counter + 1):
+            self.pb.move_count(self.pb_counter)
+            self.grv_mentioned = False  # keeps names from being repeated in reports
+            self.grievance_count += 1  # get a count of the carriers for reports
+            grievant = Handler(self.ws.cell(row=ii, column=1).value).nonetype()
+            grv_no = Handler(self.ws.cell(row=ii, column=2).value).nonetype()
+            startdate = Handler(self.ws.cell(row=ii, column=3).value).nonetype()
+            enddate = Handler(self.ws.cell(row=ii, column=4).value).nonetype()
+            meetingdate = Handler(self.ws.cell(row=ii, column=5).value).nonetype()
+            issue = Handler(self.ws.cell(row=ii, column=6).value).nonetype()
+            article = Handler(self.ws.cell(row=ii, column=7).value).nonetype()
+            self.pb.change_text("Reading Speedcell: {}".format(grv_no))  # update text for progress bar
+            SpeedGrvCheck(self, self.sheets[i], ii, grievant, grv_no, startdate, enddate, meetingdate,
+                          issue, article).check_all()
+        self.pb_counter += 1
+
+    def scan_settlements(self, i):
+        """ scan the values of the grievances worksheet, line by line. """
+        for ii in range(self.start_row,
+                        self.row_counter + 1):  # loop through all rows, start with row 5 or 6 until the end
+            if self.ws.cell(row=ii, column=1).value is not None:  # if there is a grievance number
+                self.pb.move_count(self.pb_counter)
+                self.grv_mentioned = False  # keeps names from being repeated in reports
+                self.settlement_count += 1  # get a count of the carriers for reports
+                grv_no = Handler(self.ws.cell(row=ii, column=1).value).nonetype()
+                level = Handler(self.ws.cell(row=ii, column=2).value).nonetype()
+                datesigned = Handler(self.ws.cell(row=ii, column=3).value).nonetype()
+                decision = Handler(self.ws.cell(row=ii, column=4).value).nonetype()
+                proofdue = Handler(self.ws.cell(row=ii, column=5).value).nonetype()
+                docs = Handler(self.ws.cell(row=ii, column=6).value).nonetype()
+                gatsnumber = Handler(self.ws.cell(row=ii, column=7).value).nonetype()
+                self.pb.change_text("Reading Speedcell: {}".format(grv_no))  # update text for progress bar
+                SpeedSetCheck(self, self.sheets[i], ii, grv_no, level, datesigned, decision, proofdue, docs,
+                              gatsnumber).check_all()
+            else:
+                self.pb.change_text("Detected empty Speedcell.")  # update text for progress bar
+        self.pb_counter += 1
+
+    def scan_indexes(self, i):
+        """ scan the values of the grievances worksheet, line by line. """
+        # loop through all rows, start with row 5 or 6 until the end
+        for ii in range(self.start_row, self.row_counter + 1):
+            # if there is a grievance number for both columns
+            if self.ws.cell(row=ii, column=1).value and self.ws.cell(row=ii, column=2).value is not None:
+                self.pb.move_count(self.pb_counter)
+                self.grv_mentioned = False  # keeps names from being repeated in reports
+                self.settlement_count += 1  # get a count of the carriers for reports
+                self.index_columns[i-2][0] = Handler(self.ws.cell(row=ii, column=1).value).nonetype()
+                self.index_columns[i-2][1] = Handler(self.ws.cell(row=ii, column=2).value).nonetype()
+                # update text for progress bar
+                self.pb.change_text("Reading Speedcell: {}".format(self.index_columns[i-2][0]))
+                SpeedIndexCheck(self, self.sheets[i], ii, self.index_columns[i-2][0], self.index_columns[i-2][1])\
+                    .check_all()
+            else:
+                self.pb.change_text("Detected empty Speedcell.")  # update text for progress bar
+        self.pb_counter += 1
+
+    def reporter(self):
+        """ writes the report """
+        self.report.write("\n\n----------------------------------")
+        # build report summary for carrier checks
+        self.report.write("\n\nSpeedSheet Grievance Check Complete.\n\n")
+        msg = "grievance{} checked".format(Handler(self.grievance_count).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.grievance_count, msg))
+        msg = "fatal error{} found".format(Handler(self.fatal_rpt).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.fatal_rpt, msg))
+        if self.interject:
+            msg = "addition{} made".format(Handler(self.add_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.add_rpt, msg))
+        else:
+            msg = "fyi notification{}".format(Handler(self.fyi_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, msg))
+        # build report summary for rings checks
+        self.report.write("\n\nSpeedSheet Settlements Check Complete.\n\n")
+        msg = "settlement{} checked".format(Handler(self.settlement_count).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.settlement_count, msg))
+        msg = "fatal error{} found".format(Handler(self.settlement_fatal_rpt).plurals())
+        self.report.write('{:>6}  {:<40}\n'.format(self.settlement_fatal_rpt, msg))
+        if self.interject:
+            msg = "addition{} made".format(Handler(self.settlement_add_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.settlement_add_rpt, msg))
+        else:
+            msg = "fyi notification{}".format(Handler(self.settlement_fyi_rpt).plurals())
+            self.report.write('{:>6}  {:<40}\n'.format(self.settlement_fyi_rpt, msg))
+        # close out the report and open in notepad
+        self.report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + self.filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + self.filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + self.filename])
+
+
+class SpeedGrvCheck:
+    """ checks one line of the grievance speedsheet when it is called by the SpeedSheetCheck class. """
+    def __init__(self, parent, sheet, row, grievant, grv_no, startdate, enddate, meetingdate, issue, article):
+        self.parent = parent
+        self.sheet = sheet  # input here is coming directly from the speedcell
+        self.row = str(row)
+        self.grievant = grievant
+        self.grv_no = grv_no
+        self.startdate = startdate
+        self.enddate = enddate
+        self.meetingdate = meetingdate
+        self.issue = issue
+        self.article = article
+        # onrec variables - these hold the values of the record currently in the database.
+        self.onrec = False  # this value is True if a sql search shows that there is a rec in the db.
+        self.onrec_grievant = ""
+        # skip station as that is held in self.parent.station
+        # skip grievance number as that is self.grv_no
+        self.onrec_startdate = ""
+        self.onrec_enddate = ""
+        self.onrec_meetingdate = ""
+        self.onrec_issue = ""
+        self.onrec_article = ""
+        self.error_array = []  # gives a report of failed checks
+        self.attn_array = []  # gives a report of issues to bring to the attention of users
+        self.add_array = []  # gives a report of records to add to the database
+        self.fyi_array = []  # gives a report of useful information for the user
+        self.parent.name_mentioned = False  # reset this so that name is not repeated on reports
+        self.addday = []  # checked input formatted for entry into database
+        self.addgrievant = "empty"
+        self.addstartdate = "empty"
+        self.addenddate = "empty"
+        self.addmeetingdate = "empty"
+        self.addissue = "empty"
+        self.addarticle = "empty"
+
+    def check_all(self):
+        """ master method to run other methods. """
+        if self.check_grv_number():  # first check the grievance number. if that is good, then proceed.
+            self.reformat_grv_no()  # reformat the grievance number to all lowercase, no whitespaces, no dashes.
+            self.get_onrecs()  # 'on record' - get the record currently in the database if it exist
+            self.check_grievant()
+            self.add_recs()  # write changes to the db
+        self.generate_report()
+
+    def check_grv_number(self):
+        """ check the grievance number input """
+        if not GrievanceChecker(self.grv_no).has_value():
+            error = "     ERROR: The grievance number must not be blank. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        if not GrievanceChecker(self.grv_no).check_characters():
+            error = "     ERROR: The grievance number can only contain numbers and letters. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        if not GrievanceChecker(self.grv_no).min_lenght():
+            error = "     ERROR: The grievance number must contain at least 4 characters. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        if not GrievanceChecker(self.grv_no).max_lenght():
+            error = "     ERROR: The grievance number can not contain more than 20 characters. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        return True
+
+    def reformat_grv_no(self):
+        """ reformat the grievance number to all lowercase, no whitespaces, no dashes. """
+        self.grv_no.lower()  # convert grievance number to lowercas
+        self.grv_no.strip()  # strip whitespace from start and end of the string.
+        self.grv_no.replace('-', '')  # remove any dashes
+        self.grv_no.replace(' ', '')  # remove any whitespace
+
+    def get_onrecs(self):
+        """ check if there is an existing record for the grievance number in the informalc grievances table.
+        if so, store the values in the self.onrec variables. if not, the self.onrec variables default to empty. """
+        sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" \
+              % (self.grv_no, self.parent.station)
+        results = inquire(sql)
+        if results:
+            self.onrec = True  # this value is True if a sql search shows that there is a rec in the db.
+            self.onrec_grievant = results[0][0]
+            # skip station as that is held in self.parent.station and is part of the search criteria
+            # skip grievance number as that is self.grv_no and is part of the search criteria
+            self.onrec_startdate = results[0][3]
+            self.onrec_enddate = results[0][4]
+            self.onrec_meetingdate = results[0][5]
+            self.onrec_issue = results[0][6]
+            self.onrec_article = results[0][7]
+
+    def check_grievant(self):
+        """ check the grievant input. this is either 'class action' or a carrier name. it can be blank. """
+        not_names = ("class action", "")
+        if self.grievant in not_names:  # "class action" is a standard entry
+            self.add_grievant()
+            return
+        if not NameChecker(self.grievant).check_characters():
+            error = "     ERROR: Grievant name can not contain numbers or most special characters\n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+        if not NameChecker(self.grievant).check_length():
+            error = "     ERROR: Grievant name must not exceed 42 characters\n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+        if not NameChecker(self.grievant).check_comma():
+            error = "     ERROR: Grievant name must contain one comma to separate last name and first initial\n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+        if not NameChecker(self.grievant).check_initial():
+            attn = "     ATTENTION: Grievant name should must contain one initial ideally, \n" \
+                   "                unless more are needed to create a distinct carrier name.\n"
+            self.attn_array.append(attn)
+        self.add_grievant()
+
+    def add_grievant(self):
+        """ add the grievant to add_grivant variable """
+        if self.grievant == self.onrec_grievant:
+            pass  # retain "empty" value for grievant variable
+        else:
+            fyi = "     FYI: New or updated grievant: {}\n".format(self.grievant)
+            self.fyi_array.append(fyi)
+            self.addgrievant = self.grievant  # save to input to dbase
+
+    def check_dates(self):
+        """ check the startdate, enddate and meetingdate """
+        pass
+
+    def check_issue(self):
+        """ check the issue input """
+        pass
+
+    def check_article(self):
+        """ check the article input """
+        pass
+
+    def add_recs(self):
+        """ add records using the add___ vars. """
+        chg_these = []
+        if not self.onrec:
+            chg_these.append('grv_no')
+        if not self.parent.allowaddrecs:  # if all checks passed
+            return
+        # get grievant place
+        self.grievant = self.grievant.lower()  # make sure the name is lowercase
+        if self.addgrievant != "empty":
+            add = "     INPUT: Grievant added or updated to database >>{}\n" \
+                .format(self.addgrievant)  # report
+            self.add_array.append(add)
+            chg_these.append("grievant")
+            grievant_place = self.addgrievant
+        else:
+            grievant_place = self.onrec_grievant
+
+        # get startdate place
+        if self.addstartdate != "empty":
+            add = "     INPUT: Start Incident added or updated to database >>{}\n".format(self.addstartdate)  # report
+            self.add_array.append(add)
+            chg_these.append("startdate")
+            startdate_place = self.addstartdate
+        else:
+            startdate_place = self.onrec_startdate
+
+        # get enddate place
+        if self.addenddate != "empty":
+            add = "     INPUT: End Incident added or updated to database >>{}\n".format(self.addenddate)  # report
+            self.add_array.append(add)
+            chg_these.append("enddate")
+            enddate_place = self.addenddate
+        else:
+            enddate_place = self.onrec_enddate
+
+        # get meetingdate place
+        if self.addmeetingdate != "empty":
+            add = "     INPUT: Meeting Date added or updated to database >>{}\n".format(self.addenddate)  # report
+            self.add_array.append(add)
+            chg_these.append("meetingdate")
+            meetingdate_place = self.addmeetingdate
+        else:
+            meetingdate_place = self.onrec_meetingdate
+
+        # get issue place
+        if self.addissue != "empty":
+            add = "     INPUT: Issue added or updated to database >>{}\n".format(self.addenddate)  # report
+            self.add_array.append(add)
+            chg_these.append("issue")
+            issue_place = self.addissue
+        else:
+            issue_place = self.onrec_issue
+
+        # get article place
+        if self.addarticle != "empty":
+            add = "     INPUT: Article added or updated to database >>{}\n".format(self.addenddate)  # report
+            self.add_array.append(add)
+            chg_these.append("article")
+            article_place = self.addarticle
+        else:
+            article_place = self.onrec_article
+        print(chg_these)
+        if len(chg_these) != 0:  # if change these is empty, then there is no need to insert/update records
+            if not self.onrec:  # if there is no rec on file for the grievance, insert the first rec
+                sql = "INSERT INTO informalc_grievances(grievant, station, grv_no, startdate, enddate, " \
+                      "meetingdate, issue, article) VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" \
+                      % (grievant_place, self.parent.station, self.grv_no, startdate_place, enddate_place,
+                         meetingdate_place, issue_place, article_place)
+            else:  # update the first rec to replace pre existing record.
+                sql = "UPDATE informalc_grievances SET grievant='%s', startdate='%s', enddate ='%s', " \
+                      "meetingdate='%s', issue='%s', article='%s' WHERE grv_no='%s' and station='%s'" \
+                      % (grievant_place, startdate_place, enddate_place, meetingdate_place, issue_place, article_place,
+                         self.grv_no, self.parent.station)
+            commit(sql)
+
+    def generate_report(self):
+        """ generate a report """
+        self.parent.fatal_rpt += len(self.error_array)
+        self.parent.add_rpt += len(self.add_array)
+        self.parent.fyi_rpt += len(self.fyi_array)
+        if not self.parent.interject:
+            master_array = self.error_array + self.attn_array  # use these reports for precheck
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.fyi_array   # include the fyi messages.
+        else:
+            master_array = self.error_array + self.attn_array  # use these reports for input
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.add_array  # include the adds messages.
+        if len(master_array) > 0:
+            if not self.parent.name_mentioned:
+                self.parent.report.write("\nGrievance Number: {}\n".format(self.grv_no))
+                self.parent.name_mentioned = True
+            self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\"  <<<\n".format(self.sheet, self.row))
+            if not self.parent.allowaddrecs:
+                self.parent.report.write("     SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
+                self.parent.fatal_rpt += 1
+            for rpt in master_array:  # write all reports that have been keep in arrays.
+                self.parent.report.write(rpt)
+
+
+class SpeedSetCheck:
+    """ checks one line of the settlement speedsheet when it is called by the SpeedSheetCheck class. """
+    def __init__(self, parent, sheet, row, grv_no, level, datesigned, decision, proofdue, docs, gatsnumber):
+        self.parent = parent
+        self.sheet = sheet  # input here is coming directly from the speedcell
+        self.row = str(row)
+        self.grv_no = grv_no
+        self.level = level
+        self.datesigned = datesigned
+        self.decision = decision
+        self.proofdue = proofdue
+        self.docs = docs
+        self.gatsnumber = gatsnumber
+        self.onrec_grv_no = None
+        self.onrec_leve = None
+        self.onrec_datesigned = None
+        self.onrec_decision = None
+        self.onrec_proofdue = None
+        self.onrec_docs = None
+        self.onrec_gatsnumber = None
+        self.error_array = []
+
+    def check_all(self):
+        """ master method to run other methods. """
+        self.generate_report()
+
+    def check_grv_number(self):
+        """ check the grievant input """
+        if not NameChecker(self.grv_no).check_characters():
+            error = "     ERROR: Carrier name can not contain numbers or most special characters\n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+
+    def check_level(self):
+        """ check the grievance number input """
+        pass
+
+    def check_dates(self):
+        """ check the datesigned and proof due """
+        pass
+
+    def check_decision(self):
+        """ check the issue input """
+        pass
+
+    def check_docs(self):
+        """ check the article input """
+        pass
+
+    def check_gatsnumber(self):
+        """ check the article input """
+        pass
+
+    def generate_report(self):
+        """" generate the text report """
+        pass
+
+
+class SpeedIndexCheck:
+    """ checks one line of the settlement speedsheet when it is called by the SpeedSheetCheck class. """
+    def __init__(self, parent, sheet, row, first, second):
+        self.parent = parent
+        self.sheet = sheet  # input here is coming directly from the speedcell
+        self.row = str(row)
+        self.first = first
+        self.second = second
+        self.onrec_first = None
+        self.onrec_second = None
+        self.error_array = []
+        self.grv_no = ""
+
+    def check_all(self):
+        """ master method to run other methods. """
+        print(self.grv_no)
+        self.generate_report()
+
+    def check_first(self):
+        """ check the grievant input """
+        if not NameChecker(self.grv_no).check_characters():
+            error = "     ERROR: Carrier name can not contain numbers or most special characters\n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+
+    def check_second(self):
+        """ check the grievance number input """
+        pass
+
+    def generate_report(self):
+        """" generate the text report """
+        pass
+
+
+class ProgressBarIn:
+    """ Indeterminate Progress Bar """
+
+    def __init__(self, title="", label="", text=""):
+        self.title = title
+        self.label = label
+        self.text = text
+        self.pb_root = Tk()  # create a window for the progress bar
+        self.pb_label = Label(self.pb_root, text=self.label)  # make label for progress bar
+        self.pb = ttk.Progressbar(self.pb_root, length=400, mode="indeterminate")  # create progress bar
+        self.pb_text = Label(self.pb_root, text=self.text, anchor="w")
+
+    def start_up(self):
+        """ starts up the progress bar. """
+        titlebar_icon(self.pb_root)  # place icon in titlebar
+        self.pb_root.title(self.title)
+        self.pb_label.grid(row=0, column=0, sticky="w")
+        self.pb.grid(row=1, column=0, sticky="w")
+        self.pb_text.grid(row=2, column=0, sticky="w")
+        while pb_flag:  # use global as a flag. stop loop when flag is False
+            projvar.root.update()
+            self.pb['value'] += 1
+            time.sleep(.01)
+
+    def stop(self):
+        """ stops and destroys the progress bar. """
+        self.pb.stop()  # stop and destroy the progress bar
+        self.pb_text.destroy()
+        self.pb_label.destroy()  # destroy the label for the progress bar
+        self.pb.destroy()
+        self.pb_root.destroy()
 
 
 if __name__ == "__main__":

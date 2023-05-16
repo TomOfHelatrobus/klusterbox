@@ -9768,7 +9768,7 @@ class MainFrame:
 
 if __name__ == "__main__":
     """ this is where the program starts """
-    global pb_flag
+    global pb_flag  # global for multithreading
     setup_plaformvar()  # set up platform variable
     setup_dirs_by_platformvar()  # create klusterbox/.klusterbox or kb_sub directories if they don't exist
     DataBase().setup()  # set up the database

@@ -72,10 +72,11 @@ class DataBase:
             'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, payday varchar, '
             'carrier_name varchar, hours varchar, rate varchar, amount varchar)',
 
-            'CREATE table IF NOT EXISTS informalc_grievances(grv_no varchar, issue varchar, article varchar, '
-            'grievant varchar, startdate varchar, enddate varchar, station varchar, meetingdate varchar)',
+            'CREATE table IF NOT EXISTS informalc_grievances(grievant varchar, station varchar, grv_no varchar, '
+            'startdate varchar, enddate varchar, meetingdate varchar, issue varchar, article varchar)',
+
             'CREATE table IF NOT EXISTS informalc_settlements(grv_no varchar, level varchar, date_signed varchar, '
-            'docs varchar, gats_number varchar, decision varchar, proofdue varchar, inpart varchar)',
+            'docs varchar, gats_number varchar, decision varchar, proofdue varchar)',
             'CREATE table IF NOT EXISTS informalc_remedies (grv_no varchar, carrier_name varchar, hours varchar, '
             'rate varchar, dollars varchar, gatsverified varchar, payoutverified varchar)',
             'CREATE table IF NOT EXISTS informalc_batchindex (main varchar,sub varchar)',

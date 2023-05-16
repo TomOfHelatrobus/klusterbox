@@ -10,6 +10,7 @@ import os
 import sys
 import sqlite3
 import csv
+import re
 from datetime import datetime, timedelta
 
 
@@ -1985,6 +1986,64 @@ class SeniorityChecker:
         if not breakdown.valid_date():
             msg = "The seniority date is not valid. " + msg_rear
             messagebox.showerror("Set Seniority Date", msg, parent=self.frame)
+            return False
+        return True
+
+
+class GrievanceChecker:
+    """ checks input to see that they are valid grievance numbers. nation wide, grievance numbers vary greatly,
+     but they are all generally alpha numeric. The checker will allow dashes, although the dashes, whitespace and
+      uppercases of letters will be removed in other methods. """
+
+    def __init__(self, data, frame=None):
+        self.data = data.lower().strip()
+        self.frame = frame
+
+    def has_value(self):
+        """ the grievance number must not be empty"""
+        if self.data == "":
+            if self.frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "You must enter a grievance number",
+                                     parent=self.frame)
+            return False
+        return True
+
+    def check_characters(self):
+        """ check to verify that no disallowed characters are in the grievance number string.
+        dashes are allowed, but will be removed later"""
+        allowed_characters = ('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e',
+                              'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+                              'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
+                              'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                              'Y', 'Z', '-', ' ')
+        for char in self.data:
+            if char not in allowed_characters:
+                if self.frame:
+                    messagebox.showerror("Invalid Data Entry",
+                                         "The grievance number can only contain numbers and letters. No other "
+                                         "characters are allowed",
+                                         parent=self.frame)
+                return False
+        return True
+
+    def min_lenght(self):
+        """ check to verify that the grievance number string is at least four characters long. """
+        if len(self.data) < 4:
+            if self.frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The grievance number must be at least four characters long",
+                                     parent=self.frame)
+            return False
+        return True
+
+    def max_lenght(self):
+        """ check to verify that the grievance number string is not over 20 characters in lenght. """
+        if len(self.data) > 20:
+            if self.frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The grievance number must not exceed 20 characters in length.",
+                                     parent=self.frame)
             return False
         return True
 
