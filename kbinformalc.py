@@ -2964,6 +2964,7 @@ class SpeedSheetGen:
         self.column_formatting_settlements()  # format sheet column widths, fonts, numbers
         self.column_formatting_indexes()  # format sheet column widths, fonts, numbers
         self.insert_grievance_onrecs()  # fills the grievance speedsheet with data from informalc grievances table
+        self.insert_settlement_onrecs()  # fills the settlement speedsheet with data from the informalc settlements
         self.stopsaveopen()
 
     def name_styles(self):
@@ -3017,8 +3018,24 @@ class SpeedSheetGen:
         # loop for grievance in each table
         for i in range(len(results_array)):
             for ii in range(len(grv_list)):
-                sql = "SELECT * FROM '%s' WHERE '%s' = '%s'" % (tables_array[i], search_criteria_array[i], grv_list[ii])
-                results_array[i] = inquire(sql)
+                sql = "SELECT * FROM '%s' WHERE %s = '%s'" % (tables_array[i], search_criteria_array[i], grv_list[ii])
+                result = inquire(sql)
+                # get the onrecs for informalc settlements
+                if tables_array[i] == "informalc_settlements":
+                    if result:
+                        self.settlement_onrecs.append(result[0])
+                # get the onrecs for informalc non compliance index
+                if tables_array[i] == "informalc_noncindex":
+                    if result:
+                        self.nonc_onrecs.append(result[0])
+                # get the onrecs for informalc_batchindex
+                if tables_array[i] == "informalc_batchindex":
+                    if result:
+                        self.batch_onrecs.append(result[0])
+                # get the onrecs for informalc_remandindex
+                if tables_array[i] == "informalc_remandindex":
+                    if result:
+                        self.remand_onrecs.append(result[0])
 
     def make_workbook_object(self):
         """ make the workbook object """
@@ -3136,24 +3153,24 @@ class SpeedSheetGen:
         """ format the columns. this can be overridden by individually formating the cells. """
         self.ws_list[1].oddFooter.center.text = "&A"
         col = self.ws_list[1].column_dimensions["A"]  # grievance number
-        col.width = 20
+        col.width = 18
         col.font = Font(size=9, name="Arial")
         col = self.ws_list[1].column_dimensions["B"]  # level
-        col.width = 15
+        col.width = 10
         col.font = Font(size=9, name="Arial")
         col = self.ws_list[1].column_dimensions["C"]  # date signed
-        col.width = 12
+        col.width = 10
         col.font = Font(size=9, name="Arial")
         col.number_format = 'MM/DD/YYYY'
         col = self.ws_list[1].column_dimensions["D"]  # decision
         col.width = 20
         col.font = Font(size=9, name="Arial")
         col = self.ws_list[1].column_dimensions["E"]  # proof due
-        col.width = 12
+        col.width = 10
         col.font = Font(size=9, name="Arial")
         col.number_format = 'MM/DD/YYYY'
         col = self.ws_list[1].column_dimensions["F"]  # docs
-        col.width = 8
+        col.width = 15
         col.font = Font(size=9, name="Arial")
         col = self.ws_list[1].column_dimensions["G"]  # gats_number
         col.width = 12
@@ -3172,7 +3189,7 @@ class SpeedSheetGen:
 
     def insert_grievance_onrecs(self):
         """ loop for each grievance on record to fill the grievance speedsheet which is ws.list[0] """
-        row = 6
+        row = 6  # start on row 6 to make room for headers
         for grv in self.grievance_onrecs:
             grievant = grv[0]
             grievance_number = grv[2]
@@ -3188,6 +3205,27 @@ class SpeedSheetGen:
                 cell.value = values_array[i]
                 if i in (2, 3, 4):
                     cell.number_format = 'MM/DD/YYYY'
+            row += 1
+
+    def insert_settlement_onrecs(self):
+        """ loop for each grievance on record to fill the grievance speedsheet which is ws.list[0] """
+        row = 6  # start on row 6 to make room for headers
+        for sett in self.settlement_onrecs:  # loop for each row
+            grievance_number = sett[0]  # define all the fields
+            level = sett[1]
+            date_signed = Convert(sett[2]).dtstr_to_backslashstr()
+            decision = sett[3]
+            proofdue = Convert(sett[4]).dtstr_to_backslashstr()
+            docs = sett[5]
+            gats_number = sett[6]
+            values_array = [grievance_number, level, date_signed, decision,
+                            proofdue, docs, gats_number]
+            for i in range(len(values_array)):  # loop for each column
+                cell = self.ws_list[1].cell(row=row, column=i+1)  # define the cell by sheet and cell coordinates
+                cell.value = values_array[i]  # insert the appropriate element
+                if i in (2, 4):  # for date signed and proof due, format the cell as a date.
+                    cell.number_format = 'MM/DD/YYYY'
+                    cell.style = self.date_dov
             row += 1
 
     def stopsaveopen(self):
@@ -3843,13 +3881,17 @@ class SpeedGrvCheck:
         else:
             issue_place = self.onrec_issue
         # get article place
-        if self.addarticle != "empty":
+        # the addarticle might be assigned a value in self.check_issue_description() so check against onrec
+        if self.addarticle == self.onrec_article:
+            article_place = self.onrec_article
+        elif self.addarticle != "empty":
             add = "     INPUT: Article added or updated to database >>{}\n".format(self.addarticle)  # report
             self.add_array.append(add)
             chg_these.append("article")
             article_place = self.addarticle
         else:
             article_place = self.onrec_article
+        # if any values have changed - form sql statements using _place vars and commit to db.
         if len(chg_these) != 0:  # if change these is empty, then there is no need to insert/update records
             if not self.onrec:  # if there is no rec on file for the grievance, insert the first rec
                 sql = "INSERT INTO informalc_grievances(grievant, station, grv_no, startdate, enddate, " \
@@ -3884,7 +3926,7 @@ class SpeedGrvCheck:
                 self.parent.name_mentioned = True
             self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\"  <<<\n".format(self.sheet, self.row))
             if not self.parent.allowaddrecs:
-                self.parent.report.write("     SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
+                self.parent.report.write("     GRIEVANCE RECORD ENTRY PROHIBITED: Correct errors!\n")
             for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.parent.report.write(rpt)
 
@@ -3900,6 +3942,7 @@ class SpeedSetCheck:
         self.datesigned = datesigned
         self.decision = decision
         self.proofdue = proofdue
+        self.input_date = []  # array to hold datesigned and proofdue - form in check_dates()
         self.docs = docs
         self.gatsnumber = gatsnumber
         self.onrec = False  # this value is True if a sql search shows that there is a rec of the grv_no in the db.
@@ -3910,20 +3953,32 @@ class SpeedSetCheck:
         self.onrec_proofdue = None
         self.onrec_docs = None
         self.onrec_gatsnumber = None
-        self.addlevel = "empty"
+        self.addlevel = "empty"  # post checked values
         self.adddatesigned = "empty"
         self.adddecision = "empty"
+        self.addproofdue = "empty"
+        self.adddate = [self.adddatesigned, self.addproofdue]  # holds date values for self.add_date() loop
         self.adddocs = "empty"
         self.addgatsnumber = "empty"
         self.error_array = []  # gives a report of failed checks
         self.attn_array = []  # gives a report of issues to bring to the attention of users
         self.add_array = []  # gives a report of records to add to the database
         self.fyi_array = []  # gives a report of useful information for the user
+        self.parent.name_mentioned = False  # reset this so that name is not repeated on reports
         self.levelarray = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+        self.docsarray = ("non-applicable", "no", "yes", "unknown", "yes - not paid", "yes - in part", 
+                          "yes - verified", "no - moot", "no - ignore")
 
     def check_all(self):
         """ master method to run other methods. """
-        self.check_grv_number()  # check the grievance number input
+        if self.check_grv_number():  # check the grievance number input
+            self.get_onrecs()
+            self.check_level()
+            self.check_dates()
+            self.check_decision()
+            self.check_docs()
+            self.check_gatsnumber()
+            self.add_recs()
         self.generate_report()
 
     def check_grv_number(self):
@@ -3934,7 +3989,8 @@ class SpeedSetCheck:
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
             return False
         # check that there is a record of the grievance in informalc_grievances
-        sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s'" % self.grv_no
+        sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" \
+              % (self.grv_no, self.parent.station)
         result = inquire(sql)
         if not result:
             error = "     ERROR: There is no prior record of the grievance. \n"
@@ -3961,8 +4017,7 @@ class SpeedSetCheck:
     def get_onrecs(self):
         """ check if there is an existing record for the grievance number in the informalc grievances table.
         if so, store the values in the self.onrec variables. if not, the self.onrec variables default to empty. """
-        sql = "SELECT * FROM informalc_settlements WHERE grv_no = '%s' and station = '%s'" \
-              % (self.grv_no, self.parent.station)
+        sql = "SELECT * FROM informalc_settlements WHERE grv_no = '%s'" % self.grv_no
         results = inquire(sql)
         if results:
             self.onrec = True  # this value is True if a sql search shows that there is a rec in the db.
@@ -3970,8 +4025,9 @@ class SpeedSetCheck:
             self.onrec_level = results[0][1]
             self.onrec_datesigned = results[0][2]
             self.onrec_decision = results[0][3]
-            self.onrec_docs = results[0][4]
-            self.onrec_gatsnumber = results[0][5]
+            self.onrec_proofdue = results[0][4]
+            self.onrec_docs = results[0][5]
+            self.onrec_gatsnumber = results[0][6]
 
     def check_level(self):
         """ check the grievance number input """
@@ -3980,8 +4036,8 @@ class SpeedSetCheck:
         if not self.level:
             pass
         if self.level not in self.levelarray:
-            error = "     ERROR: The level must be either 'informal a', 'formal a', 'step b', 'pre arb' or " \
-                    "'arbitration'. No other values are allowed. \n"
+            error = "     ERROR: The level must be either 'informal a', 'formal a', 'step b', 'pre arb' or \n" \
+                    "            'arbitration'. No other values are allowed. \n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
             return False
@@ -3997,33 +4053,284 @@ class SpeedSetCheck:
             self.addlevel = self.level
 
     def check_dates(self):
-        """ check the datesigned and proof due """
-        pass
+        """ check the startdate, enddate and meetingdate.
+         since these are all dates with similiar criteria, use a loop to check them.
+         sometimes, openpyxl sends the dates as strings of datetime objects, instead of the mm/dd/yyyy formated dates,
+         the DateTimeChecker() will identify these and skip the checks. """
+        self.input_date = [self.datesigned, self.proofdue]
+        for i in range(2):
+            self.check_date_loop(i)
+
+    def check_date_loop(self, i):
+        """ loop from check dates """
+        _type = ("date signed", "proof due")
+        if self.input_date[i].strip() == "":  # if the value is blank, skip all the checks
+            self.add_date(i)
+            return
+        # if the value is a valid dt object, skip all the checks
+        if DateTimeChecker().check_dtstring(self.input_date[i]):
+            self.add_date(i)
+            return
+        date_object = BackSlashDateChecker(self.input_date[i])  # first create the date_object
+        if not date_object.count_backslashes():  # this checks that there are 2 backslashes in the date
+            error = "     ERROR: The date for the {} date must have two backslashes. Got instead: {}\n"\
+                .format(_type[i], self.input_date[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        date_object.breaker()  # this breaks the object into month, day and year elements.
+        if not date_object.check_numeric():  # check each element in the date to ensure they are numeric
+            error = "     ERROR: The month, day and year for the {} date must be numeric\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_minimums():  # check each element in the date to ensure they are greater than zero
+            error = "     ERROR: The month, day and year for the {} date must be greater than zero.\n"\
+                .format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_month():  # returns False if the month is greater than 12.
+            error = "     ERROR: The month for the {} date must less than 13.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_day():  # return False if the day is greater than 31.
+            error = "     ERROR: The day entered for the {} date is must be less than 32.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_year():  # returns False if the year does not have 4 digits.
+            error = "     ERROR: The year entered for the {} date must have 4 digits.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.valid_date():  # returns False if the date is not a valid date
+            error = "     ERROR: The date entered for the {} date is not a valid date.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        # this removes white space from the date and each element of the date.
+        self.input_date[i] = self.reformat_date(i)
+        # convert the input date into a string of a datetime object.
+        self.input_date[i] = Convert(self.input_date[i]).backslashdate_to_dtstring()
+        self.add_date(i)  # add the dates to add_date variables
+
+    def reformat_date(self, i):
+        """ this removes white space from the date and each element of the date. """
+        breakdown = self.input_date[i].strip()
+        breakdown = breakdown.split("/")
+        month = breakdown[0].strip()
+        day = breakdown[1].strip()
+        year = breakdown[2].strip()
+        return "{}/{}/{}".format(month, day, year)
+
+    def add_date(self, i):
+        """ add the dates to add_date variables
+         this is self.addstartdate, self.addenddate and self.addmeetingdate
+         a counter is passed from the self.check_date method above. """
+        onrec_date = [self.onrec_datesigned, self.onrec_proofdue]
+        _type = ("date signed", "proof due")
+        if self.input_date[i] == onrec_date[i]:  # if the new input and the old record are the same - do nothing
+            pass  # retain "empty" value for grievant variable
+        else:
+            fyi = "     FYI: New or updated {} date: {}\n".format(_type[i], self.input_date[i])
+            self.fyi_array.append(fyi)
+            self.adddate[i] = self.input_date[i]  # save to input to dbase
 
     def check_decision(self):
-        """ check the issue input """
-        pass
+        """ check the decision input """
+        self.decision = self.decision.strip()  # strip out any whitespace before or after the string
+        if self.decision == "":  # accept blank entries
+            msg = ""
+            self.add_decision(msg)
+        elif isint(self.decision):  # identify decision index entries and execute as valid - this also updates article
+            self.check_decision_index()
+            return
+        self.check_decision_description()
+
+    def check_decision_index(self):
+        """ check that the decision index provided by the user is valid.
+        use arrays of decision categories and articles collected in the SpeedSheetCheck class"""
+        if self.decision in self.parent.decision_index:
+            self.adddecision = self.parent.decision_description[int(self.decision)-1]
+            fyi = "     FYI: New or updated decision (decision index entry): {}\n"\
+                .format(self.adddecision)
+            self.fyi_array.append(fyi)
+            return
+        error = "     ERROR: The number for decision is in the index of decisions. Got: {}\n".format(self.decision)
+        self.error_array.append(error)
+        self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+
+    def check_decision_description(self):
+        """ check if the decision description is already in the list of decisions. If so, update article. """
+        if self.decision in self.parent.decision_description:
+            fyi = "     FYI: New or updated decision and article (decision description entry):\n"\
+                .format(self.adddecision)
+            self.add_decision(fyi)
+            return
+        fyi = "     FYI: New or updated decision: {}\n".format(self.adddecision)
+        self.add_decision(fyi)
+
+    def add_decision(self, msg):
+        """ add the decision to the add decision var """
+        if self.decision == self.onrec_decision:
+            pass
+        else:
+            self.adddecision = self.decision
+            if msg:
+                self.fyi_array.append(msg)
 
     def check_docs(self):
-        """ check the article input """
-        pass
+        """ check the grievance number input """
+        self.docs = self.docs.strip()
+        self.docs = self.docs.lower()
+        if not self.docs:
+            pass
+        elif self.docs in self.docsarray:
+            pass
+        else:
+            print(self.docs, type(self.docs))
+            error = "     ERROR: The docs input must be either 'non-applicable', 'no', 'yes', 'unknown', \n" \
+                    "            'yes - not paid', 'yes - in part', 'yes - verified', 'no - moot' or \n" \
+                    "            'no - ignore'. No other values are allowed. Got: {}\n".format(self.docs)
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        self.add_docs()
+
+    def add_docs(self):
+        """ add docs to the self.adddocs var """
+        if self.docs == self.onrec_docs:
+            pass
+        else:
+            fyi = "     FYI: New or updated docs: {}\n".format(self.docs)
+            self.fyi_array.append(fyi)
+            self.adddocs = self.docs
 
     def check_gatsnumber(self):
-        """ check the article input """
-        pass
+        """ check the article input - this is an open field that takes almost anything with no limits or indexes. """
+        self.gatsnumber = self.gatsnumber.strip()
+        self.gatsnumber = self.gatsnumber.lower()
+        if not self.gatsnumber:
+            pass
+        if len(self.gatsnumber) < 30:
+            pass
+        else:
+            error = "     ERROR: The gats number must not be longer than 30 characters.  \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        self.add_gatsnumber()
+
+    def add_gatsnumber(self):
+        """ add gats number to the self.addgatsnumber var """
+        if self.gatsnumber == self.onrec_gatsnumber:
+            pass
+        else:
+            fyi = "     FYI: New or updated gats number: {}\n".format(self.gatsnumber)
+            self.fyi_array.append(fyi)
+            self.addgatsnumber = self.gatsnumber
 
     def add_recs(self):
         """ add records using the add___ vars. """
         chg_these = []
+        if not self.parent.allowaddrecs:  # if all checks passed
+            return
         if not self.onrec:  # if there is no record of the grievance number in the db informalc_grievance table
             add = "     INPUT: New Grievance Number added to database >>{}\n" \
                 .format(self.grv_no)  # report
             self.add_array.append(add)
             chg_these.append('grv_no')
+        # get level place
+        if self.addlevel != "empty":
+            add = "     INPUT: Level added or updated to database >>{}\n" \
+                .format(self.addlevel)  # report
+            self.add_array.append(add)
+            chg_these.append("level")
+            level_place = self.addlevel
+        else:
+            level_place = self.onrec_level
+        # get date places using loop
+        onrec_date = [self.onrec_datesigned, self.onrec_proofdue]
+        datesigned_place = None  # aka date_place[0]
+        proofdue_place = None  # aka date_place[1]
+        date_place = [datesigned_place, proofdue_place]
+        chg_notation = ("datesigned", "proofdue")
+        _type = ("Date Signed", "Proof Due Date")
+        for i in range(2):
+            if self.adddate[i] != "empty":
+                add = "     INPUT: {} added or updated to database >>{}\n".format(_type[i], self.adddate[i])
+                self.add_array.append(add)
+                chg_these.append(chg_notation[i])
+                date_place[i] = self.adddate[i]
+            else:
+                date_place[i] = onrec_date[i]
+
+        # get decision place
+        if self.adddecision != "empty":
+            add = "     INPUT: Decision added or updated to database >>{}\n".format(self.adddecision)  # report
+            self.add_array.append(add)
+            chg_these.append("decision")
+            decision_place = self.adddecision
+        else:
+            decision_place = self.onrec_decision
+
+        # get docs place
+        if self.adddocs != "empty":
+            add = "     INPUT: Docs added or updated to database >>{}\n".format(self.adddocs)  # report
+            self.add_array.append(add)
+            chg_these.append("docs")
+            docs_place = self.adddocs
+        else:
+            docs_place = self.onrec_docs
+
+        # get gats place
+        if self.addgatsnumber != "empty":
+            add = "     INPUT: Gats Number added or updated to database >>{}\n".format(self.addgatsnumber)  # report
+            self.add_array.append(add)
+            chg_these.append("gatsnumber")
+            gats_place = self.addgatsnumber
+        else:
+            gats_place = self.onrec_gatsnumber
+        # if any values have changed - form sql statements using _place vars and commit to db.
+        if len(chg_these) != 0:  # if change these is empty, then there is no need to insert/update records
+            if not self.onrec:  # if there is no rec on file for the grievance, insert the first rec
+                sql = "INSERT INTO informalc_settlements(grv_no, level, date_signed, decision, proofdue, " \
+                      "docs, gats_number) VALUES('%s','%s','%s','%s','%s','%s','%s')" \
+                      % (self.grv_no, level_place, date_place[0], decision_place, date_place[1], docs_place, gats_place)
+            else:  # update the first rec to replace pre existing record.
+                sql = "UPDATE informalc_settlements SET level='%s', date_signed='%s', decision ='%s', " \
+                      "proofdue='%s', docs='%s', gats_number='%s' WHERE grv_no='%s'" \
+                      % (level_place, date_place[0], decision_place, date_place[1], docs_place, gats_place,
+                         self.grv_no)
+            commit(sql)
 
     def generate_report(self):
-        """" generate the text report """
-        pass
+        """ generate a report
+        """
+        self.parent.settlement_fatal_rpt += len(self.error_array)
+        if len(self.add_array):  # if there is anything in the add array - increment the add report by 1
+            self.parent.settlement_add_rpt += 1
+        if len(self.fyi_array):  # if there is anything in the fyi array - increment the add report by 1
+            self.parent.settlement_fyi_rpt += 1
+        if not self.parent.interject:
+            master_array = self.error_array + self.attn_array  # use these reports for precheck
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.fyi_array   # include the fyi messages.
+        else:
+            master_array = self.error_array + self.attn_array  # use these reports for input
+            if self.parent.fullreport:  # if the full report option is selected...
+                master_array += self.add_array  # include the adds messages.
+        if len(master_array) > 0:
+            if not self.parent.name_mentioned:
+                self.parent.report.write("\nGrievance Number: {}\n".format(self.grv_no))
+                self.parent.name_mentioned = True
+            self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\"  <<<\n".format(self.sheet, self.row))
+            if not self.parent.allowaddrecs:
+                self.parent.report.write("     SETTLEMENT RECORD ENTRY PROHIBITED: Correct errors!\n")
+            for rpt in master_array:  # write all reports that have been keep in arrays.
+                self.parent.report.write(rpt)
 
 
 class SpeedIndexCheck:
