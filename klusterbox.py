@@ -12,8 +12,8 @@ This version of Klusterbox is being released under the GNU General Public Licens
 """
 # custom modules
 import projvar
-from kbreports import Reports, Messenger, CheatSheet
-from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, check_path, gen_ns_dict, \
+from kbreports import Reports, Messenger, CheatSheet, Archive
+from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, gen_ns_dict, \
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
     find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
@@ -1941,10 +1941,10 @@ class DatabaseAdmin:
         db_end_date = datetime(1, 1, 1)
         table_array = []
         if time_range.get() != "all":
-            if informalc_date_checker(frame, date, "date") == "fail":
+            if not informalc_date_checker(frame, date, "date"):
                 return
         if time_range.get() == "between":
-            if informalc_date_checker(frame, end_date, "end date") == "fail":
+            if not informalc_date_checker(frame, end_date, "end date"):
                 return
         if table.get() == "" or stations.get() == "":
             if messagebox.showerror("Database Maintenance",
@@ -5097,122 +5097,6 @@ class AutoDataEntry:
                 pb.destroy()
                 pb_root.destroy()
             del duplicates[:]
-
-
-class Archive:
-    """
-    This class opens and deletes archives.
-    """
-
-    def __init__(self):
-        self.frame = None
-        # make sure that lenght of path array and label array are the same or else there will be an index error.
-        self.path_array = [  # used in clear all
-            'spreadsheets',
-            'mandates_4',
-            'over_max_spreadsheet',
-            'speedsheets',
-            'over_max',
-            'off_bid',
-            'ot_equitability',
-            'ot_distribution',
-            'ee_reader',
-            'weekly_availability',
-            'pp_guide'
-        ]
-        self.status_array = []  # used in clear all
-
-    @staticmethod
-    def file_dialogue(folder):
-        """ opens file folders to access generated kbreports """
-        if not os.path.isdir(folder):
-            os.makedirs(folder)
-        if projvar.platform == "py":
-            file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
-        else:
-            file_path = filedialog.askopenfilename(initialdir=folder)
-        if file_path:
-            if sys.platform == "win32":
-                os.startfile(file_path)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", file_path])
-            if sys.platform == "darwin":
-                subprocess.call(["open", file_path])
-
-    @staticmethod
-    def remove_file(folder):
-        """ removes a file and all contents """
-        if os.path.isdir(folder):  # if it exist
-            shutil.rmtree(folder)  # delete it
-
-    def remove_file_var(self, frame, folder):
-        """ removes a file and all contents """
-        self.frame = frame
-        folder = check_path(folder)
-        if sys.platform == "win32":
-            folder_name = folder.split("\\")
-        else:
-            folder_name = folder.split("/")
-        folder_name = folder_name[-2]
-        if not os.path.isdir(folder):
-            messagebox.showwarning("Archive File Management",
-                                   "The {} folder is already empty".format(folder_name),
-                                   parent=self.frame)
-            return
-        if not messagebox.askokcancel("Archive File Management",
-                                      "This will delete all the files in the {} archive. ".format(folder_name),
-                                      parent=self.frame):
-            return
-        try:
-            shutil.rmtree(folder)
-            if not os.path.isdir(folder):
-                messagebox.showinfo("Archive File Management",
-                                    "Success! All the files in the {} archive have been deleted."
-                                    .format(folder_name),
-                                    parent=self.frame)
-        except PermissionError:
-            messagebox.showerror("Archive File Management",
-                                 "Failure! {} can not be deleted because it is being used by another program."
-                                 .format(folder_name),
-                                 parent=frame)
-
-    def clear_all(self, frame):
-        """ this empties and deletes all archive folders."""
-        self.frame = frame
-        if not messagebox.askokcancel("Archive File Management",
-                                      "This will delete all the files in the all archives. \n\n"
-                                      "As all data used to generate spreadsheets and reports is "
-                                      "kept in the klusterbox database, deleting archives is "
-                                      "safe since they can easily be regenerated.",
-                                      parent=self.frame):
-            return
-        for folder in self.path_array:  # for each in the path array
-            self.clear_each(check_path(folder))  # delete the folder and record status report.
-        status_string = self.build_status_string()
-        messagebox.showinfo("Archive File Management",
-                            "Delete all archives requested. \n\n"
-                            "Report: \n"
-                            "{}".format(status_string),
-                            parent=self.frame)
-
-    def clear_each(self, folder):
-        """ this is called by clear all to delete individual files. """
-        if not os.path.isdir(folder):
-            self.status_array.append("Already empty - no action taken")
-            return
-        try:
-            shutil.rmtree(folder)
-            if not os.path.isdir(folder):
-                self.status_array.append("Successfully deleted")
-        except PermissionError:
-            self.status_array.append("Folder in use - action failed.")
-
-    def build_status_string(self):
-        """ builds a string for the status report. """
-        status_string = ""
-        for i in range(len(self.status_array)):
-            status_string += "    {}:  {}\n".format(self.path_array[i], self.status_array[i])
-        return status_string
 
 
 class StartUp:

@@ -10,14 +10,15 @@ by grievance as well as summaries.
 import projvar  # defines project variables used in all modules.
 from kbtoolbox import commit, dir_path, dir_path_check, dt_converter, find_pp, inquire, isfloat, macadj, \
     isint, NewWindow, titlebar_icon, informalc_date_checker, ProgressBarDe, ReportName, Handler, NameChecker, \
-    GrievanceChecker
+    GrievanceChecker, BackSlashDateChecker, Convert, DateTimeChecker
 # standard libraries
 from tkinter import messagebox, ttk, BOTH, BOTTOM, Button, Canvas, END, Entry, Frame, Label, LEFT, \
     Listbox, mainloop, NW, OptionMenu, Radiobutton, RIDGE, RIGHT, Scrollbar, StringVar, TclError, \
-    Tk, VERTICAL, Y, Menu, filedialog
+    Tk, VERTICAL, Y, Menu, filedialog, DISABLED
+from kbreports import Archive
 from datetime import datetime, timedelta
+from shutil import rmtree
 import os
-import shutil
 import sys
 import subprocess
 import re
@@ -115,12 +116,22 @@ class InformalC:
         menubar = Menu(self.win.topframe)
         # speedsheeet menu
         speed_menu = Menu(menubar, tearoff=0)
+        speed_menu.add_command(label="Open Archive",
+                               command=lambda: Archive().file_dialogue(dir_path('informalc_speedsheets')))
+        speed_menu.add_command(label="Clear Archive",
+                               command=lambda: Archive().remove_file_var(self.win.topframe, 'informalc_speedsheets'))
         speed_menu.add_command(label="Generate New Grievances",
                                command=lambda: SpeedSheetGen(self.win.topframe, self.station, "new").new())
+        speed_menu.add_command(label="Generate Selected Grievances",
+                               command=lambda: SpeedSheetGen(self.win.topframe, self.station, "selected").selected())
+        speed_menu.add_command(label="Generate All Grievances",
+                               command=lambda: SpeedSheetGen(self.win.topframe, self.station, "all").all())
         speed_menu.add_command(label="Pre-check",
                                command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, False))
         speed_menu.add_command(label="Input to Database",
                                command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, True))
+        #  reports_menu.entryconfig(2, state=DISABLED)
+        speed_menu.entryconfig(3, state=DISABLED)
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         root.config(menu=menubar)
 
@@ -128,7 +139,7 @@ class InformalC:
     def build_tables():
         """ build tables needed if they do no exist. """
         if os.path.isdir(dir_path_check('infc_grv')):  # clear contents of temp folder
-            shutil.rmtree(dir_path_check('infc_grv'))
+            rmtree(dir_path_check('infc_grv'))
         sql = 'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,' \
               'date_signed varchar, station varchar, gats_number varchar, ' \
               'docs varchar, description varchar, level varchar)'
@@ -154,7 +165,7 @@ class InformalC:
     def clear_tempfolders():
         """ clear contents of temp folder """
         if os.path.isdir(dir_path_check('infc_grv')):
-            shutil.rmtree(dir_path_check('infc_grv'))
+            rmtree(dir_path_check('infc_grv'))
 
     def station_screen(self, frame):
         """ this allows the user to change/ select the station """
@@ -992,11 +1003,9 @@ class InformalC:
             """ applies changes to the grievance list after a check. """
             conditions = []
             if self.incident_date.get() == "yes":
-                check = informalc_date_checker(self.win.topframe, self.incident_start, "starting incident date")
-                if check == "fail":
+                if not informalc_date_checker(self.win.topframe, self.incident_start, "starting incident date"):
                     return
-                check = informalc_date_checker(self.win.topframe, self.incident_end, "ending incident date")
-                if check == "fail":
+                if not informalc_date_checker(self.win.topframe, self.incident_end, "ending incident date"):
                     return
                 d = self.incident_start.get().split("/")
                 start = datetime(int(d[2]), int(d[0]), int(d[1]))
@@ -1011,11 +1020,9 @@ class InformalC:
                 to_add = "indate_start > '{}' and indate_end < '{}'".format(start, end)
                 conditions.append(to_add)
             if self.signing_date.get() == "yes":
-                check = informalc_date_checker(self.win.topframe, self.signing_start, "starting signing date")
-                if check == "fail":
+                if not informalc_date_checker(self.win.topframe, self.signing_start, "starting signing date"):
                     return
-                check = informalc_date_checker(self.win.topframe, self.signing_end, "ending signing date")
-                if check == "fail":
+                if not informalc_date_checker(self.win.topframe, self.signing_end, "ending signing date"):
                     return
                 d = self.signing_start.get().split("/")
                 start = datetime(int(d[2]), int(d[0]), int(d[1]))
@@ -2738,11 +2745,9 @@ class InformalC:
 
         def por_all(self, afterdate, beforedate, station, backdate):
             """ pay out report. generates text report for all. """
-            check = informalc_date_checker(self.win.topframe, afterdate, "After Date")
-            if check == "fail":
+            if not informalc_date_checker(self.win.topframe, afterdate, "After Date"):
                 return
-            check = informalc_date_checker(self.win.topframe, beforedate, "Before Date")
-            if check == "fail":
+            if not informalc_date_checker(self.win.topframe, beforedate, "Before Date"):
                 return
             start = informalc_date_converter(afterdate)
             end = informalc_date_converter(beforedate)
@@ -2891,6 +2896,13 @@ class SpeedSheetGen:
         self.titles = ""
         self.filename = ""
         self.ws_titles = ["grievances", "settlements", "non compliance", "batch settlements", "remanded"]
+        # get sql results from the tables.
+        self.grievance_onrecs = []
+        self.settlement_onrecs = []
+        self.nonc_onrecs = []
+        self.batch_onrecs = []
+        self.remand_onrecs = []
+        self.file_result = []
         self.ws_list = []
         self.wb = Workbook()  # define the workbook
         self.ws = None  # the worksheet of the workbook
@@ -2924,6 +2936,36 @@ class SpeedSheetGen:
         self.column_formatting_indexes()  # format sheet column widths, fonts, numbers
         self.stopsaveopen()
 
+    def selected(self):
+        """ this generates a blank speedsheet for selected range of greivances"""
+        self.name_styles()
+        self.get_titles()  # generate the title and filename
+        self.make_workbook_object()  # make the workbook object
+        self.create_ws_headers()
+        self.create_grievance_headers()
+        self.create_settlement_headers()
+        self.create_index_headers()
+        self.column_formatting_grievances()  # format sheet column widths, fonts, numbers
+        self.column_formatting_settlements()  # format sheet column widths, fonts, numbers
+        self.column_formatting_indexes()  # format sheet column widths, fonts, numbers
+        self.stopsaveopen()
+
+    def all(self):
+        """ this generates a blank speedsheet for all greivances"""
+        self.name_styles()
+        self.get_titles()  # generate the title and filename
+        self.get_onrecs()  # get data from all tables to fill speedsheets
+        self.make_workbook_object()  # make the workbook object
+        self.create_ws_headers()
+        self.create_grievance_headers()
+        self.create_settlement_headers()
+        self.create_index_headers()
+        self.column_formatting_grievances()  # format sheet column widths, fonts, numbers
+        self.column_formatting_settlements()  # format sheet column widths, fonts, numbers
+        self.column_formatting_indexes()  # format sheet column widths, fonts, numbers
+        self.insert_grievance_onrecs()  # fills the grievance speedsheet with data from informalc grievances table
+        self.stopsaveopen()
+
     def name_styles(self):
         """ Named styles for workbook """
         bd = Side(style='thin', color="80808080")  # defines borders
@@ -2945,7 +2987,7 @@ class SpeedSheetGen:
             text = "Selected"
             filetext = "selected"
         if self.selection_range == "all":
-            text = "All Inclusive"
+            text = "All"
             filetext = "all"
         self.titles = (
             "Speedsheet - {} Grievances".format(text),
@@ -2955,6 +2997,28 @@ class SpeedSheetGen:
             "Speedsheet - {} Remanded Index".format(text)
         )
         self.filename = "{}_grievances_speedsheet".format(filetext) + ".xlsx"
+
+    def get_onrecs(self):
+        """ get data from tables """
+        sql = "SELECT * FROM 'informalc_grievances' WHERE station = '%s'" % self.station
+        self.grievance_onrecs = inquire(sql)
+        grv_list = []  # array to hold all grievance numbers
+        for grv in self.grievance_onrecs:
+            grv_list.append(grv[2])
+        # use arrays and loops to get search results for all the grievances in the grv_list array.
+        # search these tables
+        tables_array = ("informalc_settlements", "informalc_noncindex", "informalc_batchindex",
+                        "informalc_remandindex")
+        # search these columns in the tables
+        search_criteria_array = ("grv_no", "settlement", "main", "remanded")
+        # store the results in these arrays
+        results_array = [self.settlement_onrecs, self.nonc_onrecs, self.batch_onrecs,
+                         self.remand_onrecs]
+        # loop for grievance in each table
+        for i in range(len(results_array)):
+            for ii in range(len(grv_list)):
+                sql = "SELECT * FROM '%s' WHERE '%s' = '%s'" % (tables_array[i], search_criteria_array[i], grv_list[ii])
+                results_array[i] = inquire(sql)
 
     def make_workbook_object(self):
         """ make the workbook object """
@@ -3048,6 +3112,7 @@ class SpeedSheetGen:
         col = self.ws_list[0].column_dimensions["B"]
         col.width = 20
         col.font = Font(size=9, name="Arial")
+        col.number_format = '@'
         col = self.ws_list[0].column_dimensions["C"]
         col.width = 12
         col.font = Font(size=9, name="Arial")
@@ -3105,25 +3170,45 @@ class SpeedSheetGen:
             col.width = 20
             col.font = Font(size=9, name="Arial")
 
+    def insert_grievance_onrecs(self):
+        """ loop for each grievance on record to fill the grievance speedsheet which is ws.list[0] """
+        row = 6
+        for grv in self.grievance_onrecs:
+            grievant = grv[0]
+            grievance_number = grv[2]
+            start_incident = Convert(grv[3]).dtstr_to_backslashstr()
+            end_incident = Convert(grv[4]).dtstr_to_backslashstr()
+            meeting_date = Convert(grv[5]).dtstr_to_backslashstr()
+            issue = grv[6]
+            article = grv[7]
+            values_array = [grievant, grievance_number, start_incident, end_incident, meeting_date, 
+                            issue, article]
+            for i in range(len(values_array)):
+                cell = self.ws_list[0].cell(row=row, column=i+1)  # carrier effective date
+                cell.value = values_array[i]
+                if i in (2, 3, 4):
+                    cell.number_format = 'MM/DD/YYYY'
+            row += 1
+
     def stopsaveopen(self):
         """ save and open the speedsheet. """
         try:
-            self.wb.save(dir_path('speedsheets') + self.filename)
+            self.wb.save(dir_path('informalc_speedsheets') + self.filename)
             messagebox.showinfo("Speedsheet Generator",
                                 "Your speedsheet was successfully generated. \n"
                                 "File is named: {}".format(self.filename),
                                 parent=self.frame)
             if sys.platform == "win32":
-                os.startfile(dir_path('speedsheets') + self.filename)
+                os.startfile(dir_path('informalc_speedsheets') + self.filename)
             if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/speedsheets/' + self.filename])
+                subprocess.call(["xdg-open", 'kb_sub/informalc_speedsheets/' + self.filename])
             if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('speedsheets') + self.filename])
+                subprocess.call(["open", dir_path('informalc_speedsheets') + self.filename])
         except PermissionError:
             messagebox.showerror("Speedsheet generator",
                                  "The speedsheet was not generated. \n"
                                  "Suggestion: \n"
-                                 "Make sure that identically named speedsheets are closed \n"
+                                 "Make sure that identically named informalc_speedsheets are closed \n"
                                  "(the file can't be overwritten while open).\n",
                                  parent=self.frame)
 
@@ -3140,9 +3225,10 @@ class SpeedWorkBookGet:
     def get_filepath():
         """ get the file path"""
         if projvar.platform == "macapp" or projvar.platform == "winapp":
-            return os.path.join(os.path.sep, os.path.expanduser("~"), 'Documents', 'klusterbox', 'speedsheets')
+            return os.path.join(os.path.sep,
+                                os.path.expanduser("~"), 'Documents', 'klusterbox', 'informalc_speedsheets')
         else:
-            return 'kb_sub/speedsheets'
+            return 'kb_sub/informalc_speedsheets'
 
     def get_file(self):
         """ returns the file path if there is one. else no selection/invalid selection. """
@@ -3204,6 +3290,7 @@ class SpeedSheetCheck:
         self.ws = None  # this hold the worksheet
         self.path_ = path_
         self.interject = interject
+        self.input_type = None
         self.sheets = None
         self.sheet_count = None
         self.grievance_count = 0  # count of how many grievances have been checked.
@@ -3217,7 +3304,8 @@ class SpeedSheetCheck:
         self.sheet_rowcount = []
         self.row_counter = 0  # get the total amount of rows in the worksheet
         self.start_row = 6  # the row where after the headers
-        self.pb = ProgressBarDe(label="SpeedSheet Checking")
+        self.pb = None
+        # self.pb = ProgressBarDe(label="SpeedSheet Checking")
         self.pb_counter = 0
         self.filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
         self.report = open(dir_path('report') + self.filename, "w")  # open the report
@@ -3231,21 +3319,50 @@ class SpeedSheetCheck:
         self.allowaddrecs = True
         self.fullreport = True
         self.name_mentioned = False
+        self.issue_index = []  # get the speedsheet issue index number for issue categories
+        self.issue_description = []  # get the issue description for issue categories
+        self.issue_article = []  # get the article of the issue for issue catergories
+        self.decision_index = []  # get the speedsheet decision index number for decision categories
+        self.decision_description = []  # get the decision description for the decision categories
 
     def check(self):
         """ master method for running other methods and returns to the mainframe. """
         try:
+            self.pb = ProgressBarDe(label="SpeedSheet Checking")
+            self.get_issuecats()  # fetch the issue categories from the informalc_issuescategories table
+            self.get_decisioncats()  # fetch the decision categories from the informalc_decisioncategories table
             self.set_sheet_facts()
             self.set_station()
             self.start_reporter()
             self.checking()
             self.reporter()
+            self.pb.stop()
         except KeyError:  # if wrong type of file is selected, there will be an error
             self.pb.delete()  # stop and destroy progress bar
             self.showerror()
 
+    def get_issuecats(self):
+        """ fetch the issue categories from the informalc_issuescategories table of the db and place them in arrays. """
+        sql = "SELECT * FROM informalc_issuescategories"
+        results = inquire(sql)
+        for r in results:
+            self.issue_index.append(r[0])
+            self.issue_description.append(r[2])
+            self.issue_article.append(r[1])
+
+    def get_decisioncats(self):
+        """ fetch the decision categories from the informalc_decisioncategories table of the db and place them in
+         arrays """
+        sql = "SELECT * FROM informalc_decisioncategories"
+        results = inquire(sql)
+        for r in results:
+            self.decision_index.append(r[0])
+            self.decision_description.append(r[2])
+
     def set_sheet_facts(self):
         """ get the worksheet names and number worksheets. """
+        # there are three input types: new, selected, or all inclusive
+        self.input_type = "new"
         self.sheets = self.wb.sheetnames  # get the names of the worksheets as a list
         self.sheet_count = len(self.sheets)  # get the number of worksheets
 
@@ -3292,7 +3409,7 @@ class SpeedSheetCheck:
                 self.scan_grievances(i)
             if self.worksheet[i] == "settlements":  # execute for settlements speedsheet
                 self.scan_settlements(i)
-        self.pb.stop()
+        # self.pb.stop()
 
     def scan_grievances(self, i):
         """ scan the values of the grievances worksheet, line by line. """
@@ -3358,7 +3475,7 @@ class SpeedSheetCheck:
         """ writes the report """
         self.report.write("\n\n----------------------------------")
         # build report summary for carrier checks
-        self.report.write("\n\nSpeedSheet Grievance Check Complete.\n\n")
+        self.report.write("\n\nGrievance SpeedSheet Check Complete.\n\n")
         msg = "grievance{} checked".format(Handler(self.grievance_count).plurals())
         self.report.write('{:>6}  {:<40}\n'.format(self.grievance_count, msg))
         msg = "fatal error{} found".format(Handler(self.fatal_rpt).plurals())
@@ -3370,7 +3487,7 @@ class SpeedSheetCheck:
             msg = "fyi notification{}".format(Handler(self.fyi_rpt).plurals())
             self.report.write('{:>6}  {:<40}\n'.format(self.fyi_rpt, msg))
         # build report summary for rings checks
-        self.report.write("\n\nSpeedSheet Settlements Check Complete.\n\n")
+        self.report.write("\n\nSettlements SpeedSheet Check Complete.\n\n")
         msg = "settlement{} checked".format(Handler(self.settlement_count).plurals())
         self.report.write('{:>6}  {:<40}\n'.format(self.settlement_count, msg))
         msg = "fatal error{} found".format(Handler(self.settlement_fatal_rpt).plurals())
@@ -3402,10 +3519,11 @@ class SpeedGrvCheck:
         self.startdate = startdate
         self.enddate = enddate
         self.meetingdate = meetingdate
+        self.input_date = []  # array to hold startdate, enddate and meetingdate - form in check_dates()
         self.issue = issue
         self.article = article
         # onrec variables - these hold the values of the record currently in the database.
-        self.onrec = False  # this value is True if a sql search shows that there is a rec in the db.
+        self.onrec = False  # this value is True if a sql search shows that there is a rec of the grv_no in the db.
         self.onrec_grievant = ""
         # skip station as that is held in self.parent.station
         # skip grievance number as that is self.grv_no
@@ -3424,15 +3542,18 @@ class SpeedGrvCheck:
         self.addstartdate = "empty"
         self.addenddate = "empty"
         self.addmeetingdate = "empty"
+        self.adddate = [self.addstartdate, self.addenddate, self.addmeetingdate]
         self.addissue = "empty"
         self.addarticle = "empty"
 
     def check_all(self):
         """ master method to run other methods. """
+        self.reformat_grv_no()  # reformat the grievance number to all lowercase, no whitespaces, no dashes.
         if self.check_grv_number():  # first check the grievance number. if that is good, then proceed.
-            self.reformat_grv_no()  # reformat the grievance number to all lowercase, no whitespaces, no dashes.
             self.get_onrecs()  # 'on record' - get the record currently in the database if it exist
             self.check_grievant()
+            self.check_dates()
+            self.check_issue()
             self.add_recs()  # write changes to the db
         self.generate_report()
 
@@ -3462,10 +3583,15 @@ class SpeedGrvCheck:
 
     def reformat_grv_no(self):
         """ reformat the grievance number to all lowercase, no whitespaces, no dashes. """
-        self.grv_no.lower()  # convert grievance number to lowercas
-        self.grv_no.strip()  # strip whitespace from start and end of the string.
-        self.grv_no.replace('-', '')  # remove any dashes
-        self.grv_no.replace(' ', '')  # remove any whitespace
+        self.grv_no = self.grv_no.lower()  # convert grievance number to lowercas
+        self.grv_no = self.grv_no.strip()  # strip whitespace from start and end of the string.
+        self.grv_no = self.grv_no.replace('-', '')  # remove any dashes
+        self.grv_no = self.grv_no.replace(' ', '')  # remove any whitespace
+
+    def reformat_grievant(self):
+        """ reformat the grievant to all lowercase, no whitespaces """
+        self.grievant = self.grievant.lower()
+        self.grievant = self.grievant.strip()
 
     def get_onrecs(self):
         """ check if there is an existing record for the grievance number in the informalc grievances table.
@@ -3486,6 +3612,7 @@ class SpeedGrvCheck:
 
     def check_grievant(self):
         """ check the grievant input. this is either 'class action' or a carrier name. it can be blank. """
+        self.reformat_grievant()  # remove external whitespace and convert to lower case
         not_names = ("class action", "")
         if self.grievant in not_names:  # "class action" is a standard entry
             self.add_grievant()
@@ -3494,14 +3621,17 @@ class SpeedGrvCheck:
             error = "     ERROR: Grievant name can not contain numbers or most special characters\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
         if not NameChecker(self.grievant).check_length():
             error = "     ERROR: Grievant name must not exceed 42 characters\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
         if not NameChecker(self.grievant).check_comma():
             error = "     ERROR: Grievant name must contain one comma to separate last name and first initial\n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
         if not NameChecker(self.grievant).check_initial():
             attn = "     ATTENTION: Grievant name should must contain one initial ideally, \n" \
                    "                unless more are needed to create a distinct carrier name.\n"
@@ -3518,26 +3648,168 @@ class SpeedGrvCheck:
             self.addgrievant = self.grievant  # save to input to dbase
 
     def check_dates(self):
-        """ check the startdate, enddate and meetingdate """
-        pass
+        """ check the startdate, enddate and meetingdate.
+         since these are all dates with similiar criteria, use a loop to check them.
+         sometimes, openpyxl sends the dates as strings of datetime objects, instead of the mm/dd/yyyy formated dates,
+         the DateTimeChecker() will identify these and skip the checks. """
+        self.input_date = [self.startdate, self.enddate, self.meetingdate]
+        for i in range(3):
+            self.check_date_loop(i)
+
+    def check_date_loop(self, i):
+        """ loop from check dates """
+        _type = ("start", "end", "meeting")
+        if self.input_date[i].strip() == "":  # if the value is blank, skip all the checks
+            self.add_date(i)
+            return
+        # if the value is a valid dt object, skip all the checks
+        if DateTimeChecker().check_dtstring(self.input_date[i]):
+            self.add_date(i)
+            return
+        date_object = BackSlashDateChecker(self.input_date[i])  # first create the date_object
+        if not date_object.count_backslashes():  # this checks that there are 2 backslashes in the date
+            error = "     ERROR: The date for the {} date must have two backslashes. Got instead: {}\n"\
+                .format(_type[i], self.input_date[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        date_object.breaker()  # this breaks the object into month, day and year elements.
+        if not date_object.check_numeric():  # check each element in the date to ensure they are numeric
+            error = "     ERROR: The month, day and year for the {} date must be numeric\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_minimums():  # check each element in the date to ensure they are greater than zero
+            error = "     ERROR: The month, day and year for the {} date must be greater than zero.\n"\
+                .format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_month():  # returns False if the month is greater than 12.
+            error = "     ERROR: The month for the {} date must less than 13.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_day():  # return False if the day is greater than 31.
+            error = "     ERROR: The day entered for the {} date is must be less than 32.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.check_year():  # returns False if the year does not have 4 digits.
+            error = "     ERROR: The year entered for the {} date must have 4 digits.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        if not date_object.valid_date():  # returns False if the date is not a valid date
+            error = "     ERROR: The date entered for the {} date is not a valid date.\n".format(_type[i])
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+        # this removes white space from the date and each element of the date.
+        self.input_date[i] = self.reformat_date(i)
+        # convert the input date into a string of a datetime object.
+        self.input_date[i] = Convert(self.input_date[i]).backslashdate_to_dtstring()
+        self.add_date(i)  # add the dates to add_date variables
+
+    def reformat_date(self, i):
+        """ this removes white space from the date and each element of the date. """
+        breakdown = self.input_date[i].strip()
+        breakdown = breakdown.split("/")
+        month = breakdown[0].strip()
+        day = breakdown[1].strip()
+        year = breakdown[2].strip()
+        return "{}/{}/{}".format(month, day, year)
+
+    def add_date(self, i):
+        """ add the dates to add_date variables
+         this is self.addstartdate, self.addenddate and self.addmeetingdate
+         a counter is passed from the self.check_date method above. """
+        onrec_date = [self.onrec_startdate, self.onrec_enddate, self.onrec_meetingdate]
+        _type = ("start", "end", "meeting")
+        if self.input_date[i] == onrec_date[i]:  # if the new input and the old record are the same - do nothing
+            pass  # retain "empty" value for grievant variable
+        else:
+            fyi = "     FYI: New or updated {} date: {}\n".format(_type[i], self.input_date[i])
+            self.fyi_array.append(fyi)
+            self.adddate[i] = self.input_date[i]  # save to input to dbase
 
     def check_issue(self):
         """ check the issue input """
-        pass
+        self.issue = self.issue.strip()  # strip out any whitespace before or after the string
+        if self.issue == "":  # accept blank entries
+            return
+        if isint(self.issue):  # identify issue index entries and execute as valid - this also update the article
+            self.check_issue_index()
+            return
+        self.check_issue_description()
+
+    def check_issue_index(self):
+        """ check that the issue index provided by the user is valid.
+        use arrays of issue categories and articles collected in the SpeedSheetCheck class"""
+        if self.issue in self.parent.issue_index:
+            self.addissue = self.parent.issue_description[int(self.issue)-1]
+            self.addarticle = self.parent.issue_article[int(self.issue)-1]
+            fyi = "     FYI: New or updated issue and article (issue index entry): {} Article: {}\n"\
+                .format(self.addissue, self.addarticle)
+            self.fyi_array.append(fyi)
+            return
+        error = "     ERROR: The number for issue is in the index of issues. Got: {}\n".format(self.issue)
+        self.error_array.append(error)
+        self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+
+    def check_issue_description(self):
+        """ check if the issue description is already in the list of issues. If so, update article. """
+        if self.issue in self.parent.issue_description:
+            index = self.parent.issue_description.index(self.issue)
+            self.addarticle = self.parent.issue_article[index]
+            fyi = "     FYI: New or updated issue and article (issue description entry): {} Article: {}\n" \
+                .format(self.addissue, self.addarticle)
+            self.add_issue(fyi)
+            return
+        fyi = "     FYI: New or updated issue: {}\n" \
+            .format(self.addissue)
+        self.add_issue(fyi)
+
+    def add_issue(self, msg):
+        """ add the issue to the add issue var """
+        if self.issue == self.onrec_issue:
+            pass
+        else:
+            self.addissue = self.issue
+            self.fyi_array.append(msg)
 
     def check_article(self):
         """ check the article input """
-        pass
+        self.article = self.article.strip()
+        if not self.article:
+            self.add_article()
+            return
+        if not isint(self.issue):
+            error = "     ERROR: The number the article must be a whole number. Got: {}\n".format(self.issue)
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return
+
+    def add_article(self):
+        """ add the article to the add_article var """
+        if self.article == self.onrec_article:
+            return
+        else:
+            fyi = "     FYI: New or updated article: {}\n".format(self.article)
+            self.fyi_array.append(fyi)
+            self.addarticle = self.article
 
     def add_recs(self):
         """ add records using the add___ vars. """
         chg_these = []
-        if not self.onrec:
+        if not self.onrec:  # if there is no record of the grievance number in the db informalc_grievance table
+            add = "     INPUT: New Grievance Number added to database >>{}\n" \
+                .format(self.grv_no)  # report
+            self.add_array.append(add)
             chg_these.append('grv_no')
         if not self.parent.allowaddrecs:  # if all checks passed
             return
         # get grievant place
-        self.grievant = self.grievant.lower()  # make sure the name is lowercase
         if self.addgrievant != "empty":
             add = "     INPUT: Grievant added or updated to database >>{}\n" \
                 .format(self.addgrievant)  # report
@@ -3546,70 +3818,58 @@ class SpeedGrvCheck:
             grievant_place = self.addgrievant
         else:
             grievant_place = self.onrec_grievant
-
-        # get startdate place
-        if self.addstartdate != "empty":
-            add = "     INPUT: Start Incident added or updated to database >>{}\n".format(self.addstartdate)  # report
-            self.add_array.append(add)
-            chg_these.append("startdate")
-            startdate_place = self.addstartdate
-        else:
-            startdate_place = self.onrec_startdate
-
-        # get enddate place
-        if self.addenddate != "empty":
-            add = "     INPUT: End Incident added or updated to database >>{}\n".format(self.addenddate)  # report
-            self.add_array.append(add)
-            chg_these.append("enddate")
-            enddate_place = self.addenddate
-        else:
-            enddate_place = self.onrec_enddate
-
-        # get meetingdate place
-        if self.addmeetingdate != "empty":
-            add = "     INPUT: Meeting Date added or updated to database >>{}\n".format(self.addenddate)  # report
-            self.add_array.append(add)
-            chg_these.append("meetingdate")
-            meetingdate_place = self.addmeetingdate
-        else:
-            meetingdate_place = self.onrec_meetingdate
-
+        # get date places using loop
+        onrec_date = [self.onrec_startdate, self.onrec_enddate, self.onrec_meetingdate]
+        startdate_place = None
+        enddate_place = None
+        meetingdate_place = None
+        date_place = [startdate_place, enddate_place, meetingdate_place]
+        chg_notation = ("startdate", "enddate", "meetingdate")
+        _type = ("Start", "End", "Meeting")
+        for i in range(3):
+            if self.adddate[i] != "empty":
+                add = "     INPUT: {} Date added or updated to database >>{}\n".format(_type[i], self.adddate[i])
+                self.add_array.append(add)
+                chg_these.append(chg_notation[i])
+                date_place[i] = self.adddate[i]
+            else:
+                date_place[i] = onrec_date[i]
         # get issue place
         if self.addissue != "empty":
-            add = "     INPUT: Issue added or updated to database >>{}\n".format(self.addenddate)  # report
+            add = "     INPUT: Issue added or updated to database >>{}\n".format(self.addissue)  # report
             self.add_array.append(add)
             chg_these.append("issue")
             issue_place = self.addissue
         else:
             issue_place = self.onrec_issue
-
         # get article place
         if self.addarticle != "empty":
-            add = "     INPUT: Article added or updated to database >>{}\n".format(self.addenddate)  # report
+            add = "     INPUT: Article added or updated to database >>{}\n".format(self.addarticle)  # report
             self.add_array.append(add)
             chg_these.append("article")
             article_place = self.addarticle
         else:
             article_place = self.onrec_article
-        print(chg_these)
         if len(chg_these) != 0:  # if change these is empty, then there is no need to insert/update records
             if not self.onrec:  # if there is no rec on file for the grievance, insert the first rec
                 sql = "INSERT INTO informalc_grievances(grievant, station, grv_no, startdate, enddate, " \
                       "meetingdate, issue, article) VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" \
-                      % (grievant_place, self.parent.station, self.grv_no, startdate_place, enddate_place,
-                         meetingdate_place, issue_place, article_place)
+                      % (grievant_place, self.parent.station, self.grv_no, date_place[0], date_place[1],
+                         date_place[2], issue_place, article_place)
             else:  # update the first rec to replace pre existing record.
                 sql = "UPDATE informalc_grievances SET grievant='%s', startdate='%s', enddate ='%s', " \
                       "meetingdate='%s', issue='%s', article='%s' WHERE grv_no='%s' and station='%s'" \
-                      % (grievant_place, startdate_place, enddate_place, meetingdate_place, issue_place, article_place,
+                      % (grievant_place, date_place[0], date_place[1], date_place[2], issue_place, article_place,
                          self.grv_no, self.parent.station)
             commit(sql)
 
     def generate_report(self):
         """ generate a report """
         self.parent.fatal_rpt += len(self.error_array)
-        self.parent.add_rpt += len(self.add_array)
-        self.parent.fyi_rpt += len(self.fyi_array)
+        if len(self.add_array):  # if there is anything in the add array - increment the add report by 1
+            self.parent.add_rpt += 1
+        if len(self.fyi_array):  # if there is anything in the fyi array - increment the add report by 1
+            self.parent.fyi_rpt += 1
         if not self.parent.interject:
             master_array = self.error_array + self.attn_array  # use these reports for precheck
             if self.parent.fullreport:  # if the full report option is selected...
@@ -3625,7 +3885,6 @@ class SpeedGrvCheck:
             self.parent.report.write("   >>> sheet: \"{}\" --> row: \"{}\"  <<<\n".format(self.sheet, self.row))
             if not self.parent.allowaddrecs:
                 self.parent.report.write("     SPEEDCELL ENTRY PROHIBITED: Correct errors!\n")
-                self.parent.fatal_rpt += 1
             for rpt in master_array:  # write all reports that have been keep in arrays.
                 self.parent.report.write(rpt)
 
@@ -3643,29 +3902,99 @@ class SpeedSetCheck:
         self.proofdue = proofdue
         self.docs = docs
         self.gatsnumber = gatsnumber
+        self.onrec = False  # this value is True if a sql search shows that there is a rec of the grv_no in the db.
         self.onrec_grv_no = None
-        self.onrec_leve = None
+        self.onrec_level = None
         self.onrec_datesigned = None
         self.onrec_decision = None
         self.onrec_proofdue = None
         self.onrec_docs = None
         self.onrec_gatsnumber = None
-        self.error_array = []
+        self.addlevel = "empty"
+        self.adddatesigned = "empty"
+        self.adddecision = "empty"
+        self.adddocs = "empty"
+        self.addgatsnumber = "empty"
+        self.error_array = []  # gives a report of failed checks
+        self.attn_array = []  # gives a report of issues to bring to the attention of users
+        self.add_array = []  # gives a report of records to add to the database
+        self.fyi_array = []  # gives a report of useful information for the user
+        self.levelarray = ("informal a", "formal a", "step b", "pre arb", "arbitration")
 
     def check_all(self):
         """ master method to run other methods. """
+        self.check_grv_number()  # check the grievance number input
         self.generate_report()
 
     def check_grv_number(self):
-        """ check the grievant input """
-        if not NameChecker(self.grv_no).check_characters():
-            error = "     ERROR: Carrier name can not contain numbers or most special characters\n"
+        """ check the grievance number input """
+        if not GrievanceChecker(self.grv_no).has_value():
+            error = "     ERROR: The grievance number must not be blank. \n"
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        # check that there is a record of the grievance in informalc_grievances
+        sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s'" % self.grv_no
+        result = inquire(sql)
+        if not result:
+            error = "     ERROR: There is no prior record of the grievance. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        if not GrievanceChecker(self.grv_no).check_characters():
+            error = "     ERROR: The grievance number can only contain numbers and letters. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        if not GrievanceChecker(self.grv_no).min_lenght():
+            error = "     ERROR: The grievance number must contain at least 4 characters. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        if not GrievanceChecker(self.grv_no).max_lenght():
+            error = "     ERROR: The grievance number can not contain more than 20 characters. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        return True
+
+    def get_onrecs(self):
+        """ check if there is an existing record for the grievance number in the informalc grievances table.
+        if so, store the values in the self.onrec variables. if not, the self.onrec variables default to empty. """
+        sql = "SELECT * FROM informalc_settlements WHERE grv_no = '%s' and station = '%s'" \
+              % (self.grv_no, self.parent.station)
+        results = inquire(sql)
+        if results:
+            self.onrec = True  # this value is True if a sql search shows that there is a rec in the db.
+            # skip grievance number as that is self.grv_no and is part of the search criteria
+            self.onrec_level = results[0][1]
+            self.onrec_datesigned = results[0][2]
+            self.onrec_decision = results[0][3]
+            self.onrec_docs = results[0][4]
+            self.onrec_gatsnumber = results[0][5]
 
     def check_level(self):
         """ check the grievance number input """
-        pass
+        self.level = self.level.strip()
+        self.level = self.level.lower()
+        if not self.level:
+            pass
+        if self.level not in self.levelarray:
+            error = "     ERROR: The level must be either 'informal a', 'formal a', 'step b', 'pre arb' or " \
+                    "'arbitration'. No other values are allowed. \n"
+            self.error_array.append(error)
+            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+            return False
+        self.add_level()
+
+    def add_level(self):
+        """ add level to the self.addlevel var """
+        if self.level == self.onrec_level:
+            pass
+        else:
+            fyi = "     FYI: New or updated level: {}\n".format(self.level)
+            self.fyi_array.append(fyi)
+            self.addlevel = self.level
 
     def check_dates(self):
         """ check the datesigned and proof due """
@@ -3682,6 +4011,15 @@ class SpeedSetCheck:
     def check_gatsnumber(self):
         """ check the article input """
         pass
+
+    def add_recs(self):
+        """ add records using the add___ vars. """
+        chg_these = []
+        if not self.onrec:  # if there is no record of the grievance number in the db informalc_grievance table
+            add = "     INPUT: New Grievance Number added to database >>{}\n" \
+                .format(self.grv_no)  # report
+            self.add_array.append(add)
+            chg_these.append('grv_no')
 
     def generate_report(self):
         """" generate the text report """
@@ -3703,7 +4041,6 @@ class SpeedIndexCheck:
 
     def check_all(self):
         """ master method to run other methods. """
-        print(self.grv_no)
         self.generate_report()
 
     def check_first(self):

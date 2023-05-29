@@ -5,8 +5,9 @@ investigation range, or their ns days, etc. The Messenger class gives the locati
 the user information in the form of message boxes.
 """
 import projvar
-from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path, Convert
-from tkinter import messagebox, simpledialog
+from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path, Convert, check_path
+from tkinter import messagebox, simpledialog, filedialog
+from shutil import rmtree
 import os
 import sys
 import subprocess
@@ -842,3 +843,119 @@ class Messenger:
                    "violation of the carrier's off bid assignment. \n\n" \
                    "Enter a value between 0 and 8"
         messagebox.showinfo("About Tolerances and Settings", text, parent=self.frame)
+
+
+class Archive:
+    """
+    This class opens and deletes archives.
+    """
+
+    def __init__(self):
+        self.frame = None
+        # make sure that lenght of path array and label array are the same or else there will be an index error.
+        self.path_array = [  # used in clear all
+            'spreadsheets',
+            'mandates_4',
+            'over_max_spreadsheet',
+            'speedsheets',
+            'over_max',
+            'off_bid',
+            'ot_equitability',
+            'ot_distribution',
+            'ee_reader',
+            'weekly_availability',
+            'pp_guide'
+        ]
+        self.status_array = []  # used in clear all
+
+    @staticmethod
+    def file_dialogue(folder):
+        """ opens file folders to access generated kbreports """
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
+        if projvar.platform == "py":
+            file_path = filedialog.askopenfilename(initialdir=os.getcwd() + "/" + folder)
+        else:
+            file_path = filedialog.askopenfilename(initialdir=folder)
+        if file_path:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", file_path])
+            if sys.platform == "darwin":
+                subprocess.call(["open", file_path])
+
+    @staticmethod
+    def remove_file(folder):
+        """ removes a file and all contents """
+        if os.path.isdir(folder):  # if it exist
+            rmtree(folder)  # delete it
+
+    def remove_file_var(self, frame, folder):
+        """ removes a file and all contents """
+        self.frame = frame
+        folder = check_path(folder)
+        if sys.platform == "win32":
+            folder_name = folder.split("\\")
+        else:
+            folder_name = folder.split("/")
+        folder_name = folder_name[-2]
+        if not os.path.isdir(folder):
+            messagebox.showwarning("Archive File Management",
+                                   "The {} folder is already empty".format(folder_name),
+                                   parent=self.frame)
+            return
+        if not messagebox.askokcancel("Archive File Management",
+                                      "This will delete all the files in the {} archive. ".format(folder_name),
+                                      parent=self.frame):
+            return
+        try:
+            rmtree(folder)
+            if not os.path.isdir(folder):
+                messagebox.showinfo("Archive File Management",
+                                    "Success! All the files in the {} archive have been deleted."
+                                    .format(folder_name),
+                                    parent=self.frame)
+        except PermissionError:
+            messagebox.showerror("Archive File Management",
+                                 "Failure! {} can not be deleted because it is being used by another program."
+                                 .format(folder_name),
+                                 parent=frame)
+
+    def clear_all(self, frame):
+        """ this empties and deletes all archive folders."""
+        self.frame = frame
+        if not messagebox.askokcancel("Archive File Management",
+                                      "This will delete all the files in the all archives. \n\n"
+                                      "As all data used to generate spreadsheets and reports is "
+                                      "kept in the klusterbox database, deleting archives is "
+                                      "safe since they can easily be regenerated.",
+                                      parent=self.frame):
+            return
+        for folder in self.path_array:  # for each in the path array
+            self.clear_each(check_path(folder))  # delete the folder and record status report.
+        status_string = self.build_status_string()
+        messagebox.showinfo("Archive File Management",
+                            "Delete all archives requested. \n\n"
+                            "Report: \n"
+                            "{}".format(status_string),
+                            parent=self.frame)
+
+    def clear_each(self, folder):
+        """ this is called by clear all to delete individual files. """
+        if not os.path.isdir(folder):
+            self.status_array.append("Already empty - no action taken")
+            return
+        try:
+            rmtree(folder)
+            if not os.path.isdir(folder):
+                self.status_array.append("Successfully deleted")
+        except PermissionError:
+            self.status_array.append("Folder in use - action failed.")
+
+    def build_status_string(self):
+        """ builds a string for the status report. """
+        status_string = ""
+        for i in range(len(self.status_array)):
+            status_string += "    {}:  {}\n".format(self.path_array[i], self.status_array[i])
+        return status_string

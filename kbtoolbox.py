@@ -10,7 +10,7 @@ import os
 import sys
 import sqlite3
 import csv
-import re
+# import re
 from datetime import datetime, timedelta
 
 
@@ -930,6 +930,19 @@ class Convert:
         dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
         return dt
 
+    def dt_converter_or_empty(self):
+        if not self.data:
+            return ""
+        else:
+            return datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
+
+    def dtstr_to_backslashstr(self):
+        """ converts a string of a datetime object to a string of a backslash date e.g. 01/01/2000 """
+        if not self.data:  # if it is empty, return an empty string
+            return ""
+        dtstr = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')  # first convert it to an actual datetime object
+        return dtstr.strftime("%m/%d/%Y")  # convert that dt ogject to a string formatted as a date.
+
     def dt_to_backslash_str(self):
         """ converts a datetime object to a string of a backslash date e.g. 01/01/2000 """
         return self.data.strftime("%m/%d/%Y")
@@ -971,10 +984,16 @@ class Convert:
         return False
 
     def backslashdate_to_datetime(self):
-        """ convert a date with backslashes into a datetime """
+        """ convert a date with backslashes into a datetime object"""
         date = self.data.split("/")
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
         return dt_converter(string)
+
+    def backslashdate_to_dtstring(self):
+        """ convert a date with backslashes into a string of a datetime"""
+        date = self.data.split("/")
+        string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
+        return str(dt_converter(string))
 
     def dtstring_to_backslashdate(self):
         """ converts a datetime string into a backslash date """
@@ -1471,6 +1490,23 @@ class DateChecker:
             return False
 
 
+class DateTimeChecker:
+    """
+    class for checking datetime objects and strings of datetime objects
+    """
+    def __init__(self):
+        self.dt_obj = None
+        self.dt_str = ""
+
+    def check_dtstring(self, dtstring):
+        """ checks a string to ensure it can be converted into a datetime object. """
+        try:
+            self.dt_obj = dt_converter(dtstring)
+            return True
+        except ValueError:
+            return False
+
+
 class NameChecker:
     """
     class for checking name strings. If a frame arguement is passed, the the methods will produce
@@ -1806,9 +1842,9 @@ class BackSlashDateChecker:
     def breaker(self):
         """ this will fully create the instance of the object """
         self.breakdown = self.data.split("/")
-        self.month = self.breakdown[0]
-        self.day = self.breakdown[1]
-        self.year = self.breakdown[2]
+        self.month = self.breakdown[0].strip()
+        self.day = self.breakdown[1].strip()
+        self.year = self.breakdown[2].strip()
 
     def check_numeric(self):
         """ check each element in the date to ensure they are numeric """
@@ -2048,39 +2084,44 @@ class GrievanceChecker:
         return True
 
 
-def informalc_date_checker(frame, date, typee):
-    """ checks the date """
+def informalc_date_checker(frame, date, _type):
+    """ checks the date.
+    to skip the message box show error, pass None to the frame arg. """
     d = date.get().split("/")
     if len(d) != 3:
-        messagebox.showerror("Invalid Data Entry",
-                             "The date for the {} is not properly formatted.".format(typee),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The date for the {} is not properly formatted.".format(_type),
+                                 parent=frame)
+        return False
     for num in d:
         if not num.isnumeric():
-            messagebox.showerror("Invalid Data Entry",
-                                 "The month, day and year for the {} "
-                                 "must be numeric.".format(type),
-                                 parent=frame)
-            return "fail"
+            if frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The month, day and year for the {} must be numeric.".format(_type),
+                                     parent=frame)
+            return False
     if len(d[0]) > 2:
-        messagebox.showerror("Invalid Data Entry",
-                             "The month for the {} must be no more than two digits"
-                             " long.".format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The month for the {} must be no more than two digits"
+                                 " long.".format(_type),
+                                 parent=frame)
+        return False
     if len(d[1]) > 2:
-        messagebox.showerror("Invalid Data Entry",
-                             "The day for the {} must be no more than two digits"
-                             " long.".format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The day for the {} must be no more than two digits"
+                                 " long.".format(_type),
+                                 parent=frame)
+        return False
     if len(d[2]) != 4:
-        messagebox.showerror("Invalid Data Entry",
-                             "The year for the {} must be four digits long."
-                             .format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The year for the {} must be four digits long."
+                                 .format(_type),
+                                 parent=frame)
+        return False
     try:
         date = datetime(int(d[2]), int(d[0]), int(d[1]))
         valid_date = True
@@ -2089,11 +2130,13 @@ def informalc_date_checker(frame, date, typee):
     except ValueError:
         valid_date = False
     if not valid_date:
-        messagebox.showerror("Invalid Data Entry",
-                             "The date entered for {} is not a valid date."
-                             .format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The date entered for {} is not a valid date."
+                                 .format(_type),
+                                 parent=frame)
+        return False
+    return True
 
 
 class CarrierRecFilter:

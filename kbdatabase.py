@@ -76,16 +76,16 @@ class DataBase:
             'startdate varchar, enddate varchar, meetingdate varchar, issue varchar, article varchar)',
 
             'CREATE table IF NOT EXISTS informalc_settlements(grv_no varchar, level varchar, date_signed varchar, '
-            'docs varchar, gats_number varchar, decision varchar, proofdue varchar)',
+            'decision varchar, proofdue varchar, docs varchar, gats_number varchar)',
             'CREATE table IF NOT EXISTS informalc_remedies (grv_no varchar, carrier_name varchar, hours varchar, '
             'rate varchar, dollars varchar, gatsverified varchar, payoutverified varchar)',
             'CREATE table IF NOT EXISTS informalc_batchindex (main varchar,sub varchar)',
             'CREATE table IF NOT EXISTS informalc_noncindex (settlement varchar, followup varchar)',
             'CREATE table IF NOT EXISTS informalc_remandindex (remanded varchar, followup varchar)',
-            'CREATE table IF NOT EXISTS informalc_issuescategories (article varchar, issue varchar primary key, '
-            'standard boolean)',
-            'CREATE table IF NOT EXISTS informalc_decisioncategories (type varchar, decision varchar primary key, '
-            'standard boolean)',
+            'CREATE table IF NOT EXISTS informalc_issuescategories (ssindex, article varchar, '
+            'issue varchar primary key, standard boolean)',
+            'CREATE table IF NOT EXISTS informalc_decisioncategories (ssindex, type varchar, '
+            'decision varchar primary key, standard boolean)',
             'CREATE table IF NOT EXISTS informalc_payout(year varchar, pp varchar, payday varchar, '
             'carrier_name varchar, hours varchar, rate varchar, amount varchar)',
             
@@ -105,11 +105,9 @@ class DataBase:
             "Setting up: Tables - Tolerances...",
             "Setting up: Tables - OTDL Preference",
             "Setting up: Tables - Refusals",
-
             "Setting up: Tables - Informal C",
             "Setting up: Tables - Informal C Awards",
             "Setting up: Tables - Informal C Payouts",
-
             "Setting up: Tables - Informal C Grievances",
             "Setting up: Tables - Informal C Settlements",
             "Setting up: Tables - Informal C Remedies",
@@ -119,7 +117,6 @@ class DataBase:
             "Setting up: Tables - Informal C Issue Categories",
             "Setting up: Tables - Informal C Decision Categories",
             "Setting up: Tables - Informal C Payout",
-
             "Setting up: Tables - DOV"
         )
         for i in range(len(tables_sql)):
@@ -282,82 +279,84 @@ class DataBase:
             commit(sql)
 
     def informalc_issues(self):
-        """  set up the standard issues for informal c issue categories """
+        """  set up the standard issues for informal c issue categories
+        fields are 'ssindex'(speedsheet index), 'article', 'issue' and 'standard' """
         issues = (
-            ("2", "discrimination", True),
-            ("5", "unilateral action", True),
-            ("8", "improper mandating", True),
-            ("8", "12/60 hour violations", True),
-            ("8", "otdl equitability", True),
-            ("8", "out of schedule pay", True),
-            ("8", "schedule change", True),
-            ("10", "denied leave", True),
-            ("10", "improper awol", True),
-            ("10", "improper annual leave", True),
-            ("10", "denied sick leave", True),
-            ("10", "denied annual leave", True),
-            ("10", "medical documentation", True),
-            ("11", "denied holiday pay", True),
-            ("11", "holiday scheduling", True),
-            ("12", "denied transfer", True),
-            ("13", "denied reassignment", True),
-            ("13", "denied accommodation", True),
-            ("14", "health and safety", True),
-            ("15", "failure to meet", True),
-            ("15", "non compliance", True),
-            ("16", "discipline", True),
-            ("16", "letter of warning", True),
-            ("16", "suspension", True),
-            ("16", "removal", True),
-            ("16", "emergency placement", True),
-            ("17", "stewards rights", True),
-            ("17", "denied information", True),
-            ("17", "denied time", True),
-            ("17", "weingarten violation", True),
-            ("26", "uniform allowance", True),
-            ("41", "off bid violation", True),
-            ("41", "denied opt", True),
-            ("41", "posting violation", True),
-            ("41", "improper hold down", True)  # 35 count
+            ("1", "2", "discrimination", True),
+            ("2", "5", "unilateral action", True),
+            ("3", "8", "improper mandating", True),
+            ("4", "8", "12/60 hour violations", True),
+            ("5", "8", "otdl equitability", True),
+            ("6", "8", "out of schedule pay", True),
+            ("7", "8", "schedule change", True),
+            ("8", "10", "denied leave", True),
+            ("9", "10", "improper awol", True),
+            ("10", "10", "improper annual leave", True),
+            ("11", "10", "denied sick leave", True),
+            ("12", "10", "denied annual leave", True),
+            ("13", "10", "medical documentation", True),
+            ("14", "11", "denied holiday pay", True),
+            ("15", "11", "holiday scheduling", True),
+            ("16", "12", "denied transfer", True),
+            ("17", "13", "denied reassignment", True),
+            ("18", "13", "denied accommodation", True),
+            ("19", "14", "health and safety", True),
+            ("20", "15", "failure to meet", True),
+            ("21", "15", "non compliance", True),
+            ("22", "16", "discipline", True),
+            ("23", "16", "letter of warning", True),
+            ("24", "16", "suspension", True),
+            ("25", "16", "removal", True),
+            ("26", "16", "emergency placement", True),
+            ("27", "17", "stewards rights", True),
+            ("28", "17", "denied information", True),
+            ("29", "17", "denied time", True),
+            ("30", "17", "weingarten violation", True),
+            ("31", "26", "uniform allowance", True),
+            ("32", "41", "off bid violation", True),
+            ("33", "41", "denied opt", True),
+            ("34", "41", "posting violation", True),
+            ("35", "41", "improper hold down", True)  # 35 count
         )
         # increment self.pbar.max_count() in self.setup() if you add more records.
         for iss in issues:
             self.pbar_counter += 1
             self.pbar.move_count(self.pbar_counter)
             self.pbar.change_text("Setting up: Tables - Informal C Issues {}".format(iss[1]))
-            sql = 'INSERT OR IGNORE INTO informalc_issuescategories (article, issue, standard) ' \
-                  'VALUES ("%s", "%s", "%s")' % (iss[0], iss[1], iss[2])
+            sql = 'INSERT OR IGNORE INTO informalc_issuescategories (ssindex, article, issue, standard) ' \
+                  'VALUES ("%s", "%s", "%s", "%s")' % (iss[0], iss[1], iss[2], iss[3])
             commit(sql)
 
     def informalc_decisions(self):
-        """  writes the standard decisions to the informal c table for decisions """
+        """  writes the standard decisions to the informal c table for decisions
+        the columns are 'ssindex' (speeed sheet index), type (of grienance), 'decision' and 'standard'. """
         decisions = (
-            ("general", "favorable", True),
-            ("general", "unfavorable", True),
-            ("general", "monetary remedy", True),
-            ("general", "adjustment", True),
-            ("general", "language", True),
-            ("general", "cease and desist", True),
-            ("general", "withdrawn", True),
-            ("general", "no violation", True),
-            ("general", "moot", True),
-            ("general", "remanded", True),
-            ("general", "???", True),
-            ("general", "bullshit", True),
-            ("16", "expunged", True),
-            ("16", "discussion", True),
-            ("16", "limited retention", True),
-            ("16", "time served", True),
-            ("16", "back pay", True),
-            ("16", "sustained", True)  # 18 count
+            ("1", "general", "favorable", True),
+            ("2", "general", "unfavorable", True),
+            ("3", "general", "monetary remedy", True),
+            ("4", "general", "adjustment", True),
+            ("5", "general", "language", True),
+            ("6", "general", "cease and desist", True),
+            ("7", "general", "withdrawn", True),
+            ("8", "general", "no violation", True),
+            ("9", "general", "moot", True),
+            ("10", "general", "remanded", True),
+            ("11", "general", "???", True),
+            ("12", "general", "bullshit", True),
+            ("13", "16", "expunged", True),
+            ("14", "16", "discussion", True),
+            ("15", "16", "limited retention", True),
+            ("16", "16", "time served", True),
+            ("17", "16", "back pay", True),
+            ("18", "16", "sustained", True)  # 18 count
         )
         # increment self.pbar.max_count() in self.setup() if you add more records.
         for des in decisions:
             self.pbar_counter += 1
             self.pbar.move_count(self.pbar_counter)
             self.pbar.change_text("Setting up: Tables - Informal C Issues {}".format(des[1]))
-            sql = 'INSERT OR IGNORE INTO informalc_decisioncategories (type, decision, standard) ' \
-                  'VALUES ("%s", "%s", "%s")' % (des[0], des[1], des[2])
+            sql = 'INSERT OR IGNORE INTO informalc_decisioncategories (ssindex, type, decision, standard) ' \
+                  'VALUES ("%s", "%s", "%s", "%s")' % (des[0], des[1], des[2], des[3])
             commit(sql)
 
     def dov(self):
