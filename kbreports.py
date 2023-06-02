@@ -959,3 +959,103 @@ class Archive:
         for i in range(len(self.status_array)):
             status_string += "    {}:  {}\n".format(self.path_array[i], self.status_array[i])
         return status_string
+
+
+class InformalCIndex:
+    """
+    this class will generate a text file guide for informal c speedsheet indexes. Including guides for Issues,
+    Decisions, Level, Docs and Grievants.
+    """
+
+    def __init__(self):
+        self.station = ""
+        self.issue_array = []
+        self.level_array = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+        self.decision_array = []
+        self.docs_array = ("non-applicable", "no", "yes", "unknown", "yes-not paid", "yes-in part",
+                           "yes-verified", "no-moot", "no-ignore")
+        self.grievant_array = []
+
+    def speedsheet_guide(self):
+        """ this method will generate a text file showing acceptable values for issue, level, decision and docs """
+        self.get_issue_array()
+        self.get_decision_array()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+        filename = "informal_c_index" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nInformal C Index Guide\n\n\n")
+        # write the issue index
+        report.write("Issue Index\n\n")
+        report.write("    (selecting the issue, \n    automatically fills in the article)\n\n")
+        report.write('{:>8}  {:<22} {:<4}\n'.format("index", "issue", "article"))
+        report.write('----------------------------------------\n')
+        for rec in self.issue_array:
+            report.write('{:>8}  {:<22} {:<4}\n'.format(rec[0], rec[2], rec[1]))
+        report.write("\n\n")
+        # write the allowed level entries
+        report.write("Level (allowed values)\n\n")
+        for elem in self.level_array:
+            report.write('      {:<20}\n'.format(elem))
+        report.write("\n\n")
+        # write decision index
+        report.write("Decision Index\n\n")
+        report.write('{:>8}  {:<22}\n'.format("index", "decision"))
+        report.write ('----------------------------\n')
+        for rec in self.decision_array:
+            report.write('{:>8}  {:<22}\n'.format(rec[0], rec[2]))
+        report.write("\n\n")
+        # write docs allowed values
+        report.write("Docs (allowed values)\n\n")
+        for elem in self.docs_array:
+            report.write('      {:<20}\n'.format(elem))
+
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+
+    def grievant_guide(self, station):
+        """ this method will generate a text file showing acceptable values for issue, level, decision and docs """
+        self.station = station
+        self.get_grievants()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
+        filename = "informal_c_carriers" + "_" + stamp + ".txt"
+        report = open(dir_path('report') + filename, "w")
+        report.write("\nInformal C Carrier List\n\n\n")
+        # write the list of carriers
+        report.write("Grievant List\n\n")
+        report.write('----------------------------------------\n')
+        for rec in self.grievant_array:
+            report.write('    {:<22}\n'.format(rec[0]))
+        report.write("\n\n")
+        report.write("{} carriers are in the carrier list.\n".format(len(self.grievant_array)))
+        report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + filename])
+        pass
+
+    def get_issue_array(self):
+        """ this method gets the issue array from the informalc_issuecategories table. """
+        sql = "SELECT * FROM informalc_issuescategories"
+        self.issue_array = inquire(sql)
+
+    def get_decision_array(self):
+        """ this method gets the decision array from the informalc_decisioncategories table. """
+        sql = "SELECT * FROM informalc_decisioncategories"
+        self.decision_array = inquire(sql)
+
+    def get_grievants(self):
+        """ this method will get a distinct list of carriers from the station """
+        sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
+              "ORDER BY carrier_name ASC" % self.station
+        self.grievant_array = inquire(sql)
+
+
+
