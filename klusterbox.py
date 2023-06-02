@@ -12,7 +12,7 @@ This version of Klusterbox is being released under the GNU General Public Licens
 """
 # custom modules
 import projvar
-from kbreports import Reports, Messenger, CheatSheet, Archive
+from kbreports import InformalCIndex, Reports, Messenger, CheatSheet, Archive
 from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, gen_ns_dict, \
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
@@ -27,8 +27,7 @@ from kbcsv_repair import CsvRepair
 from kbcsv_reader import MaxHr, ee_skimmer
 from kbpdfhandling import PdfConverter
 from kbenterrings import EnterRings
-# from kbinformalc import InformalC
-from kbinformalc import InformalCIndex, InfcSpeedSheetGen, informalc_gen_clist, informalc_date_converter
+from kbinformalc import InfcSpeedSheetGen, InfcSpeedWorkBookGet, informalc_gen_clist, informalc_date_converter
 from kbfixes import Fixes
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
@@ -43,11 +42,11 @@ import os
 # import shutil
 from shutil import copyfile, rmtree
 from re import search
-import csv
+from csv import reader
 import sys
 import subprocess
 import time
-import webbrowser  # for hyper link at about_klusterbox()
+from webbrowser import open_new  # for hyper link at about_klusterbox()
 from threading import Thread  # run load workbook while progress bar runs
 # Pillow Library
 from PIL import ImageTk, Image  # Pillow Library
@@ -155,9 +154,9 @@ class InformalC:
         speed_menu.add_command(label="Generate All Grievances",
                                command=lambda: InfcSpeedSheetGen(self.win.topframe, self.station, "all").all())
         speed_menu.add_command(label="Pre-check",
-                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, False))
+                               command=lambda: InfcSpeedWorkBookGet().open_file(self.win.topframe, False))
         speed_menu.add_command(label="Input to Database",
-                               command=lambda: SpeedWorkBookGet().open_file(self.win.topframe, True))
+                               command=lambda: InfcSpeedWorkBookGet().open_file(self.win.topframe, True))
         speed_menu.add_command(label="Speedsheet Guide",
                                command=lambda: InformalCIndex().speedsheet_guide())
         speed_menu.add_command(label="Grievant Guide",
@@ -5602,7 +5601,7 @@ class AutoDataEntry:
     def get_file(self):
         """ read the csv file and assign to self.a_file attribute """
         self.target_file = open(self.file_path, newline="")
-        self.a_file = csv.reader(self.target_file)
+        self.a_file = reader(self.target_file)
 
     def go_back(self, frame):
         """
@@ -10666,7 +10665,7 @@ class AboutKlusterbox:
     @staticmethod
     def callback(url):
         """ open hyperlinks at about_klusterbox() """
-        webbrowser.open_new(url)
+        open_new(url)
 
 
 class MassInput:
