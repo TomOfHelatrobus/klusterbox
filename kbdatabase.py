@@ -17,10 +17,10 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(135)
+        self.pbar.max_count(136)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
-        self.tables()  # pb increment: 23
+        self.tables()  # pb increment: 24
         self.stations()  # pb increment: 1
         self.tolerances()  # pb increment: 45
         self.rings()  # pb increment: 1
@@ -43,7 +43,7 @@ class DataBase:
 
     def tables(self):
         """
-        Make sure the count of the tables_sql and tables_text match or you will get a list out of sequence error
+        Make sure the count of the tables_sql and tables_text match or you will get an IndexError
         """
         tables_sql = (
             'CREATE table IF NOT EXISTS stations (station varchar primary key)',
@@ -80,6 +80,7 @@ class DataBase:
             'CREATE table IF NOT EXISTS informalc_remedies (grv_no varchar, carrier_name varchar, hours varchar, '
             'rate varchar, dollars varchar, gatsverified varchar, payoutverified varchar)',
             'CREATE table IF NOT EXISTS informalc_batchindex (main varchar,sub varchar)',
+            'CREATE table IF NOT EXISTS informalc_gatsindex (main varchar,sub varchar)',
             'CREATE table IF NOT EXISTS informalc_noncindex (settlement varchar, followup varchar)',
             'CREATE table IF NOT EXISTS informalc_remandindex (remanded varchar, followup varchar)',
             'CREATE table IF NOT EXISTS informalc_issuescategories (ssindex, article varchar, '
@@ -112,6 +113,7 @@ class DataBase:
             "Setting up: Tables - Informal C Settlements",
             "Setting up: Tables - Informal C Remedies",
             "Setting up: Tables - Informal C Batch Index",
+            "Setting up: Tables - Informal C Batch Gats Index",
             "Setting up: Tables - Informal C Noncompliance Index",
             "Setting up: Tables - Informal C Remand Index",
             "Setting up: Tables - Informal C Issue Categories",
