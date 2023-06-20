@@ -111,6 +111,8 @@ def macadj(win, mac):
 class MakeWindow:
     """
     creates a window with a scrollbar and a frame for buttons on the bottom
+    use win (or self.win) = MakeWindow() to call the object
+    use win.create(frame) to build screen
     """
     def __init__(self):
         self.topframe = Frame(projvar.root)
@@ -118,6 +120,7 @@ class MakeWindow:
         self.c = Canvas(self.topframe, width=1600)
         self.body = Frame(self.c)
         self.buttons = Canvas(self.topframe)  # button bar
+        self.move_mousewheel = True
 
     def __repr__(self):
         """ call with print(repr(MakeWindow())) """
@@ -132,24 +135,45 @@ class MakeWindow:
         """ call this method to build the window. If a frame is passed, it will be destroyed """
         if frame is not None:
             frame.destroy()  # close out the previous frame
-        self.topframe.pack(fill=BOTH, side=LEFT)
-        self.buttons.pack(fill=BOTH, side=BOTTOM)
-        # link up the canvas and scrollbar
-        self.s.pack(side=RIGHT, fill=BOTH)
-        self.c.pack(side=LEFT, fill=BOTH)
-        self.s.configure(command=self.c.yview, orient="vertical")
-        self.c.configure(yscrollcommand=self.s.set)
-        # link the mousewheel - implementation varies by platform
-        if sys.platform == "win32":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-        elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-        elif sys.platform == "linux":
-            self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
-            self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        self.topframe.pack(fill=BOTH, side=LEFT)  # pack topframe on the root
+        self.buttons.pack(fill=BOTH, side=BOTTOM)  # pack buttons on the topframe
+        self.s.pack(side=RIGHT, fill=BOTH)  # pack scrollbar on topframe
+        self.c.pack(side=LEFT, fill=BOTH)  # pack canvas on topframe
+        self.s.configure(command=self.c.yview, orient="vertical")  # link up the canvas and scrollbar
+        self.c.configure(yscrollcommand=self.s.set)  # link up the canvas and the scrollbar
+        self.topframe.bind("<Configure>", self.detect_resize)  # track when the window changes size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
+
+    def detect_resize(self, event):
+        """ compare the height of the window (event.height) against the height of the body and buttons frame
+         if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
+        if event.height >= self.body.winfo_height() + self.buttons.winfo_height():
+            self.mousewheel(False)
+        else:
+            self.mousewheel(True)
+
+    def mousewheel(self, move):
+        """ enable the scrolling for the mousewheel if the event.height greater than the height of self.body. """
+        if move:
+            # enable the scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
+            elif sys.platform == "darwin":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * event.delta), "units"))
+            elif sys.platform == "linux":
+                self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
+                self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        else:
+            # disable scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "darwin":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "linux":
+                self.c.unbind_all('<Button-4>')
+                self.c.unbind_all('<Button-5>')
 
     def finish(self):
         """ This closes the window created by front_window() """
@@ -159,12 +183,6 @@ class MakeWindow:
             mainloop()
         except KeyboardInterrupt:
             projvar.root.destroy()
-
-    def fill(self, last, count):
-        """ fill bottom of screen to for scrolling. """
-        for i in range(count):
-            Label(self.body, text="").grid(row=last + i)
-        Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
 class NewWindow:
@@ -203,17 +221,39 @@ class NewWindow:
         self.c.pack(side=LEFT, fill=BOTH)
         self.s.configure(command=self.c.yview, orient="vertical")
         self.c.configure(yscrollcommand=self.s.set)
-        # link the mousewheel - implementation varies by platform
-        if sys.platform == "win32":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-        elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-        elif sys.platform == "linux":
-            self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
-            self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        self.topframe.bind("<Configure>", self.detect_resize)  # track when the window changes size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
+
+    def detect_resize(self, event):
+        """ compare the height of the window (event.height) against the height of the body and buttons frame
+         if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
+        if event.height - 30 >= self.body.winfo_height() + self.buttons.winfo_height():
+            self.mousewheel(False)
+        else:
+            self.mousewheel(True)
+
+    def mousewheel(self, move):
+        """ enable the scrolling for the mousewheel if the event.height greater than the height of self.body. """
+        if move:
+            # enable the scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
+            elif sys.platform == "darwin":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * event.delta), "units"))
+            elif sys.platform == "linux":
+                self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
+                self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        else:
+            # disable scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "darwin":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "linux":
+                self.c.unbind_all('<Button-4>')
+                self.c.unbind_all('<Button-5>')
 
     def finish(self):
         """ This closes the window created by front_window() """
@@ -227,12 +267,6 @@ class NewWindow:
                     self.root.destroy()  # destroy it.
             except TclError:
                 pass  # else do no nothing.
-
-    def fill(self, last, count):
-        """ fill bottom of screen to for scrolling. """
-        for i in range(count):
-            Label(self.body, text="").grid(row=last + i)
-        Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
 class Globals:
@@ -617,7 +651,7 @@ class NsDayDict:
 
     @staticmethod
     def custom_config():
-        """ shows custom ns day configurations for  printout / reports """
+        """ shows custom ns day configurations for reports """
         sql = "SELECT * FROM ns_configuration"
         ns_results = inquire(sql)
         custom_ns_dict = {}  # build dictionary for ns days

@@ -96,11 +96,6 @@ class InfcSpeedSheetGen:
         self.col_header = None  # styles for workbook
         self.input_s = None  # styles for workbook
         self.input_ns = None  # styles for workbook
-        # self.index_columns = [
-        #     ["settlement", "follow up"],  # non compliance index
-        #     ["main", "sub"],  # batch settlement index
-        #     ["remanded", "follow up"]  # remanded index
-        # ]
         self.index_columns = [
             ["settlement", "follow up"],  # non compliance index
             ["remanded", "follow up"],  # remanded index
@@ -180,13 +175,6 @@ class InfcSpeedSheetGen:
         if self.selection_range == "all":
             text = "All"
             filetext = "all"
-        # self.titles = (
-        #     "Speedsheet - {} Grievances".format(text),
-        #     "Speedsheet - {} Settlements ".format(text),
-        #     "Speedsheet - {} Non Compliance Index".format(text),
-        #     "Speedsheet - {} Batch Settlement Index".format(text),
-        #     "Speedsheet - {} Remanded Index".format(text)
-        # )
         self.titles = [
             "Speedsheet - {} Grievances".format(text),
             "Speedsheet - {} Settlements ".format(text),
@@ -210,12 +198,9 @@ class InfcSpeedSheetGen:
             grv_list.append(grv[2])
         # use arrays and loops to get search results for all the grievances in the grv_list array.
         # search these tables
-        # tables_array = ("informalc_settlements", "informalc_noncindex", "informalc_batchindex",
-        #                 "informalc_remandindex")
         tables_array = ("informalc_settlements", "informalc_noncindex", "informalc_remandindex",
                         "informalc_batchindex", "informalc_gatsindex")
         # search these columns in the tables
-        # search_criteria_array = ("grv_no", "settlement", "main", "remanded")
         search_criteria_array = ("grv_no", "settlement", "remanded", "main", "main")
         for i in range(len(tables_array)):  # loop for each table
             for ii in range(len(grv_list)):  # loop for every grv in the grv list array.
@@ -241,12 +226,10 @@ class InfcSpeedSheetGen:
                     if result:
                         for r in result:
                             batchgats_onrecs.append(r)
-        # self.index_onrecs = [nonc_onrecs, batch_onrecs, remand_onrecs]
         self.index_onrecs = [nonc_onrecs, remand_onrecs, batchset_onrecs, batchgats_onrecs]
 
     def make_workbook_object(self):
         """ make the workbook object """
-        # self.ws_list = ["grievances", "settlements", "non compliance", "batch settlements", "remanded"]
         self.ws_list = ["grievances", "settlements", "non compliance", "remanded", "batch settlements", "batch gats"]
         self.ws_list[0] = self.wb.active  # create first worksheet - this will be for grievances
         self.ws_list[0].title = self.ws_titles[0]  # title first worksheet - this is for grievances
@@ -1181,9 +1164,6 @@ class SpeedGrvCheck:
             return
         # get grievant place
         if self.addgrievant != "empty":
-            # fyi = "     FYI: Grievant to be added or updated to database >>{}\n" \
-            #     .format(self.addgrievant)  # report
-            # self.fyi_array.append(fyi)
             add = "     INPUT: Grievant added or updated to database >>{}\n" \
                 .format(self.addgrievant)  # report
             self.add_array.append(add)
@@ -1201,8 +1181,6 @@ class SpeedGrvCheck:
         _type = ("Start", "End", "Meeting")
         for i in range(3):
             if self.adddate[i] != "empty":
-                # fyi = "     FYI: {} Date to be added or updated to database >>{}\n".format(_type[i], self.adddate[i])
-                # self.fyi_array.append(fyi)
                 add = "     INPUT: {} Date added or updated to database >>{}\n".format(_type[i], self.adddate[i])
                 self.add_array.append(add)
                 chg_these.append(chg_notation[i])
@@ -1211,8 +1189,6 @@ class SpeedGrvCheck:
                 date_place[i] = onrec_date[i]
         # get issue place
         if self.addissue != "empty":
-            # fyi = "     FYI: Issue to be added or updated to database >>{}\n".format(self.addissue)
-            # self.fyi_array.append(fyi)
             add = "     INPUT: Issue added or updated to database >>{}\n".format(self.addissue)  # report
             self.add_array.append(add)
             chg_these.append("issue")
@@ -1224,8 +1200,6 @@ class SpeedGrvCheck:
         if self.addarticle == self.onrec_article:
             article_place = self.onrec_article
         elif self.addarticle != "empty":
-            # fyi = "     FYI: Article to be added or updated to database >>{}\n".format(self.addarticle)
-            # self.fyi_array.append(fyi)
             add = "     INPUT: Article added or updated to database >>{}\n".format(self.addarticle)  # report
             self.add_array.append(add)
             chg_these.append("article")

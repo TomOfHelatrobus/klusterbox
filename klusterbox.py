@@ -108,6 +108,38 @@ class InformalC:
         self.stationvar = None  # this is the stringvar for the station.
         self.station = None  # the station
         self.station_options = []  # the list of station options
+        self.dec_options = (
+            "favorable",
+            "unfavorable",
+            "monetary remedy",
+            "adjustment",
+            "language",
+            "cease and desist",
+            "withdrawn",
+            "no violation",
+            "moot",
+            "remanded",
+            "???",
+            "bullshit",
+            "expunged",
+            "discussion",
+            "time served",
+            "back pay",
+            "sustained",
+            "no decision",
+            "in-part"
+        )
+        self.doc_options = (
+            "non-applicable",
+            "no",
+            "yes",
+            "unknown",
+            "yes-not paid",
+            "yes-in part",
+            "yes-verified",
+            "no-moot",
+            "no-ignore",
+        )
 
     def informalc(self, frame):
         """ a master method for running the other methods in proper sequence. """
@@ -311,6 +343,7 @@ class InformalC:
         def __init__(self, parent):
             self.parent = parent
             self.win = None
+            self.row = 0
             self.msg = ""
             #  define the stringvars
             self.grievant = None  # 1
@@ -321,7 +354,20 @@ class InformalC:
             self.meeting_date = None  # 6
             self.issue = None  # 7
             self.article = None
-            self.non_c = None  # 8  is the grievance a non compliance grievance
+            self.non_c = None  # 8  is the grievance a non compliance grievance?
+            self.nonc_entry = []  # this array store the entry fields of the non compliance indexes
+            self.nonc_del = []  # this array stores the delete buttons for the non compliance entry widgets
+            self.reman = None  # 9  is the grievance a remanded grievance?
+            self.reman_entry = []  # this array store the entry fields of the remanded indexes
+            self.reman_del = []  # this array stores the delete buttons for the remanded widgets
+            self.lvl = None  # 10 the level of the settlement
+            self.date_signed = None  # 11 the date the settlement was signed
+            self.decision = None  # 12 the decision of the settlement
+            self.proof_due = None  # 13 the date that the prooof of the remedy is due, if applicable
+            self.docs = None  # 14 the status of any documentation needed for proof of compliance
+            self.gats_no = None  # 15 the gats  number of the proof of compliance
+            self.batch_set = None  # 16 info on if the settlement is part of a batch settlement
+            self.batch_gats = None  # 17 info on if the settlement has multiple gats reports
 
         def informalc_new(self, frame):
             """ master method for running other methods in proper order."""
@@ -341,88 +387,242 @@ class InformalC:
             self.meeting_date = StringVar(self.win.body)
             self.issue = StringVar(self.win.body)
             self.article = StringVar(self.win.body)
-            self.non_c = StringVar(self.win.body)
+            self.non_c = [StringVar(self.win.body), ]
+            self.reman = [StringVar(self.win.body), ]
+            self.lvl = StringVar(self.win.body)
+            self.date_signed = StringVar(self.win.body)
+            self.decision = StringVar(self.win.body)
+            self.proof_due = StringVar(self.win.body)
+            self.docs = StringVar(self.win.body)
+            self.gats_no = StringVar(self.win.body)
+            self.batch_set = StringVar(self.win.body)
+            self.batch_gats = StringVar(self.win.body)
 
         def build_screen(self):
-            """ screen for entering in new settlements. """
-            row = 0
+            """ screen for entering in settlements. """
+            self.row = 0
+            self.build_grievanceinfo()  # this is basic grievance information
+            self.build_grievanceassociations()  # for non compliance and remanded associations
+            self.build_settlement()  # this area of the screen is for settlement information
+            self.build_message()  # this will display a message when a grievance is entered or updated
+            self.build_buttons()  # configure buttons on the bottom of the screen
+
+        def build_grievanceinfo(self):
+            """ insert the header """
             Label(self.win.body, text="Enter New Grievance", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=row, column=0, columnspan=2, sticky="w")
-            row += 1
-            Label(self.win.body, text="").grid(row=row, column=0, sticky="w")
-            row += 1
+                .grid(row=self.row, column=0, columnspan=2, sticky="w")
+            self.row += 1
+            Label(self.win.body, text="").grid(row=self.row, column=0, sticky="w")
+            self.row += 1
 
             Label(self.win.body, text="Grievant: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=row, column=0, sticky="w")
+                .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.grievant, justify='right', width=macadj(20, 15)) \
-                .grid(row=row, column=1, sticky="w")
-            row += 1
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
 
             Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=row, column=0, sticky="w")
+                .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
-                .grid(row=row, column=1, sticky="w")
-            row += 1
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
             # start and end dates
-            Label(self.win.body, text="Incident Date").grid(row=row, column=0, sticky="w")
-            row += 1
+            Label(self.win.body, text="Incident Date").grid(row=self.row, column=0, sticky="w")
+            self.row += 1
             # start date
             Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(22, 20), anchor="w") \
-                .grid(row=row, column=0, sticky="w")
+                .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.incident_start, justify='right', width=macadj(20, 15)) \
-                .grid(row=row, column=1, sticky="w")
-            row += 1
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
             # end date
             Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=row, column=0, sticky="w")
+                .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.incident_end, justify='right', width=macadj(20, 15)) \
-                .grid(row=row, column=1, sticky="w")
-            row += 1
-
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # meeting date
             Label(self.win.body, text="Meeting Date (mm/dd/yyyy): ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=row, column=0, sticky="w")
+                .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.meeting_date, justify='right', width=macadj(20, 15)) \
-                .grid(row=row, column=1, sticky="w")
-            row += 1
-            Label(self.win.body, text="Non compliance", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=row, column=0, sticky="w")
-
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
             # issue
             Label(self.win.body, text="Issue: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=row, column=0, sticky="w")
-            Label(self.win.body, text="", height=macadj(1, 2)).grid(row=row, column=1)
-            row += 1
+                .grid(row=self.row, column=0, sticky="w")
+            Label(self.win.body, text="", height=macadj(1, 2)).grid(row=self.row, column=1)
+            self.row += 1
             Entry(self.win.body, textvariable=self.issue, width=macadj(48, 36), justify='right') \
-                .grid(row=row, column=0, sticky="w", columnspan=2)
-            row += 1
-
+                .grid(row=self.row, column=0, sticky="w", columnspan=3)
+            self.row += 1
+            # article
             Label(self.win.body, text="Article: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=row, column=0, sticky="w")
+                .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.article, justify='right', width=macadj(20, 15)) \
-                .grid(row=row, column=1, sticky="w")
-            row += 1
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
 
-            Label(self.win.body, text="", height=macadj(1, 1)).grid(row=row, column=0)
-            row += 1
+        def build_grievanceassociations(self):
+            """ these are field for non compliance and remanded grievance indexes. Both use separate frames to
+            allow for expanding/colapsing fields """
+            text = macadj("Non Compliance Associations __________________________________",
+                          "Non Compliance Associations _________________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
+            self.row += 1
+            nonc_frame = Frame(self.win.body)
+            nonc_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(nonc_frame, text="Non compliance", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=0, column=0, sticky="w")
+            nonc = Entry(nonc_frame, textvariable=self.non_c[0], justify='right', width=macadj(20, 15))
+            nonc.grid(row=0, column=1, sticky="w")
+            self.nonc_entry.append(nonc)  # add this to an array of entry widgets for non compliance
+            del_ = Button(nonc_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_nonc_field(nonc_frame))
+            del_.grid(row=0, column=3)
+            self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
+            self.row += 1
+            # remanded
+            text = macadj("Remanded  Associations __________________________________",
+                          "Remanded Associations _________________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
+            self.row += 1
+            reman_frame = Frame(self.win.body)
+            reman_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(reman_frame, text="Remanded", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=0, column=0, sticky="w")
+            reman = Entry(reman_frame, textvariable=self.reman[0], justify='right', width=macadj(20, 15))
+            reman.grid(row=0, column=1, sticky="w")
+            self.reman_entry.append(reman)  # add this to an array of entry widgets for non compliance
+            del_ = Button(reman_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_reman_field(reman_frame))
+            del_.grid(row=0, column=3)
+            self.reman_del.append(del_)  # add this to an array of widgets of delete buttons
+            self.row += 1
 
+        def build_settlement(self):
+            """ this area of the screen is for settlement information. """
+            text = macadj("Settlement __________________________________",
+                          "Settlement _________________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=2, sticky="w")
+            self.row += 1
+            # level of the settlement
+            # select level
+            Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")  # select settlement level
+            lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+            lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
+            lvl_om.config(width=macadj(13, 13))
+            lvl_om.grid(row=self.row, column=1)
+            self.lvl.set("informal a")
+            self.row += 1
+            # date signed
+            Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # decision
+            Label(self.win.body, text="Decision: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")  # select decision
+            dec_om = OptionMenu(self.win.body, self.decision, *self.parent.dec_options)
+            dec_om.config(width=macadj(13, 13))
+            dec_om.grid(row=self.row, column=1)
+            self.decision.set("no decision")
+            self.row += 1
+            # proof due
+            Label(self.win.body, text="Proof Due (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.proof_due, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # docs
+            Label(self.win.body, text="Docs: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")  # select docs
+            doc_om = OptionMenu(self.win.body, self.docs, *self.parent.doc_options)
+            doc_om.config(width=macadj(13, 13))
+            doc_om.grid(row=self.row, column=1)
+            self.docs.set("no docs")
+            self.row += 1
+            # gats number
+            Label(self.win.body, text="Gats Number: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.gats_no, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+
+        def build_message(self):
+            """ this will display a message when a grievance is entered or updated. """
             Label(self.win.body, text=self.msg, fg="red", height=macadj(1, 1)) \
-                .grid(row=row, column=0, columnspan=2, sticky="w")
-            row += 1
+                .grid(row=self.row, column=0, columnspan=2, sticky="w")
+            self.row += 1
 
-            # configure buttons on the bottom of the screen
+        def build_buttons(self):
+            """ configure buttons on the bottom of the screen """
             button_alignment = macadj("w", "center")
             Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
                    command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
             Button(self.win.buttons, text="Enter", width=macadj(19, 18), anchor=button_alignment,
                    command=lambda: self.informalc_new_apply()).grid(row=0, column=1)
+
+        def add_nonc_field(self, frame):
+            """ added fields for compliance index"""
+            add_stringvar = StringVar(self.win.body)
+            self.non_c.append(add_stringvar)  # add this to an array of stringvars for non compliance
+            nonc = Entry(frame, textvariable=self.non_c[len(self.non_c)-1], justify='right', width=macadj(20, 15))
+            nonc.grid(row=len(self.non_c)-1, column=1, sticky="w")
+            self.nonc_entry.append(nonc)  # add this to an array of entry widgets for non compliance
+            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
+                          command=lambda x=len(self.non_c)-1: self.del_nonc_field(x))
+            del_.grid(row=len(self.non_c)-1, column=3)
+            self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
+            # bind the expanding frome to the canvas and scrollregion
+            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+
+        def del_nonc_field(self, x):
+            """ delete a field from the non compliance entry widgets as well as the delete button. 
+            set the value of the corresponding stringvar to an empty string. """
+            self.nonc_entry[x].grid_remove()
+            self.nonc_del[x].grid_remove()
+            self.non_c[x].set("")  # set the value of the stringvar to empty string
+            
+        def add_reman_field(self, frame):
+            """ added fields for compliance index"""
+            add_stringvar = StringVar(self.win.body)
+            self.reman.append(add_stringvar)  # add this to an array of stringvars for remanded
+            reman = Entry(frame, textvariable=self.reman[len(self.reman)-1], justify='right', width=macadj(20, 15))
+            reman.grid(row=len(self.reman)-1, column=1, sticky="w")
+            self.reman_entry.append(reman)  # add this to an array of entry widgets for remanded
+            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
+                          command=lambda x=len(self.reman)-1: self.del_reman_field(x))
+            del_.grid(row=len(self.reman)-1, column=3)
+            self.reman_del.append(del_)  # add this to an array of widgets of delete buttons
+            # bind the expanding frome to the canvas and scrollregion
+            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+
+        def del_reman_field(self, x):
+            """ delete a field from the remanded entry widgets as well as the delete button.
+            set the value of the corresponding stringvar to an empty string. """
+            self.reman_entry[x].grid_remove()
+            self.reman_del[x].grid_remove()
+            self.reman[x].set("")  # set the value of the stringvar to empty string
 
         def informalc_new_apply(self):
             """ applies changes to settlement information. """
@@ -2985,7 +3185,6 @@ class OtDistribution:
         Button(self.win.body, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
                fg=macadj("white", "red")).grid(row=self.row, column=10, padx=2)
         self.row += 1
-        self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
 
     def investigation_status(self):
         """ provide message on status of investigation range """
@@ -3356,7 +3555,6 @@ class OtEquitability:
         Button(self.win.body, text="Reset", width=macadj(5, 6), bg=macadj("red", "SystemButtonFace"),
                fg=macadj("white", "red")).grid(row=self.row, column=10, padx=2)
         self.row += 1
-        self.win.fill(self.row, 30)  # fill the bottom of the window for scrolling
 
     def set_invran(self):
         """ sets the investigation range """
@@ -5828,7 +6026,6 @@ class AutoDataEntry:
             if sys.platform == "win32":
                 button_apply.config(anchor="w")
             button_apply.pack(side=LEFT)
-            self.win.fill(11, 30)  # add white space at bottom of page
             self.win.finish()  # close out the window function
 
         def apply(self):
@@ -7892,7 +8089,6 @@ class StartUp:
         self.win.create(None)
         self.new_station = StringVar(self.win.body)
         self.build()
-        self.win.fill(7, 20)
         self.buttons_frame()
         self.win.finish()
 
@@ -7972,7 +8168,6 @@ class GenConfig:
         self.get_stringvars()
         self.build()
         self.button_frame()
-        self.win.fill(self.row + 1, 25)
         self.win.finish()
 
     def get_settings(self):
@@ -9335,7 +9530,6 @@ class SpreadsheetConfig:
         Label(self.win.body, text="Set rows to one").grid(row=row, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set", command=lambda: self.min_ss_presets("one")) \
             .grid(row=row, column=2)
-        self.win.fill(row + 1, 15)
 
     def buttons_frame(self):
         """ configures the widgets on the bottom of the frame """
@@ -9820,7 +10014,6 @@ class SpeedConfig:
         Label(self.win.body, text="Low Settings").grid(row=13, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set",
                command=lambda: self.preset_low()).grid(row=13, column=3)
-        self.win.fill(11, 20)  # fill the bottom of the window for scrolling
         self.buttons_frame()
 
     def buttons_frame(self):
@@ -12105,8 +12298,8 @@ class MainFrame:
                command=lambda: InformalC().informalc(self.win.topframe)).grid(row=1, column=1, pady=5)
         Button(self.main_frame, text="Quit", width=30, command=lambda: projvar.root.destroy()) \
             .grid(row=2, column=1, pady=5)
-        for i in range(25):
-            Label(self.main_frame, text="").grid(row=4 + i, column=1)
+        # for i in range(25):
+        #     Label(self.main_frame, text="").grid(row=4 + i, column=1)
 
     def empty_carrierlist(self):
         """ the carrier list is empty """
