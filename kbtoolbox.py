@@ -113,6 +113,7 @@ class MakeWindow:
     creates a window with a scrollbar and a frame for buttons on the bottom
     use win (or self.win) = MakeWindow() to call the object
     use win.create(frame) to build screen
+    call win.finish() at the end of the widgets
     """
     def __init__(self):
         self.topframe = Frame(projvar.root)
@@ -1158,6 +1159,11 @@ class Convert:
             return 0
         return self.data
 
+    def empty_not_nonetype(self):
+        """ returns an empty string for None """
+        if type(self.data) is None:
+            return ""
+        return self.data
 
 class Handler:
     """
@@ -1248,6 +1254,17 @@ class Handler:
         if self.data == "0000" or self.data == "00000":  # if the route is all zeros
             return ""  # return empty string
         return self.data
+
+    def make_ordinal(self):
+        """ makes integers ordinal. accepts integers or number strings and returns ordinals """
+        number = str(self.data)
+        if number == "1":
+            return "1st"
+        if number == "2":
+            return "2nd"
+        if number == "3":
+            return "3rd"
+        return number + "th"
 
 
 def isfloat(value):

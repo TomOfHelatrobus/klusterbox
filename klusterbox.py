@@ -18,7 +18,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
     find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
-    RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker
+    RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker, DateTimeChecker, GrievanceChecker
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -41,7 +41,6 @@ from operator import itemgetter
 import os
 # import shutil
 from shutil import copyfile, rmtree
-from re import search
 from csv import reader
 import sys
 import subprocess
@@ -102,34 +101,12 @@ class InformalC:
 
     def __init__(self):
         self.win = None
-        self.frame = None
-        # global root
-        # root = self.win.root
-        self.stationvar = None  # this is the stringvar for the station.
-        self.station = None  # the station
-        self.station_options = []  # the list of station options
-        self.dec_options = (
-            "favorable",
-            "unfavorable",
-            "monetary remedy",
-            "adjustment",
-            "language",
-            "cease and desist",
-            "withdrawn",
-            "no violation",
-            "moot",
-            "remanded",
-            "???",
-            "bullshit",
-            "expunged",
-            "discussion",
-            "time served",
-            "back pay",
-            "sustained",
-            "no decision",
-            "in-part"
-        )
+        self.stationvar = None # this is the stringvar for the station
+        self.station_options = []  # the list of stations.
+        self.station = None  # the stationon options
+        self.station_actual = None
         self.doc_options = (
+            "no status",
             "non-applicable",
             "no",
             "yes",
@@ -140,22 +117,54 @@ class InformalC:
             "no-moot",
             "no-ignore",
         )
+        self.incident_date = None
+        self.incident_start = None
+        self.incident_end = None
+        self.signing_date = None
+        self.signing_start = None
+        self.signing_end = None
+        # self.station = None
+        self.set_lvl = None
+        self.level = None
+        self.gats = None
+        self.have_gats = None
+        self.docs = None
+        self.have_docs = None
+        self.sql = None  # var for sql query. hold in variable so search can be duplicated.
+        self.search_result = None  # var for the search result
+        self.companion_root = None  # a companion root window for entering carrier awards
+        self.companion_frame = None  # a companion frame for the addframe root.
+        #  vars for the edit methods
+        self.grv_num = None
+        self.msg = ""
+        # vars for the edit stringvars
+        self.grv_no = None
+        self.edit_incident_start = None
+        self.edit_incident_end = None
+        self.date_signed = None
+        self.lvl = None
+        # self.station = None
+        self.gats_number = None
+        self.edit_docs = None
+        self.description = None
+        # vars for add award
+        self.var_id = None
+        self.var_name = None
+        self.var_hours = None
+        self.var_rate = None
+        self.var_amount = None
 
     def informalc(self, frame):
         """ a master method for running the other methods in proper sequence. """
-        self.frame = frame
-        # self.win = MakeWindow()
-        # self.win.create(frame)
         self.clear_tempfolders()  # clear contents of temp folder
         self.get_station()  # this uses the investigation range station as the default
         self.get_station_options()  # this gets the list of stations
         self.build_tables()  # build needed tables if they do not exist.
-        # self.win.finish()
-        if not self.station_screen_autorouting():
+        if not self.station_screen_autorouting(frame):
             if not self.station:
-                self.station_screen(self.frame)  # this allows the user to change/select the station
+                self.station_screen(frame)  # this allows the user to change/select the station
             else:
-                self.menu_screen(self.frame)  # this fills the screen with widgets.
+                self.menu_screen(frame)  # this fills the screen with widgets.
 
     def get_station(self):
         """ this sets the station to what was used for the klusterbox investigation range. """
@@ -251,7 +260,7 @@ class InformalC:
         station_om = OptionMenu(self.win.body, self.stationvar, *self.station_options)
         station_om.config(width=macadj(40, 34))
         station_om.grid(row=row, column=0, columnspan=2, sticky="e")
-        # self.station_screen_autorouting()
+        # self.station_screen_autorouting(frame)
         # configure the submit button
         button_submit = Button(self.win.buttons)
         button_submit.config(text="Submit", width=20, command=lambda: self.station_screen_submit())
@@ -266,7 +275,7 @@ class InformalC:
         button_back.grid(row=0, column=0)
         self.win.finish()  # this commands the window to loop and persist.
 
-    def station_screen_autorouting(self):
+    def station_screen_autorouting(self, frame):
         """ this will automatically route the user depending on the amount of station options.
         One station option will automatically chose that option,
         Zero station options will show an error message and exit informal c. """
@@ -282,7 +291,7 @@ class InformalC:
             return True
         if len(self.station_options) == 1:
             self.station = self.station_options[0]
-            self.menu_screen(self.frame)
+            self.menu_screen(frame)
             return True
         return False
 
@@ -297,6 +306,7 @@ class InformalC:
             self.station_screen(self.win.topframe)  # return to and refresh the station screen
         else:
             self.station = self.stationvar.get()
+            # self.menu_screen(self.win.topframe)
             self.menu_screen(self.win.topframe)
 
     def menu_screen(self, frame):
@@ -311,14 +321,11 @@ class InformalC:
         Button(self.win.body, text=" Enter New Grievance", width=30,
                command=lambda: self.NewGrievances(self).informalc_new(self.win.topframe)).grid(row=row, pady=5)
         row += 1
-        Button(self.win.body, text="Enter New Settlement", width=30,
-               command=lambda: self.New(self).informalc_new(self.win.topframe)).grid(row=row, pady=5)
-        row += 1
         Button(self.win.body, text="Grievance Tracker", width=30,
-               command=lambda: self.GrvList(self).grvlist_search(self.win.topframe)).grid(row=row, pady=5)
+               command=lambda: self.grvlist_search(self.win.topframe)).grid(row=row, pady=5)
         row += 1
         Button(self.win.body, text="Tracker Settlement", width=30,
-               command=lambda: self.GrvList(self).grvlist_search(self.win.topframe)).grid(row=row, pady=5)
+               command=lambda: self.grvlist_search(self.win.topframe)).grid(row=row, pady=5)
         row += 1
         Button(self.win.body, text="Payout Entry", width=30,
                command=lambda: self.PayoutEntry(self).poe_search(self.win.topframe)).grid(row=row, pady=5)
@@ -335,1835 +342,1151 @@ class InformalC:
         button_back.grid(row=0, column=0)
         self.win.finish()  # this commands the window to loop and persist.
 
-    class NewGrievances:
-        """
-        Allows the user to create new records of grievances.
-        """
+    def grvlist_search(self, frame):
+        """ master method for running other methods in proper order. """
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.get_stringvars()
+        self.build_screen()
+        self.build_buttons()
+        self.win.finish()
 
-        def __init__(self, parent):
-            self.parent = parent
-            self.win = None
-            self.row = 0
-            self.msg = ""
-            #  define the stringvars
-            self.grievant = None  # 1
-            self.station = None  # 2
-            self.grv_no = None  # 3
-            self.incident_start = None  # 4
-            self.incident_end = None  # 5
-            self.meeting_date = None  # 6
-            self.issue = None  # 7
-            self.article = None
-            self.non_c = None  # 8  is the grievance a non compliance grievance?
-            self.nonc_entry = []  # this array store the entry fields of the non compliance indexes
-            self.nonc_del = []  # this array stores the delete buttons for the non compliance entry widgets
-            self.reman = None  # 9  is the grievance a remanded grievance?
-            self.reman_entry = []  # this array store the entry fields of the remanded indexes
-            self.reman_del = []  # this array stores the delete buttons for the remanded widgets
-            self.lvl = None  # 10 the level of the settlement
-            self.date_signed = None  # 11 the date the settlement was signed
-            self.decision = None  # 12 the decision of the settlement
-            self.proof_due = None  # 13 the date that the prooof of the remedy is due, if applicable
-            self.docs = None  # 14 the status of any documentation needed for proof of compliance
-            self.gats_no = None  # 15 the gats  number of the proof of compliance
-            self.batch_set = None  # 16 info on if the settlement is part of a batch settlement
-            self.batch_gats = None  # 17 info on if the settlement has multiple gats reports
+    def get_stringvars(self):
+        """ initialize varibles """
+        self.incident_date = StringVar(self.win.topframe)
+        self.incident_start = StringVar(self.win.topframe)
+        self.incident_end = StringVar(self.win.topframe)
+        self.signing_date = StringVar(self.win.topframe)
+        self.signing_start = StringVar(self.win.topframe)
+        self.signing_end = StringVar(self.win.topframe)
+        self.set_lvl = StringVar(self.win.topframe)
+        self.level = StringVar(self.win.topframe)
+        self.gats = StringVar(self.win.topframe)
+        self.have_gats = StringVar(self.win.topframe)
+        self.docs = StringVar(self.win.topframe)
+        self.have_docs = StringVar(self.win.topframe)
 
-        def informalc_new(self, frame):
-            """ master method for running other methods in proper order."""
-            self.win = MakeWindow()
-            self.get_stringvars()
-            self.win.create(frame)
-            self.build_screen()
-            self.win.finish()
+    def build_screen(self):
+        """ builds page for searching grievance settlements. """
+        Label(self.win.body, text="Informal C: Settlement Search Criteria", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, columnspan=6, sticky="w")
+        Label(self.win.body, text=" ").grid(row=1, columnspan=6)
+        # # select station
+        # Label(self.win.body, text=" Station ", background=macadj("gray95", "white"), fg=macadj("black", "black"),
+        #       anchor="w", width=macadj(14, 12)).grid(row=2, column=0, columnspan=3, sticky="w")
+        # station_options = projvar.list_of_stations
+        # if "out of station" in station_options:
+        #     station_options.remove("out of station")
+        # station_om = OptionMenu(self.win.body, self.station, *station_options)
+        # station_om.config(width=macadj(38, 31))
+        # station_om.grid(row=2, column=3, columnspan=3, sticky="e")
+        # self.station.set("Select a Station")
+        Label(self.win.body, text="Search For", fg="grey").grid(row=3, column=0, columnspan=2, sticky="w")
+        Label(self.win.body, text="Category", fg="grey").grid(row=3, column=3)
+        Label(self.win.body, text="Start", fg="grey").grid(row=3, column=4)
+        Label(self.win.body, text="End", fg="grey").grid(row=3, column=5)
+        # select for starting date
+        Radiobutton(self.win.body, text="yes", variable=self.incident_date, value='yes', width=macadj(2, 4)) \
+            .grid(row=4, column=0, sticky="w")
+        Radiobutton(self.win.body, text="no", variable=self.incident_date, value='no', width=macadj(2, 4)) \
+            .grid(row=4, column=1, sticky="w")
+        Label(self.win.body, text="", width=macadj(2, 4)).grid(row=4, column=2)
+        Label(self.win.body, text=" Incident Dates", background=macadj("gray95", "white"),
+              fg=macadj("black", "black"), anchor="w", width=14).grid(row=4, column=3, sticky="w")
+        Entry(self.win.body, textvariable=self.incident_start, width=macadj(12, 8), justify='right') \
+            .grid(row=4, column=4)
+        Entry(self.win.body, textvariable=self.incident_end, width=macadj(12, 8), justify='right') \
+            .grid(row=4, column=5)
+        self.incident_date.set('no')
+        # select for signing date
+        Radiobutton(self.win.body, text="yes", variable=self.signing_date, value='yes', width=macadj(2, 4)) \
+            .grid(row=5, column=0, sticky="w")
+        Radiobutton(self.win.body, text="no", variable=self.signing_date, value='no', width=macadj(2, 4)) \
+            .grid(row=5, column=1, sticky="w")
+        Label(self.win.body, text=" Signing Dates", background=macadj("gray95", "white"),
+              fg=macadj("black", "black"), anchor="w", width=14).grid(row=5, column=3, sticky="w")
+        Entry(self.win.body, textvariable=self.signing_start, width=macadj(12, 8), justify='right') \
+            .grid(row=5, column=4)
+        Entry(self.win.body, textvariable=self.signing_end, width=macadj(12, 8), justify='right') \
+            .grid(row=5, column=5)
+        self.signing_date.set('no')
+        # select for settlement level
+        Radiobutton(self.win.body, text="yes", variable=self.set_lvl, value='yes', width=macadj(2, 4)) \
+            .grid(row=6, column=0, sticky="w")
+        Radiobutton(self.win.body, text="no", variable=self.set_lvl, value='no', width=macadj(2, 4)) \
+            .grid(row=6, column=1, sticky="w")
+        self.set_lvl.set("no")
+        Label(self.win.body, text=" Settlement Level ", background=macadj("gray95", "white"),
+              fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=6, column=3, sticky="w")
+        lvl_options = ("informal a", "formal a", "step b", "pre-arb", "arbitration")
+        lvl_om = OptionMenu(self.win.body, self.level, *lvl_options)
+        lvl_om.config(width=macadj(20, 16))
+        lvl_om.grid(row=6, column=4, columnspan=3, sticky="e")
+        self.level.set("informal a")
+        # select for gats number
+        Radiobutton(self.win.body, text="yes", variable=self.gats, value='yes', width=macadj(2, 4)) \
+            .grid(row=7, column=0, sticky="w")
+        Radiobutton(self.win.body, text="no", variable=self.gats, value='no', width=macadj(2, 4)) \
+            .grid(row=7, column=1, sticky="w")
+        Label(self.win.body, text=" GATS Number", background=macadj("gray95", "white"), fg=macadj("black", "black"),
+              anchor="w", width=14, height=1).grid(row=7, column=3, sticky="w")
+        gats_options = ("no", "yes")
+        gats_om = OptionMenu(self.win.body, self.have_gats, *gats_options)
+        gats_om.config(width=macadj(10, 8))
+        gats_om.grid(row=7, column=4, columnspan=3, sticky="e")
+        self.have_gats.set('no')
+        self.gats.set('no')
+        # select for documentation
+        Radiobutton(self.win.body, text="yes", variable=self.docs, value='yes', width=macadj(2, 4)) \
+            .grid(row=9, column=0, sticky="w")
+        Radiobutton(self.win.body, text="no", variable=self.docs, value='no', width=macadj(2, 4)) \
+            .grid(row=9, column=1, sticky="w")
+        Label(self.win.body, text=" Documentation", background=macadj("gray95", "white"),
+              fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=9, column=3, sticky="w")
+        doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
+        docs_om = OptionMenu(self.win.body, self.have_docs, *doc_options)
+        docs_om.config(width=macadj(10, 8))
+        docs_om.grid(row=9, column=4, columnspan=3, sticky="e")
+        self.have_docs.set('no')
+        self.docs.set("no")
+        Label(self.win.body, text="").grid(row=13)
 
-        def get_stringvars(self):
-            """ initialize the stringvars """
-            self.grievant = StringVar(self.win.body)
-            self.station = StringVar(self.win.body)
-            self.grv_no = StringVar(self.win.body)
-            self.incident_start = StringVar(self.win.body)
-            self.incident_end = StringVar(self.win.body)
-            self.meeting_date = StringVar(self.win.body)
-            self.issue = StringVar(self.win.body)
-            self.article = StringVar(self.win.body)
-            self.non_c = [StringVar(self.win.body), ]
-            self.reman = [StringVar(self.win.body), ]
-            self.lvl = StringVar(self.win.body)
-            self.date_signed = StringVar(self.win.body)
-            self.decision = StringVar(self.win.body)
-            self.proof_due = StringVar(self.win.body)
-            self.docs = StringVar(self.win.body)
-            self.gats_no = StringVar(self.win.body)
-            self.batch_set = StringVar(self.win.body)
-            self.batch_gats = StringVar(self.win.body)
+    def build_buttons(self):
+        """ build the buttons on the bottom of the screen. """
+        button_alignment = macadj("w", "center")
+        Button(self.win.buttons, text="Search", width=20, anchor=button_alignment,
+               command=lambda: self.grvlist_apply(self.win.topframe)).grid(row=0, column=1)
+        Button(self.win.buttons, text="Go Back", width=20, anchor=button_alignment,
+               command=lambda: self.informalc(self.win.topframe)).grid(row=0, column=0)
 
-        def build_screen(self):
-            """ screen for entering in settlements. """
-            self.row = 0
-            self.build_grievanceinfo()  # this is basic grievance information
-            self.build_grievanceassociations()  # for non compliance and remanded associations
-            self.build_settlement()  # this area of the screen is for settlement information
-            self.build_message()  # this will display a message when a grievance is entered or updated
-            self.build_buttons()  # configure buttons on the bottom of the screen
-
-        def build_grievanceinfo(self):
-            """ insert the header """
-            Label(self.win.body, text="Enter New Grievance", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=self.row, column=0, columnspan=2, sticky="w")
-            self.row += 1
-            Label(self.win.body, text="").grid(row=self.row, column=0, sticky="w")
-            self.row += 1
-
-            Label(self.win.body, text="Grievant: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.grievant, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-
-            Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-            # start and end dates
-            Label(self.win.body, text="Incident Date").grid(row=self.row, column=0, sticky="w")
-            self.row += 1
-            # start date
-            Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w") \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.incident_start, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-            # end date
-            Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.incident_end, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-            # meeting date
-            Label(self.win.body, text="Meeting Date (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.meeting_date, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-            # issue
-            Label(self.win.body, text="Issue: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Label(self.win.body, text="", height=macadj(1, 2)).grid(row=self.row, column=1)
-            self.row += 1
-            Entry(self.win.body, textvariable=self.issue, width=macadj(48, 36), justify='right') \
-                .grid(row=self.row, column=0, sticky="w", columnspan=3)
-            self.row += 1
-            # article
-            Label(self.win.body, text="Article: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.article, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-
-        def build_grievanceassociations(self):
-            """ these are field for non compliance and remanded grievance indexes. Both use separate frames to
-            allow for expanding/colapsing fields """
-            text = macadj("Non Compliance Associations __________________________________",
-                          "Non Compliance Associations _________________________")
-            Label(self.win.body, text=text, anchor="w",
-                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
-            self.row += 1
-            nonc_frame = Frame(self.win.body)
-            nonc_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
-            Label(nonc_frame, text="Non compliance", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=0, column=0, sticky="w")
-            nonc = Entry(nonc_frame, textvariable=self.non_c[0], justify='right', width=macadj(20, 15))
-            nonc.grid(row=0, column=1, sticky="w")
-            self.nonc_entry.append(nonc)  # add this to an array of entry widgets for non compliance
-            del_ = Button(nonc_frame, text="add", width=macadj(4, 3), anchor="center",
-                          command=lambda: self.add_nonc_field(nonc_frame))
-            del_.grid(row=0, column=3)
-            self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
-            self.row += 1
-            # remanded
-            text = macadj("Remanded  Associations __________________________________",
-                          "Remanded Associations _________________________")
-            Label(self.win.body, text=text, anchor="w",
-                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
-            self.row += 1
-            reman_frame = Frame(self.win.body)
-            reman_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
-            Label(reman_frame, text="Remanded", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=0, column=0, sticky="w")
-            reman = Entry(reman_frame, textvariable=self.reman[0], justify='right', width=macadj(20, 15))
-            reman.grid(row=0, column=1, sticky="w")
-            self.reman_entry.append(reman)  # add this to an array of entry widgets for non compliance
-            del_ = Button(reman_frame, text="add", width=macadj(4, 3), anchor="center",
-                          command=lambda: self.add_reman_field(reman_frame))
-            del_.grid(row=0, column=3)
-            self.reman_del.append(del_)  # add this to an array of widgets of delete buttons
-            self.row += 1
-
-        def build_settlement(self):
-            """ this area of the screen is for settlement information. """
-            text = macadj("Settlement __________________________________",
-                          "Settlement _________________________")
-            Label(self.win.body, text=text, anchor="w",
-                  fg="blue").grid(row=self.row, column=0, columnspan=2, sticky="w")
-            self.row += 1
-            # level of the settlement
-            # select level
-            Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")  # select settlement level
-            lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
-            lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
-            lvl_om.config(width=macadj(13, 13))
-            lvl_om.grid(row=self.row, column=1)
-            self.lvl.set("informal a")
-            self.row += 1
-            # date signed
-            Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-            # decision
-            Label(self.win.body, text="Decision: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")  # select decision
-            dec_om = OptionMenu(self.win.body, self.decision, *self.parent.dec_options)
-            dec_om.config(width=macadj(13, 13))
-            dec_om.grid(row=self.row, column=1)
-            self.decision.set("no decision")
-            self.row += 1
-            # proof due
-            Label(self.win.body, text="Proof Due (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.proof_due, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-            # docs
-            Label(self.win.body, text="Docs: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")  # select docs
-            doc_om = OptionMenu(self.win.body, self.docs, *self.parent.doc_options)
-            doc_om.config(width=macadj(13, 13))
-            doc_om.grid(row=self.row, column=1)
-            self.docs.set("no docs")
-            self.row += 1
-            # gats number
-            Label(self.win.body, text="Gats Number: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.gats_no, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
-
-        def build_message(self):
-            """ this will display a message when a grievance is entered or updated. """
-            Label(self.win.body, text=self.msg, fg="red", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, columnspan=2, sticky="w")
-            self.row += 1
-
-        def build_buttons(self):
-            """ configure buttons on the bottom of the screen """
-            button_alignment = macadj("w", "center")
-            Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
-                   command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
-            Button(self.win.buttons, text="Enter", width=macadj(19, 18), anchor=button_alignment,
-                   command=lambda: self.informalc_new_apply()).grid(row=0, column=1)
-
-        def add_nonc_field(self, frame):
-            """ added fields for compliance index"""
-            add_stringvar = StringVar(self.win.body)
-            self.non_c.append(add_stringvar)  # add this to an array of stringvars for non compliance
-            nonc = Entry(frame, textvariable=self.non_c[len(self.non_c)-1], justify='right', width=macadj(20, 15))
-            nonc.grid(row=len(self.non_c)-1, column=1, sticky="w")
-            self.nonc_entry.append(nonc)  # add this to an array of entry widgets for non compliance
-            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
-                          command=lambda x=len(self.non_c)-1: self.del_nonc_field(x))
-            del_.grid(row=len(self.non_c)-1, column=3)
-            self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
-            # bind the expanding frome to the canvas and scrollregion
-            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
-
-        def del_nonc_field(self, x):
-            """ delete a field from the non compliance entry widgets as well as the delete button. 
-            set the value of the corresponding stringvar to an empty string. """
-            self.nonc_entry[x].grid_remove()
-            self.nonc_del[x].grid_remove()
-            self.non_c[x].set("")  # set the value of the stringvar to empty string
-            
-        def add_reman_field(self, frame):
-            """ added fields for compliance index"""
-            add_stringvar = StringVar(self.win.body)
-            self.reman.append(add_stringvar)  # add this to an array of stringvars for remanded
-            reman = Entry(frame, textvariable=self.reman[len(self.reman)-1], justify='right', width=macadj(20, 15))
-            reman.grid(row=len(self.reman)-1, column=1, sticky="w")
-            self.reman_entry.append(reman)  # add this to an array of entry widgets for remanded
-            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
-                          command=lambda x=len(self.reman)-1: self.del_reman_field(x))
-            del_.grid(row=len(self.reman)-1, column=3)
-            self.reman_del.append(del_)  # add this to an array of widgets of delete buttons
-            # bind the expanding frome to the canvas and scrollregion
-            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
-
-        def del_reman_field(self, x):
-            """ delete a field from the remanded entry widgets as well as the delete button.
-            set the value of the corresponding stringvar to an empty string. """
-            self.reman_entry[x].grid_remove()
-            self.reman_del[x].grid_remove()
-            self.reman[x].set("")  # set the value of the stringvar to empty string
-
-        def informalc_new_apply(self):
-            """ applies changes to settlement information. """
-            check = self.informalc_check_grv()
-            if check:
-                dates = [self.incident_start, self.incident_end, self.meeting_date]
-                in_start = datetime(1, 1, 1)
-                in_end = datetime(1, 1, 1)
-                m_date = datetime(1, 1, 1)
-                dt_dates = [in_start, in_end, m_date]
-                i = 0
-                for date in dates:
-                    date = date.get()  # get the data from the stringvar
-                    date = date.strip()  # strip out white space
-                    d = date.split("/")  # convert the date into an array
-                    new_date = datetime(int(d[2].lstrip("0")), int(d[0].lstrip("0")), int(d[1].lstrip("0")))
-                    dt_dates[i] = new_date
-                    i += 1
-                if dt_dates[0] > dt_dates[1]:
-                    messagebox.showerror("Data Entry Error",
-                                         "The Incident Start Date can not be later that the Incident End "
-                                         "Date.",
-                                         parent=self.win.topframe)
-                    return
-                if dt_dates[0] > dt_dates[2]:
-                    messagebox.showerror("Data Entry Error",
-                                         "The Incident Start Date can not be later that the Date Signed.",
-                                         parent=self.win.topframe)
-                    return
-                sql = "SELECT grv_no FROM informalc_grv"
-                results = inquire(sql)
-                existing_grv = []
-                for result in results:
-                    for grv in result:
-                        existing_grv.append(grv)
-                grv_no = self.grv_no.get()  # get the value from the string var
-                grv_no = grv_no.strip()  # strip out the white space
-                grv_no = grv_no.lower()  # convert to all lowercase
-                issue = self.issue.get()
-                issue = issue.strip()
-                issue = issue.lower()
-                if grv_no in existing_grv:
-                    messagebox.showerror("Data Entry Error",
-                                         "The Grievance Number {} is already present in the database. You can not "
-                                         "create a duplicate.".format(grv_no),
-                                         parent=self.win.topframe)
-                    return
-                sql = "INSERT INTO informalc_grievance (grievant, grv_no, startdate, enddate, meetingdate, " \
-                      "station, issue, article) " \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
-                      (self.grievant, grv_no, dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(), issue,
-                       self.article)
-                commit(sql)
-                self.msg = "Grievance Settlement Added: #{}.".format(grv_no)
-                self.informalc_new(self.win.topframe)
-
-        def informalc_check_grv(self):
-            """ checks the grievance number. """
-            if self.station.get() == "Select a Station":
+    def grvlist_apply(self, frame):
+        """ applies changes to the grievance list after a check. """
+        conditions = []
+        if self.incident_date.get() == "yes":
+            if not informalc_date_checker(self.win.topframe, self.incident_start, "starting incident date"):
+                return
+            if not informalc_date_checker(self.win.topframe, self.incident_end, "ending incident date"):
+                return
+            d = self.incident_start.get().split("/")
+            start = datetime(int(d[2]), int(d[0]), int(d[1]))
+            d = self.incident_end.get().split("/")
+            end = datetime(int(d[2]), int(d[0]), int(d[1]))
+            if start > end:
                 messagebox.showerror("Invalid Data Entry",
-                                     "You must select a station.",
+                                     "Your starting incident date must be earlier than your "
+                                     "ending incident date.",
                                      parent=self.win.topframe)
-                return False
-            grv_no = self.grv_no.get()  # get the value from the stringvar
-            grv_no = grv_no.strip()  # strip out white space
-            grv_no = grv_no.lower()
-            if grv_no == "":
+                return
+            to_add = "indate_start > '{}' and indate_end < '{}'".format(start, end)
+            conditions.append(to_add)
+        if self.signing_date.get() == "yes":
+            if not informalc_date_checker(self.win.topframe, self.signing_start, "starting signing date"):
+                return
+            if not informalc_date_checker(self.win.topframe, self.signing_end, "ending signing date"):
+                return
+            d = self.signing_start.get().split("/")
+            start = datetime(int(d[2]), int(d[0]), int(d[1]))
+            d = self.signing_end.get().split("/")
+            end = datetime(int(d[2]), int(d[0]), int(d[1]))
+            if start > end:
+                messagebox.showerror("Invalid Data Entry",
+                                     "Your starting signing date must be earlier than your "
+                                     "ending signing date.",
+                                     parent=self.win.topframe)
+                return
+            to_add = "date_signed BETWEEN '{}' AND '{}'".format(start, end)
+            conditions.append(to_add)
+        # if self.station.get() == "Select a Station":
+        #     messagebox.showerror("Invalid Station",
+        #                          "You must select a station.",
+        #                          parent=self.win.topframe)
+        #     return
+        # fill station criteria
+        to_add = "station = '{}'".format(self.station)
+        conditions.append(to_add)
+        if self.set_lvl.get() == "yes":
+            to_add = "level = '{}'".format(self.level.get())
+            conditions.append(to_add)
+        # fill gats criteria
+        if self.gats.get() == "yes":
+            if self.have_gats.get() == "yes":
+                to_add = "gats_number IS NOT ''"
+                conditions.append(to_add)
+            if self.have_gats.get() == "no":
+                to_add = "gats_number IS ''"
+                conditions.append(to_add)
+        if self.docs.get() == "yes":
+            to_add = "docs = '{}'".format(self.have_docs.get())
+            conditions.append(to_add)
+        where_str = ""
+        for i in range(len(conditions)):
+            where_str += "{}".format(conditions[i])
+            if i + 1 < len(conditions):
+                where_str += " and "
+        self.sql = "SELECT * FROM informalc_grv WHERE {} ORDER BY date_signed DESC".format(where_str)
+        print(self.sql)
+        self.search_result = inquire(self.sql)
+        self.grvlist_result(frame)
+
+    def grvlist_result(self, frame):
+        """ shows the results for the specified range."""
+        # frame = self.win  # preserve the window object from being destroyed by the next line.
+        self.win = MakeWindow()
+        # self.win.create(frame.topframe)
+        self.win.create(frame)
+        Label(self.win.body, text="Informal C: Search Results", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        Label(self.win.body, text="").grid(row=1)
+        if len(self.search_result) == 0:
+            Label(self.win.body, text="The search has no results.").grid(row=2, column=0, columnspan=4)
+        else:
+            Label(self.win.body, text="Grievance Number", fg="grey", anchor="w").grid(row=2, column=1, sticky="w")
+            Label(self.win.body, text="Incident Start", fg="grey", anchor="w").grid(row=2, column=2, sticky="w")
+            Label(self.win.body, text="Incident End", fg="grey", anchor="w").grid(row=2, column=3, sticky="w")
+            Label(self.win.body, text="Date Signed", fg="grey", anchor="w").grid(row=2, column=4, sticky="w")
+        row = 3
+        ii = 1
+        for r in self.search_result:
+            """ 
+            Show search results. loop once for each settlement. 
+            """
+            Label(self.win.body, text=str(ii), anchor="w", width=macadj(4, 2)).grid(row=row, column=0)
+            Button(self.win.body, text=" " + r[0], anchor="w", width=macadj(14, 12), relief=RIDGE) \
+                .grid(row=row, column=1)
+            in_start = datetime.strptime(r[1], '%Y-%m-%d %H:%M:%S')
+            in_end = datetime.strptime(r[2], '%Y-%m-%d %H:%M:%S')
+            sign_date = datetime.strptime(r[3], '%Y-%m-%d %H:%M:%S')
+            Button(self.win.body, text=in_start.strftime("%b %d, %Y"), width=macadj(11, 10),
+                   anchor="w", relief=RIDGE) \
+                .grid(row=row, column=2)
+            Button(self.win.body, text=in_end.strftime("%b %d, %Y"), width=macadj(11, 10),
+                   anchor="w", relief=RIDGE) \
+                .grid(row=row, column=3)
+            Button(self.win.body, text=sign_date.strftime("%b %d, %Y"), width=macadj(11, 10),
+                   anchor="w", relief=RIDGE) \
+                .grid(row=row, column=4)
+            Button(self.win.body, text="Edit", width=macadj(6, 5), relief=RIDGE,
+                   command=lambda x=r[0]: self.edit(self.win.topframe, x)) \
+                .grid(row=row, column=5)
+            Button(self.win.body, text="Edit", width=macadj(6, 5), relief=RIDGE,
+                   command=
+                   lambda x=r[0]: self.NewGrievances(self).informalc_edit(self.win.topframe, x))\
+                .grid(row=row, column=6)
+            Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE,
+                   command=lambda x=r: self.rptbygrv(x)).grid(row=row, column=7)
+            Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE,
+                   command=lambda x=r[0]: self.addaward(x)) \
+                .grid(row=row, column=8)
+            row += 1
+            Label(self.win.body, text="         {}".format(r[7]), anchor="w", fg="grey") \
+                .grid(row=row, column=1, columnspan=6, sticky="w")
+            row += 1
+            ii += 1
+        """ 
+        define the buttons at the bottom of the page: 
+        """
+        Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
+               command=lambda: self.grvlist_search(self.win.topframe)) \
+            .grid(row=0, column=0)
+        Label(self.win.buttons, text="Report: ", width=macadj(16, 11)).grid(row=0, column=1)
+        Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
+               command=lambda: self.rptgrvsum()) \
+            .grid(row=0, column=2)
+        Button(self.win.buttons, text="By Carriers", width=macadj(16, 13),
+               command=lambda: self.bycarriers()) \
+            .grid(row=0, column=3)
+        Button(self.win.buttons, text="By Carrier", width=macadj(16, 13),
+               command=lambda: self.bycarrier(self.win.topframe)) \
+            .grid(row=0, column=4)
+        Label(self.win.buttons, text="Summary: ", width=macadj(16, 11)).grid(row=1, column=1)
+        Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
+               command=lambda: self.grvlist_setsum()).grid(row=1, column=2)
+        Button(self.win.buttons, text="Carrier List", width=macadj(16, 13),
+               command=lambda: self.RptCarrierId(self).run()).grid(row=1, column=3)
+        self.win.finish()
+
+    def edit(self, frame, grv_num ):
+        """ screen for editing informalc grievances. """
+        # frame = self.win
+        # self.result = self.search_result
+        self.grv_num = grv_num
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.get_edit_stringvars()
+        self.set_edit_stringvars()
+        self.build_edit()
+        self.win.finish()
+
+    def get_edit_stringvars(self):
+        """ define the stringvars for the edit """
+        self.grv_no = StringVar(self.win.topframe)
+        self.edit_incident_start = StringVar(self.win.topframe)
+        self.edit_incident_end = StringVar(self.win.topframe)
+        self.date_signed = StringVar(self.win.topframe)
+        self.lvl = StringVar(self.win.topframe)
+        self.station = StringVar(self.win.topframe)
+        self.gats_number = StringVar(self.win.topframe)
+        self.edit_docs = StringVar(self.win.topframe)
+        self.description = StringVar(self.win.topframe)
+
+    def set_edit_stringvars(self):
+        """ set the values to the stringvars with values from the database. """
+        sql = "SELECT * FROM informalc_grv WHERE grv_no='%s'" % self.grv_num
+        result = inquire(sql)
+        if result:
+            in_start = datetime.strptime(result[0][1], '%Y-%m-%d %H:%M:%S')
+            in_end = datetime.strptime(result[0][2], '%Y-%m-%d %H:%M:%S')
+            sign_date = datetime.strptime(result[0][3], '%Y-%m-%d %H:%M:%S')
+            self.edit_incident_start.set(in_start.strftime("%m/%d/%Y"))
+            self.edit_incident_end.set(in_end.strftime("%m/%d/%Y"))
+            self.date_signed.set(sign_date.strftime("%m/%d/%Y"))
+            self.station.set(result[0][4])
+            self.gats_number.set(result[0][5])
+            self.edit_docs.set(result[0][6])
+            self.description.set(result[0][7])
+            if result[0][8] is None:
+                self.lvl.set("unknown")
+            else:
+                self.lvl.set(result[0][8])
+
+    def build_edit(self):
+        """ build the body of the edit screen for settlements in the grievance list results."""
+        Label(self.win.body, text="Informal C: Edit Grievance", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, columnspan=2, sticky="w")
+        Label(self.win.body, text="").grid(row=1)
+        Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=2, column=0, sticky="w")
+
+        Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
+            .grid(row=2, column=1, sticky="w")
+        Button(self.win.body, width=9, text="update",
+               command=lambda:
+               self.grvchange(self.win.topframe, self.grv_num, self.grv_no)).grid(row=3, column=1, sticky="e")
+        self.grv_no.set(self.grv_num)
+        Label(self.win.body, text="Incident Date", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=4, column=0, sticky="w")
+        Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=5, column=0, sticky="w")
+
+        Entry(self.win.body, textvariable=self.edit_incident_start, justify='right', width=macadj(20, 15)) \
+            .grid(row=5, column=1, sticky="w")
+        Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=6, column=0, sticky="w")
+
+        Entry(self.win.body, textvariable=self.edit_incident_end, justify='right', width=macadj(20, 15)) \
+            .grid(row=6, column=1, sticky="w")
+        Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=7, column=0, sticky="w")
+
+        Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
+            .grid(row=7, column=1, sticky="w")
+        Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=8, column=0, sticky="w")  # select settlement level
+
+        lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
+        lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
+        lvl_om.config(width=13)
+        lvl_om.grid(row=8, column=1)
+        Label(self.win.body, text="Station: ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=9, column=0, sticky="w")  # select a station
+
+        station_options = projvar.list_of_stations
+        if "out of station" in station_options:
+            station_options.remove("out of station")
+        station_om = OptionMenu(self.win.body, self.station, *station_options)
+        station_om.config(width=macadj(40, 34))
+        station_om.grid(row=10, column=0, columnspan=2, sticky="e")
+        Label(self.win.body, text="GATS Number: ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=11, column=0, sticky="w")
+
+        Entry(self.win.body, textvariable=self.gats_number, justify='right', width=macadj(20, 15)) \
+            .grid(row=11, column=1, sticky="w")
+        Label(self.win.body, text="Documentation: ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=12, column=0, sticky="w")
+
+        doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
+        docs_om = OptionMenu(self.win.body, self.edit_docs, *doc_options)
+        docs_om.config(width=13)
+        docs_om.grid(row=12, column=1)
+        Label(self.win.body, text="Description: ", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=16, column=0, sticky="w")
+
+        Entry(self.win.body, textvariable=self.description, width=macadj(47, 36), justify='right') \
+            .grid(row=17, column=0, sticky="e", columnspan=2)
+        Label(self.win.body, text="").grid(row=18, column=0)
+
+        Label(self.win.body, text=" ").grid(row=20)
+        Label(self.win.body, text="Delete Grievance", background=macadj("gray95", "grey"),
+              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
+            .grid(row=21, column=0, sticky="w")
+        Button(self.win.body, text="Delete", width=9,
+               command=lambda: self.delete(self.win.topframe, self.grv_no)) \
+            .grid(row=21, column=1, sticky="e")
+        Label(self.win.body, text=" ").grid(row=22)
+        Label(self.win.body, text=self.msg, fg="red", anchor="w").grid(row=23, column=0, columnspan=5, sticky="w")
+        self.msg = ""  # reset the message to empty string
+        Button(self.win.buttons, text="Go Back", width=macadj(19, 18),
+               command=lambda: self.grvlist_result(self.win.topframe)).grid(row=0, column=0)
+        Button(self.win.buttons, text="Enter", width=macadj(19, 18),
+               command=lambda: self.edit_apply(self.win.topframe)).grid(row=0, column=1)
+
+    def edit_apply(self, frame):
+        """  check then edit informalc peticulars. """
+        dates = [self.edit_incident_start.get(), self.edit_incident_end.get(), self.date_signed.get()]
+        date_ids = ("starting incident date", "ending incident date", "date signed")
+        i = 0
+        for date in dates:
+            date = date.strip()
+            d = date.split("/")
+            if len(d) != 3:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The date for the {} is not properly formatted.".format(date_ids[i]),
+                                     parent=self.win.topframe)
+                return
+            for num in d:
+                if not num.isnumeric():
+                    messagebox.showerror("Invalid Data Entry",
+                                         "The month, day and year for the {} "
+                                         "must be numeric.".format(date_ids[i]),
+                                         parent=self.win.topframe)
+                    return
+            if len(d[0]) > 2:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The month for the {} must be no more than two digits"
+                                     " long.".format(date_ids[i]),
+                                     parent=self.win.topframe)
+                return
+            if len(d[1]) > 2:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The day for the {} must be no more than two digits"
+                                     " long.".format(date_ids[i]),
+                                     parent=self.win.topframe)
+                return
+            if len(d[2]) != 4:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The year for the {} must be four digits long."
+                                     .format(date_ids[i]),
+                                     parent=self.win.topframe)
+                return
+            try:
+                date = datetime(int(d[2]), int(d[0]), int(d[1]))
+                valid_date = True
+                if date:
+                    # use project variable to absorb error from unused try/except statement.
+                    projvar.try_absorber = True
+            except ValueError:
+                valid_date = False
+            if not valid_date:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The date entered for {} is not a valid date."
+                                     .format(date_ids[i]),
+                                     parent=self.win.topframe)
+                return
+            i += 1
+        if len(self.gats_number.get()) > 50:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The GATS number is limited to no more than 20 characters. ",
+                                 parent=self.win.topframe)
+            return
+        if self.gats_number.get().strip() != "":
+            if not all(x.isalnum() or x.isspace() for x in self.gats_number.get()):
+                messagebox.showerror("Invalid Data Entry",
+                                     "The GATS number can only contain letters and numbers. No "
+                                     "special characters are allowed.",
+                                     parent=self.win.topframe)
+                return
+        if self.description.get().strip() != "":
+            if not all(x.isalnum() or x.isspace() for x in self.description.get()):
+                messagebox.showerror("Invalid Data Entry",
+                                     "The Description can only contain letters and numbers. No "
+                                     "special characters are allowed.",
+                                     parent=self.win.topframe)
+                return
+            if len(self.description.get()) > 40:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The Description is limited to no more than 40 characters. ",
+                                     parent=self.win.topframe)
+                return
+        dates = [self.edit_incident_start.get(), self.edit_incident_end.get(), self.date_signed.get()]
+        in_start = datetime(1, 1, 1)
+        in_end = datetime(1, 1, 1)
+        d_sign = datetime(1, 1, 1)
+        dt_dates = [in_start, in_end, d_sign]
+        i = 0
+        for date in dates:
+            date = date.strip()
+            d = date.split("/")
+            new_date = datetime(int(d[2].lstrip("0")), int(d[0].lstrip("0")), int(d[1].lstrip("0")))
+            dt_dates[i] = new_date
+            i += 1
+        if dt_dates[0] > dt_dates[1]:
+            messagebox.showerror("Data Entry Error",
+                                 "The Incident Start Date can not be later that the Incident End "
+                                 "Date.",
+                                 parent=self.win.topframe)
+            return
+        if dt_dates[0] > dt_dates[2]:
+            messagebox.showerror("Data Entry Error",
+                                 "The Incident Start Date can not be later that the Date Signed.",
+                                 parent=self.win.topframe)
+            return
+        description = self.description.get()
+        description = description.strip()
+        description = description.lower()
+        sql = "UPDATE informalc_grv SET indate_start='%s',indate_end='%s',date_signed='%s',station='%s'," \
+              "gats_number='%s', docs='%s',description='%s', level='%s' WHERE grv_no='%s'" % \
+              (dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(), self.gats_number.get().strip(),
+               self.edit_docs.get(), description, self.lvl.get(), self.grv_no.get())
+        commit(sql)
+        messagebox.showerror("Sucessful Update",
+                             "Grievance number: {} succesfully updated.".format(self.grv_no.get()),
+                             parent=self.win.topframe)
+        self.update_search_results()  # update the search results
+        self.grvlist_result(frame)  # return to the grievance list results with previous search criteria
+
+    def update_search_results(self):
+        """ update the search results of the grievance list """
+        self.search_result = inquire(self.sql)
+
+    def delete(self, frame, grv_no):
+        """ deletes a record and associated records for a grievance. """
+        check = messagebox.askokcancel("Delete Grievance",
+                                       "Are you sure you want to delete his grievance and all the "
+                                       "data associated with it?",
+                                       parent=self.win.topframe)
+        if not check:
+            return
+        else:
+            sql = "DELETE FROM informalc_grv WHERE grv_no='%s'" % grv_no.get()
+            commit(sql)
+            self.grvlist_search(frame)
+
+    def grvchange(self, frame, old_num, new_num):
+        """ change the grievance number. check grv number and input it into the informalc_grv table. """
+        l_passed_result = [list(x) for x in self.search_result]  # chg tuple of tuples to list of lists
+        if messagebox.askokcancel("Grievance Number Change",
+                                  "This will change the grievance number from {} to {} in all "
+                                  "records. Are you sure you want to proceed?".format(old_num, new_num.get()),
+                                  parent=self.win.topframe):
+            new_number = new_num.get()  # get the value from the passed new_num stringvar
+            new_number = new_number.strip()  # strip out all whitespace in front and back
+            new_number = new_number.lower()  # change all upper case to lower case
+            if new_number == "":
                 messagebox.showerror("Invalid Data Entry",
                                      "You must enter a grievance number",
                                      parent=self.win.topframe)
-                return False
-            if search('[^1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]', grv_no):
+                return "fail"
+            if not new_number.isalnum():
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number can only contain numbers and letters. No other "
                                      "characters are allowed",
                                      parent=self.win.topframe)
-                return False
-            if len(grv_no) < 4:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number must be at least four characters long",
-                                     parent=self.win.topframe)
-                return False
-            if len(grv_no) > 20:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number must not exceed 20 characters in length.",
-                                     parent=self.win.topframe)
-                return False
-            return self.informalc_check_grv_2()
-
-        def informalc_check_grv_2(self):
-            """ checks the information for informalc grievances. """
-            dates = [self.incident_start.get(), self.incident_end.get(), self.meeting_date.get()]
-            date_ids = ("starting incident date", "ending incident date", "date signed")
-            i = 0
-            for date in dates:
-                date = date.strip()
-                d = date.split("/")
-                if len(d) != 3:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The date for the {} is not properly formatted.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                for num in d:
-                    if not num.isnumeric():
-                        messagebox.showerror("Invalid Data Entry",
-                                             "The month, day and year for the {} "
-                                             "must be numeric.".format(date_ids[i]),
-                                             parent=self.win.topframe)
-                        return False
-                if len(d[0]) > 2:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The month for the {} must be no more than two digits"
-                                         " long.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                if len(d[1]) > 2:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The day for the {} must be no more than two digits"
-                                         " long.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                if len(d[2]) != 4:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The year for the {} must be four digits long."
-                                         .format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                try:
-                    date = datetime(int(d[2]), int(d[0]), int(d[1]))
-                    valid_date = True
-                    if date:
-                        # use project variable to absorb error from unused try/except statement.
-                        projvar.try_absorber = True
-                except ValueError:
-                    valid_date = False
-                if not valid_date:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The date entered for {} is not a valid date."
-                                         .format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                i += 1
-            if self.issue.get().strip() != "":
-                if not all(x.isalnum() or x.isspace() for x in self.issue.get()):
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The Description can only contain letters and numbers. No "
-                                         "special characters are allowed.",
-                                         parent=self.win.topframe)
-                    return False
-                if len(self.issue.get()) > 40:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The Description is limited to no more than 40 characters. ",
-                                         parent=self.win.topframe)
-                    return False
-            return True
-
-    class New:
-        """
-        Allows the user to create new records of settlements.
-        """
-
-        def __init__(self, parent):
-            self.parent = parent
-            self.win = None
-            self.msg = ""
-            #  define the stringvars
-            self.grv_no = None
-            self.incident_start = None
-            self.incident_end = None
-            self.date_signed = None
-            self.station = None
-            self.gats_number = None
-            self.docs = None
-            self.description = None
-            self.lvl = None
-
-        def informalc_new(self, frame):
-            """ master method for running other methods in proper order."""
-            self.win = MakeWindow()
-            self.get_stringvars()
-            self.win.create(frame)
-            self.build_screen()
-            self.win.finish()
-
-        def get_stringvars(self):
-            """ initialize the stringvars """
-            self.grv_no = StringVar(self.win.body)
-            self.incident_start = StringVar(self.win.body)
-            self.incident_end = StringVar(self.win.body)
-            self.date_signed = StringVar(self.win.body)
-            self.lvl = StringVar(self.win.body)
-            self.station = StringVar(self.win.body)
-            self.gats_number = StringVar(self.win.body)
-            self.docs = StringVar(self.win.body)
-            self.description = StringVar(self.win.body)
-
-        def build_screen(self):
-            """ screen for entering in new settlements. """
-            Label(self.win.body, text="New Settlement", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=0, column=0, sticky="w")
-            Label(self.win.body, text="").grid(row=1, column=0, sticky="w")
-            Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=2, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
-                .grid(row=2, column=1, sticky="w")
-            Label(self.win.body, text="Incident Date").grid(row=3, column=0, sticky="w")
-            Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w") \
-                .grid(row=4, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.incident_start, justify='right', width=macadj(20, 15)) \
-                .grid(row=4, column=1, sticky="w")
-            Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=5, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.incident_end, justify='right', width=macadj(20, 15)) \
-                .grid(row=5, column=1, sticky="w")
-            Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=6, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
-                .grid(row=6, column=1, sticky="w")
-            # select level
-            Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=7, column=0, sticky="w")  # select settlement level
-
-            lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
-            lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
-            lvl_om.config(width=macadj(13, 13))
-            lvl_om.grid(row=7, column=1)
-            self.lvl.set("informal a")
-            Label(self.win.body, text="Station: ", background=macadj("gray95", "white"),  # select a station
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)). \
-                grid(row=8, column=0, sticky="w")
-            Label(self.win.body, text="", height=macadj(1, 2)).grid(row=8, column=1)
-
-            self.station.set("Select a Station")
-            station_options = projvar.list_of_stations
-            if "out of station" in station_options:
-                station_options.remove("out of station")
-            station_om = OptionMenu(self.win.body, self.station, *station_options)
-            station_om.config(width=macadj(40, 34))
-            station_om.grid(row=9, column=0, columnspan=2, sticky="e")
-            Label(self.win.body, text="GATS Number: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=10, column=0, sticky="w")  # enter gats number
-
-            Entry(self.win.body, textvariable=self.gats_number, justify='right', width=macadj(20, 15)) \
-                .grid(row=10, column=1, sticky="w")
-            Label(self.win.body, text="Documentation?: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=11, column=0, sticky="w")  # select documentation
-
-            doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
-            docs_om = OptionMenu(self.win.body, self.docs, *doc_options)
-            docs_om.config(width=macadj(13, 13))
-            docs_om.grid(row=11, column=1)
-            self.docs.set("no")
-            Label(self.win.body, text="Description: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=15, column=0, sticky="w")
-            Label(self.win.body, text="", height=macadj(1, 2)).grid(row=15, column=1)
-
-            Entry(self.win.body, textvariable=self.description, width=macadj(48, 36), justify='right') \
-                .grid(row=16, column=0, sticky="w", columnspan=2)
-            Label(self.win.body, text="", height=macadj(1, 1)).grid(row=17, column=0)
-            Label(self.win.body, text=self.msg, fg="red", height=macadj(1, 1)) \
-                .grid(row=18, column=0, columnspan=2, sticky="w")
-            button_alignment = macadj("w", "center")
-            Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
-                   command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
-            Button(self.win.buttons, text="Enter", width=macadj(19, 18), anchor=button_alignment,
-                   command=lambda: self.informalc_new_apply()).grid(row=0, column=1)
-
-        def informalc_new_apply(self):
-            """ applies changes to settlement information. """
-            check = self.informalc_check_grv()
-            if check:
-                dates = [self.incident_start, self.incident_end, self.date_signed]
-                in_start = datetime(1, 1, 1)
-                in_end = datetime(1, 1, 1)
-                d_sign = datetime(1, 1, 1)
-                dt_dates = [in_start, in_end, d_sign]
-                i = 0
-                for date in dates:
-                    date = date.get()  # get the data from the stringvar
-                    date = date.strip()  # strip out white space
-                    d = date.split("/")  # convert the date into an array
-                    new_date = datetime(int(d[2].lstrip("0")), int(d[0].lstrip("0")), int(d[1].lstrip("0")))
-                    dt_dates[i] = new_date
-                    i += 1
-                if dt_dates[0] > dt_dates[1]:
-                    messagebox.showerror("Data Entry Error",
-                                         "The Incident Start Date can not be later that the Incident End "
-                                         "Date.",
-                                         parent=self.win.topframe)
-                    return
-                if dt_dates[0] > dt_dates[2]:
-                    messagebox.showerror("Data Entry Error",
-                                         "The Incident Start Date can not be later that the Date Signed.",
-                                         parent=self.win.topframe)
-                    return
-                sql = "SELECT grv_no FROM informalc_grv"
-                results = inquire(sql)
-                existing_grv = []
-                for result in results:
-                    for grv in result:
-                        existing_grv.append(grv)
-                grv_no = self.grv_no.get()  # get the value from the string var
-                grv_no = grv_no.strip()  # strip out the white space
-                grv_no = grv_no.lower()  # convert to all lowercase
-                description = self.description.get()
-                description = description.strip()
-                description = description.lower()
-                if grv_no in existing_grv:
-                    messagebox.showerror("Data Entry Error",
-                                         "The Grievance Number {} is already present in the database. You can not "
-                                         "create a duplicate.".format(grv_no),
-                                         parent=self.win.topframe)
-                    return
-                sql = "INSERT INTO informalc_grv (grv_no, indate_start, indate_end, date_signed, station, " \
-                      "gats_number, docs, description, level) " \
-                      "VALUES('%s','%s','%s','%s','%s','%s','%s','%s','%s')" % \
-                      (grv_no, dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(),
-                       self.gats_number.get().strip(), self.docs.get(), description, self.lvl.get())
-                commit(sql)
-                self.msg = "Grievance Settlement Added: #{}.".format(grv_no)
-                self.informalc_new(self.win.topframe)
-
-        def informalc_check_grv(self):
-            """ checks the grievance number. """
-            if self.station.get() == "Select a Station":
-                messagebox.showerror("Invalid Data Entry",
-                                     "You must select a station.",
-                                     parent=self.win.topframe)
-                return False
-            grv_no = self.grv_no.get()  # get the value from the stringvar
-            grv_no = grv_no.strip()  # strip out white space
-            grv_no = grv_no.lower()
-            if grv_no == "":
-                messagebox.showerror("Invalid Data Entry",
-                                     "You must enter a grievance number",
-                                     parent=self.win.topframe)
-                return False
-            if search('[^1234567890abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ,]', grv_no):
-                messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number can only contain numbers and letters. No other "
-                                     "characters are allowed",
-                                     parent=self.win.topframe)
-                return False
-            if len(grv_no) < 8:
+                return "fail"
+            if len(new_number) < 8:
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number must be at least eight characters long",
                                      parent=self.win.topframe)
-                return False
-            if len(grv_no) > 20:
+                return "fail"
+            if len(new_number) > 16:
                 messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number must not exceed 20 characters in length.",
+                                     "The grievance number must not exceed 16 characters in length.",
                                      parent=self.win.topframe)
-                return False
-            return self.informalc_check_grv_2()
-
-        def informalc_check_grv_2(self):
-            """ checks the information for informalc grievances. """
-            dates = [self.incident_start.get(), self.incident_end.get(), self.date_signed.get()]
-            date_ids = ("starting incident date", "ending incident date", "date signed")
-            i = 0
-            for date in dates:
-                date = date.strip()
-                d = date.split("/")
-                if len(d) != 3:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The date for the {} is not properly formatted.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                for num in d:
-                    if not num.isnumeric():
-                        messagebox.showerror("Invalid Data Entry",
-                                             "The month, day and year for the {} "
-                                             "must be numeric.".format(date_ids[i]),
-                                             parent=self.win.topframe)
-                        return False
-                if len(d[0]) > 2:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The month for the {} must be no more than two digits"
-                                         " long.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                if len(d[1]) > 2:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The day for the {} must be no more than two digits"
-                                         " long.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                if len(d[2]) != 4:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The year for the {} must be four digits long."
-                                         .format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                try:
-                    date = datetime(int(d[2]), int(d[0]), int(d[1]))
-                    valid_date = True
-                    if date:
-                        # use project variable to absorb error from unused try/except statement.
-                        projvar.try_absorber = True
-                except ValueError:
-                    valid_date = False
-                if not valid_date:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The date entered for {} is not a valid date."
-                                         .format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return False
-                i += 1
-            if len(self.gats_number.get()) > 50:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The GATS number is limited to no more than 20 characters. ",
-                                     parent=self.win.topframe)
-                return False
-            if self.gats_number.get().strip() != "":
-                if not all(x.isalnum() or x.isspace() for x in self.gats_number.get()):
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The GATS number can only contain letters and numbers. No "
-                                         "special characters are allowed.",
-                                         parent=self.win.topframe)
-                    return False
-            if self.description.get().strip() != "":
-                if not all(x.isalnum() or x.isspace() for x in self.description.get()):
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The Description can only contain letters and numbers. No "
-                                         "special characters are allowed.",
-                                         parent=self.win.topframe)
-                    return False
-                if len(self.description.get()) > 40:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The Description is limited to no more than 40 characters. ",
-                                         parent=self.win.topframe)
-                    return False
-            return True
-
-    class GrvList:
-        """
-        creates a display where users can access all settlements in the database. From there users can generate reports
-        and make edits.
-        """
-
-        def __init__(self, parent):
-            self.parent = parent
-            self.win = None
-            # initialized the stringvars used for the search criteria.
-            self.incident_date = None
-            self.incident_start = None
-            self.incident_end = None
-            self.signing_date = None
-            self.signing_start = None
-            self.signing_end = None
-            self.station = None
-            self.set_lvl = None
-            self.level = None
-            self.gats = None
-            self.have_gats = None
-            self.docs = None
-            self.have_docs = None
-            self.sql = None  # var for sql query. hold in variable so search can be duplicated.
-            self.search_result = None  # var for the search result
-            self.companion_root = None  # a companion root window for entering carrier awards
-            self.companion_frame = None  # a companion frame for the addframe root.
-            #  vars for the edit methods
-            self.grv_num = None
-            self.msg = ""
-            # vars for the edit stringvars
-            self.grv_no = None
-            self.edit_incident_start = None
-            self.edit_incident_end = None
-            self.date_signed = None
-            self.lvl = None
-            self.station = None
-            self.gats_number = None
-            self.edit_docs = None
-            self.description = None
-            # vars for add award
-            self.var_id = None
-            self.var_name = None
-            self.var_hours = None
-            self.var_rate = None
-            self.var_amount = None
-
-        def grvlist_search(self, frame):
-            """ master method for running other methods in proper order. """
-            self.win = MakeWindow()
-            self.win.create(frame)
-            self.get_stringvars()
-            self.build_screen()
-            self.build_buttons()
-            self.win.finish()
-
-        def get_stringvars(self):
-            """ initialize varibles """
-            self.station = StringVar(self.win.topframe)
-            self.incident_date = StringVar(self.win.topframe)
-            self.incident_start = StringVar(self.win.topframe)
-            self.incident_end = StringVar(self.win.topframe)
-            self.signing_date = StringVar(self.win.topframe)
-            self.signing_start = StringVar(self.win.topframe)
-            self.signing_end = StringVar(self.win.topframe)
-            self.set_lvl = StringVar(self.win.topframe)
-            self.level = StringVar(self.win.topframe)
-            self.gats = StringVar(self.win.topframe)
-            self.have_gats = StringVar(self.win.topframe)
-            self.docs = StringVar(self.win.topframe)
-            self.have_docs = StringVar(self.win.topframe)
-
-        def build_screen(self):
-            """ builds page for searching grievance settlements. """
-            Label(self.win.body, text="Informal C: Settlement Search Criteria", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=0, columnspan=6, sticky="w")
-            Label(self.win.body, text=" ").grid(row=1, columnspan=6)
-            # select station
-            Label(self.win.body, text=" Station ", background=macadj("gray95", "white"), fg=macadj("black", "black"),
-                  anchor="w", width=macadj(14, 12)).grid(row=2, column=0, columnspan=3, sticky="w")
-            station_options = projvar.list_of_stations
-            if "out of station" in station_options:
-                station_options.remove("out of station")
-            station_om = OptionMenu(self.win.body, self.station, *station_options)
-            station_om.config(width=macadj(38, 31))
-            station_om.grid(row=2, column=3, columnspan=3, sticky="e")
-            self.station.set("Select a Station")
-            Label(self.win.body, text="Search For", fg="grey").grid(row=3, column=0, columnspan=2, sticky="w")
-            Label(self.win.body, text="Category", fg="grey").grid(row=3, column=3)
-            Label(self.win.body, text="Start", fg="grey").grid(row=3, column=4)
-            Label(self.win.body, text="End", fg="grey").grid(row=3, column=5)
-            # select for starting date
-            Radiobutton(self.win.body, text="yes", variable=self.incident_date, value='yes', width=macadj(2, 4)) \
-                .grid(row=4, column=0, sticky="w")
-            Radiobutton(self.win.body, text="no", variable=self.incident_date, value='no', width=macadj(2, 4)) \
-                .grid(row=4, column=1, sticky="w")
-            Label(self.win.body, text="", width=macadj(2, 4)).grid(row=4, column=2)
-            Label(self.win.body, text=" Incident Dates", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), anchor="w", width=14).grid(row=4, column=3, sticky="w")
-            Entry(self.win.body, textvariable=self.incident_start, width=macadj(12, 8), justify='right') \
-                .grid(row=4, column=4)
-            Entry(self.win.body, textvariable=self.incident_end, width=macadj(12, 8), justify='right') \
-                .grid(row=4, column=5)
-            self.incident_date.set('no')
-            # select for signing date
-            Radiobutton(self.win.body, text="yes", variable=self.signing_date, value='yes', width=macadj(2, 4)) \
-                .grid(row=5, column=0, sticky="w")
-            Radiobutton(self.win.body, text="no", variable=self.signing_date, value='no', width=macadj(2, 4)) \
-                .grid(row=5, column=1, sticky="w")
-            Label(self.win.body, text=" Signing Dates", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), anchor="w", width=14).grid(row=5, column=3, sticky="w")
-            Entry(self.win.body, textvariable=self.signing_start, width=macadj(12, 8), justify='right') \
-                .grid(row=5, column=4)
-            Entry(self.win.body, textvariable=self.signing_end, width=macadj(12, 8), justify='right') \
-                .grid(row=5, column=5)
-            self.signing_date.set('no')
-            # select for settlement level
-            Radiobutton(self.win.body, text="yes", variable=self.set_lvl, value='yes', width=macadj(2, 4)) \
-                .grid(row=6, column=0, sticky="w")
-            Radiobutton(self.win.body, text="no", variable=self.set_lvl, value='no', width=macadj(2, 4)) \
-                .grid(row=6, column=1, sticky="w")
-            self.set_lvl.set("no")
-            Label(self.win.body, text=" Settlement Level ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=6, column=3, sticky="w")
-            lvl_options = ("informal a", "formal a", "step b", "pre-arb", "arbitration")
-            lvl_om = OptionMenu(self.win.body, self.level, *lvl_options)
-            lvl_om.config(width=macadj(20, 16))
-            lvl_om.grid(row=6, column=4, columnspan=3, sticky="e")
-            self.level.set("informal a")
-            # select for gats number
-            Radiobutton(self.win.body, text="yes", variable=self.gats, value='yes', width=macadj(2, 4)) \
-                .grid(row=7, column=0, sticky="w")
-            Radiobutton(self.win.body, text="no", variable=self.gats, value='no', width=macadj(2, 4)) \
-                .grid(row=7, column=1, sticky="w")
-            Label(self.win.body, text=" GATS Number", background=macadj("gray95", "white"), fg=macadj("black", "black"),
-                  anchor="w", width=14, height=1).grid(row=7, column=3, sticky="w")
-            gats_options = ("no", "yes")
-            gats_om = OptionMenu(self.win.body, self.have_gats, *gats_options)
-            gats_om.config(width=macadj(10, 8))
-            gats_om.grid(row=7, column=4, columnspan=3, sticky="e")
-            self.have_gats.set('no')
-            self.gats.set('no')
-            # select for documentation
-            Radiobutton(self.win.body, text="yes", variable=self.docs, value='yes', width=macadj(2, 4)) \
-                .grid(row=9, column=0, sticky="w")
-            Radiobutton(self.win.body, text="no", variable=self.docs, value='no', width=macadj(2, 4)) \
-                .grid(row=9, column=1, sticky="w")
-            Label(self.win.body, text=" Documentation", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=9, column=3, sticky="w")
-            doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
-            docs_om = OptionMenu(self.win.body, self.have_docs, *doc_options)
-            docs_om.config(width=macadj(10, 8))
-            docs_om.grid(row=9, column=4, columnspan=3, sticky="e")
-            self.have_docs.set('no')
-            self.docs.set("no")
-            Label(self.win.body, text="").grid(row=13)
-
-        def build_buttons(self):
-            """ build the buttons on the bottom of the screen. """
-            button_alignment = macadj("w", "center")
-            Button(self.win.buttons, text="Search", width=20, anchor=button_alignment,
-                   command=lambda: self.grvlist_apply()).grid(row=0, column=1)
-            Button(self.win.buttons, text="Go Back", width=20, anchor=button_alignment,
-                   command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
-
-        def grvlist_apply(self):
-            """ applies changes to the grievance list after a check. """
-            conditions = []
-            if self.incident_date.get() == "yes":
-                if not informalc_date_checker(self.win.topframe, self.incident_start, "starting incident date"):
-                    return
-                if not informalc_date_checker(self.win.topframe, self.incident_end, "ending incident date"):
-                    return
-                d = self.incident_start.get().split("/")
-                start = datetime(int(d[2]), int(d[0]), int(d[1]))
-                d = self.incident_end.get().split("/")
-                end = datetime(int(d[2]), int(d[0]), int(d[1]))
-                if start > end:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "Your starting incident date must be earlier than your "
-                                         "ending incident date.",
-                                         parent=self.win.topframe)
-                    return
-                to_add = "indate_start > '{}' and indate_end < '{}'".format(start, end)
-                conditions.append(to_add)
-            if self.signing_date.get() == "yes":
-                if not informalc_date_checker(self.win.topframe, self.signing_start, "starting signing date"):
-                    return
-                if not informalc_date_checker(self.win.topframe, self.signing_end, "ending signing date"):
-                    return
-                d = self.signing_start.get().split("/")
-                start = datetime(int(d[2]), int(d[0]), int(d[1]))
-                d = self.signing_end.get().split("/")
-                end = datetime(int(d[2]), int(d[0]), int(d[1]))
-                if start > end:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "Your starting signing date must be earlier than your "
-                                         "ending signing date.",
-                                         parent=self.win.topframe)
-                    return
-                to_add = "date_signed BETWEEN '{}' AND '{}'".format(start, end)
-                conditions.append(to_add)
-            if self.station.get() == "Select a Station":
-                messagebox.showerror("Invalid Station",
-                                     "You must select a station.",
-                                     parent=self.win.topframe)
-                return
-            to_add = "station = '{}'".format(self.station.get())
-            conditions.append(to_add)
-            if self.set_lvl.get() == "yes":
-                to_add = "level = '{}'".format(self.level.get())
-                conditions.append(to_add)
-
-            if self.gats.get() == "yes":
-                if self.have_gats.get() == "yes":
-                    to_add = "gats_number IS NOT ''"
-                    conditions.append(to_add)
-                if self.have_gats.get() == "no":
-                    to_add = "gats_number IS ''"
-                    conditions.append(to_add)
-            if self.docs.get() == "yes":
-                to_add = "docs = '{}'".format(self.have_docs.get())
-                conditions.append(to_add)
-            where_str = ""
-            for i in range(len(conditions)):
-                where_str += "{}".format(conditions[i])
-                if i + 1 < len(conditions):
-                    where_str += " and "
-            self.sql = "SELECT * FROM informalc_grv WHERE {} ORDER BY date_signed DESC".format(where_str)
-            self.search_result = inquire(self.sql)
-            self.grvlist_result()
-
-        def grvlist_result(self):
-            """ shows the results for the specified range."""
-            frame = self.win  # preserve the window object from being destroyed by the next line.
-            self.win = MakeWindow()
-            self.win.create(frame.topframe)
-            Label(self.win.body, text="Informal C: Search Results", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=0, column=0, columnspan=4, sticky="w")
-            Label(self.win.body, text="").grid(row=1)
-            if len(self.search_result) == 0:
-                Label(self.win.body, text="The search has no results.").grid(row=2, column=0, columnspan=4)
-            else:
-                Label(self.win.body, text="Grievance Number", fg="grey", anchor="w").grid(row=2, column=1, sticky="w")
-                Label(self.win.body, text="Incident Start", fg="grey", anchor="w").grid(row=2, column=2, sticky="w")
-                Label(self.win.body, text="Incident End", fg="grey", anchor="w").grid(row=2, column=3, sticky="w")
-                Label(self.win.body, text="Date Signed", fg="grey", anchor="w").grid(row=2, column=4, sticky="w")
-            row = 3
-            ii = 1
-            for r in self.search_result:
-                """ 
-                Show search results. loop once for each settlement. 
-                """
-                Label(self.win.body, text=str(ii), anchor="w", width=macadj(4, 2)).grid(row=row, column=0)
-                Button(self.win.body, text=" " + r[0], anchor="w", width=macadj(14, 12), relief=RIDGE) \
-                    .grid(row=row, column=1)
-                in_start = datetime.strptime(r[1], '%Y-%m-%d %H:%M:%S')
-                in_end = datetime.strptime(r[2], '%Y-%m-%d %H:%M:%S')
-                sign_date = datetime.strptime(r[3], '%Y-%m-%d %H:%M:%S')
-                Button(self.win.body, text=in_start.strftime("%b %d, %Y"), width=macadj(11, 10),
-                       anchor="w", relief=RIDGE) \
-                    .grid(row=row, column=2)
-                Button(self.win.body, text=in_end.strftime("%b %d, %Y"), width=macadj(11, 10),
-                       anchor="w", relief=RIDGE) \
-                    .grid(row=row, column=3)
-                Button(self.win.body, text=sign_date.strftime("%b %d, %Y"), width=macadj(11, 10),
-                       anchor="w", relief=RIDGE) \
-                    .grid(row=row, column=4)
-                Button(self.win.body, text="Edit", width=macadj(6, 5), relief=RIDGE,
-                       command=lambda x=r[0]: self.edit(x)) \
-                    .grid(row=row, column=5)
-                Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE,
-                       command=lambda x=r: self.rptbygrv(x)).grid(row=row, column=6)
-                Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE,
-                       command=lambda x=r[0]: self.addaward(x)) \
-                    .grid(row=row, column=7)
-                row += 1
-                Label(self.win.body, text="         {}".format(r[7]), anchor="w", fg="grey") \
-                    .grid(row=row, column=1, columnspan=5, sticky="w")
-                row += 1
-                ii += 1
-            """ 
-            define the buttons at the bottom of the page: 
-            """
-            Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
-                   command=lambda: self.grvlist_search(self.win.topframe)) \
-                .grid(row=0, column=0)
-            Label(self.win.buttons, text="Report: ", width=macadj(16, 11)).grid(row=0, column=1)
-            Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
-                   command=lambda: self.rptgrvsum()) \
-                .grid(row=0, column=2)
-            Button(self.win.buttons, text="By Carriers", width=macadj(16, 13),
-                   command=lambda: self.bycarriers()) \
-                .grid(row=0, column=3)
-            Button(self.win.buttons, text="By Carrier", width=macadj(16, 13),
-                   command=lambda: self.bycarrier()) \
-                .grid(row=0, column=4)
-            Label(self.win.buttons, text="Summary: ", width=macadj(16, 11)).grid(row=1, column=1)
-            Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
-                   command=lambda: self.grvlist_setsum()).grid(row=1, column=2)
-            Button(self.win.buttons, text="Carrier List", width=macadj(16, 13),
-                   command=lambda: self.RptCarrierId(self).run()).grid(row=1, column=3)
-            self.win.finish()
-
-        def edit(self, grv_num):
-            """ screen for editing informalc grievances. """
-            frame = self.win
-            # self.result = self.search_result
-            self.grv_num = grv_num
-            self.win = MakeWindow()
-            self.win.create(frame.topframe)
-            self.get_edit_stringvars()
-            self.set_edit_stringvars()
-            self.build_edit()
-            self.win.finish()
-
-        def get_edit_stringvars(self):
-            """ define the stringvars for the edit """
-            self.grv_no = StringVar(self.win.topframe)
-            self.edit_incident_start = StringVar(self.win.topframe)
-            self.edit_incident_end = StringVar(self.win.topframe)
-            self.date_signed = StringVar(self.win.topframe)
-            self.lvl = StringVar(self.win.topframe)
-            self.station = StringVar(self.win.topframe)
-            self.gats_number = StringVar(self.win.topframe)
-            self.edit_docs = StringVar(self.win.topframe)
-            self.description = StringVar(self.win.topframe)
-
-        def set_edit_stringvars(self):
-            """ set the values to the stringvars with values from the database. """
-            sql = "SELECT * FROM informalc_grv WHERE grv_no='%s'" % self.grv_num
+                return "fail"
+            sql = "SELECT grv_no FROM informalc_grv WHERE grv_no = '%s'" % new_number
             result = inquire(sql)
             if result:
-                in_start = datetime.strptime(result[0][1], '%Y-%m-%d %H:%M:%S')
-                in_end = datetime.strptime(result[0][2], '%Y-%m-%d %H:%M:%S')
-                sign_date = datetime.strptime(result[0][3], '%Y-%m-%d %H:%M:%S')
-                self.edit_incident_start.set(in_start.strftime("%m/%d/%Y"))
-                self.edit_incident_end.set(in_end.strftime("%m/%d/%Y"))
-                self.date_signed.set(sign_date.strftime("%m/%d/%Y"))
-                self.station.set(result[0][4])
-                self.gats_number.set(result[0][5])
-                self.edit_docs.set(result[0][6])
-                self.description.set(result[0][7])
-                if result[0][8] is None:
-                    self.lvl.set("unknown")
-                else:
-                    self.lvl.set(result[0][8])
-
-        def build_edit(self):
-            """ build the body of the edit screen for settlements in the grievance list results."""
-            Label(self.win.body, text="Informal C: Edit Grievance", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=0, columnspan=2, sticky="w")
-            Label(self.win.body, text="").grid(row=1)
-            Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=2, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
-                .grid(row=2, column=1, sticky="w")
-            Button(self.win.body, width=9, text="update",
-                   command=lambda: self.grvchange(self.grv_num, self.grv_no)).grid(row=3, column=1, sticky="e")
-            self.grv_no.set(self.grv_num)
-            Label(self.win.body, text="Incident Date", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=4, column=0, sticky="w")
-            Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=5, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.edit_incident_start, justify='right', width=macadj(20, 15)) \
-                .grid(row=5, column=1, sticky="w")
-            Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=6, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.edit_incident_end, justify='right', width=macadj(20, 15)) \
-                .grid(row=6, column=1, sticky="w")
-            Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=7, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
-                .grid(row=7, column=1, sticky="w")
-            Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=8, column=0, sticky="w")  # select settlement level
-
-            lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
-            lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
-            lvl_om.config(width=13)
-            lvl_om.grid(row=8, column=1)
-            Label(self.win.body, text="Station: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=9, column=0, sticky="w")  # select a station
-
-            station_options = projvar.list_of_stations
-            if "out of station" in station_options:
-                station_options.remove("out of station")
-            station_om = OptionMenu(self.win.body, self.station, *station_options)
-            station_om.config(width=macadj(40, 34))
-            station_om.grid(row=10, column=0, columnspan=2, sticky="e")
-            Label(self.win.body, text="GATS Number: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=11, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.gats_number, justify='right', width=macadj(20, 15)) \
-                .grid(row=11, column=1, sticky="w")
-            Label(self.win.body, text="Documentation: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=12, column=0, sticky="w")
-
-            doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
-            docs_om = OptionMenu(self.win.body, self.edit_docs, *doc_options)
-            docs_om.config(width=13)
-            docs_om.grid(row=12, column=1)
-            Label(self.win.body, text="Description: ", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=16, column=0, sticky="w")
-
-            Entry(self.win.body, textvariable=self.description, width=macadj(47, 36), justify='right') \
-                .grid(row=17, column=0, sticky="e", columnspan=2)
-            Label(self.win.body, text="").grid(row=18, column=0)
-
-            Label(self.win.body, text=" ").grid(row=20)
-            Label(self.win.body, text="Delete Grievance", background=macadj("gray95", "grey"),
-                  fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-                .grid(row=21, column=0, sticky="w")
-            Button(self.win.body, text="Delete", width=9,
-                   command=lambda: self.delete(self.win.topframe, self.grv_no)) \
-                .grid(row=21, column=1, sticky="e")
-            Label(self.win.body, text=" ").grid(row=22)
-            Label(self.win.body, text=self.msg, fg="red", anchor="w").grid(row=23, column=0, columnspan=5, sticky="w")
-            self.msg = ""  # reset the message to empty string
-            Button(self.win.buttons, text="Go Back", width=macadj(19, 18),
-                   command=lambda: self.grvlist_result()).grid(row=0, column=0)
-            Button(self.win.buttons, text="Enter", width=macadj(19, 18),
-                   command=lambda: self.edit_apply()).grid(row=0, column=1)
-
-        def edit_apply(self):
-            """  check then edit informalc peticulars. """
-            dates = [self.edit_incident_start.get(), self.edit_incident_end.get(), self.date_signed.get()]
-            date_ids = ("starting incident date", "ending incident date", "date signed")
-            i = 0
-            for date in dates:
-                date = date.strip()
-                d = date.split("/")
-                if len(d) != 3:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The date for the {} is not properly formatted.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return
-                for num in d:
-                    if not num.isnumeric():
-                        messagebox.showerror("Invalid Data Entry",
-                                             "The month, day and year for the {} "
-                                             "must be numeric.".format(date_ids[i]),
-                                             parent=self.win.topframe)
-                        return
-                if len(d[0]) > 2:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The month for the {} must be no more than two digits"
-                                         " long.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return
-                if len(d[1]) > 2:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The day for the {} must be no more than two digits"
-                                         " long.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return
-                if len(d[2]) != 4:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The year for the {} must be four digits long."
-                                         .format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return
-                try:
-                    date = datetime(int(d[2]), int(d[0]), int(d[1]))
-                    valid_date = True
-                    if date:
-                        # use project variable to absorb error from unused try/except statement.
-                        projvar.try_absorber = True
-                except ValueError:
-                    valid_date = False
-                if not valid_date:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The date entered for {} is not a valid date."
-                                         .format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return
-                i += 1
-            if len(self.gats_number.get()) > 50:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The GATS number is limited to no more than 20 characters. ",
+                messagebox.showerror("Grievance Number Error",
+                                     "This number is already being used for another grievance.",
                                      parent=self.win.topframe)
-                return
-            if self.gats_number.get().strip() != "":
-                if not all(x.isalnum() or x.isspace() for x in self.gats_number.get()):
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The GATS number can only contain letters and numbers. No "
-                                         "special characters are allowed.",
-                                         parent=self.win.topframe)
-                    return
-            if self.description.get().strip() != "":
-                if not all(x.isalnum() or x.isspace() for x in self.description.get()):
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The Description can only contain letters and numbers. No "
-                                         "special characters are allowed.",
-                                         parent=self.win.topframe)
-                    return
-                if len(self.description.get()) > 40:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The Description is limited to no more than 40 characters. ",
-                                         parent=self.win.topframe)
-                    return
-            dates = [self.edit_incident_start.get(), self.edit_incident_end.get(), self.date_signed.get()]
-            in_start = datetime(1, 1, 1)
-            in_end = datetime(1, 1, 1)
-            d_sign = datetime(1, 1, 1)
-            dt_dates = [in_start, in_end, d_sign]
-            i = 0
-            for date in dates:
-                date = date.strip()
-                d = date.split("/")
-                new_date = datetime(int(d[2].lstrip("0")), int(d[0].lstrip("0")), int(d[1].lstrip("0")))
-                dt_dates[i] = new_date
-                i += 1
-            if dt_dates[0] > dt_dates[1]:
-                messagebox.showerror("Data Entry Error",
-                                     "The Incident Start Date can not be later that the Incident End "
-                                     "Date.",
-                                     parent=self.win.topframe)
-                return
-            if dt_dates[0] > dt_dates[2]:
-                messagebox.showerror("Data Entry Error",
-                                     "The Incident Start Date can not be later that the Date Signed.",
-                                     parent=self.win.topframe)
-                return
-            description = self.description.get()
-            description = description.strip()
-            description = description.lower()
-            sql = "UPDATE informalc_grv SET indate_start='%s',indate_end='%s',date_signed='%s',station='%s'," \
-                  "gats_number='%s', docs='%s',description='%s', level='%s' WHERE grv_no='%s'" % \
-                  (dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(), self.gats_number.get().strip(),
-                   self.edit_docs.get(), description, self.lvl.get(), self.grv_no.get())
+                return "fail"
+
+            sql = "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
             commit(sql)
-            messagebox.showerror("Sucessful Update",
-                                 "Grievance number: {} succesfully updated.".format(self.grv_no.get()),
-                                 parent=self.win.topframe)
-            self.update_search_results()  # update the search results
-            # self.grvlist_search(self.win.topframe)
-            self.grvlist_result()  # return to the grievance list results with previous search criteria
-
-        def update_search_results(self):
-            """ update the search results of the grievance list """
-            self.search_result = inquire(self.sql)
-
-        def delete(self, frame, grv_no):
-            """ deletes a record and associated records for a grievance. """
-            check = messagebox.askokcancel("Delete Grievance",
-                                           "Are you sure you want to delete his grievance and all the "
-                                           "data associated with it?",
-                                           parent=self.win.topframe)
-            if not check:
-                return
-            else:
-                sql = "DELETE FROM informalc_grv WHERE grv_no='%s'" % grv_no.get()
-                commit(sql)
-                self.grvlist_search(frame)
-
-        def grvchange(self, old_num, new_num):
-            """ change the grievance number. check grv number and input it into the informalc_grv table. """
-            l_passed_result = [list(x) for x in self.search_result]  # chg tuple of tuples to list of lists
-            if messagebox.askokcancel("Grievance Number Change",
-                                      "This will change the grievance number from {} to {} in all "
-                                      "records. Are you sure you want to proceed?".format(old_num, new_num.get()),
-                                      parent=self.win.topframe):
-                new_number = new_num.get()  # get the value from the passed new_num stringvar
-                new_number = new_number.strip()  # strip out all whitespace in front and back
-                new_number = new_number.lower()  # change all upper case to lower case
-                if new_number == "":
-                    messagebox.showerror("Invalid Data Entry",
-                                         "You must enter a grievance number",
-                                         parent=self.win.topframe)
-                    return "fail"
-                if not new_number.isalnum():
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The grievance number can only contain numbers and letters. No other "
-                                         "characters are allowed",
-                                         parent=self.win.topframe)
-                    return "fail"
-                if len(new_number) < 8:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The grievance number must be at least eight characters long",
-                                         parent=self.win.topframe)
-                    return "fail"
-                if len(new_number) > 16:
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The grievance number must not exceed 16 characters in length.",
-                                         parent=self.win.topframe)
-                    return "fail"
-                sql = "SELECT grv_no FROM informalc_grv WHERE grv_no = '%s'" % new_number
-                result = inquire(sql)
-                if result:
-                    messagebox.showerror("Grievance Number Error",
-                                         "This number is already being used for another grievance.",
-                                         parent=self.win.topframe)
-                    return "fail"
-
-                sql = "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
-                commit(sql)
-                sql = "UPDATE informalc_awards SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
-                commit(sql)
-                for record in l_passed_result:
-                    if record[0] == old_num:
-                        record[0] = new_number
-                self.msg = "The grievance number has been changed."
-                self.search_result = l_passed_result[:]
-                self.edit(new_number)
-
-        def addaward(self, grv_no):
-            """ adds carrier to the add award screen from the companion screen. """
-            self.informalc_root(grv_no)
-            self.addaward2(grv_no)
-
-        def informalc_root(self, grv_no):
-            """ creates a companion window for selecting carrier names. """
-            start = None
-            end = None
-            station = None
-            self.companion_root = Tk()
-            self.companion_root.title("KLUSTERBOX")
-            titlebar_icon(self.companion_root)  # place icon in titlebar
-            x_position = projvar.root.winfo_x() + 450
-            y_position = projvar.root.winfo_y() - 25
-            self.companion_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
-            topframe = Frame(self.companion_root)
-            topframe.pack()
-            buttons = Canvas(topframe)  # button bar
-            buttons.pack(fill=BOTH, side=BOTTOM)
-            Label(topframe, text="Add Carriers", font=macadj("bold", "Helvetica 18")).pack(anchor="w")
-            Label(topframe, text="").pack()
-            scrollbar = Scrollbar(topframe, orient=VERTICAL)
-            listbox = Listbox(topframe, selectmode="multiple", yscrollcommand=scrollbar.set)
-            listbox.config(height=100, width=50)
-            sql = "SELECT indate_start,indate_end,station FROM informalc_grv WHERE grv_no='%s'" % grv_no
-            results = inquire(sql)
-            if results:
-                start = results[0][0]
-                end = results[0][1]
-                station = results[0][2]
-            start = dt_converter(start)
-            end = dt_converter(end)
-            c_list = informalc_gen_clist(start, end, station)
-            for name in c_list:
-                listbox.insert(END, name)
-            scrollbar.config(command=listbox.yview)
-            scrollbar.pack(side=RIGHT, fill=Y)
-            listbox.pack(side=LEFT, expand=1)
-            Button(buttons, text="Add Carrier", width=10,
-                   command=lambda: (self.addnames(grv_no, c_list, listbox.curselection()),
-                                    self.addaward2(grv_no))) \
-                .pack(side=LEFT, anchor="w")
-            Button(buttons, text="Clear", width=10,
-                   command=lambda: (self.companion_root.destroy(), self.informalc_root(grv_no))) \
-                .pack(side=LEFT, anchor="w")
-            Button(buttons, text="Close", width=10,
-                   command=lambda: (self.companion_root.destroy())).pack(side=LEFT, anchor="w")
-
-        @staticmethod
-        def addnames(grv_no, c_list, listbox):
-            """ inserts names into informal c awards table. """
-            for index in listbox:
-                sql = "INSERT INTO informalc_awards (grv_no,carrier_name,hours,rate,amount) " \
-                      "VALUES('%s','%s','%s','%s','%s')" \
-                      % (grv_no, c_list[int(index)], '', '', '')
-                commit(sql)
-
-        def addaward2(self, grv_no):
-            """ creates a screen which allows a user to adds the awards to a settlement. """
-            frame = self.win  # preserve the window object from being destroy by the next line.
-            self.win = MakeWindow()
-            self.win.create(frame.topframe)
-            self.companion_frame = self.win.topframe
-            Label(self.win.body, text="Add/Update Settlement Awards", font=macadj("bold", "Helvetica 18")) \
-                .grid(row=0, column=0, sticky="w", columnspan=4)
-            Label(self.win.body, text=" ".format(self.companion_frame)).grid(row=1, column=0)
-            Label(self.win.body, text="   Grievance Number: {}".format(grv_no), fg="blue") \
-                .grid(row=2, column=0, sticky="w", columnspan=4)
-            sql = "SELECT grv_no,rowid,carrier_name,hours,rate,amount FROM informalc_awards WHERE grv_no ='%s' " \
-                  "ORDER BY carrier_name" % grv_no
-            result = inquire(sql)
-            # initialize arrays for names
-            self.var_id = []
-            self.var_name = []
-            self.var_hours = []
-            self.var_rate = []
-            self.var_amount = []
-            if len(result) == 0:
-                Label(self.win.body, text="No records in database").grid(row=3)
-            else:
-                Label(self.win.body, text="Carrier", fg="grey", padx=10).grid(row=3, column=0, sticky="w")
-                Label(self.win.body, text="Hours", fg="grey", padx=10).grid(row=3, column=1, sticky="w")
-                Label(self.win.body, text="Rate", fg="grey", padx=10).grid(row=3, column=2, sticky="w")
-                Label(self.win.body, text="Amount", fg="grey", padx=10).grid(row=3, column=3, sticky="w")
-                i = 0
-                r = 4
-                for res in result:
-                    self.var_id.append(StringVar(self.win.topframe))  # add to arrays
-                    self.var_name.append(StringVar(self.win.topframe))
-                    self.var_hours.append(StringVar(self.win.topframe))
-                    self.var_rate.append(StringVar(self.win.topframe))
-                    self.var_amount.append(StringVar(self.win.topframe))
-                    Label(self.win.body, text=res[2], anchor="w", width=16) \
-                        .grid(row=r, column=0, sticky="w", padx=10)  # display name widget
-                    Entry(self.win.body, textvariable=self.var_hours[i], width=8) \
-                        .grid(row=r, column=1, padx=10)  # display hours widget
-                    Entry(self.win.body, textvariable=self.var_rate[i], width=8) \
-                        .grid(row=r, column=2, padx=10)  # display rate widget
-                    Entry(self.win.body, textvariable=self.var_amount[i], width=8) \
-                        .grid(row=r, column=3, padx=10)  # display amount widget
-                    Button(self.win.body, text="delete",
-                           command=lambda ident=res[1]: self.deletename(grv_no, ident)) \
-                        .grid(row=r, column=4, padx=10)  # display the delete button
-                    self.var_id[i].set(res[1])  # set the textvariables
-                    self.var_name[i].set(res[2])
-                    self.var_hours[i].set(res[3])
-                    self.var_rate[i].set(res[4])
-                    self.var_amount[i].set(res[5])
-                    r += 1
-                    i += 1
-            Button(self.win.buttons, text="Go Back", width=15,
-                   command=lambda: self.call_grvlist_result()) \
-                .grid(row=0, column=0)
-            Button(self.win.buttons, text="Apply", width=15,
-                   command=lambda: self.addaward_apply(grv_no)).grid(row=0, column=1)
-            self.win.finish()
-
-        def addaward_apply(self, grv_no):
-            """ checks and adds records to the informal c add awards table. """
-            pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
-            pb_label.grid(row=0, column=2)
-            pb = ttk.Progressbar(self.win.buttons, length=200, mode="determinate")  # create progress bar
-            pb.grid(row=0, column=3)
-            pb["maximum"] = len(self.var_id)  # set length of progress bar
-            pb.start()
-            ii = 0
-            for i in range(len(self.var_id)):
-                pb["value"] = ii  # increment progress bar
-                id_no = self.var_id[i].get()  # simplify variable names
-                name = self.var_name[i].get()
-                hours = self.var_hours[i].get().strip()
-                rate = self.var_rate[i].get().strip()
-                amount = self.var_amount[i].get().strip()
-                if hours and amount:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. You can not enter both hours and "
-                                         "amount. You can only enter one or another, but not both. "
-                                         "Awards can be in the form of "
-                                         "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if rate and amount:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. You can not enter both rate and "
-                                         "amount. You can only enter one or another, but not both. "
-                                         "Awards can be in the form of "
-                                         "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if hours and not rate:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. Hours must be a accompanied by a "
-                                         "rate.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if rate and not hours:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. Rate must be a accompanied by a "
-                                         "hours.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if hours and not isfloat(hours):
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. Hours must be a number."
-                                         .format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if hours and '.' in hours:
-                    s_hrs = hours.split(".")
-                    if len(s_hrs[1]) > 2:
-                        messagebox.showerror("Data Input Error",
-                                             "Input error for {} in row {}. Hours must have no "
-                                             "more than 2 decimal places.".format(name, str(i + 1)),
-                                             parent=self.win.topframe)
-                        pb_label.destroy()  # destroy the label for the progress bar
-                        pb.destroy()  # destroy the progress bar
-                        return
-                if rate and amount:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. You can not enter both rate and "
-                                         "amount. You can only enter one or another, but not both. "
-                                         "Awards can be in the form of "
-                                         "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if rate and amount:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. You can not enter both rate and "
-                                         "amount. You can only enter one or another, but not both. "
-                                         "Awards can be in the form of "
-                                         "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if rate and not isfloat(rate):
-                    messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
-                                         .format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if rate and '.' in rate:
-                    s_rate = rate.split(".")
-                    if len(s_rate[1]) > 2:
-                        messagebox.showerror("Data Input Error",
-                                             "Input error for {} in row {}. Rates must have no "
-                                             "more than 2 decimal places.".format(name, str(i + 1)),
-                                             parent=self.win.topframe)
-                        pb_label.destroy()  # destroy the label for the progress bar
-                        pb.destroy()  # destroy the progress bar
-                        return
-                if rate and float(rate) > 10:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. Values greater than 10 are not "
-                                         "accepted. \n"
-                                         "Note the following rates would be expressed as: \n "
-                                         "additional %50         .50 or just .5 \n"
-                                         "straight time rate     1.00 or just 1 \n"
-                                         "overtime rate          1.50 or 1.5 \n"
-                                         "penalty rate           2.00 or just 2".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if amount and not isfloat(amount):
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. Amounts can only be expressed as "
-                                         "numbers. No special characters, such as $ are allowed."
-                                         .format(name, str(i + 1)),
-                                         parent=self.win.topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-                if amount and '.' in amount:
-                    s_amt = amount.split(".")
-                    if len(s_amt[1]) > 2:
-                        messagebox.showerror("Data Input Error",
-                                             "Input error for {} in row {}. "
-                                             "Amounts must have no more than 2 decimal places."
-                                             .format(name, str(i + 1)),
-                                             parent=self.win.topframe)
-                        pb_label.destroy()  # destroy the label for the progress bar
-                        pb.destroy()  # destroy the progress bar
-                        return
-                sql = "UPDATE informalc_awards SET hours='%s',rate='%s',amount='%s' WHERE rowid='%s'" % (
-                    hours, rate, amount, id_no)
-                commit(sql)
-                self.win.buttons.update()  # update the progress bar
-                ii += 1
-            pb.stop()  # stop and destroy the progress bar
-            pb_label.destroy()  # destroy the label for the progress bar
-            pb.destroy()
-            self.addaward2(grv_no)
-
-        def call_grvlist_result(self):
-            """ exit out fo the Add Award screen. Destroy the companion window if it still exist. """
-            try:
-                self.companion_root.destroy()
-            except TclError:
-                pass
-            self.grvlist_result()
-
-        def deletename(self, grv_no, ids):
-            """ deletes records from informal c awards. """
-            sql = "DELETE FROM informalc_awards WHERE rowid='%s'" % ids
+            sql = "UPDATE informalc_awards SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
             commit(sql)
-            self.addaward2(grv_no)
+            for record in l_passed_result:
+                if record[0] == old_num:
+                    record[0] = new_number
+            self.msg = "The grievance number has been changed."
+            self.search_result = l_passed_result[:]
+            self.edit(frame, new_number)
 
-        def grvlist_setsum(self):
-            """ generates text report for settlement list summary showing all grievance settlements. """
-            if len(self.search_result) > 0:
-                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = "infc_grv_list" + "_" + stamp + ".txt"
-                report = open(dir_path('infc_grv') + filename, "w")
-                report.write("   Settlement List Summary\n")
-                report.write("   (ordered by date signed)\n\n")
-                report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
-                             .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
-                report.write(
-                    "      ----------------------------------------------------------------------------------\n")
-                total_hour = 0
-                total_amt = 0
-                i = 1
-                for sett in self.search_result:
-                    sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
-                    query = inquire(sql)
-                    awardxhour = 0
-                    awardxamt = 0
-                    for rec in query:  # calculate total award amounts
-                        hour = 0.0
-                        rate = 0.0
-                        amt = 0
-                        if rec[2]:
-                            hour = float(rec[2])
-                        if rec[3]:
-                            rate = float(rec[3])
-                        if rec[4]:
-                            amt = float(rec[4])
-                        if hour and rate:
-                            awardxhour += hour * rate
-                        if amt:
-                            awardxamt += amt
-                    sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
-                    s_gats = sett[5].split(" ")
-                    if sett[8] is None or sett[8] == "unknown":
-                        lvl = "---"
-                    else:
-                        lvl = sett[8]
-                    # for gats_no in s_gats:
-                    for gi in range(len(s_gats)):
-                        if gi == 0:
-                            total_hour += awardxhour
-                            total_amt += awardxamt
-                            report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
-                                         .format(str(i), sett[0], sign, s_gats[gi], sett[6], lvl,
-                                                 "{0:.2f}".format(float(awardxhour)),
-                                                 "{0:.2f}".format(float(awardxamt))))
-                        if gi != 0:
-                            report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
-                    if i % 3 == 0:
-                        report.write(
-                            "      ----------------------------------------------------------------------"
-                            "------------\n")
-                    i += 1
-                report.write(
-                    "      ----------------------------------------------------------------------------------\n")
-                report.write("{:<20}{:>58}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
-                report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
-                report.close()
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
+    def addaward(self, grv_no):
+        """ adds carrier to the add award screen from the companion screen. """
+        self.informalc_root(grv_no)
+        self.addaward2(grv_no)
 
-        def rptbygrv(self, grv_info):
-            """ generates a text report for a specific grievance number. """
-            grv_info = list(grv_info)  # correct for legacy problem of NULL Settlement Levels
-            if grv_info[8] is None:
-                grv_info[8] = "unknown"
+    def informalc_root(self, grv_no):
+        """ creates a companion window for selecting carrier names. """
+        start = None
+        end = None
+        station = None
+        self.companion_root = Tk()
+        self.companion_root.title("KLUSTERBOX")
+        titlebar_icon(self.companion_root)  # place icon in titlebar
+        x_position = projvar.root.winfo_x() + 450
+        y_position = projvar.root.winfo_y() - 25
+        self.companion_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
+        topframe = Frame(self.companion_root)
+        topframe.pack()
+        buttons = Canvas(topframe)  # button bar
+        buttons.pack(fill=BOTH, side=BOTTOM)
+        Label(topframe, text="Add Carriers", font=macadj("bold", "Helvetica 18")).pack(anchor="w")
+        Label(topframe, text="").pack()
+        scrollbar = Scrollbar(topframe, orient=VERTICAL)
+        listbox = Listbox(topframe, selectmode="multiple", yscrollcommand=scrollbar.set)
+        listbox.config(height=100, width=50)
+        sql = "SELECT indate_start,indate_end,station FROM informalc_grv WHERE grv_no='%s'" % grv_no
+        results = inquire(sql)
+        if results:
+            start = results[0][0]
+            end = results[0][1]
+            station = results[0][2]
+        start = dt_converter(start)
+        end = dt_converter(end)
+        c_list = informalc_gen_clist(start, end, station)
+        for name in c_list:
+            listbox.insert(END, name)
+        scrollbar.config(command=listbox.yview)
+        scrollbar.pack(side=RIGHT, fill=Y)
+        listbox.pack(side=LEFT, expand=1)
+        Button(buttons, text="Add Carrier", width=10,
+               command=lambda: (self.addnames(grv_no, c_list, listbox.curselection()),
+                                self.addaward2(grv_no))) \
+            .pack(side=LEFT, anchor="w")
+        Button(buttons, text="Clear", width=10,
+               command=lambda: (self.companion_root.destroy(), self.informalc_root(grv_no))) \
+            .pack(side=LEFT, anchor="w")
+        Button(buttons, text="Close", width=10,
+               command=lambda: (self.companion_root.destroy())).pack(side=LEFT, anchor="w")
+
+    @staticmethod
+    def addnames(grv_no, c_list, listbox):
+        """ inserts names into informal c awards table. """
+        for index in listbox:
+            sql = "INSERT INTO informalc_awards (grv_no,carrier_name,hours,rate,amount) " \
+                  "VALUES('%s','%s','%s','%s','%s')" \
+                  % (grv_no, c_list[int(index)], '', '', '')
+            commit(sql)
+
+    def addaward2(self, grv_no):
+        """ creates a screen which allows a user to adds the awards to a settlement. """
+        frame = self.win  # preserve the window object from being destroy by the next line.
+        self.win = MakeWindow()
+        self.win.create(frame.topframe)
+        self.companion_frame = self.win.topframe
+        Label(self.win.body, text="Add/Update Settlement Awards", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=0, column=0, sticky="w", columnspan=4)
+        Label(self.win.body, text=" ".format(self.companion_frame)).grid(row=1, column=0)
+        Label(self.win.body, text="   Grievance Number: {}".format(grv_no), fg="blue") \
+            .grid(row=2, column=0, sticky="w", columnspan=4)
+        sql = "SELECT grv_no,rowid,carrier_name,hours,rate,amount FROM informalc_awards WHERE grv_no ='%s' " \
+              "ORDER BY carrier_name" % grv_no
+        result = inquire(sql)
+        # initialize arrays for names
+        self.var_id = []
+        self.var_name = []
+        self.var_hours = []
+        self.var_rate = []
+        self.var_amount = []
+        if len(result) == 0:
+            Label(self.win.body, text="No records in database").grid(row=3)
+        else:
+            Label(self.win.body, text="Carrier", fg="grey", padx=10).grid(row=3, column=0, sticky="w")
+            Label(self.win.body, text="Hours", fg="grey", padx=10).grid(row=3, column=1, sticky="w")
+            Label(self.win.body, text="Rate", fg="grey", padx=10).grid(row=3, column=2, sticky="w")
+            Label(self.win.body, text="Amount", fg="grey", padx=10).grid(row=3, column=3, sticky="w")
+            i = 0
+            r = 4
+            for res in result:
+                self.var_id.append(StringVar(self.win.topframe))  # add to arrays
+                self.var_name.append(StringVar(self.win.topframe))
+                self.var_hours.append(StringVar(self.win.topframe))
+                self.var_rate.append(StringVar(self.win.topframe))
+                self.var_amount.append(StringVar(self.win.topframe))
+                Label(self.win.body, text=res[2], anchor="w", width=16) \
+                    .grid(row=r, column=0, sticky="w", padx=10)  # display name widget
+                Entry(self.win.body, textvariable=self.var_hours[i], width=8) \
+                    .grid(row=r, column=1, padx=10)  # display hours widget
+                Entry(self.win.body, textvariable=self.var_rate[i], width=8) \
+                    .grid(row=r, column=2, padx=10)  # display rate widget
+                Entry(self.win.body, textvariable=self.var_amount[i], width=8) \
+                    .grid(row=r, column=3, padx=10)  # display amount widget
+                Button(self.win.body, text="delete",
+                       command=lambda ident=res[1]: self.deletename(grv_no, ident)) \
+                    .grid(row=r, column=4, padx=10)  # display the delete button
+                self.var_id[i].set(res[1])  # set the textvariables
+                self.var_name[i].set(res[2])
+                self.var_hours[i].set(res[3])
+                self.var_rate[i].set(res[4])
+                self.var_amount[i].set(res[5])
+                r += 1
+                i += 1
+        Button(self.win.buttons, text="Go Back", width=15,
+               command=lambda: self.call_grvlist_result(self.win.topframe)) \
+            .grid(row=0, column=0)
+        Button(self.win.buttons, text="Apply", width=15,
+               command=lambda: self.addaward_apply(grv_no)).grid(row=0, column=1)
+        self.win.finish()
+
+    def addaward_apply(self, grv_no):
+        """ checks and adds records to the informal c add awards table. """
+        pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
+        pb_label.grid(row=0, column=2)
+        pb = ttk.Progressbar(self.win.buttons, length=200, mode="determinate")  # create progress bar
+        pb.grid(row=0, column=3)
+        pb["maximum"] = len(self.var_id)  # set length of progress bar
+        pb.start()
+        ii = 0
+        for i in range(len(self.var_id)):
+            pb["value"] = ii  # increment progress bar
+            id_no = self.var_id[i].get()  # simplify variable names
+            name = self.var_name[i].get()
+            hours = self.var_hours[i].get().strip()
+            rate = self.var_rate[i].get().strip()
+            amount = self.var_amount[i].get().strip()
+            if hours and amount:
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. You can not enter both hours and "
+                                     "amount. You can only enter one or another, but not both. "
+                                     "Awards can be in the form of "
+                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if rate and amount:
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. You can not enter both rate and "
+                                     "amount. You can only enter one or another, but not both. "
+                                     "Awards can be in the form of "
+                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if hours and not rate:
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Hours must be a accompanied by a "
+                                     "rate.".format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if rate and not hours:
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Rate must be a accompanied by a "
+                                     "hours.".format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if hours and not isfloat(hours):
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Hours must be a number."
+                                     .format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if hours and '.' in hours:
+                s_hrs = hours.split(".")
+                if len(s_hrs[1]) > 2:
+                    messagebox.showerror("Data Input Error",
+                                         "Input error for {} in row {}. Hours must have no "
+                                         "more than 2 decimal places.".format(name, str(i + 1)),
+                                         parent=self.win.topframe)
+                    pb_label.destroy()  # destroy the label for the progress bar
+                    pb.destroy()  # destroy the progress bar
+                    return
+            if rate and amount:
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. You can not enter both rate and "
+                                     "amount. You can only enter one or another, but not both. "
+                                     "Awards can be in the form of "
+                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if rate and amount:
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. You can not enter both rate and "
+                                     "amount. You can only enter one or another, but not both. "
+                                     "Awards can be in the form of "
+                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if rate and not isfloat(rate):
+                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
+                                     .format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if rate and '.' in rate:
+                s_rate = rate.split(".")
+                if len(s_rate[1]) > 2:
+                    messagebox.showerror("Data Input Error",
+                                         "Input error for {} in row {}. Rates must have no "
+                                         "more than 2 decimal places.".format(name, str(i + 1)),
+                                         parent=self.win.topframe)
+                    pb_label.destroy()  # destroy the label for the progress bar
+                    pb.destroy()  # destroy the progress bar
+                    return
+            if rate and float(rate) > 10:
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Values greater than 10 are not "
+                                     "accepted. \n"
+                                     "Note the following rates would be expressed as: \n "
+                                     "additional %50         .50 or just .5 \n"
+                                     "straight time rate     1.00 or just 1 \n"
+                                     "overtime rate          1.50 or 1.5 \n"
+                                     "penalty rate           2.00 or just 2".format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if amount and not isfloat(amount):
+                messagebox.showerror("Data Input Error",
+                                     "Input error for {} in row {}. Amounts can only be expressed as "
+                                     "numbers. No special characters, such as $ are allowed."
+                                     .format(name, str(i + 1)),
+                                     parent=self.win.topframe)
+                pb_label.destroy()  # destroy the label for the progress bar
+                pb.destroy()  # destroy the progress bar
+                return
+            if amount and '.' in amount:
+                s_amt = amount.split(".")
+                if len(s_amt[1]) > 2:
+                    messagebox.showerror("Data Input Error",
+                                         "Input error for {} in row {}. "
+                                         "Amounts must have no more than 2 decimal places."
+                                         .format(name, str(i + 1)),
+                                         parent=self.win.topframe)
+                    pb_label.destroy()  # destroy the label for the progress bar
+                    pb.destroy()  # destroy the progress bar
+                    return
+            sql = "UPDATE informalc_awards SET hours='%s',rate='%s',amount='%s' WHERE rowid='%s'" % (
+                hours, rate, amount, id_no)
+            commit(sql)
+            self.win.buttons.update()  # update the progress bar
+            ii += 1
+        pb.stop()  # stop and destroy the progress bar
+        pb_label.destroy()  # destroy the label for the progress bar
+        pb.destroy()
+        self.addaward2(grv_no)
+
+    def call_grvlist_result(self, frame):
+        """ exit out fo the Add Award screen. Destroy the companion window if it still exist. """
+        try:
+            self.companion_root.destroy()
+        except TclError:
+            pass
+        self.grvlist_result(frame)
+
+    def deletename(self, grv_no, ids):
+        """ deletes records from informal c awards. """
+        sql = "DELETE FROM informalc_awards WHERE rowid='%s'" % ids
+        commit(sql)
+        self.addaward2(grv_no)
+
+    def grvlist_setsum(self):
+        """ generates text report for settlement list summary showing all grievance settlements. """
+        if len(self.search_result) > 0:
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = "infc_grv_list" + "_" + stamp + ".txt"
             report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Settlement Summary\n\n")
-            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[0]
-            query = inquire(sql)
-            awardxhour = 0
-            awardxamt = 0
-            report.write("    Grievance Number:   " + grv_info[0] + "\n")
-            start = dt_converter(grv_info[1]).strftime("%m/%d/%Y")
-            end = dt_converter(grv_info[2]).strftime("%m/%d/%Y")
-            sign = dt_converter(grv_info[3]).strftime("%m/%d/%Y")
-            report.write("    Dates of Violation: " + start + " - " + end + "\n")
-            report.write("    Signing Date:       " + sign + "\n")
-            report.write("    Settlement Level    " + grv_info[8] + "\n")
-            report.write("    Station:            " + grv_info[4] + "\n")
-            report.write("    GATS Number:        " + grv_info[5] + "\n")
-            report.write("    Documentation:      " + grv_info[6] + "\n")
-            report.write("    Description:        " + grv_info[7] + "\n\n")
-            report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
-            report.write("    -----------------------------------------------------------------\n")
-            if len(query) == 0:
-                report.write("         No awards recorded for this settlement.\n")
-            cc = 1
-            for rec in query:
-                hour = 0.0
-                rate = 0.0
-                amt = 0
-                if rec[2]:
-                    hour = float(rec[2])
-                if rec[3]:
-                    rate = float(rec[3])
-                if rec[4]:
-                    amt = float(rec[4])
-                if hour and rate:
-                    awardxhour += hour * rate
-                if amt:
-                    awardxamt += amt
-                if rec[2]:
-                    hours = "{0:.2f}".format(float(rec[2]))
+            report.write("   Settlement List Summary\n")
+            report.write("   (ordered by date signed)\n\n")
+            report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
+                         .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
+            report.write(
+                "      ----------------------------------------------------------------------------------\n")
+            total_hour = 0
+            total_amt = 0
+            i = 1
+            for sett in self.search_result:
+                sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
+                query = inquire(sql)
+                awardxhour = 0
+                awardxamt = 0
+                for rec in query:  # calculate total award amounts
+                    hour = 0.0
+                    rate = 0.0
+                    amt = 0
+                    if rec[2]:
+                        hour = float(rec[2])
+                    if rec[3]:
+                        rate = float(rec[3])
+                    if rec[4]:
+                        amt = float(rec[4])
+                    if hour and rate:
+                        awardxhour += hour * rate
+                    if amt:
+                        awardxamt += amt
+                sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
+                s_gats = sett[5].split(" ")
+                if sett[8] is None or sett[8] == "unknown":
+                    lvl = "---"
                 else:
-                    hours = "---"
-                if rec[3]:
-                    rate = "{0:.2f}".format(float(rec[3]))
-                else:
-                    rate = "---"
-                if rec[2] and rec[3]:
-                    adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
-                else:
-                    adj = "---"
-                if rec[4]:
-                    amt = "{0:.2f}".format(float(rec[4]))
-                else:
-                    amt = "---"
-                report.write('    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
-                cc += 1
-            report.write("    -----------------------------------------------------------------\n")
-            report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
-                                                          .format(float(awardxhour))))
-            report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
-                                                          .format(float(awardxamt))))
-            report.write("\n\n\n")
+                    lvl = sett[8]
+                # for gats_no in s_gats:
+                for gi in range(len(s_gats)):
+                    if gi == 0:
+                        total_hour += awardxhour
+                        total_amt += awardxamt
+                        report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
+                                     .format(str(i), sett[0], sign, s_gats[gi], sett[6], lvl,
+                                             "{0:.2f}".format(float(awardxhour)),
+                                             "{0:.2f}".format(float(awardxamt))))
+                    if gi != 0:
+                        report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
+                if i % 3 == 0:
+                    report.write(
+                        "      ----------------------------------------------------------------------"
+                        "------------\n")
+                i += 1
+            report.write(
+                "      ----------------------------------------------------------------------------------\n")
+            report.write("{:<20}{:>58}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
+            report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
             report.close()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
 
-        def bycarrier(self):
-            """ builds a screen that allows a user to select a carrier and generate a text report of settlements. """
-            unique_carrier = self.uniquecarrier()
-            frame = self.win  # preserve the window object which is destroyed in the next line
-            self.win = MakeWindow()
-            self.win.create(frame.topframe)
-            Label(self.win.body, text="Informal C: Select Carrier", font=macadj("bold", "Helvetica 18")) \
-                .pack(anchor="w")
-            Label(self.win.body, text="").pack()
-            scrollbar = Scrollbar(self.win.body, orient=VERTICAL)
-            listbox = Listbox(self.win.body, selectmode="single", yscrollcommand=scrollbar.set)
-            listbox.config(height=30, width=50)
-            for name in unique_carrier:
-                listbox.insert(END, name)
-            scrollbar.config(command=listbox.yview)
-            scrollbar.pack(side=RIGHT, fill=Y)
-            listbox.pack(side=LEFT, expand=1)
-            Button(self.win.buttons, text="Go Back", width=20,
-                   command=lambda: self.grvlist_result()).pack(side=LEFT)
-            Button(self.win.buttons, text="Report", width=20,
-                   command=lambda: self.bycarrier_apply
-                   (unique_carrier, listbox.curselection())).pack(side=LEFT)
-            self.win.finish()
+    def rptbygrv(self, grv_info):
+        """ generates a text report for a specific grievance number. """
+        grv_info = list(grv_info)  # correct for legacy problem of NULL Settlement Levels
+        if grv_info[8] is None:
+            grv_info[8] = "unknown"
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("Settlement Summary\n\n")
+        sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[0]
+        query = inquire(sql)
+        awardxhour = 0
+        awardxamt = 0
+        report.write("    Grievance Number:   " + grv_info[0] + "\n")
+        start = dt_converter(grv_info[1]).strftime("%m/%d/%Y")
+        end = dt_converter(grv_info[2]).strftime("%m/%d/%Y")
+        sign = dt_converter(grv_info[3]).strftime("%m/%d/%Y")
+        report.write("    Dates of Violation: " + start + " - " + end + "\n")
+        report.write("    Signing Date:       " + sign + "\n")
+        report.write("    Settlement Level    " + grv_info[8] + "\n")
+        report.write("    Station:            " + grv_info[4] + "\n")
+        report.write("    GATS Number:        " + grv_info[5] + "\n")
+        report.write("    Documentation:      " + grv_info[6] + "\n")
+        report.write("    Description:        " + grv_info[7] + "\n\n")
+        report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
+        report.write("    -----------------------------------------------------------------\n")
+        if len(query) == 0:
+            report.write("         No awards recorded for this settlement.\n")
+        cc = 1
+        for rec in query:
+            hour = 0.0
+            rate = 0.0
+            amt = 0
+            if rec[2]:
+                hour = float(rec[2])
+            if rec[3]:
+                rate = float(rec[3])
+            if rec[4]:
+                amt = float(rec[4])
+            if hour and rate:
+                awardxhour += hour * rate
+            if amt:
+                awardxamt += amt
+            if rec[2]:
+                hours = "{0:.2f}".format(float(rec[2]))
+            else:
+                hours = "---"
+            if rec[3]:
+                rate = "{0:.2f}".format(float(rec[3]))
+            else:
+                rate = "---"
+            if rec[2] and rec[3]:
+                adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
+            else:
+                adj = "---"
+            if rec[4]:
+                amt = "{0:.2f}".format(float(rec[4]))
+            else:
+                amt = "---"
+            report.write('    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
+            cc += 1
+        report.write("    -----------------------------------------------------------------\n")
+        report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
+                                                      .format(float(awardxhour))))
+        report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
+                                                      .format(float(awardxamt))))
+        report.write("\n\n\n")
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
 
-        def bycarrier_apply(self, names, cursor):
-            """ generates a text report for a specified carrier. """
-            if len(cursor) == 0:
-                return
-            unique_grv = []  # get a list of all grv numbers in search range
-            for grv in self.search_result:
-                if grv[0] not in unique_grv:
-                    unique_grv.append(grv[0])  # put these in "unique_grv"
-            name = names[cursor[0]]
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Settlement Report By Carrier\n\n")
+    def bycarrier(self, frame):
+        """ builds a screen that allows a user to select a carrier and generate a text report of settlements. """
+        unique_carrier = self.uniquecarrier()
+        self.win = MakeWindow()
+        self.win.create(frame)
+        Label(self.win.body, text="Informal C: Select Carrier", font=macadj("bold", "Helvetica 18")) \
+            .pack(anchor="w")
+        Label(self.win.body, text="").pack()
+        scrollbar = Scrollbar(self.win.body, orient=VERTICAL)
+        listbox = Listbox(self.win.body, selectmode="single", yscrollcommand=scrollbar.set)
+        listbox.config(height=30, width=50)
+        for name in unique_carrier:
+            listbox.insert(END, name)
+        scrollbar.config(command=listbox.yview)
+        scrollbar.pack(side=RIGHT, fill=Y)
+        listbox.pack(side=LEFT, expand=1)
+        Button(self.win.buttons, text="Go Back", width=20,
+               command=lambda: self.grvlist_result(self.win.topframe)).pack(side=LEFT)
+        Button(self.win.buttons, text="Report", width=20,
+               command=lambda: self.bycarrier_apply
+               (unique_carrier, listbox.curselection())).pack(side=LEFT)
+        self.win.finish()
+
+    def bycarrier_apply(self, names, cursor):
+        """ generates a text report for a specified carrier. """
+        if len(cursor) == 0:
+            return
+        unique_grv = []  # get a list of all grv numbers in search range
+        for grv in self.search_result:
+            if grv[0] not in unique_grv:
+                unique_grv.append(grv[0])  # put these in "unique_grv"
+        name = names[cursor[0]]
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("Settlement Report By Carrier\n\n")
+        report.write("{:<30}\n\n".format(name))
+        report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
+        report.write("    ------------------------------------------------------------------------------------\n")
+        results = []
+        for ug in unique_grv:  # do search for each grievance in list of unique grievances
+            sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
+                  "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
+                  "FROM informalc_awards, informalc_grv " \
+                  "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
+                  "and informalc_awards.grv_no = '%s'" \
+                  "ORDER BY informalc_grv.date_signed" % (name, ug)
+            query = inquire(sql)
+            if query:
+                for q in query:
+                    q = list(q)
+                    results.append(q)
+        if len(results) == 0:
+            report.write("    There are no awards on record for this carrier.\n")
+        total_adj = 0
+        total_amt = 0
+        i = 1
+        for r in results:
+            if r[1]:
+                hours = "{0:.2f}".format(float(r[1]))
+            else:
+                hours = "---"
+            if r[2]:
+                rate = "{0:.2f}".format(float(r[2]))
+            else:
+                rate = "---"
+            if r[1] and r[2]:
+                adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
+                total_adj += float(r[1]) * float(r[2])
+            else:
+                adj = "---"
+            if r[3]:
+                amt = "{0:.2f}".format(float(r[3]))
+                total_amt += float(r[3])
+            else:
+                amt = "---"
+            if r[5] is None or r[5] == "unknown":
+                r[5] = "---"
+            report.write("    {:<4}{:<18}{:>7}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+                         .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
+            i += 1
+        report.write("    ------------------------------------------------------------------------------------\n")
+        t_adj = "{0:.2f}".format(float(total_adj))
+        t_amt = "{0:.2f}".format(float(total_amt))
+        report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
+        report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
+
+    def uniquecarrier(self):
+        """ gets the awards for a carrier from the informalc awards table. """
+        unique_grv = []
+        for grv in self.search_result:
+            if grv[0] not in unique_grv:
+                unique_grv.append(grv[0])
+        unique_carrier = []
+        for each in unique_grv:
+            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % each
+            results = inquire(sql)
+            for r in results:
+                if r[1] not in unique_carrier:
+                    unique_carrier.append(r[1])
+        unique_carrier.sort()
+        return unique_carrier
+
+    def bycarriers(self):
+        """ generates a text report for settlements by carriers. """
+        unique_carrier = self.uniquecarrier()
+        unique_grv = []  # get a list of all grv numbers in search range
+        for grv in self.search_result:
+            if grv[0] not in unique_grv:
+                unique_grv.append(grv[0])  # put these in "unique_grv"
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("Settlement Report By Carriers\n\n")
+        for name in unique_carrier:
             report.write("{:<30}\n\n".format(name))
-            report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
-            report.write("    ------------------------------------------------------------------------------------\n")
+            report.write(
+                "        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
+            report.write(
+                "    ------------------------------------------------------------------------------------\n")
             results = []
             for ug in unique_grv:  # do search for each grievance in list of unique grievances
                 sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
                       "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
                       "FROM informalc_awards, informalc_grv " \
-                      "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
-                      "and informalc_awards.grv_no = '%s'" \
+                      "WHERE informalc_awards.grv_no = informalc_grv.grv_no and " \
+                      "informalc_awards.carrier_name='%s'" \
+                      "and informalc_awards.grv_no = '%s' " \
                       "ORDER BY informalc_grv.date_signed" % (name, ug)
                 query = inquire(sql)
                 if query:
@@ -2196,227 +1519,106 @@ class InformalC:
                     amt = "---"
                 if r[5] is None or r[5] == "unknown":
                     r[5] = "---"
-                report.write("    {:<4}{:<18}{:>7}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
+                report.write("    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
                              .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
                 i += 1
-            report.write("    ------------------------------------------------------------------------------------\n")
+            report.write(
+                "    ------------------------------------------------------------------------------------\n")
             t_adj = "{0:.2f}".format(float(total_adj))
             t_amt = "{0:.2f}".format(float(total_amt))
             report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
             report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
-            report.close()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
+            report.write("\n\n\n")
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
 
-        def uniquecarrier(self):
-            """ gets the awards for a carrier from the informalc awards table. """
-            unique_grv = []
-            for grv in self.search_result:
-                if grv[0] not in unique_grv:
-                    unique_grv.append(grv[0])
-            unique_carrier = []
-            for each in unique_grv:
-                sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % each
-                results = inquire(sql)
-                for r in results:
-                    if r[1] not in unique_carrier:
-                        unique_carrier.append(r[1])
-            unique_carrier.sort()
-            return unique_carrier
-
-        def bycarriers(self):
-            """ generates a text report for settlements by carriers. """
-            unique_carrier = self.uniquecarrier()
-            unique_grv = []  # get a list of all grv numbers in search range
-            for grv in self.search_result:
-                if grv[0] not in unique_grv:
-                    unique_grv.append(grv[0])  # put these in "unique_grv"
+    def rptgrvsum(self):
+        """ generates a text report for grievance summary. """
+        if len(self.search_result) > 0:
+            result = list(self.search_result)
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = "infc_grv_list" + "_" + stamp + ".txt"
             report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Settlement Report By Carriers\n\n")
-            for name in unique_carrier:
-                report.write("{:<30}\n\n".format(name))
-                report.write(
-                    "        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
-                report.write(
-                    "    ------------------------------------------------------------------------------------\n")
-                results = []
-                for ug in unique_grv:  # do search for each grievance in list of unique grievances
-                    sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                          "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
-                          "FROM informalc_awards, informalc_grv " \
-                          "WHERE informalc_awards.grv_no = informalc_grv.grv_no and " \
-                          "informalc_awards.carrier_name='%s'" \
-                          "and informalc_awards.grv_no = '%s' " \
-                          "ORDER BY informalc_grv.date_signed" % (name, ug)
-                    query = inquire(sql)
-                    if query:
-                        for q in query:
-                            q = list(q)
-                            results.append(q)
-                if len(results) == 0:
-                    report.write("    There are no awards on record for this carrier.\n")
-                total_adj = 0
-                total_amt = 0
-                i = 1
-                for r in results:
-                    if r[1]:
-                        hours = "{0:.2f}".format(float(r[1]))
+            report.write("Settlement List\n\n")
+            i = 1
+            for sett in result:
+                sett = list(sett)  # correct for legacy problem of NULL Settlement Levels
+                if sett[8] is None:
+                    sett[8] = "unknown"
+                sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
+                query = inquire(sql)
+                num_space = 3 - (len(str(i)))  # number of spaces for number
+                awardxhour = 0
+                awardxamt = 0
+                for rec in query:
+                    hour = 0.0
+                    rate = 0.0
+                    amt = 0
+                    if rec[2]:
+                        hour = float(rec[2])
+                    if rec[3]:
+                        rate = float(rec[3])
+                    if rec[4]:
+                        amt = float(rec[4])
+                    if hour and rate:
+                        awardxhour += hour * rate
+                    if amt:
+                        awardxamt += amt
+                space = " "
+                space += num_space * " "
+                if i > 99:
+                    report.write(str(i) + "\n" + "    Grievance Number:   " + sett[0] + "\n")
+                else:
+                    report.write(str(i) + space + "Grievance Number:   " + sett[0] + "\n")
+                start = dt_converter(sett[1]).strftime("%m/%d/%Y")
+                end = dt_converter(sett[2]).strftime("%m/%d/%Y")
+                sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
+                report.write("    Dates of Violation: " + start + " - " + end + "\n")
+                report.write("    Signing Date:       " + sign + "\n")
+                report.write("    Settlement Level    " + sett[8] + "\n")
+                report.write("    Station:            " + sett[4] + "\n")
+                report.write("    GATS Number:        " + sett[5] + "\n")
+                report.write("    Documentation:      " + sett[6] + "\n")
+                report.write("    Description:        " + sett[7] + "\n\n")
+                report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
+                report.write("    -----------------------------------------------------------------\n")
+                if len(query) == 0:
+                    report.write("         No awards recorded for this settlement.\n")
+                cc = 1
+                for rec in query:
+                    if rec[2]:
+                        hours = "{0:.2f}".format(float(rec[2]))
                     else:
                         hours = "---"
-                    if r[2]:
-                        rate = "{0:.2f}".format(float(r[2]))
+                    if rec[3]:
+                        rate = "{0:.2f}".format(float(rec[3]))
                     else:
                         rate = "---"
-                    if r[1] and r[2]:
-                        adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
-                        total_adj += float(r[1]) * float(r[2])
+                    if rec[2] and rec[3]:
+                        adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
                     else:
                         adj = "---"
-                    if r[3]:
-                        amt = "{0:.2f}".format(float(r[3]))
-                        total_amt += float(r[3])
+                    if rec[4]:
+                        amt = "{0:.2f}".format(float(rec[4]))
                     else:
                         amt = "---"
-                    if r[5] is None or r[5] == "unknown":
-                        r[5] = "---"
-                    report.write("    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
-                                 .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
-                    i += 1
-                report.write(
-                    "    ------------------------------------------------------------------------------------\n")
-                t_adj = "{0:.2f}".format(float(total_adj))
-                t_amt = "{0:.2f}".format(float(total_amt))
-                report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
-                report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
+                    report.write(
+                        '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
+                    cc += 1
+                report.write("    -----------------------------------------------------------------\n")
+                report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
+                                                              .format(float(awardxhour))))
+                report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
+                                                              .format(float(awardxamt))))
                 report.write("\n\n\n")
-            report.close()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
-
-        def rptgrvsum(self):
-            """ generates a text report for grievance summary. """
-            if len(self.search_result) > 0:
-                result = list(self.search_result)
-                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = "infc_grv_list" + "_" + stamp + ".txt"
-                report = open(dir_path('infc_grv') + filename, "w")
-                report.write("Settlement List\n\n")
-                i = 1
-                for sett in result:
-                    sett = list(sett)  # correct for legacy problem of NULL Settlement Levels
-                    if sett[8] is None:
-                        sett[8] = "unknown"
-                    sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
-                    query = inquire(sql)
-                    num_space = 3 - (len(str(i)))  # number of spaces for number
-                    awardxhour = 0
-                    awardxamt = 0
-                    for rec in query:
-                        hour = 0.0
-                        rate = 0.0
-                        amt = 0
-                        if rec[2]:
-                            hour = float(rec[2])
-                        if rec[3]:
-                            rate = float(rec[3])
-                        if rec[4]:
-                            amt = float(rec[4])
-                        if hour and rate:
-                            awardxhour += hour * rate
-                        if amt:
-                            awardxamt += amt
-                    space = " "
-                    space += num_space * " "
-                    if i > 99:
-                        report.write(str(i) + "\n" + "    Grievance Number:   " + sett[0] + "\n")
-                    else:
-                        report.write(str(i) + space + "Grievance Number:   " + sett[0] + "\n")
-                    start = dt_converter(sett[1]).strftime("%m/%d/%Y")
-                    end = dt_converter(sett[2]).strftime("%m/%d/%Y")
-                    sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
-                    report.write("    Dates of Violation: " + start + " - " + end + "\n")
-                    report.write("    Signing Date:       " + sign + "\n")
-                    report.write("    Settlement Level    " + sett[8] + "\n")
-                    report.write("    Station:            " + sett[4] + "\n")
-                    report.write("    GATS Number:        " + sett[5] + "\n")
-                    report.write("    Documentation:      " + sett[6] + "\n")
-                    report.write("    Description:        " + sett[7] + "\n\n")
-                    report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
-                    report.write("    -----------------------------------------------------------------\n")
-                    if len(query) == 0:
-                        report.write("         No awards recorded for this settlement.\n")
-                    cc = 1
-                    for rec in query:
-                        if rec[2]:
-                            hours = "{0:.2f}".format(float(rec[2]))
-                        else:
-                            hours = "---"
-                        if rec[3]:
-                            rate = "{0:.2f}".format(float(rec[3]))
-                        else:
-                            rate = "---"
-                        if rec[2] and rec[3]:
-                            adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
-                        else:
-                            adj = "---"
-                        if rec[4]:
-                            amt = "{0:.2f}".format(float(rec[4]))
-                        else:
-                            amt = "---"
-                        report.write(
-                            '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
-                        cc += 1
-                    report.write("    -----------------------------------------------------------------\n")
-                    report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
-                                                                  .format(float(awardxhour))))
-                    report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
-                                                                  .format(float(awardxamt))))
-                    report.write("\n\n\n")
-                    i += 1
-                report.close()
-                try:
-                    if sys.platform == "win32":
-                        os.startfile(dir_path('infc_grv') + filename)
-                    if sys.platform == "linux":
-                        subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                    if sys.platform == "darwin":
-                        subprocess.call(["open", dir_path('infc_grv') + filename])
-                except PermissionError:
-                    messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
-
-        def rptcarrierandid(self):
-            """ generates a text report with only carrier name and employee id number. """
-            if len(self.search_result) == 0:
-                return
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Carrier List\n\n")
-            carriers = self.uniquecarrier()  # get a list of carrier names
-            i = 1
-            for carrier in carriers:
-                emp_id = ""
-                sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
-                result = inquire(sql)
-                if result:
-                    emp_id = result[0][0]
-                report.write("{:>4} {:<25}{:>8}\n".format(str(i), carrier, emp_id))
                 i += 1
             report.close()
             try:
@@ -2429,134 +1631,1160 @@ class InformalC:
             except PermissionError:
                 messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
 
-        class RptCarrierId:
-            """
-            Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.
-            """
+    def rptcarrierandid(self):
+        """ generates a text report with only carrier name and employee id number. """
+        if len(self.search_result) == 0:
+            return
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("Carrier List\n\n")
+        carriers = self.uniquecarrier()  # get a list of carrier names
+        i = 1
+        for carrier in carriers:
+            emp_id = ""
+            sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+            result = inquire(sql)
+            if result:
+                emp_id = result[0][0]
+            report.write("{:>4} {:<25}{:>8}\n".format(str(i), carrier, emp_id))
+            i += 1
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
 
-            def __init__(self, parent):
-                self.parent = parent
-                self.wb = None  # workbook object
-                self.carrierlist = None  # workbook name
-                self.ws_header = None  # style
-                self.input_name = None  # style
-                self.input_s = None  # style
-                self.col_header = None  # style
-                self.i = 0  # this counts the rows/ number of carriers.
-                self.no_empid = []  # an array for carriers with no employee id
+    class RptCarrierId:
+        """
+        Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.
+        """
 
-            def run(self):
-                """ this method is the master method for running all other methods in proper order """
-                self.get_styles()
-                self.build_workbook()
-                self.set_dimensions()
-                self.build_header()
-                self.fill_body()
-                self.show_noempid()
-                self.save_open()
+        def __init__(self, parent):
+            self.parent = parent
+            self.wb = None  # workbook object
+            self.carrierlist = None  # workbook name
+            self.ws_header = None  # style
+            self.input_name = None  # style
+            self.input_s = None  # style
+            self.col_header = None  # style
+            self.i = 0  # this counts the rows/ number of carriers.
+            self.no_empid = []  # an array for carriers with no employee id
 
-            def get_styles(self):
-                """ Named styles for workbook """
-                bd = Side(style='thin', color="80808080")  # defines borders
-                self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-                self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                             border=Border(left=bd, top=bd, right=bd, bottom=bd))
-                self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                                          border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                                          alignment=Alignment(horizontal='right'))
-                self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                                             alignment=Alignment(horizontal='left'))
+        def run(self):
+            """ this method is the master method for running all other methods in proper order """
+            self.get_styles()
+            self.build_workbook()
+            self.set_dimensions()
+            self.build_header()
+            self.fill_body()
+            self.show_noempid()
+            self.save_open()
 
-            def build_workbook(self):
-                """ creates the workbook object """
-                self.wb = Workbook()  # define the workbook
-                self.carrierlist = self.wb.active  # create first worksheet
-                self.carrierlist.title = "carrier list"  # title first worksheet
-                self.carrierlist.oddFooter.center.text = "&A"
+        def get_styles(self):
+            """ Named styles for workbook """
+            bd = Side(style='thin', color="80808080")  # defines borders
+            self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+            self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                         border=Border(left=bd, top=bd, right=bd, bottom=bd))
+            self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                      border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                      alignment=Alignment(horizontal='right'))
+            self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                         alignment=Alignment(horizontal='left'))
 
-            def set_dimensions(self):
-                """ adjust the height and width on the violations/ instructions page """
-                self.carrierlist.column_dimensions["A"].width = 5
-                self.carrierlist.column_dimensions["B"].width = 20
-                self.carrierlist.column_dimensions["C"].width = 10
+        def build_workbook(self):
+            """ creates the workbook object """
+            self.wb = Workbook()  # define the workbook
+            self.carrierlist = self.wb.active  # create first worksheet
+            self.carrierlist.title = "carrier list"  # title first worksheet
+            self.carrierlist.oddFooter.center.text = "&A"
 
-            def build_header(self):
-                """ build the header of the spreadsheet """
-                self.carrierlist.merge_cells('A1:R1')
-                self.carrierlist['A1'] = "Carrier List with Employee ID Numbers"
-                self.carrierlist['A1'].style = self.ws_header
-                cell = self.carrierlist.cell(row=3, column=2)
-                cell.value = "Carrier Name"
-                cell.style = self.col_header
-                cell = self.carrierlist.cell(row=3, column=3)
-                cell.value = "Employee ID"
-                cell.style = self.col_header
+        def set_dimensions(self):
+            """ adjust the height and width on the violations/ instructions page """
+            self.carrierlist.column_dimensions["A"].width = 5
+            self.carrierlist.column_dimensions["B"].width = 20
+            self.carrierlist.column_dimensions["C"].width = 10
 
-            def fill_body(self):
-                """ this loop will fill the body of the spreadsheet with the carrier list """
-                carriers = self.parent.uniquecarrier()  # get a list of carrier names
-                self.i = 1
-                for carrier in carriers:
-                    sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
-                    result = inquire(sql)
-                    if result:
-                        emp_id = result[0][0]
-                        cell = self.carrierlist.cell(row=self.i + 3, column=1)
-                        cell.value = str(self.i)
-                        cell.style = self.input_name
-                        cell = self.carrierlist.cell(row=self.i + 3, column=2)
-                        cell.value = carrier
-                        cell.style = self.input_name
-                        cell = self.carrierlist.cell(row=self.i + 3, column=3)
-                        cell.value = emp_id
-                        cell.style = self.input_s
-                        self.i += 1
-                    else:
-                        self.no_empid.append(carrier)
+        def build_header(self):
+            """ build the header of the spreadsheet """
+            self.carrierlist.merge_cells('A1:R1')
+            self.carrierlist['A1'] = "Carrier List with Employee ID Numbers"
+            self.carrierlist['A1'].style = self.ws_header
+            cell = self.carrierlist.cell(row=3, column=2)
+            cell.value = "Carrier Name"
+            cell.style = self.col_header
+            cell = self.carrierlist.cell(row=3, column=3)
+            cell.value = "Employee ID"
+            cell.style = self.col_header
 
-            def show_noempid(self):
-                """ this will display the a list of carriers with no employee id. """
-                if len(self.no_empid) == 0:
-                    return
-                self.i += 4
-                cell = self.carrierlist.cell(row=self.i, column=2)
-                cell.value = "Carriers without Employee ID"
-                cell.style = self.col_header
-                i = 1
-                self.i += 1
-                for carrier in self.no_empid:
-                    cell = self.carrierlist.cell(row=self.i, column=1)
-                    cell.value = str(i)
+        def fill_body(self):
+            """ this loop will fill the body of the spreadsheet with the carrier list """
+            carriers = self.parent.uniquecarrier()  # get a list of carrier names
+            self.i = 1
+            for carrier in carriers:
+                sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+                result = inquire(sql)
+                if result:
+                    emp_id = result[0][0]
+                    cell = self.carrierlist.cell(row=self.i + 3, column=1)
+                    cell.value = str(self.i)
                     cell.style = self.input_name
-                    cell = self.carrierlist.cell(row=self.i, column=2)
+                    cell = self.carrierlist.cell(row=self.i + 3, column=2)
                     cell.value = carrier
                     cell.style = self.input_name
+                    cell = self.carrierlist.cell(row=self.i + 3, column=3)
+                    cell.value = emp_id
+                    cell.style = self.input_s
                     self.i += 1
-                    i += 1
+                else:
+                    self.no_empid.append(carrier)
 
-            def save_open(self):
-                """ save the spreadsheet and open """
-                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
-                try:
-                    self.wb.save(dir_path('infc_grv') + xl_filename)
-                    messagebox.showinfo("Spreadsheet generator",
-                                        "Your spreadsheet was successfully generated. \n"
-                                        "File is named: {}".format(xl_filename),
-                                        parent=self.parent.win.topframe)
-                    if sys.platform == "win32":  # open the text document
-                        os.startfile(dir_path('infc_grv') + xl_filename)
-                    if sys.platform == "linux":
-                        subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
-                    if sys.platform == "darwin":
-                        subprocess.call(["open", dir_path('infc_grv') + xl_filename])
-                except PermissionError:
-                    messagebox.showerror("Spreadsheet generator",
-                                         "The spreadsheet was not generated. \n"
-                                         "Suggestion: "
-                                         "Make sure that identically named spreadsheets are closed "
-                                         "(the file can't be overwritten while open).",
-                                         parent=self.parent.win.topframe)
+        def show_noempid(self):
+            """ this will display the a list of carriers with no employee id. """
+            if len(self.no_empid) == 0:
+                return
+            self.i += 4
+            cell = self.carrierlist.cell(row=self.i, column=2)
+            cell.value = "Carriers without Employee ID"
+            cell.style = self.col_header
+            i = 1
+            self.i += 1
+            for carrier in self.no_empid:
+                cell = self.carrierlist.cell(row=self.i, column=1)
+                cell.value = str(i)
+                cell.style = self.input_name
+                cell = self.carrierlist.cell(row=self.i, column=2)
+                cell.value = carrier
+                cell.style = self.input_name
+                self.i += 1
+                i += 1
+
+        def save_open(self):
+            """ save the spreadsheet and open """
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
+            try:
+                self.wb.save(dir_path('infc_grv') + xl_filename)
+                messagebox.showinfo("Spreadsheet generator",
+                                    "Your spreadsheet was successfully generated. \n"
+                                    "File is named: {}".format(xl_filename),
+                                    parent=self.parent.win.topframe)
+                if sys.platform == "win32":  # open the text document
+                    os.startfile(dir_path('infc_grv') + xl_filename)
+                if sys.platform == "linux":
+                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
+                if sys.platform == "darwin":
+                    subprocess.call(["open", dir_path('infc_grv') + xl_filename])
+            except PermissionError:
+                messagebox.showerror("Spreadsheet generator",
+                                     "The spreadsheet was not generated. \n"
+                                     "Suggestion: "
+                                     "Make sure that identically named spreadsheets are closed "
+                                     "(the file can't be overwritten while open).",
+                                     parent=self.parent.win.topframe)
+
+
+    class NewGrievances:
+        """
+        Allows the user to create new records of grievances.
+        """
+        def __init__(self, parent):
+            self.parent = parent
+            self.newentry = False  # newentry is True or False
+            self.win = None  # the window object
+            self.edit_grv_no = ""  # if the grievance is being edited, the grievance number is passed.
+            self.row = 0  # the row of the body of the window
+            self.msg = ""  # a message displayed when grievances are inserted/ updated
+            self.grv_changesmade = False  # flag to update grievance record if changes are made
+            self.set_changesmade = False  # flag to update settlement record if changes are made
+            self.issue_description = []  # a list of issues for the option menu
+            self.issue_article = []  # a list of corrosponding articles for the list of issues
+            self.decision_description = ["no decision", ]  # a list of decisions for the option menu
+
+            #  define the stringvars
+            self.grievant = None  # 1
+            self.station = None  # 1.5
+            self.grv_no = None  # 2
+            self.startdate = None  # 3
+            self.enddate = None  # 4
+            self.meetingdate = None  # 5
+            self.issue = None  # 6
+            self.article = None  # 7
+            self.non_c = None  # 8  is the grievance a non compliance grievance?
+            self.reman = None  # 9  is the grievance a remanded grievance?
+            self.lvl = None  # 10 the level of the settlement
+            self.date_signed = None  # 11 the date the settlement was signed
+            self.decision = None  # 12 the decision of the settlement
+            self.proof_due = None  # 13 the date that the prooof of the remedy is due, if applicable
+            self.docs = None  # 14 the status of any documentation needed for proof of compliance
+            self.gats_no = None  # 15 the gats  number of the proof of compliance
+            self.batset = None  # 16 is the settlement part of a batch settlement?
+            self.batgat = None  # 17  is the settlement part of a batch gats?
+            
+            # get the values of the grievance/settlements on record
+            self.onrec_grievance = False
+            self.onrec_grievant = ""  # 1
+            self.onrec_grv_no = ""  # 2
+            self.onrec_startdate = ""  # 3
+            self.onrec_enddate = ""  # 4
+            self.onrec_meetingdate = ""  # 5
+            self.onrec_issue = ""  # 6
+            self.onrec_article = ""  # 7
+            self.index_onrecs = []  # holds onrecs for 8 nonc, 9 remanded, 16 batset and 17 batgat
+            self.onrec_settlement = False
+            self.onrec_lvl = ""  # 10 the level of the settlement
+            self.onrec_date_signed = ""  # 11 the date the settlement was signed
+            self.onrec_decision = ""  # 12 the decision of the settlement
+            self.onrec_proof_due = ""  # 13 the date that the prooof of the remedy is due, if applicable
+            self.onrec_docs = ""  # 14 the status of any documentation needed for proof of compliance
+            self.onrec_gats_no = ""  # 15 the gats  number of the proof of compliance
+
+            # store widgets for display and deletion
+            self.nonc_entry = []  # this array store the entry fields of the non compliance indexes
+            self.nonc_del = []  # this array stores the delete buttons for the non compliance entry widgets
+            self.reman_entry = []  # this array store the entry fields of the remanded indexes
+            self.reman_del = []  # this array stores the delete buttons for the remanded widgets
+            self.batset_entry = []  # this array store the entry fields of the batch settlement indexes
+            self.batset_del = []  # this array stores the delete buttons for the batch settlement entry widgets
+            self.batgat_entry = []  # this array store the entry fields of the batch gats indexes
+            self.batgat_del = []  # this array stores the delete buttons for the batch gats entry widgets
+
+            # check elements of grievances and settlements
+            self.check_grievant = None  # 1
+            self.check_grv_no = None  # 2
+            self.check_startdate = None  # 3
+            self.check_enddate = None  # 4
+            self.check_meetingdate = None  # 5
+            self.check_dates = []  # array to hold startdate, enddate and meetingdate - form in check_dates()
+            self.check_issue = None  # 6
+            self.check_article = None  # 7
+            self.check_lvl = None  # 10 the level of the settlement
+            self.check_datesigned = None  # 11 the date the settlement was signed
+            self.check_decision = None  # 12 the decision of the settlement
+            self.check_proofdue = None  # 13 the date that the prooof of the remedy is due, if applicable
+            self.check_docs = None  # 14 the status of any documentation needed for proof of compliance
+            self.check_gats_no = None  # 15 the gats  number of the proof of compliance
+            self.check_indexes = []  # multidimensional list to store indexes - nonc, remanded, batch set, batch gats
+            self.add_indexes = []
+            self.del_indexes = []
+
+        def informalc_new(self, frame):
+            """ master method for running other methods in proper order."""
+            self.newentry = True  # this is a new entry
+            self.win = MakeWindow()
+            self.get_issuecats()
+            self.get_decisioncats()
+            self.get_stringvars()
+            self.win.create(frame)
+            self.build_screen()
+            self.win.finish()
+            
+        def informalc_edit(self, frame, grv_no):
+            """ master method for running other methods in proper order."""
+            self.edit_grv_no = grv_no  # the grievance to be edited
+            self.newentry = False  # this is not a new entry
+            self.win = MakeWindow()
+            self.get_issuecats()
+            self.get_decisioncats()
+            self.get_onrecs(grv_no)
+            self.get_stringvars()
+            self.set_stringvars()
+            self.win.create(frame)
+            self.build_screen()
+            self.win.finish()
+
+        def get_stringvars(self):
+            """ initialize the stringvars """
+            self.grievant = StringVar(self.win.body)
+            self.station = StringVar(self.win.body)
+            self.grv_no = StringVar(self.win.body)
+            self.startdate = StringVar(self.win.body)
+            self.enddate = StringVar(self.win.body)
+            self.meetingdate = StringVar(self.win.body)
+            self.issue = StringVar(self.win.body)
+            self.article = StringVar(self.win.body)
+            self.non_c = [StringVar(self.win.body), ]
+            self.reman = [StringVar(self.win.body), ]
+            self.lvl = StringVar(self.win.body)
+            self.date_signed = StringVar(self.win.body)
+            self.decision = StringVar(self.win.body)
+            self.proof_due = StringVar(self.win.body)
+            self.docs = StringVar(self.win.body)
+            self.gats_no = StringVar(self.win.body)
+            self.batset = [StringVar(self.win.body), ]
+            self.batgat = [StringVar(self.win.body), ]
+
+        def get_issuecats(self):
+            """ fetch the issue categories from the informalc_issuescategories table of the db
+            and place them in arrays. """
+            sql = "SELECT * FROM informalc_issuescategories"
+            results = inquire(sql)
+            for r in results:
+                self.issue_description.append(r[2])
+                self.issue_article.append(r[1])
+
+        def get_decisioncats(self):
+            """ fetch the decision categories from the informalc_decisioncategories table of the db and place them in
+             arrays """
+            sql = "SELECT * FROM informalc_decisioncategories"
+            results = inquire(sql)
+            for r in results:
+                self.decision_description.append(r[2])
+
+        def get_onrecs(self, grv_number):
+            """ check if there is an existing record for the grievance number in the informalc grievances table.
+                   if so, store the values in the self.onrec variables. if not, the self.onrec variables
+                   default to empty. """
+            self.onrec_grievance = False  # make sure that onrec_grievances is re initialized.
+            self.onrec_settlement = False  # make sure that onrec_settlement is re initialized.
+            onrec_non_c = []
+            onrec_reman = []
+            onrec_batset = []
+            onrec_batgat = []
+            sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" \
+                  % (grv_number, self.parent.station)
+            results = inquire(sql)
+            if results:
+                self.onrec_grievance = True
+                self.onrec_grievant = results[0][0]
+                # skip station as that is held in self.parent.station and is part of the search criteria
+                # skip grievance number as that is self.edit_grv_no and is part of the search criteria
+                self.onrec_startdate = results[0][3]
+                self.onrec_enddate = results[0][4]
+                self.onrec_meetingdate = results[0][5]
+                self.onrec_issue = results[0][6]
+                self.onrec_article = results[0][7]
+            sql = "SELECT * FROM informalc_settlements WHERE grv_no = '%s'" % self.edit_grv_no
+            results = inquire(sql)
+            if results:
+                self.onrec_settlement = True
+                # skip grievance number as that is self.edit_grv_no and is part of the search criteria
+                self.onrec_lvl = results[0][1]
+                self.onrec_date_signed = results[0][2]
+                self.onrec_decision = results[0][3]
+                self.onrec_proof_due = results[0][4]
+                self.onrec_docs = results[0][5]
+                self.onrec_gats_no = results[0][6]
+            # use arrays and loops to get search results for all the grievances in the grv_list array.
+            # search these tables
+            tables_array = ("informalc_noncindex", "informalc_remandindex",
+                            "informalc_batchindex", "informalc_gatsindex")
+            # search these columns in the tables
+            search_criteria_array = ("settlement", "remanded", "main", "main")
+            for i in range(len(tables_array)):  # loop for each table
+                sql = "SELECT * FROM '%s' WHERE %s = '%s'" % \
+                      (tables_array[i], search_criteria_array[i], self.check_grv_no)
+                result = inquire(sql)
+                if tables_array[i] == "informalc_noncindex":  # get the onrecs for non compliance index
+                    if result:  # if there is a result
+                        for r in result:  # there can be multiple results
+                            onrec_non_c.append(r)  # add record to the array
+                if tables_array[i] == "informalc_remandindex":  # get the onrecs for informalc_remandindex
+                    if result:
+                        for r in result:
+                            onrec_reman.append(r)
+                if tables_array[i] == "informalc_batchindex":  # get the onrecs for informalc_batchindex
+                    if result:
+                        for r in result:
+                            onrec_batset.append(r)
+                if tables_array[i] == "informalc_batchgats":  # get the onrecs for informalc_batchindex
+                    if result:
+                        for r in result:
+                            onrec_batgat.append(r)
+            self.index_onrecs = [onrec_non_c, onrec_reman, onrec_batset, onrec_batgat]
+                
+        def set_stringvars(self):
+            """ use the data from onrecs to set the stringvar values
+            the index stringvars are set after the widgets are generated from self.index_onrecs"""
+            if self.newentry:
+                self.grievant.set("")  # 1
+                self.grv_no.set("")  # 2
+                self.startdate.set("")  # 3
+                self.enddate.set("")  # 4
+                self.meetingdate.set("")  # 5
+                self.issue.set("")  # 6
+                self.article.set("")  # 7
+                self.lvl.set("no status")  # 10 the level of the settlement
+                self.date_signed.set("")  # 11 the date the settlement was signed
+                self.decision.set("no decision")  # 12 the decision of the settlement
+                self.proof_due.set("")  # 13 the date that the prooof of the remedy is due
+                self.docs.set("no docs")  # 14 the status of any documentation needed for proof of compliance
+                self.gats_no.set("")  # 15 the gats  number of the proof of compliance
+            else:
+                self.grievant.set(self.onrec_grievant)  # 1
+                self.grv_no.set(self.edit_grv_no)  # 2
+                self.startdate.set(self.onrec_startdate)  # 3
+                self.enddate.set(self.onrec_enddate)  # 4
+                self.meetingdate.set(self.onrec_meetingdate)  # 5
+                self.issue.set(self.onrec_issue)  # 6
+                self.article.set(self.onrec_article)  # 7
+                if self.onrec_lvl:  # 10 the level of the settlement
+                    self.lvl.set(self.onrec_lvl)
+                else:  # if there is nothing in self.onrec_lvl
+                    self.lvl.set("no status")  # enter 'no status'
+                self.date_signed.set(self.onrec_date_signed)  # 11 the date the settlement was signed
+                if self.onrec_decision:  # 12 the decision of the settlement
+                    self.decision.set(self.onrec_decision)
+                else:  # if there is nothing in self.onrec_lvl
+                    self.decision.set("no decision")  # enter 'no decision'
+                self.proof_due.set(self.onrec_proof_due)  # 13 the date that the prooof of the remedy is due
+                if self.onrec_docs:  # 14 the status of any documentation needed for proof of compliance
+                    self.docs.set(self.onrec_docs)
+                else:
+                    self.docs.set("no docs")
+                self.gats_no.set(self.onrec_gats_no)  # 15 the gats  number of the proof of compliance
+
+        def build_screen(self):
+            """ screen for entering in settlements. """
+            self.row = 0
+            self.build_grievanceinfo()  # this is basic grievance information
+            self.build_nonc_assocs()  # for non compliance associations
+            self.build_remand_assoc()  # for remanded grievance associations
+            self.build_settlement()  # this area of the screen is for settlement information
+            self.build_batset_assocs()  # this area of the screen is for batch settlements
+            self.build_batgat_assocs()  # this area of the screen is for batch gats
+            self.build_message()  # this will display a message when a grievance is entered or updated
+            self.build_buttons()  # configure buttons on the bottom of the screen
+
+        def build_grievanceinfo(self):
+            """ insert the header """
+            Label(self.win.body, text="Enter New Grievance", font=macadj("bold", "Helvetica 18")) \
+                .grid(row=self.row, column=0, columnspan=2, sticky="w")
+            self.row += 1
+            Label(self.win.body, text="").grid(row=self.row, column=0, sticky="w")
+            self.row += 1
+
+            Label(self.win.body, text="Grievant: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.grievant, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+
+            Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # start and end dates
+            Label(self.win.body, text="Incident Date").grid(row=self.row, column=0, sticky="w")
+            self.row += 1
+            # start date
+            Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w") \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.startdate, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # end date
+            Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.enddate, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # meeting date
+            Label(self.win.body, text="Meeting Date (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.meetingdate, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # issue
+            Label(self.win.body, text="Issue: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            self.row += 1
+            Entry(self.win.body, textvariable=self.issue, width=macadj(49, 39), justify='right') \
+                .grid(row=self.row, column=0, sticky="w", columnspan=3)
+            self.row += 1
+            # article
+            Label(self.win.body, text="Article: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.article, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+
+        def build_nonc_assocs(self):
+            """ these are widgets for non compliance grievance indexes. Uses separate frames to allow for 
+                        expanding/colapsing fields """
+            text = macadj("Non Compliance Associations ___________________________",
+                          "Non Compliance Associations __________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
+            self.row += 1
+            nonc_frame = Frame(self.win.body)
+            nonc_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(nonc_frame, text="Subject Grievance", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
+                .grid(row=0, column=0, sticky="w")
+            nonc = Entry(nonc_frame, textvariable=self.non_c[0], justify='right', width=macadj(20, 15))
+            nonc.grid(row=0, column=1, sticky="w")
+            self.nonc_entry.append(nonc)  # add this to an array of entry widgets for non compliance
+            del_ = Button(nonc_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_nonc_field(nonc_frame))
+            del_.grid(row=0, column=3)
+            self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
+            self.row += 1
+            
+        def build_remand_assoc(self):
+            """ these are widgets for remanded grievance indexes. Uses separate frames to allow for 
+            expanding/colapsing fields """
+            text = macadj("Remanded  Associations _________________________________",
+                          "Remanded Associations _______________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
+            self.row += 1
+            reman_frame = Frame(self.win.body)
+            reman_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(reman_frame, text="Remanded Grievance", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
+                .grid(row=0, column=0, sticky="w")
+            reman = Entry(reman_frame, textvariable=self.reman[0], justify='right', width=macadj(20, 15))
+            reman.grid(row=0, column=1, sticky="w")
+            self.reman_entry.append(reman)  # add this to an array of entry widgets for non compliance
+            del_ = Button(reman_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_reman_field(reman_frame))
+            del_.grid(row=0, column=3)
+            self.reman_del.append(del_)  # add this to an array of widgets of delete buttons
+            self.row += 1
+
+        def build_settlement(self):
+            """ this area of the screen is for settlement information. """
+            text = macadj("Settlement _______________________________________________",
+                          "Settlement _____________________________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=2, sticky="w")
+            self.row += 1
+            # level of the settlement
+            Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")  # select settlement level
+            lvl_options = ("no status", "informal a", "formal a", "step b", "pre arb", "arbitration")
+            lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
+            lvl_om.config(width=macadj(14, 13))
+            lvl_om.grid(row=self.row, column=1)
+            self.lvl.set("no status")
+            self.row += 1
+            # date signed
+            Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # decision
+            Label(self.win.body, text="Decision: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")  # select decision
+            dec_om = OptionMenu(self.win.body, self.decision, *self.decision_description)
+            dec_om.config(width=macadj(14, 13))
+            dec_om.grid(row=self.row, column=1)
+            self.decision.set("no decision")
+            self.row += 1
+            # proof due
+            Label(self.win.body, text="Proof Due (mm/dd/yyyy): ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.proof_due, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            # docs
+            Label(self.win.body, text="Docs: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")  # select docs
+            doc_om = OptionMenu(self.win.body, self.docs, *self.parent.doc_options)
+            doc_om.config(width=macadj(14, 13))
+            doc_om.grid(row=self.row, column=1)
+            self.docs.set("no status")
+            self.row += 1
+            # gats number
+            Label(self.win.body, text="Gats Number: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Entry(self.win.body, textvariable=self.gats_no, justify='right', width=macadj(20, 15)) \
+                .grid(row=self.row, column=1, sticky="w")
+            self.row += 1
+            
+        def build_batset_assocs(self):
+            """ create a gui for BATch SETtlement associations.  """
+            text = macadj("Batch Settlement Associations ___________________________",
+                          "Batch Settlement Associations ___________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
+            self.row += 1
+            batset_frame = Frame(self.win.body)
+            batset_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(batset_frame, text="Included Grievances", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
+                .grid(row=0, column=0, sticky="w")
+            batset = Entry(batset_frame, textvariable=self.batset[0], justify='right', width=macadj(20, 15))
+            batset.grid(row=0, column=1, sticky="w")
+            self.batset_entry.append(batset)  # add this to an array of entry widgets for non compliance
+            del_ = Button(batset_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_batset_field(batset_frame))
+            del_.grid(row=0, column=3)
+            self.batset_del.append(del_)  # add this to an array of widgets of delete buttons
+            self.row += 1
+            
+        def build_batgat_assocs(self):
+            """ create a gui for BATch GATs associations.  """
+            text = macadj("Batch Gats Associations __________________________________",
+                          "Batch Gats Associations _________________________")
+            Label(self.win.body, text=text, anchor="w",
+                  fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
+            self.row += 1
+            batgat_frame = Frame(self.win.body)
+            batgat_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(batgat_frame, text="Included Settlements", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
+                .grid(row=0, column=0, sticky="w")
+            batgat = Entry(batgat_frame, textvariable=self.batgat[0], justify='right', width=macadj(20, 15))
+            batgat.grid(row=0, column=1, sticky="w")
+            self.batgat_entry.append(batgat)  # add this to an array of entry widgets for non compliance
+            del_ = Button(batgat_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_batgat_field(batgat_frame))
+            del_.grid(row=0, column=3)
+            self.batgat_del.append(del_)  # add this to an array of widgets of delete buttons
+            self.row += 1
+
+        def build_message(self):
+            """ this will display a message when a grievance is entered or updated. """
+            Label(self.win.body, text=self.msg, fg="red", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, columnspan=2, sticky="w")
+            self.row += 1
+
+        def build_buttons(self):
+            """ configure buttons on the bottom of the screen """
+            button_alignment = macadj("w", "center")
+            if self.newentry:
+                Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
+                       command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
+            else:
+                Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
+                       command=lambda: self.parent.grvlist_result(self.win.topframe))\
+                    .grid(row=0, column=0)
+            Button(self.win.buttons, text="Enter", width=macadj(19, 18), anchor=button_alignment,
+                   command=lambda: self.apply()).grid(row=0, column=1)
+
+        def add_nonc_field(self, frame):
+            """ added fields for compliance index"""
+            add_stringvar = StringVar(self.win.body)
+            self.non_c.append(add_stringvar)  # add this to an array of stringvars for non compliance
+            nonc = Entry(frame, textvariable=self.non_c[len(self.non_c)-1], justify='right', width=macadj(20, 15))
+            nonc.grid(row=len(self.non_c)-1, column=1, sticky="w")
+            self.nonc_entry.append(nonc)  # add this to an array of entry widgets for non compliance
+            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
+                          command=lambda x=len(self.non_c)-1: self.del_nonc_field(x))
+            del_.grid(row=len(self.non_c)-1, column=3)
+            self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
+            # bind the expanding frome to the canvas and scrollregion
+            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+        def del_nonc_field(self, x):
+            """ delete a field from the non compliance entry widgets as well as the delete button. 
+            set the value of the corresponding stringvar to an empty string. """
+            self.nonc_entry[x].grid_remove()
+            self.nonc_del[x].grid_remove()
+            self.non_c[x].set("")  # set the value of the stringvar to empty string
+            
+        def add_reman_field(self, frame):
+            """ added fields for compliance index"""
+            add_stringvar = StringVar(self.win.body)
+            self.reman.append(add_stringvar)  # add this to an array of stringvars for remanded
+            reman = Entry(frame, textvariable=self.reman[len(self.reman)-1], justify='right', width=macadj(20, 15))
+            reman.grid(row=len(self.reman)-1, column=1, sticky="w")
+            self.reman_entry.append(reman)  # add this to an array of entry widgets for remanded
+            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
+                          command=lambda x=len(self.reman)-1: self.del_reman_field(x))
+            del_.grid(row=len(self.reman)-1, column=3)
+            self.reman_del.append(del_)  # add this to an array of widgets of delete buttons
+            # bind the expanding frome to the canvas and scrollregion
+            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+        def del_reman_field(self, x):
+            """ delete a field from the remanded entry widgets as well as the delete button.
+            set the value of the corresponding stringvar to an empty string. """
+            self.reman_entry[x].grid_remove()
+            self.reman_del[x].grid_remove()
+            self.reman[x].set("")  # set the value of the stringvar to empty string
+            
+        def add_batset_field(self, frame):
+            """ added fields for compliance index"""
+            add_stringvar = StringVar(self.win.body)
+            self.batset.append(add_stringvar)  # add this to an array of stringvars for non compliance
+            batset = Entry(frame, textvariable=self.batset[len(self.batset)-1], justify='right', width=macadj(20, 15))
+            batset.grid(row=len(self.batset)-1, column=1, sticky="w")
+            self.batset_entry.append(batset)  # add this to an array of entry widgets for non compliance
+            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
+                          command=lambda x=len(self.batset)-1: self.del_batset_field(x))
+            del_.grid(row=len(self.batset)-1, column=3)
+            self.batset_del.append(del_)  # add this to an array of widgets of delete buttons
+            # bind the expanding frome to the canvas and scrollregion
+            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+        def del_batset_field(self, x):
+            """ delete a field from the non compliance entry widgets as well as the delete button. 
+            set the value of the corresponding stringvar to an empty string. """
+            self.batset_entry[x].grid_remove()
+            self.batset_del[x].grid_remove()
+            self.batset[x].set("")  # set the value of the stringvar to empty string
+            
+        def add_batgat_field(self, frame):
+            """ added fields for compliance index"""
+            add_stringvar = StringVar(self.win.body)
+            self.batgat.append(add_stringvar)  # add this to an array of stringvars for non compliance
+            batgat = Entry(frame, textvariable=self.batgat[len(self.batgat)-1], justify='right', width=macadj(20, 15))
+            batgat.grid(row=len(self.batgat)-1, column=1, sticky="w")
+            self.batgat_entry.append(batgat)  # add this to an array of entry widgets for non compliance
+            del_ = Button(frame, text="del", width=macadj(4, 3), anchor="center",
+                          command=lambda x=len(self.batgat)-1: self.del_batgat_field(x))
+            del_.grid(row=len(self.batgat)-1, column=3)
+            self.batgat_del.append(del_)  # add this to an array of widgets of delete buttons
+            # bind the expanding frome to the canvas and scrollregion
+            frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+        def del_batgat_field(self, x):
+            """ delete a field from the non compliance entry widgets as well as the delete button. 
+            set the value of the corresponding stringvar to an empty string. """
+            self.batgat_entry[x].grid_remove()
+            self.batgat_del[x].grid_remove()
+            self.batgat[x].set("")  # set the value of the stringvar to empty string
+            
+        def apply(self):
+            """
+            check the inputs one by one. if there are any errors, a messagebox will show the error and the checks will
+            stop. otherwise all inputs are put into a variable to be saved for entry into the database. .
+            """
+            # get the values from the stringvars
+            self.check_grievant = self.grievant.get()  # 1
+            self.check_grv_no = self.grv_no.get()  # 2
+            self.check_startdate = self.startdate.get()  # 3
+            self.check_enddate = self.enddate.get()  # 4
+            self.check_meetingdate = self.meetingdate.get()  # 5
+            self.check_issue = self.issue.get()  # 6
+            self.check_article = self.article.get()  # 7
+            self.check_lvl = self.lvl.get()  # 10 the level of the settlement
+            self.check_datesigned = self.date_signed.get()  # 11 the date the settlement was signed
+            self.check_decision = self.decision.get()  # 12 the decision of the settlement
+            self.check_proofdue = self.proof_due.get()  # 13 the date that the prooof of the remedy is due
+            self.check_docs = self.docs.get()  # 14 the status of any documentation needed for proof of compliance
+            self.check_gats_no = self.gats_no.get()  # 15 the gats  number of the proof of compliance
+            # get stringvar values for indexes and place them in a multidimentional list
+            # - non compliance, remanded, batch settlements and batch gats
+            if self.newentry:
+                self.get_onrecs(self.check_grv_no)
+            for index in [self.non_c, self.reman, self.batset, self.batgat]:
+                array = []
+                for element in index:
+                    if element.get():  # only append values that are not empty
+                        to_add = element.get()
+                        to_add = to_add.strip().lower()
+                        array.append(to_add)
+                self.check_indexes.append(array)
+            if not self.checking_grievant():
+                return
+            if not self.checking_grv_number:
+                return
+            if not self.checking_grv_number():
+                return
+            if not self.checking_dates():
+                return
+            if not self.checking_issue():
+                return
+            if not self.checking_article():
+                return
+            # since level, decision and docs values come from an option menu, there is no need to check them.
+            # entries of 'no status' and 'no decision' will be converted to empty strings
+            self.checking_optionmenus()
+            if not self.checking_indexes():
+                self.check_indexes = []  # re initialize array for indexes
+                return
+            self.get_grv_changesmade()  # check if changes necessitate an update
+            self.get_set_changesmade()  # check if changes necessitate an update
+            self.get_index_changesmade()  # check if changes necessitate an update
+            self.add_grv_recs()  # add grievance recs to db
+            self.add_set_recs()  # add settlement recs to db
+            self.add_index_recs()  # add or delete index recs to the db
+
+        def checking_grievant(self):
+            """ a method for checking the grievant.  check the grievant input. this is either 'class action' 
+            or a carrier name. it can be blank. """
+            self.check_grievant = self.check_grievant.lower().strip()
+            if not self.check_grievant or self.check_grievant == "class action":  # if empty or class action
+                return True  # skip checks
+            if not NameChecker(self.check_grievant).check_characters():
+                msg = "Grievant name can not contain numbers or most special characters\n"
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not NameChecker(self.check_grievant).check_length():
+                msg = "Grievant name must not exceed 42 characters\n"
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not NameChecker(self.check_grievant).check_comma():
+                msg = "Grievant name must contain one comma to separate last name and first initial\n"
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not NameChecker(self.check_grievant).check_initial():
+                msg = "Grievant name should must contain one initial ideally, \n" \
+                     "unless more are needed to create a distinct carrier name.\n"
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+            return True
+
+        def checking_grv_number(self):
+            """ check the grievance number input """
+            if self.newentry and self.onrec_grievance:
+                msg = "There is already a record for this grievance in the database."
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not GrievanceChecker(self.check_grv_no).has_value():
+                msg = "The grievance number must not be blank."
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not GrievanceChecker(self.check_grv_no).check_characters():
+                msg = "The grievance number can only contain numbers and letters."
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not GrievanceChecker(self.check_grv_no).min_lenght():
+                msg = "The grievance number must contain at least 4 characters."
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not GrievanceChecker(self.check_grv_no).max_lenght():
+                msg = "The grievance number can not contain more than 20 characters."
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            self.reformat_grv_no()  # clean up the grievance number for database entry
+            return True
+
+        def reformat_grv_no(self):
+            """ reformat the grievance number to all lowercase, no whitespaces, no dashes. """
+            self.check_grv_no = self.check_grv_no.lower()  # convert grievance number to lowercas
+            self.check_grv_no = self.check_grv_no.strip()  # strip whitespace from start and end of the string.
+            self.check_grv_no = self.check_grv_no.replace('-', '')  # remove any dashes
+            self.check_grv_no = self.check_grv_no.replace(' ', '')  # remove any whitespace
+
+        def checking_dates(self):
+            """ check the startdate, enddate and meetingdate.
+             since these are all dates with similiar criteria, use a loop to check them.
+             sometimes, openpyxl sends the dates as strings of datetime objects, instead of the mm/dd/yyyy formated
+             dates, the DateTimeChecker() will identify these and skip the checks. """
+            self.check_dates = [self.check_startdate, self.check_enddate, self.check_meetingdate,
+                                self.check_datesigned, self.check_proofdue]
+            for i in range(5):
+                if not self.check_date_loop(i):
+                    return False
+            return True
+
+        def check_date_loop(self, i):
+            """ loop from check dates """
+            _type = ("incident start", "incident end", "meeting", "signed", "proof due")
+            if self.check_dates[i].strip() == "":  # if the value is blank, skip all the checks
+                return True
+            # if the value is a valid dt object, skip all the checks
+            if DateTimeChecker().check_dtstring(self.check_dates[i]):
+                return True
+            date_object = BackSlashDateChecker(self.check_dates[i])  # first create the date_object
+            if not date_object.count_backslashes():  # this checks that there are 2 backslashes in the date
+                msg = "The date for the {} date must have two backslashes. Got instead: {}\n" \
+                    .format(_type[i], self.check_dates[i])
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            date_object.breaker()  # this breaks the object into month, day and year elements.
+            if not date_object.check_numeric():  # check each element in the date to ensure they are numeric
+                msg = "The month, day and year for the {} date must be numeric\n".format(_type[i])
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not date_object.check_minimums():  # check each element in the date to ensure they are greater than zero
+                msg = "The month, day and year for the {} date must be greater than zero.\n" \
+                    .format(_type[i])
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not date_object.check_month():  # returns False if the month is greater than 12.
+                msg = "The month for the {} date must less than 13.\n".format(_type[i])
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not date_object.check_day():  # return False if the day is greater than 31.
+                msg = "The day entered for the {} date is must be less than 32.\n".format(_type[i])
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not date_object.check_year():  # returns False if the year does not have 4 digits.
+                msg = "The year entered for the {} date must have 4 digits.\n".format(_type[i])
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            if not date_object.valid_date():  # returns False if the date is not a valid date
+                msg = "The date entered for the {} date is not a valid date.\n".format(_type[i])
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            # this removes white space from the date and each element of the date.
+            self.check_dates[i] = self.reformat_date(i)
+            # convert the input date into a string of a datetime object.
+            self.check_dates[i] = Convert(self.check_dates[i]).backslashdate_to_dtstring()
+            return True
+
+        def reformat_date(self, i):
+            """ this removes white space from the date and each element of the date. """
+            breakdown = self.check_dates[i].strip()
+            breakdown = breakdown.split("/")
+            month = breakdown[0].strip()
+            day = breakdown[1].strip()
+            year = breakdown[2].strip()
+            return "{}/{}/{}".format(month, day, year)
+
+        def checking_issue(self):
+            """ check the issue input """
+            self.check_issue = self.check_issue.strip()  # strip out any whitespace before or after the string
+            if self.check_issue == "":  # accept blank entries
+                return True
+            # check if issue is in list of issues, if so update the article
+            if self.issue in self.issue_description:
+                index = self.issue_description.index(self.check_issue)
+                self.check_article = self.issue_article[index]
+            return True
+
+        def checking_article(self):
+            """ check the article input """
+            self.check_article = self.check_article.strip()
+            if not self.check_article:
+                return True
+            if not isint(self.check_article):
+                msg = "The number the article must be a whole number. Got: {}\n".format(self.issue)
+                messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                return False
+            return True
+
+        def checking_optionmenus(self):
+            """ since level, decision and docs are option menus, just covert 'no status' entry into an empty string """
+            if self.check_lvl == "no status":
+                self.check_lvl = ""
+            if self.check_decision == "no decision":
+                self.check_decision = ""
+            if self.check_docs == "no status":
+                self.check_docs = ""
+
+        def checking_indexes(self):
+            """ check all of the indexes. indexes are called 'associations' in the gui.
+            """
+            indexes = ("non compliance", "remanded", "batch settlements", "batch gats")
+            for i in range(4):
+                mentioned_grv = []
+                for ii in range(len(self.check_indexes[i])):
+                    print(self.check_indexes[i][ii], self.check_grv_no)
+                    if self.check_indexes[i][ii] == self.check_grv_no:
+                        msg = "The {} grievance number for {} association can not be identical to the grievance " \
+                              "number being entered/edited: {}\n" \
+                            .format(Handler(ii + 1).make_ordinal(), indexes[i], self.edit_grv_no)
+                        messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                        return False
+                    sql = "SELECT COUNT(*) FROM informalc_grievances WHERE grv_no = '%s'" % self.check_indexes[i][ii]
+                    result = inquire(sql)
+                    if not result[0][0]:  # if there is not a record of the grievance in the grievances table
+                        msg = "There is no record of the {} grievance number for {} association: {}\n" \
+                              "Grievances in the associations must first be entered as grievances."\
+                            .format(Handler(ii + 1).make_ordinal(), indexes[i], self.check_indexes[i][ii])
+                        messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                        return False
+                    if self.check_indexes[i][ii] in mentioned_grv:
+                        msg = "The {} grievance number for {} association was entered more than once: {}. " \
+                              "Duplicates are not allowed. \n" \
+                            .format(Handler(ii + 1).make_ordinal(), indexes[i], self.edit_grv_no)
+                        messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                        return False
+                    mentioned_grv.append(self.check_indexes[i][ii])  # add grv num to a list of mentioned grv numbers.
+            return True
+
+        def get_grv_changesmade(self):
+            """ this will determine if the sql commit should be an update or an insert. """
+            chg_these = []
+            # get grievant place
+            if self.check_grv_no != self.edit_grv_no:
+                chg_these.append("grievance number")
+            if self.check_grievant != self.onrec_grievant:  # check grievant
+                chg_these.append("grievant")
+            # get date places using loop
+            onrec_date = [self.onrec_startdate, self.onrec_enddate, self.onrec_meetingdate]
+            chg_notation = ("startdate", "enddate", "meetingdate")
+            for i in range(0, 3):  # only check the first three elements - startdate, enddate and meetingdate
+                if self.check_dates[i] != onrec_date[i]:
+                    chg_these.append(chg_notation[i])
+            if self.check_issue != self.onrec_issue:
+                chg_these.append("issue")
+            if self.check_article != self.onrec_article:
+                chg_these.append("article")
+            if len(chg_these):  # if change these is not empty
+                self.grv_changesmade = True  # then update status is True.
+            print("grievance changesmade -----------------------------------------------------------")
+            print("     grv_no: ", self.check_grv_no, " onrec: ", self.edit_grv_no)
+            print("     grievant: ", self.check_grievant, "onrec: ", self.onrec_grievant)
+            for i in range(0, 3):  # only check the first three elements - startdate, enddate and meetingdate
+                print("     ", chg_notation[i], ": ", self.check_dates[i], " onrec: ", onrec_date[i])
+            print("     level: ", self.check_issue, "onrec: ", self.onrec_issue)
+            print("     article: ", self.check_article, " onrec: ", self.onrec_article)
+            print("     change these: ", chg_these)
+
+        def get_set_changesmade(self):
+            """ this will determine if the sql commit should be an update or an insert.). """
+            chg_these = []
+            if self.check_lvl != self.onrec_lvl:  # check level
+                chg_these.append("level")
+            # get date places using loop
+            check_dates = [self.check_dates[3], self.check_dates[4]]  # input from date signed and proof due.
+            onrec_date = [self.onrec_date_signed, self.onrec_proof_due]
+            chg_notation = ("date signed", "proof due")
+            for i in range(2):  # only check the last two elements - date signed and proof due.
+                if check_dates[i] != onrec_date[i]:
+                    chg_these.append(chg_notation[i])
+            if self.check_decision != self.onrec_decision:  # check decision
+                chg_these.append("decision")
+            if self.check_docs != self.onrec_docs:  # check docs
+                chg_these.append("docs")
+            if self.check_gats_no != self.onrec_gats_no:  # check docs
+                chg_these.append("gats")
+            if len(chg_these):  # if change these is not empty
+                self.set_changesmade = True  # then update status is True.
+
+            print("settlement changesmade ----------------------------------------------------------")
+            print("     self.check_lvl: ", self.check_lvl, "onrec: ", self.onrec_lvl)
+            for i in range(2):  # only check the last two elements - date signed and proof due.
+                print("     ", chg_notation[i], ": ", check_dates[i], "onrec: ", onrec_date[i])
+            print("     self.check_decision: ", self.check_decision, "onrec: ", self.onrec_decision)
+            print("     self.check_docs: ", self.check_docs, "onrec: ", self.onrec_docs)
+            print("     self.gats_no: ", self.check_gats_no, "onrec: ", self.onrec_gats_no)
+            print("     change these: ", chg_these)
+
+        def get_index_changesmade(self):
+            """ this will determine if the sql commit should be an update or a delete) """
+            # create a list of secondary values of the onrec pair
+            secondary_onrecs = []
+            for i in range(len(self.index_onrecs)):  # loop through nonc, remand, batset and batgat
+                array = []  # initialize
+                for ii in range(len(self.index_onrecs[i])):  # loop through all onrecs from the table
+                    array.append(self.index_onrecs[i][ii][1])  # capture all 2nd values of the pair
+                secondary_onrecs.append(array)  # store all results in an array with 4 arrays inside.
+            master_set = []
+            for i in range(4):
+                array = list(set(secondary_onrecs[i] + self.check_indexes[i]))
+                master_set.append(array)
+            for i in range(len(master_set)):  # loop through the 4 arrays in the master set
+                add_array = []  # initialize array for adding recs
+                del_array = []  # initialize array for deleting recs
+                for rec in master_set[i]:  # loop through all grievance numbers in the array
+                    if rec not in secondary_onrecs[i]:
+                        add_array.append(rec)
+                    if rec not in self.check_indexes[i]:
+                        del_array.append(rec)
+                self.add_indexes.append(add_array)
+                self.del_indexes.append(del_array)
+
+        def add_grv_recs(self):
+            """ insert, update or ignore record for grievance table. """
+            if self.newentry and self.grv_changesmade:  # if this is a new entry...
+                self.insert_grv()  # insert a record into the grievance database
+            elif not self.newentry and self.grv_changesmade:  # if this is an edited grievance with changes...
+                self.update_grv()  # update the record in the grievance table
+            else:  # if this is an edited grievance with no changes...
+                print("No grievance updates or inserts into database")
+                self.msg = "NO INPUT: Grievance Not Added."
+                # self.informalc_new(self.win.topframe)
+
+        def insert_grv(self):
+            """ insert a record into the grievance table """
+            sql = "INSERT INTO informalc_grievance (grievant, station, grv_no, startdate, enddate, " \
+                  "meetingdate, issue, article) " \
+                  "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
+                  (self.check_grievant, self.parent.station, self.check_grv_no, self.check_dates[0],
+                   self.check_dates[1], self.check_dates[2], self.check_issue, self.check_article)
+            print(sql)  # commit(sql)
+            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
+            # self.informalc_new(self.win.topframe)
+
+        def update_grv(self):
+            """ update the record in the grievance table """
+            sql = "UPDATE informalc_grievances SET grievant = '%s', startdate = '%s', enddate = '%s', " \
+                  "meetingdate = '%s', issue = '%s', article = '%s' WHERE grv_no = '%s" % \
+                  (self.check_grievant, self.check_dates[0], self.check_dates[1], self.check_dates[2],
+                   self.check_issue, self.check_article, self.check_grv_no)
+            print(sql)  # commit(sql)
+            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
+            # self.informalc_new(self.win.topframe)
+
+        def add_set_recs(self):
+            """ insert, update or ignore records for the settlement table """
+            print("settlement addrecs -------------------------------------------------")
+            print("     self.onrec_settlement: ", self.onrec_settlement, "\n",
+                  "     self.set_changesmade: ", self.set_changesmade)
+            # print(
+            #       "grv_no: ", self.check_grv_no, "\n",
+            #       "level:", self.check_lvl, "\n",
+            #       "date signed:", self.check_dates[3], "\n",
+            #       "decision:", self.check_decision, "\n",
+            #       "proof due:", self.check_dates[4], "\n",
+            #       "docs:", self.check_docs, "\n",
+            #       "gats number:", self.check_gats_no
+            #       )
+
+            # if there is no record for this settlement and changes have been made..
+            if not self.onrec_settlement and self.set_changesmade:   
+                self.insert_set()  # insert a record into the settlement table
+            # if there is a pre-existing settlement record and changes have been made... 
+            elif self.onrec_settlement and self.set_changesmade:
+                self.update_set()
+            else:  # no changes...
+                print("No settlement updates or inserts into database")
+                self.msg = "NO INPUT: Settlement Not Added."
+                # self.informalc_new(self.win.topframe)
+
+        def insert_set(self):
+            """ insert a record into the settlement table """
+            sql = "INSERT INTO informalc_settlements (grv_no, level, date_signed, decision, proofdue, " \
+                  "docs, gats_number) " \
+                  "VALUES('%s','%s','%s','%s','%s','%s','%s')" % \
+                  (self.check_grv_no, self.check_lvl, self.check_dates[3], self.check_decision,
+                   self.check_dates[4], self.check_docs, self.check_gats_no)
+            print(sql)  # commit(sql)
+            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
+            # self.informalc_new(self.win.topframe)
+
+        def update_set(self):
+            """ update a record in the settlement table """
+            sql = "UPDATE informalc_settlements SET level = '%s', date_signed = '%s', decision = '%s', " \
+                  "proofdue = '%s', docs = '%s', gats_number = '%s' WHERE grv_no = '%s'" % \
+                  (self.check_lvl, self.check_dates[3], self.check_decision, self.check_dates[4],
+                   self.check_docs, self.check_gats_no, self.check_grv_no)
+            print(sql)  # commit(sql)
+            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
+            # self.informalc_new(self.win.topframe)
+
+        def add_index_recs(self):
+            """  insert, delete or ignore records for the settlement table. for the indexes, no recs are updated.
+             there is only inserting and deleting. """
+            tables = ("informalc_noncindex", "informalc_remandindex", "informalc_batchindex", "informalc_gatsindex")
+            index_columns = [
+                ["settlement", "followup"],  # non compliance index
+                ["remanded", "followup"],  # remanded index
+                ["main", "sub"],  # batch settlement index
+                ["main", "sub"]]  # batch gats index
+            for i in range(len(self.add_indexes)):
+                for rec in self.add_indexes[i]:
+                    sql = "INSERT INTO %s(%s, %s) VALUES('%s', '%s')" % \
+                          (tables[i], index_columns[i][0], index_columns[i][1], self.check_grv_no, rec)
+                    print(sql)  # commit(sql)
+                for rec in self.del_indexes[i]:
+                    sql = "DELETE FROM %s WHERE %s='%s' and %s='%s'" \
+                          % (tables[i], index_columns[i][0], self.check_grv_no[0], index_columns[i][1], rec)
+                    print(sql)  # commit(sql)
+
 
     class PayoutEntry:
         """
@@ -12298,8 +12526,6 @@ class MainFrame:
                command=lambda: InformalC().informalc(self.win.topframe)).grid(row=1, column=1, pady=5)
         Button(self.main_frame, text="Quit", width=30, command=lambda: projvar.root.destroy()) \
             .grid(row=2, column=1, pady=5)
-        # for i in range(25):
-        #     Label(self.main_frame, text="").grid(row=4 + i, column=1)
 
     def empty_carrierlist(self):
         """ the carrier list is empty """
