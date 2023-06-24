@@ -1165,6 +1165,7 @@ class Convert:
             return ""
         return self.data
 
+
 class Handler:
     """
     class is a collection on methods to handle miscellaneous formatting issues.

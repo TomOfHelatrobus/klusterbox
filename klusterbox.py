@@ -98,32 +98,27 @@ class InformalC:
     """
     This is the home page of the Informal C program. It will open as a new window when launched in klusterbox.
     """
-
     def __init__(self):
         self.win = None
-        self.stationvar = None # this is the stringvar for the station
+        self.stationvar = None  # this is the stringvar for the station
         self.station_options = []  # the list of stations.
         self.station = None  # the stationon options
-        self.station_actual = None
-        self.doc_options = (
-            "no status",
-            "non-applicable",
-            "no",
-            "yes",
-            "unknown",
-            "yes-not paid",
-            "yes-in part",
-            "yes-verified",
-            "no-moot",
-            "no-ignore",
-        )
+
+        # stringvars for the search criteria
+        self.grievant = None
+        self.issue = None
         self.incident_date = None
         self.incident_start = None
         self.incident_end = None
+        self.meeting_start = None
+        self.meeting_end = None
+        self.signed_start = None
+        self.signed_end = None
+        self.proofdue_start = None
+        self.proofdue_end = None
         self.signing_date = None
         self.signing_start = None
         self.signing_end = None
-        # self.station = None
         self.set_lvl = None
         self.level = None
         self.gats = None
@@ -134,6 +129,11 @@ class InformalC:
         self.search_result = None  # var for the search result
         self.companion_root = None  # a companion root window for entering carrier awards
         self.companion_frame = None  # a companion frame for the addframe root.
+        self.listbox_fill = None  # what fills the listbox
+        self.issue_description = []  # a list of issues for the option menu
+        self.issue_article = []  # a list of articles which corrosponds to the issues
+        self.decision_description = []  # a list of decisions from the db.
+
         #  vars for the edit methods
         self.grv_num = None
         self.msg = ""
@@ -143,7 +143,6 @@ class InformalC:
         self.edit_incident_end = None
         self.date_signed = None
         self.lvl = None
-        # self.station = None
         self.gats_number = None
         self.edit_docs = None
         self.description = None
@@ -154,12 +153,63 @@ class InformalC:
         self.var_rate = None
         self.var_amount = None
 
+        # vars search criteria grievant/settlement
+        self.grvent = []
+        self.grvent_entry = []
+        self.grvent_del = []
+        self.grvent_showlist = None
+        self.src_issue = []
+        self.src_issue_entry = []
+        self.src_issue_del = []
+        self.src_issue_showlist = None
+        self.decision = []
+        self.decision_entry = []
+        self.decision_del = []
+        self.decision_showlist = None
+        self.option_incidentdate = None  # stringvar used for search criteria option menu
+        self.option_meetingdate = None  # stringvar used for search criteria option menu
+        self.option_signeddate = None  # stringvar used for search criteria option menu
+        self.option_proofduedate = None  # stringvar used for search criteria option menu
+        self.option_level = None  # stringvar used for search criteria option menu
+        self.option_docs = None  # stringvar used for search criteria option menu
+
+        # vars for document list/ option menus
+        self.doc_options = (
+            "no status",
+            "non-applicable",
+            "no",
+            "yes",
+            "unknown",
+            "yes-not paid",
+            "yes-in part",
+            "yes-verified",
+            "no-moot",
+            "no-ignore"
+        )
+        self.date_options = (
+            "include all",
+            "within specified range",
+            "within last 6 months",
+            "within last year",
+            "within last two years",
+            "within last three years"
+        )
+        self.level_options = (
+            "informal a",
+            "formal a",
+            "step b",
+            "pre arb",
+            "arbitration"
+        )
+
     def informalc(self, frame):
         """ a master method for running the other methods in proper sequence. """
         self.clear_tempfolders()  # clear contents of temp folder
         self.get_station()  # this uses the investigation range station as the default
         self.get_station_options()  # this gets the list of stations
         self.build_tables()  # build needed tables if they do not exist.
+        self.get_issuecats()  # gets all from informalc_issuescategories table and puts it in self.issue_description
+        self.get_decisioncats()  # get all from informalc_decisioncategories and puts it in self.decision_description
         if not self.station_screen_autorouting(frame):
             if not self.station:
                 self.station_screen(frame)  # this allows the user to change/select the station
@@ -319,13 +369,13 @@ class InformalC:
         Label(self.win.body, text="").grid(row=2)
         row = 3
         Button(self.win.body, text=" Enter New Grievance", width=30,
-               command=lambda: self.NewGrievances(self).informalc_new(self.win.topframe)).grid(row=row, pady=5)
+               command=lambda: self.GrievanceInput(self).informalc_new(self.win.topframe)).grid(row=row, pady=5)
         row += 1
         Button(self.win.body, text="Grievance Tracker", width=30,
-               command=lambda: self.grvlist_search(self.win.topframe)).grid(row=row, pady=5)
+               command=lambda: self.master_search(self.win.topframe)).grid(row=row, pady=5)
         row += 1
         Button(self.win.body, text="Tracker Settlement", width=30,
-               command=lambda: self.grvlist_search(self.win.topframe)).grid(row=row, pady=5)
+               command=lambda: self.master_search(self.win.topframe)).grid(row=row, pady=5)
         row += 1
         Button(self.win.body, text="Payout Entry", width=30,
                command=lambda: self.PayoutEntry(self).poe_search(self.win.topframe)).grid(row=row, pady=5)
@@ -342,122 +392,468 @@ class InformalC:
         button_back.grid(row=0, column=0)
         self.win.finish()  # this commands the window to loop and persist.
 
-    def grvlist_search(self, frame):
+    def master_search(self, frame):
         """ master method for running other methods in proper order. """
         self.win = MakeWindow()
         self.win.create(frame)
         self.get_stringvars()
-        self.build_screen()
+        self.initialize_listbox_components()  # initialize list holding strvars and widgets
+        self.build_search_screen()
         self.build_buttons()
         self.win.finish()
 
     def get_stringvars(self):
         """ initialize varibles """
+        self.grievant = StringVar(self.win.topframe)
+        self.issue = StringVar(self.win.topframe)
         self.incident_date = StringVar(self.win.topframe)
         self.incident_start = StringVar(self.win.topframe)
         self.incident_end = StringVar(self.win.topframe)
+        self.meeting_start = StringVar(self.win.topframe)
+        self.meeting_end = StringVar(self.win.topframe)
         self.signing_date = StringVar(self.win.topframe)
-        self.signing_start = StringVar(self.win.topframe)
-        self.signing_end = StringVar(self.win.topframe)
+        self.signed_start = StringVar(self.win.topframe)
+        self.signed_end = StringVar(self.win.topframe)
+        # self.signing_start = StringVar(self.win.topframe)
+        # self.signing_end = StringVar(self.win.topframe)
         self.set_lvl = StringVar(self.win.topframe)
         self.level = StringVar(self.win.topframe)
         self.gats = StringVar(self.win.topframe)
         self.have_gats = StringVar(self.win.topframe)
         self.docs = StringVar(self.win.topframe)
         self.have_docs = StringVar(self.win.topframe)
+        self.option_incidentdate = StringVar(self.win.topframe)
+        self.option_meetingdate = StringVar(self.win.topframe)
+        self.option_signeddate = StringVar(self.win.topframe)
+        self.option_proofduedate = StringVar(self.win.topframe)
+        self.option_level = StringVar(self.win.topframe)
+        self.option_docs = StringVar(self.win.topframe)
 
-    def build_screen(self):
+    def initialize_listbox_components(self):
+        """ initialize list holding stringvars, entry and button widgets for listbox/ entry fields for grievant,
+        issue and decisions """
+        self.grvent = []  # initialize a list holding stringvars
+        self.grvent_entry = []  # list holding entry widgets
+        self.grvent_del = []  # list holding button widgets
+        self.src_issue = []  # initialize a list holding stringvars
+        self.src_issue_entry = []  # list holding entry widgets
+        self.src_issue_del = []  # list holding button widgets
+
+    def get_issuecats(self):
+        """ fetch the issue categories from the informalc_issuescategories table of the db
+        and place them in arrays. """
+        self.issue_description = []  # re initialize list
+        self.issue_article = []  # re initialize list
+        sql = "SELECT * FROM informalc_issuescategories"
+        results = inquire(sql)
+        for r in results:
+            self.issue_description.append(r[2])
+            self.issue_article.append(r[1])
+
+    def get_decisioncats(self):
+        """ fetch the decision categories from the informalc_decisioncategories table of the db and place them in
+         arrays """
+        self.decision_description = []  # re initialize list
+        sql = "SELECT * FROM informalc_decisioncategories"
+        results = inquire(sql)
+        for r in results:
+            self.decision_description.append(r[2])
+
+    def build_search_screen(self):
         """ builds page for searching grievance settlements. """
-        Label(self.win.body, text="Informal C: Settlement Search Criteria", font=macadj("bold", "Helvetica 18")) \
-            .grid(row=0, columnspan=6, sticky="w")
-        Label(self.win.body, text=" ").grid(row=1, columnspan=6)
-        # # select station
-        # Label(self.win.body, text=" Station ", background=macadj("gray95", "white"), fg=macadj("black", "black"),
-        #       anchor="w", width=macadj(14, 12)).grid(row=2, column=0, columnspan=3, sticky="w")
-        # station_options = projvar.list_of_stations
-        # if "out of station" in station_options:
-        #     station_options.remove("out of station")
-        # station_om = OptionMenu(self.win.body, self.station, *station_options)
-        # station_om.config(width=macadj(38, 31))
-        # station_om.grid(row=2, column=3, columnspan=3, sticky="e")
-        # self.station.set("Select a Station")
-        Label(self.win.body, text="Search For", fg="grey").grid(row=3, column=0, columnspan=2, sticky="w")
-        Label(self.win.body, text="Category", fg="grey").grid(row=3, column=3)
-        Label(self.win.body, text="Start", fg="grey").grid(row=3, column=4)
-        Label(self.win.body, text="End", fg="grey").grid(row=3, column=5)
-        # select for starting date
-        Radiobutton(self.win.body, text="yes", variable=self.incident_date, value='yes', width=macadj(2, 4)) \
-            .grid(row=4, column=0, sticky="w")
-        Radiobutton(self.win.body, text="no", variable=self.incident_date, value='no', width=macadj(2, 4)) \
-            .grid(row=4, column=1, sticky="w")
-        Label(self.win.body, text="", width=macadj(2, 4)).grid(row=4, column=2)
-        Label(self.win.body, text=" Incident Dates", background=macadj("gray95", "white"),
-              fg=macadj("black", "black"), anchor="w", width=14).grid(row=4, column=3, sticky="w")
-        Entry(self.win.body, textvariable=self.incident_start, width=macadj(12, 8), justify='right') \
-            .grid(row=4, column=4)
-        Entry(self.win.body, textvariable=self.incident_end, width=macadj(12, 8), justify='right') \
-            .grid(row=4, column=5)
-        self.incident_date.set('no')
-        # select for signing date
-        Radiobutton(self.win.body, text="yes", variable=self.signing_date, value='yes', width=macadj(2, 4)) \
-            .grid(row=5, column=0, sticky="w")
-        Radiobutton(self.win.body, text="no", variable=self.signing_date, value='no', width=macadj(2, 4)) \
-            .grid(row=5, column=1, sticky="w")
-        Label(self.win.body, text=" Signing Dates", background=macadj("gray95", "white"),
-              fg=macadj("black", "black"), anchor="w", width=14).grid(row=5, column=3, sticky="w")
-        Entry(self.win.body, textvariable=self.signing_start, width=macadj(12, 8), justify='right') \
-            .grid(row=5, column=4)
-        Entry(self.win.body, textvariable=self.signing_end, width=macadj(12, 8), justify='right') \
-            .grid(row=5, column=5)
-        self.signing_date.set('no')
-        # select for settlement level
-        Radiobutton(self.win.body, text="yes", variable=self.set_lvl, value='yes', width=macadj(2, 4)) \
-            .grid(row=6, column=0, sticky="w")
-        Radiobutton(self.win.body, text="no", variable=self.set_lvl, value='no', width=macadj(2, 4)) \
-            .grid(row=6, column=1, sticky="w")
-        self.set_lvl.set("no")
-        Label(self.win.body, text=" Settlement Level ", background=macadj("gray95", "white"),
-              fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=6, column=3, sticky="w")
-        lvl_options = ("informal a", "formal a", "step b", "pre-arb", "arbitration")
-        lvl_om = OptionMenu(self.win.body, self.level, *lvl_options)
-        lvl_om.config(width=macadj(20, 16))
-        lvl_om.grid(row=6, column=4, columnspan=3, sticky="e")
-        self.level.set("informal a")
-        # select for gats number
-        Radiobutton(self.win.body, text="yes", variable=self.gats, value='yes', width=macadj(2, 4)) \
-            .grid(row=7, column=0, sticky="w")
-        Radiobutton(self.win.body, text="no", variable=self.gats, value='no', width=macadj(2, 4)) \
-            .grid(row=7, column=1, sticky="w")
-        Label(self.win.body, text=" GATS Number", background=macadj("gray95", "white"), fg=macadj("black", "black"),
-              anchor="w", width=14, height=1).grid(row=7, column=3, sticky="w")
-        gats_options = ("no", "yes")
-        gats_om = OptionMenu(self.win.body, self.have_gats, *gats_options)
-        gats_om.config(width=macadj(10, 8))
-        gats_om.grid(row=7, column=4, columnspan=3, sticky="e")
-        self.have_gats.set('no')
-        self.gats.set('no')
-        # select for documentation
-        Radiobutton(self.win.body, text="yes", variable=self.docs, value='yes', width=macadj(2, 4)) \
-            .grid(row=9, column=0, sticky="w")
-        Radiobutton(self.win.body, text="no", variable=self.docs, value='no', width=macadj(2, 4)) \
-            .grid(row=9, column=1, sticky="w")
-        Label(self.win.body, text=" Documentation", background=macadj("gray95", "white"),
-              fg=macadj("black", "black"), anchor="w", width=14, height=1).grid(row=9, column=3, sticky="w")
-        doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
-        docs_om = OptionMenu(self.win.body, self.have_docs, *doc_options)
-        docs_om.config(width=macadj(10, 8))
-        docs_om.grid(row=9, column=4, columnspan=3, sticky="e")
-        self.have_docs.set('no')
-        self.docs.set("no")
-        Label(self.win.body, text="").grid(row=13)
+        button_alignment = macadj("w", "center")
+        row = 0
+        Label(self.win.body, text="Grievance Search Criteria", font=macadj("bold", "Helvetica 18")) \
+            .grid(row=row, columnspan=6, sticky="w")
+        row += 1
+        Label(self.win.body, text=" ").grid(row=row, columnspan=6)
+        row += 1
+        # ---------------------------------------------------------------------------------------------- search for all
+        Label(self.win.body, width=29, anchor="w", text="Search for all in {}".format(self.station))\
+            .grid(row=row, column=0, columnspan=5, sticky="w")
+        Button(self.win.body, text="Search All", width=23, anchor="center",
+               command=lambda: self.grvlist_apply(self.win.topframe)).grid(row=row, column=5)
+        row += 1
+        # --------------------------------------------------------------------------------------------------- grievance
+        grvframe = Frame(self.win.body)
+        grvframe.grid(row=row, column=0, columnspan=6, sticky="w")
+        Label(grvframe, text="Search by grievance number:", width=29, anchor="w")\
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        Entry(grvframe, textvariable=self.incident_start, width=macadj(27, 12), justify='right') \
+            .grid(row=0, column=5)
+        Button(grvframe, text="Search", width=23, anchor="center",
+               command=lambda: self.grvlist_apply(self.win.topframe)).grid(row=1, column=5)
+        row += 1
+        Label(self.win.body, text=" ").grid(row=row, columnspan=6)  # blank line
+        row += 1
+        # -----------------------------------------------------------------------------------------------------grievant
+        # grievant entry/ listbox / new frame
+        grievantframe = Frame(self.win.body)
+        grievantframe.grid(row=row, column=0, columnspan=6, sticky="w")
+        Label(grievantframe, text="Search by grievant:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        add_stringvar = StringVar(self.win.body)
+        self.grvent.append(add_stringvar)
+        # create entry/delete button widgets for grievant and add them to arrays
+        grvent = Entry(grievantframe, textvariable=self.grvent[0], width=macadj(21, 16), justify='right')
+        grvent.grid(row=0, column=4)
+        self.grvent_entry.append(grvent)  # add this to an array of entry widgets for grievant
+        del_ = Button(grievantframe, text="add", width=4, anchor=button_alignment,
+                      command=lambda: self.add_grvent_field(grievantframe))
+        del_.grid(row=0, column=5)
+        self.grvent_del.append(del_)  # add this to an array of widgets of delete buttons
+        # configure the show list button this will update location with self.add_grvent_field() command
+        self.grvent_showlist = Button(grievantframe, text="show list", width=23, anchor="center",
+                                      command=lambda: self.informalc_root("selectcarrier", childframe=grievantframe))
+        self.grvent_showlist.grid(row=len(self.grvent)+1, column=4, columnspan=2)
+        Label(self.win.body, text=" ").grid(row=row, columnspan=6)
+        row += 1
+        # ------------------------------------------------------------------------------------------------------- issue
+        # issue entry/ listbox / new frame
+        issueframe = Frame(self.win.body)
+        issueframe.grid(row=row, column=0, columnspan=6, sticky="w")
+        Label(issueframe, text="Search by issue:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        add_stringvar = StringVar(self.win.body)
+        self.src_issue.append(add_stringvar)
+        # create entry/delete button widgets for issue and add them to arrays
+        src_issue = Entry(issueframe, textvariable=self.src_issue[0], width=macadj(21, 16), justify='right')
+        src_issue.grid(row=0, column=4)
+        self.src_issue_entry.append(src_issue)  # add this to an array of entry widgets for issue
+        del_ = Button(issueframe, text="add", width=4, anchor=button_alignment,
+                      command=lambda: self.add_src_issue_field(issueframe))
+        del_.grid(row=0, column=5)
+        self.src_issue_del.append(del_)  # add this to an array of widgets of delete buttons
+        # configure the show list button this will update location with self.add_src_issue_field() command
+        self.src_issue_showlist = Button(issueframe, text="show list", width=23, anchor="center", 
+                                         command=lambda: self.informalc_root("selectissue", childframe=issueframe))
+        self.src_issue_showlist.grid(row=len(self.src_issue) + 1, column=4, columnspan=2)
+        Label(self.win.body, text=" ").grid(row=row, columnspan=6)
+        row += 1
+        
+        # -------------------------------------------------------------------------------------------------- decision
+        # decision entry/ listbox / new frame
+        decisionframe = Frame(self.win.body)
+        decisionframe.grid(row=row, column=0, columnspan=6, sticky="w")
+        Label(decisionframe, text="Search by decision:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        add_stringvar = StringVar(self.win.body)
+        self.decision.append(add_stringvar)
+        # create entry/delete button widgets for decision and add them to arrays
+        decision = Entry(decisionframe, textvariable=self.decision[0], width=macadj(21, 16), justify='right')
+        decision.grid(row=0, column=4)
+        self.decision_entry.append(decision)  # add this to an array of entry widgets for decision
+        del_ = Button(decisionframe, text="add", width=4, anchor=button_alignment,
+                      command=lambda: self.add_decision_field(decisionframe))
+        del_.grid(row=0, column=5)
+        self.decision_del.append(del_)  # add this to an array of widgets of delete buttons
+        # configure the show list button this will update location with self.add_decision_field() command
+        self.decision_showlist = Button(decisionframe, text="show list", width=23, anchor="center",
+                                        command=lambda: self.informalc_root("selectdecision", childframe=decisionframe))
+        self.decision_showlist.grid(row=len(self.decision)+1, column=4, columnspan=2)
+
+        Label(self.win.body, text=" ").grid(row=row, columnspan=6)
+        row += 1
+        # ----------------------------------------------------------------------------------------------- incident date
+        incidentframe = Frame(self.win.body)
+        incidentframe.grid(row=row, column=0, columnspan=6, sticky="w")
+
+        def callback_incident(*args):
+            """ watch the incident date option menu for changes using trace. """
+            if self.option_incidentdate.get() == "within specified range":
+                hiddenafterlabel_incident.grid(row=1, column=4, sticky="w")
+                hiddenbeforelabel_incident.grid(row=1, column=5, sticky="w")
+                hiddenafterentry_incident.grid(row=2, column=4)
+                hiddenbeforeentry_incident.grid(row=2, column=5)
+            if self.option_incidentdate.get() != "within specified range":
+                hiddenafterlabel_incident.grid_remove()
+                hiddenbeforelabel_incident.grid_remove()
+                hiddenafterentry_incident.grid_remove()
+                hiddenbeforeentry_incident.grid_remove()
+            # bind the expanding frome to the canvas and scrollregion
+            incidentframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+            projvar.root.update()
+        Label(incidentframe, text="Search by incident date:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        om = OptionMenu(incidentframe, self.option_incidentdate, *self.date_options)
+        om.config(width=macadj(22, 18))
+        om.grid(row=0, column=4, columnspan=2, sticky="e")
+        self.option_incidentdate.set("include all")
+        self.option_incidentdate.trace("w", callback_incident)
+        hiddenafterlabel_incident = Label(incidentframe, text="After", fg="grey", justify="left")
+        hiddenafterlabel_incident.grid_remove()
+        hiddenbeforelabel_incident = Label(incidentframe, text="Before", fg="grey", justify="left")
+        hiddenbeforelabel_incident.grid_remove()
+        hiddenafterentry_incident = Entry(incidentframe, textvariable=self.incident_start,
+                                          width=macadj(14, 8), justify='right')
+        hiddenafterentry_incident.grid_remove()
+        hiddenbeforeentry_incident = Entry(incidentframe, textvariable=self.incident_end,
+                                           width=macadj(14, 8), justify='right')
+        hiddenbeforeentry_incident.grid_remove()
+        row += 1
+        # ----------------------------------------------------------------------------------------------- meeting date
+        meetingframe = Frame(self.win.body)
+        meetingframe.grid(row=row, column=0, columnspan=6, sticky="w")
+
+        def callback_meeting(*args):
+            """ watch the meeting date option menu for changes using trace. """
+            if self.option_meetingdate.get() == "within specified range":
+                hiddenafterlabel_meeting.grid(row=1, column=4, sticky="w")
+                hiddenbeforelabel_meeting.grid(row=1, column=5, sticky="w")
+                hiddenafterentry_meeting.grid(row=2, column=4)
+                hiddenbeforeentry_meeting.grid(row=2, column=5)
+            if self.option_meetingdate.get() != "within specified range":
+                hiddenafterlabel_meeting.grid_remove()
+                hiddenbeforelabel_meeting.grid_remove()
+                hiddenafterentry_meeting.grid_remove()
+                hiddenbeforeentry_meeting.grid_remove()
+            # bind the expanding frome to the canvas and scrollregion
+            meetingframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+            projvar.root.update()
+        Label(meetingframe, text="Search by meeting date:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        om = OptionMenu(meetingframe, self.option_meetingdate, *self.date_options)
+        om.config(width=macadj(22, 18))
+        om.grid(row=0, column=4, columnspan=2, sticky="e")
+        self.option_meetingdate.set("include all")
+        self.option_meetingdate.trace("w", callback_meeting)
+        hiddenafterlabel_meeting = Label(meetingframe, text="After", fg="grey", justify="left")
+        hiddenafterlabel_meeting.grid_remove()
+        hiddenbeforelabel_meeting = Label(meetingframe, text="Before", fg="grey", justify="left")
+        hiddenbeforelabel_meeting.grid_remove()
+        hiddenafterentry_meeting = Entry(meetingframe, textvariable=self.meeting_start, 
+                                         width=macadj(14, 8), justify='right')
+        hiddenafterentry_meeting.grid_remove()
+        hiddenbeforeentry_meeting = Entry(meetingframe, textvariable=self.meeting_end, 
+                                          width=macadj(14, 8), justify='right')
+        hiddenbeforeentry_meeting.grid_remove()
+        row += 1
+        # ----------------------------------------------------------------------------------------------- signed date
+        signedframe = Frame(self.win.body)
+        signedframe.grid(row=row, column=0, columnspan=6, sticky="w")
+
+        def callback_signed(*args):
+            """ watch the signed date option menu for changes using trace. """
+            if self.option_signeddate.get() == "within specified range":
+                hiddenafterlabel_signed.grid(row=1, column=4, sticky="w")
+                hiddenbeforelabel_signed.grid(row=1, column=5, sticky="w")
+                hiddenafterentry_signed.grid(row=2, column=4)
+                hiddenbeforeentry_signed.grid(row=2, column=5)
+            if self.option_signeddate.get() != "within specified range":
+                hiddenafterlabel_signed.grid_remove()
+                hiddenbeforelabel_signed.grid_remove()
+                hiddenafterentry_signed.grid_remove()
+                hiddenbeforeentry_signed.grid_remove()
+            # bind the expanding frome to the canvas and scrollregion
+            signedframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+            projvar.root.update()
+        Label(signedframe, text="Search by signed date:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        om = OptionMenu(signedframe, self.option_signeddate, *self.date_options)
+        om.config(width=macadj(22, 18))
+        om.grid(row=0, column=4, columnspan=2, sticky="e")
+        self.option_signeddate.set("include all")
+        self.option_signeddate.trace("w", callback_signed)
+        hiddenafterlabel_signed = Label(signedframe, text="After", fg="grey", justify="left")
+        hiddenafterlabel_signed.grid_remove()
+        hiddenbeforelabel_signed = Label(signedframe, text="Before", fg="grey", justify="left")
+        hiddenbeforelabel_signed.grid_remove()
+        hiddenafterentry_signed = Entry(signedframe, textvariable=self.signed_start,
+                                          width=macadj(14, 8), justify='right')
+        hiddenafterentry_signed.grid_remove()
+        hiddenbeforeentry_signed = Entry(signedframe, textvariable=self.signed_end,
+                                           width=macadj(14, 8), justify='right')
+        hiddenbeforeentry_signed.grid_remove()
+        row += 1
+        # ----------------------------------------------------------------------------------------------- proofdue date
+        proofdueframe = Frame(self.win.body)
+        proofdueframe.grid(row=row, column=0, columnspan=6, sticky="w")
+
+        def callback_proofdue(*args):
+            """ watch the proofdue date option menu for changes using trace. """
+            if self.option_proofduedate.get() == "within specified range":
+                hiddenafterlabel_proofdue.grid(row=1, column=4, sticky="w")
+                hiddenbeforelabel_proofdue.grid(row=1, column=5, sticky="w")
+                hiddenafterentry_proofdue.grid(row=2, column=4)
+                hiddenbeforeentry_proofdue.grid(row=2, column=5)
+            if self.option_proofduedate.get() != "within specified range":
+                hiddenafterlabel_proofdue.grid_remove()
+                hiddenbeforelabel_proofdue.grid_remove()
+                hiddenafterentry_proofdue.grid_remove()
+                hiddenbeforeentry_proofdue.grid_remove()
+            # bind the expanding frome to the canvas and scrollregion
+            proofdueframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+            projvar.root.update()
+        Label(proofdueframe, text="Search by proofdue date:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        om = OptionMenu(proofdueframe, self.option_proofduedate, *self.date_options)
+        om.config(width=macadj(22, 18))
+        om.grid(row=0, column=4, columnspan=2, sticky="e")
+        self.option_proofduedate.set("include all")
+        self.option_proofduedate.trace("w", callback_proofdue)
+        hiddenafterlabel_proofdue = Label(proofdueframe, text="After", fg="grey", justify="left")
+        hiddenafterlabel_proofdue.grid_remove()
+        hiddenbeforelabel_proofdue = Label(proofdueframe, text="Before", fg="grey", justify="left")
+        hiddenbeforelabel_proofdue.grid_remove()
+        hiddenafterentry_proofdue = Entry(proofdueframe, textvariable=self.proofdue_start,
+                                          width=macadj(14, 8), justify='right')
+        hiddenafterentry_proofdue.grid_remove()
+        hiddenbeforeentry_proofdue = Entry(proofdueframe, textvariable=self.proofdue_end,
+                                           width=macadj(14, 8), justify='right')
+        hiddenbeforeentry_proofdue.grid_remove()
+        row += 1
+
+        # ----------------------------------------------------------------------------------------------------- level
+        levelframe = Frame(self.win.body)
+        levelframe.grid(row=row, column=0, columnspan=6, sticky="w")
+
+        def callback_level(*args):
+            """ watch the level option menu for changes using trace. """
+            if self.option_level.get() == "selection":
+                level_listbox.grid(row=1, column=4, columnspan=2, sticky="w")
+            if self.option_level.get() == "include all":
+                level_listbox.selection_clear(0, 'end')
+                level_listbox.grid_remove()
+            # bind the expanding frome to the canvas and scrollregion
+            levelframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+            projvar.root.update()
+        Label(levelframe, text="Search by level:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        om = OptionMenu(levelframe, self.option_level, "include all", "selection")
+        om.config(width=macadj(22, 18))
+        om.grid(row=0, column=4, columnspan=2, sticky="e")
+        self.option_level.set("include all")
+        self.option_level.trace("w", callback_level)
+        level_listbox = Listbox(levelframe, listvariable=self.lvl, height=len(self.level_options), width=28,
+                                selectmode="multiple")
+        level_listbox.grid_remove()
+        for i in range(len(self.level_options)):
+            level_listbox.insert(i, self.level_options[i])
+
+        row += 1
+        
+        # ----------------------------------------------------------------------------------------------------- docs
+        docsframe = Frame(self.win.body)
+        docsframe.grid(row=row, column=0, columnspan=6, sticky="w")
+
+        def callback_docs(*args):
+            """ watch the docs option menu for changes using trace. """
+            if self.option_docs.get() == "selection":
+                docs_listbox.grid(row=1, column=4, columnspan=2, sticky="w")
+            if self.option_docs.get() == "include all":
+                docs_listbox.selection_clear(0, 'end')
+                docs_listbox.grid_remove()
+            # bind the expanding frome to the canvas and scrollregion
+            docsframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+            projvar.root.update()
+        Label(docsframe, text="Search by docs:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        om = OptionMenu(docsframe, self.option_docs, "include all", "selection")
+        om.config(width=macadj(22, 18))
+        om.grid(row=0, column=4, columnspan=2, sticky="e")
+        self.option_docs.set("include all")
+        self.option_docs.trace("w", callback_docs)
+        docs_listbox = Listbox(docsframe, listvariable=self.docs, height=len(self.doc_options), width=28,
+                               selectmode="multiple")
+        docs_listbox.grid_remove()
+        for i in range(len(self.doc_options)):
+            docs_listbox.insert(i, self.doc_options[i])
+
+        row += 1
 
     def build_buttons(self):
         """ build the buttons on the bottom of the screen. """
         button_alignment = macadj("w", "center")
         Button(self.win.buttons, text="Search", width=20, anchor=button_alignment,
-               command=lambda: self.grvlist_apply(self.win.topframe)).grid(row=0, column=1)
+               command=lambda: (self.destroy_companion(), self.grvlist_apply(self.win.topframe))).grid(row=0, column=1)
         Button(self.win.buttons, text="Go Back", width=20, anchor=button_alignment,
-               command=lambda: self.informalc(self.win.topframe)).grid(row=0, column=0)
+               command=lambda: (self.destroy_companion(), self.informalc(self.win.topframe))).grid(row=0, column=0)
+
+    def add_grvent_field(self, childframe, carrier=None):
+        """ added fields for search criteria - grievant"""
+        add_stringvar = StringVar(self.win.body)
+        if carrier:
+            add_stringvar.set(carrier)
+        self.grvent.append(add_stringvar)  # add this to an array of stringvars for non compliance
+        grvent = Entry(childframe, textvariable=self.grvent[len(self.grvent)-1], justify='right', width=macadj(20, 15))
+        grvent.grid(row=len(self.grvent)-1, column=4, sticky="w")
+        self.grvent_entry.append(grvent)  # add this to an array of entry widgets for non compliance
+        del_ = Button(childframe, text="del", width=macadj(4, 3), anchor="center",
+                      command=lambda x=len(self.grvent)-1: self.del_grvent_field(x))
+        del_.grid(row=len(self.grvent)-1, column=5)
+        self.grvent_del.append(del_)  # add this to an array of widgets of delete buttons
+        self.grvent_showlist.grid(row=len(self.grvent) + 1, column=4)
+        projvar.root.update()
+        # bind the expanding frome to the canvas and scrollregion
+        childframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+        self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+    def del_grvent_field(self, x):
+        """ delete a field from search criteria - grievant, entry widgets as well as the delete button.
+        set the value of the corresponding stringvar to an empty string. """
+        self.grvent_entry[x].grid_remove()
+        self.grvent_del[x].grid_remove()
+        self.grvent[x].set("")  # set the value of the stringvar to empty string
+
+    def add_src_issue_field(self, childframe, issue=None):
+        """ added fields for search criteria - issue"""
+        add_stringvar = StringVar(self.win.body)
+        if issue:
+            add_stringvar.set(issue)
+        self.src_issue.append(add_stringvar)  # add this to an array of stringvars for non compliance
+        src_issue = Entry(childframe, textvariable=self.src_issue[len(self.src_issue)-1],
+                          justify='right', width=macadj(20, 15))
+        src_issue.grid(row=len(self.src_issue)-1, column=4, sticky="w")
+        self.src_issue_entry.append(src_issue)  # add this to an array of entry widgets for non compliance
+        del_ = Button(childframe, text="del", width=macadj(4, 3), anchor="center",
+                      command=lambda x=len(self.src_issue)-1: self.del_src_issue_field(x))
+        del_.grid(row=len(self.src_issue)-1, column=5)
+        self.src_issue_del.append(del_)  # add this to an array of widgets of delete buttons
+        self.src_issue_showlist.grid(row=len(self.src_issue) + 1, column=4)
+        projvar.root.update()
+        # bind the expanding frome to the canvas and scrollregion
+        childframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+        self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+    def del_src_issue_field(self, x):
+        """ delete a field from the search criteria - issue, entry widgets as well as the delete button.
+        set the value of the corresponding stringvar to an empty string. """
+        self.src_issue_entry[x].grid_remove()
+        self.src_issue_del[x].grid_remove()
+        self.src_issue[x].set("")  # set the value of the stringvar to empty string
+
+    def add_decision_field(self, childframe, decision_1=None):
+        """ added fields for search criteria - decision"""
+        add_stringvar = StringVar(self.win.body)
+        if decision_1:
+            add_stringvar.set(decision_1)
+        self.decision.append(add_stringvar)  # add this to an array of stringvars for non compliance
+        decision = Entry(childframe, textvariable=self.decision[len(self.decision)-1], justify='right',
+                         width=macadj(20, 15))
+        decision.grid(row=len(self.decision)-1, column=4, sticky="w")
+        self.decision_entry.append(decision)  # add this to an array of entry widgets for non compliance
+        del_ = Button(childframe, text="del", width=macadj(4, 3), anchor="center",
+                      command=lambda x=len(self.decision)-1: self.del_decision_field(x))
+        del_.grid(row=len(self.decision)-1, column=5)
+        self.decision_del.append(del_)  # add this to an array of widgets of delete buttons
+        self.decision_showlist.grid(row=len(self.decision) + 1, column=4)
+        projvar.root.update()
+        # bind the expanding frome to the canvas and scrollregion
+        childframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+        self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+    def del_decision_field(self, x):
+        """ delete a field from search criteria - decision, entry widgets as well as the delete button.
+        set the value of the corresponding stringvar to an empty string. """
+        self.decision_entry[x].grid_remove()
+        self.decision_del[x].grid_remove()
+        self.decision[x].set("")  # set the value of the stringvar to empty string
 
     def grvlist_apply(self, frame):
         """ applies changes to the grievance list after a check. """
@@ -496,12 +892,6 @@ class InformalC:
                 return
             to_add = "date_signed BETWEEN '{}' AND '{}'".format(start, end)
             conditions.append(to_add)
-        # if self.station.get() == "Select a Station":
-        #     messagebox.showerror("Invalid Station",
-        #                          "You must select a station.",
-        #                          parent=self.win.topframe)
-        #     return
-        # fill station criteria
         to_add = "station = '{}'".format(self.station)
         conditions.append(to_add)
         if self.set_lvl.get() == "yes":
@@ -524,16 +914,14 @@ class InformalC:
             if i + 1 < len(conditions):
                 where_str += " and "
         self.sql = "SELECT * FROM informalc_grv WHERE {} ORDER BY date_signed DESC".format(where_str)
-        print(self.sql)
         self.search_result = inquire(self.sql)
-        self.grvlist_result(frame)
+        self.showtime(frame)
 
-    def grvlist_result(self, frame):
+    def showtime(self, frame):
         """ shows the results for the specified range."""
-        # frame = self.win  # preserve the window object from being destroyed by the next line.
         self.win = MakeWindow()
-        # self.win.create(frame.topframe)
         self.win.create(frame)
+        self.pulldown_menu()
         Label(self.win.body, text="Informal C: Search Results", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         Label(self.win.body, text="").grid(row=1)
@@ -547,46 +935,49 @@ class InformalC:
         row = 3
         ii = 1
         for r in self.search_result:
-            """ 
-            Show search results. loop once for each settlement. 
-            """
-            Label(self.win.body, text=str(ii), anchor="w", width=macadj(4, 2)).grid(row=row, column=0)
-            Button(self.win.body, text=" " + r[0], anchor="w", width=macadj(14, 12), relief=RIDGE) \
-                .grid(row=row, column=1)
+            column = 0  # re initialize the column
+            if ii & 1:
+                color = "light yellow"
+            else:
+                color = "white"
+            # Show search results. loop once for each settlement.
+            Label(self.win.body, text=str(ii), anchor="w", width=macadj(4, 2), bg=color).grid(row=row, column=column)
+            column += 1
+            Button(self.win.body, text=" " + r[0], anchor="w", width=macadj(14, 12), relief=RIDGE, bg=color) \
+                .grid(row=row, column=column)
+            column += 1
             in_start = datetime.strptime(r[1], '%Y-%m-%d %H:%M:%S')
             in_end = datetime.strptime(r[2], '%Y-%m-%d %H:%M:%S')
             sign_date = datetime.strptime(r[3], '%Y-%m-%d %H:%M:%S')
             Button(self.win.body, text=in_start.strftime("%b %d, %Y"), width=macadj(11, 10),
-                   anchor="w", relief=RIDGE) \
-                .grid(row=row, column=2)
+                   anchor="w", relief=RIDGE, bg=color) \
+                .grid(row=row, column=column)
+            column += 1
             Button(self.win.body, text=in_end.strftime("%b %d, %Y"), width=macadj(11, 10),
-                   anchor="w", relief=RIDGE) \
-                .grid(row=row, column=3)
+                   anchor="w", relief=RIDGE, bg=color) \
+                .grid(row=row, column=column)
+            column += 1
             Button(self.win.body, text=sign_date.strftime("%b %d, %Y"), width=macadj(11, 10),
-                   anchor="w", relief=RIDGE) \
-                .grid(row=row, column=4)
-            Button(self.win.body, text="Edit", width=macadj(6, 5), relief=RIDGE,
-                   command=lambda x=r[0]: self.edit(self.win.topframe, x)) \
-                .grid(row=row, column=5)
-            Button(self.win.body, text="Edit", width=macadj(6, 5), relief=RIDGE,
-                   command=
-                   lambda x=r[0]: self.NewGrievances(self).informalc_edit(self.win.topframe, x))\
-                .grid(row=row, column=6)
-            Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE,
-                   command=lambda x=r: self.rptbygrv(x)).grid(row=row, column=7)
-            Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE,
-                   command=lambda x=r[0]: self.addaward(x)) \
-                .grid(row=row, column=8)
-            row += 1
-            Label(self.win.body, text="         {}".format(r[7]), anchor="w", fg="grey") \
-                .grid(row=row, column=1, columnspan=6, sticky="w")
+                   anchor="w", relief=RIDGE, bg=color) \
+                .grid(row=row, column=column)
+            column += 1
+            Button(self.win.body, text="Edit", width=macadj(6, 5), relief=RIDGE, bg=color,
+                   command=lambda x=r[0]: self.GrievanceInput(self).informalc_edit(self.win.topframe, x))\
+                .grid(row=row, column=column)
+            column += 1
+            Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE, bg=color,
+                   command=lambda x=r: self.rptbygrv(x)).grid(row=row, column=column)
+            column += 1
+            Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE, bg=color,
+                   command=lambda x=r[0]: self.addawards(self.win.topframe, x)) \
+                .grid(row=row, column=column)
             row += 1
             ii += 1
         """ 
         define the buttons at the bottom of the page: 
         """
         Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
-               command=lambda: self.grvlist_search(self.win.topframe)) \
+               command=lambda: self.master_search(self.win.topframe)) \
             .grid(row=0, column=0)
         Label(self.win.buttons, text="Report: ", width=macadj(16, 11)).grid(row=0, column=1)
         Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
@@ -605,389 +996,145 @@ class InformalC:
                command=lambda: self.RptCarrierId(self).run()).grid(row=1, column=3)
         self.win.finish()
 
-    def edit(self, frame, grv_num ):
-        """ screen for editing informalc grievances. """
-        # frame = self.win
-        # self.result = self.search_result
-        self.grv_num = grv_num
-        self.win = MakeWindow()
-        self.win.create(frame)
-        self.get_edit_stringvars()
-        self.set_edit_stringvars()
-        self.build_edit()
-        self.win.finish()
-
-    def get_edit_stringvars(self):
-        """ define the stringvars for the edit """
-        self.grv_no = StringVar(self.win.topframe)
-        self.edit_incident_start = StringVar(self.win.topframe)
-        self.edit_incident_end = StringVar(self.win.topframe)
-        self.date_signed = StringVar(self.win.topframe)
-        self.lvl = StringVar(self.win.topframe)
-        self.station = StringVar(self.win.topframe)
-        self.gats_number = StringVar(self.win.topframe)
-        self.edit_docs = StringVar(self.win.topframe)
-        self.description = StringVar(self.win.topframe)
-
-    def set_edit_stringvars(self):
-        """ set the values to the stringvars with values from the database. """
-        sql = "SELECT * FROM informalc_grv WHERE grv_no='%s'" % self.grv_num
-        result = inquire(sql)
-        if result:
-            in_start = datetime.strptime(result[0][1], '%Y-%m-%d %H:%M:%S')
-            in_end = datetime.strptime(result[0][2], '%Y-%m-%d %H:%M:%S')
-            sign_date = datetime.strptime(result[0][3], '%Y-%m-%d %H:%M:%S')
-            self.edit_incident_start.set(in_start.strftime("%m/%d/%Y"))
-            self.edit_incident_end.set(in_end.strftime("%m/%d/%Y"))
-            self.date_signed.set(sign_date.strftime("%m/%d/%Y"))
-            self.station.set(result[0][4])
-            self.gats_number.set(result[0][5])
-            self.edit_docs.set(result[0][6])
-            self.description.set(result[0][7])
-            if result[0][8] is None:
-                self.lvl.set("unknown")
-            else:
-                self.lvl.set(result[0][8])
-
-    def build_edit(self):
-        """ build the body of the edit screen for settlements in the grievance list results."""
-        Label(self.win.body, text="Informal C: Edit Grievance", font=macadj("bold", "Helvetica 18")) \
-            .grid(row=0, columnspan=2, sticky="w")
-        Label(self.win.body, text="").grid(row=1)
-        Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=2, column=0, sticky="w")
-
-        Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
-            .grid(row=2, column=1, sticky="w")
-        Button(self.win.body, width=9, text="update",
-               command=lambda:
-               self.grvchange(self.win.topframe, self.grv_num, self.grv_no)).grid(row=3, column=1, sticky="e")
-        self.grv_no.set(self.grv_num)
-        Label(self.win.body, text="Incident Date", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=4, column=0, sticky="w")
-        Label(self.win.body, text="  Start (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=5, column=0, sticky="w")
-
-        Entry(self.win.body, textvariable=self.edit_incident_start, justify='right', width=macadj(20, 15)) \
-            .grid(row=5, column=1, sticky="w")
-        Label(self.win.body, text="  End (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=6, column=0, sticky="w")
-
-        Entry(self.win.body, textvariable=self.edit_incident_end, justify='right', width=macadj(20, 15)) \
-            .grid(row=6, column=1, sticky="w")
-        Label(self.win.body, text="Date Signed (mm/dd/yyyy): ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=7, column=0, sticky="w")
-
-        Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
-            .grid(row=7, column=1, sticky="w")
-        Label(self.win.body, text="Settlement Level: ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=8, column=0, sticky="w")  # select settlement level
-
-        lvl_options = ("informal a", "formal a", "step b", "pre arb", "arbitration")
-        lvl_om = OptionMenu(self.win.body, self.lvl, *lvl_options)
-        lvl_om.config(width=13)
-        lvl_om.grid(row=8, column=1)
-        Label(self.win.body, text="Station: ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=9, column=0, sticky="w")  # select a station
-
-        station_options = projvar.list_of_stations
-        if "out of station" in station_options:
-            station_options.remove("out of station")
-        station_om = OptionMenu(self.win.body, self.station, *station_options)
-        station_om.config(width=macadj(40, 34))
-        station_om.grid(row=10, column=0, columnspan=2, sticky="e")
-        Label(self.win.body, text="GATS Number: ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=11, column=0, sticky="w")
-
-        Entry(self.win.body, textvariable=self.gats_number, justify='right', width=macadj(20, 15)) \
-            .grid(row=11, column=1, sticky="w")
-        Label(self.win.body, text="Documentation: ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=12, column=0, sticky="w")
-
-        doc_options = ("moot", "no", "partial", "yes", "incomplete", "verified")
-        docs_om = OptionMenu(self.win.body, self.edit_docs, *doc_options)
-        docs_om.config(width=13)
-        docs_om.grid(row=12, column=1)
-        Label(self.win.body, text="Description: ", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=16, column=0, sticky="w")
-
-        Entry(self.win.body, textvariable=self.description, width=macadj(47, 36), justify='right') \
-            .grid(row=17, column=0, sticky="e", columnspan=2)
-        Label(self.win.body, text="").grid(row=18, column=0)
-
-        Label(self.win.body, text=" ").grid(row=20)
-        Label(self.win.body, text="Delete Grievance", background=macadj("gray95", "grey"),
-              fg=macadj("black", "white"), width=macadj(22, 20), anchor="w", height=macadj(1, 1)) \
-            .grid(row=21, column=0, sticky="w")
-        Button(self.win.body, text="Delete", width=9,
-               command=lambda: self.delete(self.win.topframe, self.grv_no)) \
-            .grid(row=21, column=1, sticky="e")
-        Label(self.win.body, text=" ").grid(row=22)
-        Label(self.win.body, text=self.msg, fg="red", anchor="w").grid(row=23, column=0, columnspan=5, sticky="w")
-        self.msg = ""  # reset the message to empty string
-        Button(self.win.buttons, text="Go Back", width=macadj(19, 18),
-               command=lambda: self.grvlist_result(self.win.topframe)).grid(row=0, column=0)
-        Button(self.win.buttons, text="Enter", width=macadj(19, 18),
-               command=lambda: self.edit_apply(self.win.topframe)).grid(row=0, column=1)
-
-    def edit_apply(self, frame):
-        """  check then edit informalc peticulars. """
-        dates = [self.edit_incident_start.get(), self.edit_incident_end.get(), self.date_signed.get()]
-        date_ids = ("starting incident date", "ending incident date", "date signed")
-        i = 0
-        for date in dates:
-            date = date.strip()
-            d = date.split("/")
-            if len(d) != 3:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The date for the {} is not properly formatted.".format(date_ids[i]),
-                                     parent=self.win.topframe)
-                return
-            for num in d:
-                if not num.isnumeric():
-                    messagebox.showerror("Invalid Data Entry",
-                                         "The month, day and year for the {} "
-                                         "must be numeric.".format(date_ids[i]),
-                                         parent=self.win.topframe)
-                    return
-            if len(d[0]) > 2:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The month for the {} must be no more than two digits"
-                                     " long.".format(date_ids[i]),
-                                     parent=self.win.topframe)
-                return
-            if len(d[1]) > 2:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The day for the {} must be no more than two digits"
-                                     " long.".format(date_ids[i]),
-                                     parent=self.win.topframe)
-                return
-            if len(d[2]) != 4:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The year for the {} must be four digits long."
-                                     .format(date_ids[i]),
-                                     parent=self.win.topframe)
-                return
-            try:
-                date = datetime(int(d[2]), int(d[0]), int(d[1]))
-                valid_date = True
-                if date:
-                    # use project variable to absorb error from unused try/except statement.
-                    projvar.try_absorber = True
-            except ValueError:
-                valid_date = False
-            if not valid_date:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The date entered for {} is not a valid date."
-                                     .format(date_ids[i]),
-                                     parent=self.win.topframe)
-                return
-            i += 1
-        if len(self.gats_number.get()) > 50:
-            messagebox.showerror("Invalid Data Entry",
-                                 "The GATS number is limited to no more than 20 characters. ",
-                                 parent=self.win.topframe)
-            return
-        if self.gats_number.get().strip() != "":
-            if not all(x.isalnum() or x.isspace() for x in self.gats_number.get()):
-                messagebox.showerror("Invalid Data Entry",
-                                     "The GATS number can only contain letters and numbers. No "
-                                     "special characters are allowed.",
-                                     parent=self.win.topframe)
-                return
-        if self.description.get().strip() != "":
-            if not all(x.isalnum() or x.isspace() for x in self.description.get()):
-                messagebox.showerror("Invalid Data Entry",
-                                     "The Description can only contain letters and numbers. No "
-                                     "special characters are allowed.",
-                                     parent=self.win.topframe)
-                return
-            if len(self.description.get()) > 40:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The Description is limited to no more than 40 characters. ",
-                                     parent=self.win.topframe)
-                return
-        dates = [self.edit_incident_start.get(), self.edit_incident_end.get(), self.date_signed.get()]
-        in_start = datetime(1, 1, 1)
-        in_end = datetime(1, 1, 1)
-        d_sign = datetime(1, 1, 1)
-        dt_dates = [in_start, in_end, d_sign]
-        i = 0
-        for date in dates:
-            date = date.strip()
-            d = date.split("/")
-            new_date = datetime(int(d[2].lstrip("0")), int(d[0].lstrip("0")), int(d[1].lstrip("0")))
-            dt_dates[i] = new_date
-            i += 1
-        if dt_dates[0] > dt_dates[1]:
-            messagebox.showerror("Data Entry Error",
-                                 "The Incident Start Date can not be later that the Incident End "
-                                 "Date.",
-                                 parent=self.win.topframe)
-            return
-        if dt_dates[0] > dt_dates[2]:
-            messagebox.showerror("Data Entry Error",
-                                 "The Incident Start Date can not be later that the Date Signed.",
-                                 parent=self.win.topframe)
-            return
-        description = self.description.get()
-        description = description.strip()
-        description = description.lower()
-        sql = "UPDATE informalc_grv SET indate_start='%s',indate_end='%s',date_signed='%s',station='%s'," \
-              "gats_number='%s', docs='%s',description='%s', level='%s' WHERE grv_no='%s'" % \
-              (dt_dates[0], dt_dates[1], dt_dates[2], self.station.get(), self.gats_number.get().strip(),
-               self.edit_docs.get(), description, self.lvl.get(), self.grv_no.get())
-        commit(sql)
-        messagebox.showerror("Sucessful Update",
-                             "Grievance number: {} succesfully updated.".format(self.grv_no.get()),
-                             parent=self.win.topframe)
-        self.update_search_results()  # update the search results
-        self.grvlist_result(frame)  # return to the grievance list results with previous search criteria
-
-    def update_search_results(self):
-        """ update the search results of the grievance list """
-        self.search_result = inquire(self.sql)
-
-    def delete(self, frame, grv_no):
-        """ deletes a record and associated records for a grievance. """
-        check = messagebox.askokcancel("Delete Grievance",
-                                       "Are you sure you want to delete his grievance and all the "
-                                       "data associated with it?",
-                                       parent=self.win.topframe)
-        if not check:
-            return
-        else:
-            sql = "DELETE FROM informalc_grv WHERE grv_no='%s'" % grv_no.get()
-            commit(sql)
-            self.grvlist_search(frame)
-
-    def grvchange(self, frame, old_num, new_num):
-        """ change the grievance number. check grv number and input it into the informalc_grv table. """
-        l_passed_result = [list(x) for x in self.search_result]  # chg tuple of tuples to list of lists
-        if messagebox.askokcancel("Grievance Number Change",
-                                  "This will change the grievance number from {} to {} in all "
-                                  "records. Are you sure you want to proceed?".format(old_num, new_num.get()),
-                                  parent=self.win.topframe):
-            new_number = new_num.get()  # get the value from the passed new_num stringvar
-            new_number = new_number.strip()  # strip out all whitespace in front and back
-            new_number = new_number.lower()  # change all upper case to lower case
-            if new_number == "":
-                messagebox.showerror("Invalid Data Entry",
-                                     "You must enter a grievance number",
-                                     parent=self.win.topframe)
-                return "fail"
-            if not new_number.isalnum():
-                messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number can only contain numbers and letters. No other "
-                                     "characters are allowed",
-                                     parent=self.win.topframe)
-                return "fail"
-            if len(new_number) < 8:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number must be at least eight characters long",
-                                     parent=self.win.topframe)
-                return "fail"
-            if len(new_number) > 16:
-                messagebox.showerror("Invalid Data Entry",
-                                     "The grievance number must not exceed 16 characters in length.",
-                                     parent=self.win.topframe)
-                return "fail"
-            sql = "SELECT grv_no FROM informalc_grv WHERE grv_no = '%s'" % new_number
-            result = inquire(sql)
-            if result:
-                messagebox.showerror("Grievance Number Error",
-                                     "This number is already being used for another grievance.",
-                                     parent=self.win.topframe)
-                return "fail"
-
-            sql = "UPDATE informalc_grv SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
-            commit(sql)
-            sql = "UPDATE informalc_awards SET grv_no = '%s' WHERE grv_no = '%s'" % (new_number, old_num)
-            commit(sql)
-            for record in l_passed_result:
-                if record[0] == old_num:
-                    record[0] = new_number
-            self.msg = "The grievance number has been changed."
-            self.search_result = l_passed_result[:]
-            self.edit(frame, new_number)
-
-    def addaward(self, grv_no):
-        """ adds carrier to the add award screen from the companion screen. """
-        self.informalc_root(grv_no)
-        self.addaward2(grv_no)
-
-    def informalc_root(self, grv_no):
-        """ creates a companion window for selecting carrier names. """
-        start = None
-        end = None
-        station = None
+    def informalc_root(self, mode, topframe=None, grv_no=None, childframe=None):
+        """ creates a companion window for selecting carrier names.
+        mode is 'selectcarrier', 'award' or 'selectissue'. grv_no is used for editing grievance information. """
+        self.destroy_companion()  # destroy other companion windows if they exist
         self.companion_root = Tk()
         self.companion_root.title("KLUSTERBOX")
         titlebar_icon(self.companion_root)  # place icon in titlebar
         x_position = projvar.root.winfo_x() + 450
         y_position = projvar.root.winfo_y() - 25
         self.companion_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
-        topframe = Frame(self.companion_root)
-        topframe.pack()
-        buttons = Canvas(topframe)  # button bar
+        rootframe = Frame(self.companion_root)
+        rootframe.pack()
+        buttons = Canvas(rootframe)  # button bar
         buttons.pack(fill=BOTH, side=BOTTOM)
-        Label(topframe, text="Add Carriers", font=macadj("bold", "Helvetica 18")).pack(anchor="w")
-        Label(topframe, text="").pack()
-        scrollbar = Scrollbar(topframe, orient=VERTICAL)
-        listbox = Listbox(topframe, selectmode="multiple", yscrollcommand=scrollbar.set)
+        text = "Add"
+        if mode in ('selectissue', ):
+            text = "Add Issues"
+        if mode in ('selectcarrier', 'award'):
+            text = "Add Carriers"
+        if mode in ('selectdecision', ):
+            text = "Add Decisions"
+        Label(rootframe, text=text, font=macadj("bold", "Helvetica 18")).pack(anchor="w")
+        Label(rootframe, text="").pack()
+        scrollbar = Scrollbar(rootframe, orient=VERTICAL)
+        listbox = Listbox(rootframe, selectmode="multiple", yscrollcommand=scrollbar.set)
         listbox.config(height=100, width=50)
-        sql = "SELECT indate_start,indate_end,station FROM informalc_grv WHERE grv_no='%s'" % grv_no
-        results = inquire(sql)
-        if results:
-            start = results[0][0]
-            end = results[0][1]
-            station = results[0][2]
-        start = dt_converter(start)
-        end = dt_converter(end)
-        c_list = informalc_gen_clist(start, end, station)
-        for name in c_list:
+        if mode in ('selectcarrier', 'award'):  # use a list of carriers.
+            self.get_listbox_carrriers(grvnum=grv_no)
+        if mode == 'selectissue':  # use a list of issue from self.issue_description
+            self.get_listbox_issues()
+        if mode == 'selectdecision':  # use a list of issue from self.issue_description
+            self.get_listbox_decisions()
+        for name in self.listbox_fill:  # fill the listbox
             listbox.insert(END, name)
         scrollbar.config(command=listbox.yview)
         scrollbar.pack(side=RIGHT, fill=Y)
         listbox.pack(side=LEFT, expand=1)
-        Button(buttons, text="Add Carrier", width=10,
-               command=lambda: (self.addnames(grv_no, c_list, listbox.curselection()),
-                                self.addaward2(grv_no))) \
-            .pack(side=LEFT, anchor="w")
+        if mode == 'selectcarrier':
+            Button(buttons, text="Add Carriers", width=10,
+                   command=lambda: (self.addnames(listbox.curselection(), childframe))).pack(side=LEFT, anchor="w")
+        if mode == 'award':
+            Button(buttons, text="Add Carriers", width=10,
+                   command=lambda: (self.add_awardnames(grv_no, listbox.curselection()),
+                                    self.addawards(topframe, grv_no))).pack(side=LEFT, anchor="w")
+        if mode == "selectissue":
+            Button(buttons, text="Add Issue", width=10,
+                   command=lambda: (self.addissue(childframe, listbox.curselection()))).pack(side=LEFT, anchor="w")
+        if mode == "selectdecision":
+            Button(buttons, text="Add Decision", width=10,
+                   command=lambda: (self.adddecision(childframe, listbox.curselection()))).pack(side=LEFT, anchor="w")
+        # to destroy and re create itself.
         Button(buttons, text="Clear", width=10,
-               command=lambda: (self.companion_root.destroy(), self.informalc_root(grv_no))) \
+               command=lambda: (self.destroy_companion(),
+                                self.informalc_root(mode, topframe=topframe, grv_no=grv_no, childframe=childframe)))\
             .pack(side=LEFT, anchor="w")
         Button(buttons, text="Close", width=10,
-               command=lambda: (self.companion_root.destroy())).pack(side=LEFT, anchor="w")
+               command=lambda: (self.destroy_companion())).pack(side=LEFT, anchor="w")
 
-    @staticmethod
-    def addnames(grv_no, c_list, listbox):
+    def get_listbox_carrriers(self, grvnum=None):
+        """ get a list of carriers for the listbox in self.informalc_root. if no grv_no is given, the
+        carrier list for year 1000 AD through 9000 AD will be the range of the carrier list. """
+        start = '1000-01-01 00:00:00'
+        end = '9000-01-01 00:00:00'
+        if grvnum:  # if a grievance number is passed, use it to get the carrier list.
+            sql = "SELECT indate_start,indate_end FROM informalc_grv WHERE grv_no='%s'" % grvnum
+            results = inquire(sql)
+            if results:
+                if results[0][0]:
+                    start = results[0][0]
+                if results[0][1]:
+                    end = results[0][1]
+        start = dt_converter(start)
+        end = dt_converter(end)
+        # get a list of carriers given the search criteria.
+        self.listbox_fill = ["class action", ] + informalc_gen_clist(start, end, self.station)
+
+    def get_listbox_issues(self):
+        """ get a list of issues for the listbox in self.informalc_root from the informalc_issuescategories
+        table of the db"""
+        self.listbox_fill = self.issue_description
+
+    def get_listbox_decisions(self):
+        """ get a list of issues for the listbox in self.informalc_root from the informalc_issuescategories
+        table of the db"""
+        self.listbox_fill = self.decision_description
+
+    def addnames(self, listbox, childframe):
+        """ sets the grievant field by setting the stringvar self.grievant using an index from the
+         listbox and an array generated in informalc root. """
+        for index in listbox:
+            carrier_name = self.listbox_fill[index]
+            if not self.grvent[0].get():
+                self.grvent[0].set(carrier_name)
+            else:
+                self.add_grvent_field(childframe, carrier=carrier_name)
+
+    def addissue(self, childframe, listbox):
+        """ sets the issue field by setting the stringvar self.issue using an index from the
+         listbox and an array generated in informalc root. """
+        for index in listbox:
+            issue_name = self.listbox_fill[index]
+            if not self.src_issue[0].get():
+                self.src_issue[0].set(issue_name)
+            else:
+                self.add_src_issue_field(childframe, issue=issue_name)
+
+    def adddecision(self, childframe, listbox):
+        """ sets the decision field by setting the stringvar self.decision using an index from the 
+         listbox and an array generated in informalc root. """
+        for index in listbox:
+            decision_name = self.listbox_fill[index]
+            if not self.decision[0].get():
+                self.decision[0].set(decision_name)
+            else:
+                self.add_decision_field(childframe, decision_1=decision_name)
+
+    def add_awardnames(self, grv_no, listbox):
         """ inserts names into informal c awards table. """
         for index in listbox:
             sql = "INSERT INTO informalc_awards (grv_no,carrier_name,hours,rate,amount) " \
                   "VALUES('%s','%s','%s','%s','%s')" \
-                  % (grv_no, c_list[int(index)], '', '', '')
+                  % (grv_no, self.listbox_fill[int(index)], '', '', '')
             commit(sql)
 
-    def addaward2(self, grv_no):
+    def destroy_companion(self):
+        """ exit out of a screen with a companion root. Destroy the companion window if it still exist. """
+        try:
+            self.companion_root.destroy()  # destroy the tkinter root object
+            self.companion_root = None  # re initialize the variable
+        except (TclError, AttributeError):
+            pass
+
+    def addawards(self, frame, grv_no):
         """ creates a screen which allows a user to adds the awards to a settlement. """
-        frame = self.win  # preserve the window object from being destroy by the next line.
         self.win = MakeWindow()
-        self.win.create(frame.topframe)
-        self.companion_frame = self.win.topframe
+        self.win.create(frame)
+        self.informalc_root("award", grv_no=grv_no, topframe=self.win.topframe)
         Label(self.win.body, text="Add/Update Settlement Awards", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w", columnspan=4)
-        Label(self.win.body, text=" ".format(self.companion_frame)).grid(row=1, column=0)
         Label(self.win.body, text="   Grievance Number: {}".format(grv_no), fg="blue") \
             .grid(row=2, column=0, sticky="w", columnspan=4)
         sql = "SELECT grv_no,rowid,carrier_name,hours,rate,amount FROM informalc_awards WHERE grv_no ='%s' " \
@@ -1023,7 +1170,7 @@ class InformalC:
                 Entry(self.win.body, textvariable=self.var_amount[i], width=8) \
                     .grid(row=r, column=3, padx=10)  # display amount widget
                 Button(self.win.body, text="delete",
-                       command=lambda ident=res[1]: self.deletename(grv_no, ident)) \
+                       command=lambda ident=res[1]: self.deletename(self.win.topframe, grv_no, ident)) \
                     .grid(row=r, column=4, padx=10)  # display the delete button
                 self.var_id[i].set(res[1])  # set the textvariables
                 self.var_name[i].set(res[2])
@@ -1033,13 +1180,13 @@ class InformalC:
                 r += 1
                 i += 1
         Button(self.win.buttons, text="Go Back", width=15,
-               command=lambda: self.call_grvlist_result(self.win.topframe)) \
+               command=lambda: (self.destroy_companion(), self.showtime(self.win.topframe))) \
             .grid(row=0, column=0)
         Button(self.win.buttons, text="Apply", width=15,
-               command=lambda: self.addaward_apply(grv_no)).grid(row=0, column=1)
+               command=lambda: self.addaward_apply(self.win.topframe, grv_no)).grid(row=0, column=1)
         self.win.finish()
 
-    def addaward_apply(self, grv_no):
+    def addaward_apply(self, topframe, grv_no):
         """ checks and adds records to the informal c add awards table. """
         pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
         pb_label.grid(row=0, column=2)
@@ -1061,7 +1208,7 @@ class InformalC:
                                      "amount. You can only enter one or another, but not both. "
                                      "Awards can be in the form of "
                                      "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1071,7 +1218,7 @@ class InformalC:
                                      "amount. You can only enter one or another, but not both. "
                                      "Awards can be in the form of "
                                      "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1079,7 +1226,7 @@ class InformalC:
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Hours must be a accompanied by a "
                                      "rate.".format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1087,7 +1234,7 @@ class InformalC:
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Rate must be a accompanied by a "
                                      "hours.".format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1095,7 +1242,7 @@ class InformalC:
                 messagebox.showerror("Data Input Error",
                                      "Input error for {} in row {}. Hours must be a number."
                                      .format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1105,7 +1252,7 @@ class InformalC:
                     messagebox.showerror("Data Input Error",
                                          "Input error for {} in row {}. Hours must have no "
                                          "more than 2 decimal places.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
+                                         parent=topframe)
                     pb_label.destroy()  # destroy the label for the progress bar
                     pb.destroy()  # destroy the progress bar
                     return
@@ -1115,7 +1262,7 @@ class InformalC:
                                      "amount. You can only enter one or another, but not both. "
                                      "Awards can be in the form of "
                                      "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1125,14 +1272,14 @@ class InformalC:
                                      "amount. You can only enter one or another, but not both. "
                                      "Awards can be in the form of "
                                      "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
             if rate and not isfloat(rate):
                 messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
                                      .format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1142,7 +1289,7 @@ class InformalC:
                     messagebox.showerror("Data Input Error",
                                          "Input error for {} in row {}. Rates must have no "
                                          "more than 2 decimal places.".format(name, str(i + 1)),
-                                         parent=self.win.topframe)
+                                         parent=topframe)
                     pb_label.destroy()  # destroy the label for the progress bar
                     pb.destroy()  # destroy the progress bar
                     return
@@ -1155,7 +1302,7 @@ class InformalC:
                                      "straight time rate     1.00 or just 1 \n"
                                      "overtime rate          1.50 or 1.5 \n"
                                      "penalty rate           2.00 or just 2".format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1164,7 +1311,7 @@ class InformalC:
                                      "Input error for {} in row {}. Amounts can only be expressed as "
                                      "numbers. No special characters, such as $ are allowed."
                                      .format(name, str(i + 1)),
-                                     parent=self.win.topframe)
+                                     parent=topframe)
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
@@ -1175,7 +1322,7 @@ class InformalC:
                                          "Input error for {} in row {}. "
                                          "Amounts must have no more than 2 decimal places."
                                          .format(name, str(i + 1)),
-                                         parent=self.win.topframe)
+                                         parent=topframe)
                     pb_label.destroy()  # destroy the label for the progress bar
                     pb.destroy()  # destroy the progress bar
                     return
@@ -1187,21 +1334,13 @@ class InformalC:
         pb.stop()  # stop and destroy the progress bar
         pb_label.destroy()  # destroy the label for the progress bar
         pb.destroy()
-        self.addaward2(grv_no)
+        self.addawards(topframe, grv_no)
 
-    def call_grvlist_result(self, frame):
-        """ exit out fo the Add Award screen. Destroy the companion window if it still exist. """
-        try:
-            self.companion_root.destroy()
-        except TclError:
-            pass
-        self.grvlist_result(frame)
-
-    def deletename(self, grv_no, ids):
+    def deletename(self, topframe, grv_no, ids):
         """ deletes records from informal c awards. """
         sql = "DELETE FROM informalc_awards WHERE rowid='%s'" % ids
         commit(sql)
-        self.addaward2(grv_no)
+        self.addawards(topframe, grv_no)
 
     def grvlist_setsum(self):
         """ generates text report for settlement list summary showing all grievance settlements. """
@@ -1366,7 +1505,7 @@ class InformalC:
         scrollbar.pack(side=RIGHT, fill=Y)
         listbox.pack(side=LEFT, expand=1)
         Button(self.win.buttons, text="Go Back", width=20,
-               command=lambda: self.grvlist_result(self.win.topframe)).pack(side=LEFT)
+               command=lambda: self.showtime(self.win.topframe)).pack(side=LEFT)
         Button(self.win.buttons, text="Report", width=20,
                command=lambda: self.bycarrier_apply
                (unique_carrier, listbox.curselection())).pack(side=LEFT)
@@ -1789,8 +1928,7 @@ class InformalC:
                                      "(the file can't be overwritten while open).",
                                      parent=self.parent.win.topframe)
 
-
-    class NewGrievances:
+    class GrievanceInput:
         """
         Allows the user to create new records of grievances.
         """
@@ -1803,9 +1941,15 @@ class InformalC:
             self.msg = ""  # a message displayed when grievances are inserted/ updated
             self.grv_changesmade = False  # flag to update grievance record if changes are made
             self.set_changesmade = False  # flag to update settlement record if changes are made
-            self.issue_description = []  # a list of issues for the option menu
-            self.issue_article = []  # a list of corrosponding articles for the list of issues
-            self.decision_description = ["no decision", ]  # a list of decisions for the option menu
+            self.issue_description = []  # initialize and empty issue description list
+            self.issue_article = []  # initialize and empty article description list
+            self.issue_description = self.parent.issue_description[:]  # a list of issues for the option menu
+            self.issue_article = self.parent.issue_article[:]  # a list of corrosponding articles for the list of issues
+            # a list of decisions for the option menu
+            self.decision_description = []  # initialize and empty decision description list
+            self.decision_description = ["no decision", ] + self.parent.decision_description[:]
+            self.companion_root = None  # a auxiliary window that allows users to select carriers/ issues
+            self.listbox_fill = None
 
             #  define the stringvars
             self.grievant = None  # 1
@@ -1826,7 +1970,7 @@ class InformalC:
             self.gats_no = None  # 15 the gats  number of the proof of compliance
             self.batset = None  # 16 is the settlement part of a batch settlement?
             self.batgat = None  # 17  is the settlement part of a batch gats?
-            
+
             # get the values of the grievance/settlements on record
             self.onrec_grievance = False
             self.onrec_grievant = ""  # 1
@@ -1874,24 +2018,28 @@ class InformalC:
             self.add_indexes = []
             self.del_indexes = []
 
-        def informalc_new(self, frame):
+            # flags updates/inserts for grievance, settlement and indexes
+            self.reporter_grv = False  # flag for grievances
+            self.reporter_set = False  # flag for settlement
+            self.reporter_index = False  # flag for indexes
+            self.msg_label = None
+
+        def informalc_new(self, frame, msg=""):
             """ master method for running other methods in proper order."""
             self.newentry = True  # this is a new entry
+            self.msg = msg
             self.win = MakeWindow()
-            self.get_issuecats()
-            self.get_decisioncats()
             self.get_stringvars()
             self.win.create(frame)
             self.build_screen()
             self.win.finish()
-            
-        def informalc_edit(self, frame, grv_no):
+
+        def informalc_edit(self, frame, grv_no, msg=""):
             """ master method for running other methods in proper order."""
-            self.edit_grv_no = grv_no  # the grievance to be edited
             self.newentry = False  # this is not a new entry
+            self.edit_grv_no = grv_no  # the grievance to be edited
+            self.msg = msg
             self.win = MakeWindow()
-            self.get_issuecats()
-            self.get_decisioncats()
             self.get_onrecs(grv_no)
             self.get_stringvars()
             self.set_stringvars()
@@ -1919,23 +2067,6 @@ class InformalC:
             self.gats_no = StringVar(self.win.body)
             self.batset = [StringVar(self.win.body), ]
             self.batgat = [StringVar(self.win.body), ]
-
-        def get_issuecats(self):
-            """ fetch the issue categories from the informalc_issuescategories table of the db
-            and place them in arrays. """
-            sql = "SELECT * FROM informalc_issuescategories"
-            results = inquire(sql)
-            for r in results:
-                self.issue_description.append(r[2])
-                self.issue_article.append(r[1])
-
-        def get_decisioncats(self):
-            """ fetch the decision categories from the informalc_decisioncategories table of the db and place them in
-             arrays """
-            sql = "SELECT * FROM informalc_decisioncategories"
-            results = inquire(sql)
-            for r in results:
-                self.decision_description.append(r[2])
 
         def get_onrecs(self, grv_number):
             """ check if there is an existing record for the grievance number in the informalc grievances table.
@@ -1998,7 +2129,7 @@ class InformalC:
                         for r in result:
                             onrec_batgat.append(r)
             self.index_onrecs = [onrec_non_c, onrec_reman, onrec_batset, onrec_batgat]
-                
+
         def set_stringvars(self):
             """ use the data from onrecs to set the stringvar values
             the index stringvars are set after the widgets are generated from self.index_onrecs"""
@@ -2012,7 +2143,7 @@ class InformalC:
                 self.article.set("")  # 7
                 self.lvl.set("no status")  # 10 the level of the settlement
                 self.date_signed.set("")  # 11 the date the settlement was signed
-                self.decision.set("no decision")  # 12 the decision of the settlement
+                self.decision.set("")  # 12 the decision of the settlement
                 self.proof_due.set("")  # 13 the date that the prooof of the remedy is due
                 self.docs.set("no docs")  # 14 the status of any documentation needed for proof of compliance
                 self.gats_no.set("")  # 15 the gats  number of the proof of compliance
@@ -2031,8 +2162,6 @@ class InformalC:
                 self.date_signed.set(self.onrec_date_signed)  # 11 the date the settlement was signed
                 if self.onrec_decision:  # 12 the decision of the settlement
                     self.decision.set(self.onrec_decision)
-                else:  # if there is nothing in self.onrec_lvl
-                    self.decision.set("no decision")  # enter 'no decision'
                 self.proof_due.set(self.onrec_proof_due)  # 13 the date that the prooof of the remedy is due
                 if self.onrec_docs:  # 14 the status of any documentation needed for proof of compliance
                     self.docs.set(self.onrec_docs)
@@ -2041,7 +2170,8 @@ class InformalC:
                 self.gats_no.set(self.onrec_gats_no)  # 15 the gats  number of the proof of compliance
 
         def build_screen(self):
-            """ screen for entering in settlements. """
+            """ screen for entering in settlements. before leaving the frame, attempt to destroy self.companion_root
+             with the self.destroy_companion() """
             self.row = 0
             self.build_grievanceinfo()  # this is basic grievance information
             self.build_nonc_assocs()  # for non compliance associations
@@ -2049,30 +2179,41 @@ class InformalC:
             self.build_settlement()  # this area of the screen is for settlement information
             self.build_batset_assocs()  # this area of the screen is for batch settlements
             self.build_batgat_assocs()  # this area of the screen is for batch gats
-            self.build_message()  # this will display a message when a grievance is entered or updated
             self.build_buttons()  # configure buttons on the bottom of the screen
 
         def build_grievanceinfo(self):
             """ insert the header """
-            Label(self.win.body, text="Enter New Grievance", font=macadj("bold", "Helvetica 18")) \
+            text = "Enter New Grievance"  # alternate header for new grievances
+            if not self.newentry:
+                text = "Edit Grievance"  # alternate header for edit grievances.
+            Label(self.win.body, text=text, font=macadj("bold", "Helvetica 18")) \
                 .grid(row=self.row, column=0, columnspan=2, sticky="w")
             self.row += 1
             Label(self.win.body, text="").grid(row=self.row, column=0, sticky="w")
             self.row += 1
-
             Label(self.win.body, text="Grievant: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
                 .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.grievant, justify='right', width=macadj(20, 15)) \
                 .grid(row=self.row, column=1, sticky="w")
             self.row += 1
-
+            # button to activate companion window to select carriers.
+            Button(self.win.body, text="list", width=macadj(4, 3), anchor="center",
+                   command=lambda: (self.destroy_companion(), self.informalc_root("selectcarrier", self.edit_grv_no)))\
+                .grid(row=self.row, column=1, sticky="e")
+            self.row += 1
             Label(self.win.body, text="Grievance Number: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
                 .grid(row=self.row, column=0, sticky="w")
             Entry(self.win.body, textvariable=self.grv_no, justify='right', width=macadj(20, 15)) \
                 .grid(row=self.row, column=1, sticky="w")
             self.row += 1
+            if not self.newentry:
+                # pass the old grv number (string), then new grievance number (stringvar) to grvchange
+                Button(self.win.body, width=9, text="update", command=lambda:
+                       self.grvchange(self.edit_grv_no, self.grv_no))\
+                    .grid(row=self.row, column=1, sticky="e")
+                self.row += 1
             # start and end dates
             Label(self.win.body, text="Incident Date").grid(row=self.row, column=0, sticky="w")
             self.row += 1
@@ -2101,6 +2242,9 @@ class InformalC:
             Label(self.win.body, text="Issue: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
                 .grid(row=self.row, column=0, sticky="w")
+            Button(self.win.body, text="list", width=macadj(4, 3), anchor="center",
+                   command=lambda: (self.destroy_companion(), self.informalc_root("selectissue", self.edit_grv_no))) \
+                .grid(row=self.row, column=1, sticky="e")
             self.row += 1
             Entry(self.win.body, textvariable=self.issue, width=macadj(49, 39), justify='right') \
                 .grid(row=self.row, column=0, sticky="w", columnspan=3)
@@ -2112,9 +2256,18 @@ class InformalC:
             Entry(self.win.body, textvariable=self.article, justify='right', width=macadj(20, 15)) \
                 .grid(row=self.row, column=1, sticky="w")
             self.row += 1
+            # delete button
+            Label(self.win.body, text="Delete Grievance: ", background=macadj("gray95", "white"),
+                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                .grid(row=self.row, column=0, sticky="w")
+            Button(self.win.body, text="delete", width=macadj(4, 3), anchor="center",
+                   command=lambda: (self.destroy_companion(),
+                                    self.delete_grievance(self.win.topframe, self.edit_grv_no))) \
+                .grid(row=self.row, column=1, sticky="e")
+            self.row += 1
 
         def build_nonc_assocs(self):
-            """ these are widgets for non compliance grievance indexes. Uses separate frames to allow for 
+            """ these are widgets for non compliance grievance indexes. Uses separate frames to allow for
                         expanding/colapsing fields """
             text = macadj("Non Compliance Associations ___________________________",
                           "Non Compliance Associations __________________")
@@ -2134,9 +2287,9 @@ class InformalC:
             del_.grid(row=0, column=3)
             self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
             self.row += 1
-            
+
         def build_remand_assoc(self):
-            """ these are widgets for remanded grievance indexes. Uses separate frames to allow for 
+            """ these are widgets for remanded grievance indexes. Uses separate frames to allow for
             expanding/colapsing fields """
             text = macadj("Remanded  Associations _________________________________",
                           "Remanded Associations _______________________")
@@ -2181,14 +2334,18 @@ class InformalC:
             Entry(self.win.body, textvariable=self.date_signed, justify='right', width=macadj(20, 15)) \
                 .grid(row=self.row, column=1, sticky="w")
             self.row += 1
+
             # decision
             Label(self.win.body, text="Decision: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")  # select decision
-            dec_om = OptionMenu(self.win.body, self.decision, *self.decision_description)
-            dec_om.config(width=macadj(14, 13))
-            dec_om.grid(row=self.row, column=1)
-            self.decision.set("no decision")
+                .grid(row=self.row, column=0, sticky="w")
+            Button(self.win.body, text="list", width=macadj(4, 3), anchor="center",
+                   command=lambda: (self.destroy_companion(),
+                                    self.informalc_root("selectdecision", self.edit_grv_no))) \
+                .grid(row=self.row, column=1, sticky="e")
+            self.row += 1
+            Entry(self.win.body, textvariable=self.decision, width=macadj(49, 39), justify='right') \
+                .grid(row=self.row, column=0, sticky="w", columnspan=3)
             self.row += 1
             # proof due
             Label(self.win.body, text="Proof Due (mm/dd/yyyy): ", background=macadj("gray95", "white"),
@@ -2213,7 +2370,17 @@ class InformalC:
             Entry(self.win.body, textvariable=self.gats_no, justify='right', width=macadj(20, 15)) \
                 .grid(row=self.row, column=1, sticky="w")
             self.row += 1
-            
+            # delete button
+            if not self.newentry:
+                Label(self.win.body, text="Delete Settlement: ", background=macadj("gray95", "white"),
+                      fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                    .grid(row=self.row, column=0, sticky="w")
+                Button(self.win.body, text="delete", width=macadj(17, 15), bg="red", fg="white", anchor="center",
+                       command=lambda: (self.destroy_companion(),
+                                        self.settlement_delete())) \
+                    .grid(row=self.row, column=1, sticky="e", pady=5)
+                self.row += 1
+
         def build_batset_assocs(self):
             """ create a gui for BATch SETtlement associations.  """
             text = macadj("Batch Settlement Associations ___________________________",
@@ -2234,7 +2401,7 @@ class InformalC:
             del_.grid(row=0, column=3)
             self.batset_del.append(del_)  # add this to an array of widgets of delete buttons
             self.row += 1
-            
+
         def build_batgat_assocs(self):
             """ create a gui for BATch GATs associations.  """
             text = macadj("Batch Gats Associations __________________________________",
@@ -2256,24 +2423,25 @@ class InformalC:
             self.batgat_del.append(del_)  # add this to an array of widgets of delete buttons
             self.row += 1
 
-        def build_message(self):
-            """ this will display a message when a grievance is entered or updated. """
-            Label(self.win.body, text=self.msg, fg="red", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, columnspan=2, sticky="w")
-            self.row += 1
-
         def build_buttons(self):
             """ configure buttons on the bottom of the screen """
             button_alignment = macadj("w", "center")
             if self.newentry:
                 Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
-                       command=lambda: self.parent.informalc(self.win.topframe)).grid(row=0, column=0)
+                       command=lambda: (self.destroy_companion(), self.parent.informalc(self.win.topframe)))\
+                    .grid(row=0, column=0)
             else:
                 Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
-                       command=lambda: self.parent.grvlist_result(self.win.topframe))\
+                       command=lambda: (self.destroy_companion(), self.parent.showtime(self.win.topframe)))\
                     .grid(row=0, column=0)
             Button(self.win.buttons, text="Enter", width=macadj(19, 18), anchor=button_alignment,
-                   command=lambda: self.apply()).grid(row=0, column=1)
+                   command=lambda: (self.destroy_companion(), self.apply())).grid(row=0, column=1)
+            # a label on the button bar gives notification of past actions ie insert, delete, etc
+            # Label(self.win.buttons, text=self.msg, fg="red").
+            # self.pb_text.config(text="{}".format(text))
+            # self.pb_root.update()
+            self.msg_label = Label(self.win.buttons, text=self.msg, fg="red")
+            self.msg_label.grid(row=0, column=2)
 
         def add_nonc_field(self, frame):
             """ added fields for compliance index"""
@@ -2291,12 +2459,12 @@ class InformalC:
             self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
 
         def del_nonc_field(self, x):
-            """ delete a field from the non compliance entry widgets as well as the delete button. 
+            """ delete a field from the non compliance entry widgets as well as the delete button.
             set the value of the corresponding stringvar to an empty string. """
             self.nonc_entry[x].grid_remove()
             self.nonc_del[x].grid_remove()
             self.non_c[x].set("")  # set the value of the stringvar to empty string
-            
+
         def add_reman_field(self, frame):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
@@ -2318,7 +2486,7 @@ class InformalC:
             self.reman_entry[x].grid_remove()
             self.reman_del[x].grid_remove()
             self.reman[x].set("")  # set the value of the stringvar to empty string
-            
+
         def add_batset_field(self, frame):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
@@ -2335,12 +2503,12 @@ class InformalC:
             self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
 
         def del_batset_field(self, x):
-            """ delete a field from the non compliance entry widgets as well as the delete button. 
+            """ delete a field from the non compliance entry widgets as well as the delete button.
             set the value of the corresponding stringvar to an empty string. """
             self.batset_entry[x].grid_remove()
             self.batset_del[x].grid_remove()
             self.batset[x].set("")  # set the value of the stringvar to empty string
-            
+
         def add_batgat_field(self, frame):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
@@ -2357,12 +2525,182 @@ class InformalC:
             self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
 
         def del_batgat_field(self, x):
-            """ delete a field from the non compliance entry widgets as well as the delete button. 
+            """ delete a field from the non compliance entry widgets as well as the delete button.
             set the value of the corresponding stringvar to an empty string. """
             self.batgat_entry[x].grid_remove()
             self.batgat_del[x].grid_remove()
             self.batgat[x].set("")  # set the value of the stringvar to empty string
-            
+
+        def informalc_root(self, mode, grv_no=None):
+            """ creates a companion window for selecting carrier names.
+            mode is 'selectcarrier' or 'selectissue'. grv_no is used for editing grievance information. """
+            # self.destroy_companion()  # destroy other companion windows if they exist
+            self.companion_root = Tk()
+            self.companion_root.title("KLUSTERBOX")
+            titlebar_icon(self.companion_root)  # place icon in titlebar
+            x_position = projvar.root.winfo_x() + 450
+            y_position = projvar.root.winfo_y() - 25
+            self.companion_root.geometry("%dx%d+%d+%d" % (240, 600, x_position, y_position))
+            topframe = Frame(self.companion_root)
+            topframe.pack()
+            buttons = Canvas(topframe)  # button bar
+            buttons.pack(fill=BOTH, side=BOTTOM)
+            text = "Add Issue"
+            if mode == 'selectcarrier':
+                text = "Add Carrier"
+            if mode == 'selectissue':
+                text = "Add Issue"
+            if mode == 'selectdecision':
+                text = "Add Decision"
+            Label(topframe, text=text, font=macadj("bold", "Helvetica 18")).pack(anchor="w")
+            Label(topframe, text="").pack()
+            scrollbar = Scrollbar(topframe, orient=VERTICAL)
+            listbox = Listbox(topframe, selectmode="browse", yscrollcommand=scrollbar.set)
+            listbox.config(height=100, width=50)
+            if mode == 'selectcarrier':  # use a list of carriers.
+                self.get_listbox_carrriers(grvnum=grv_no)
+            if mode == 'selectissue':  # use a list of issue from self.issue_description
+                self.listbox_fill = self.issue_description[:]
+            if mode == 'selectdecision':  # use a list of issues from self.decision_description
+                self.listbox_fill = self.decision_description[:]
+            for name in self.listbox_fill:  # fill the listbox
+                listbox.insert(END, name)
+            scrollbar.config(command=listbox.yview)
+            scrollbar.pack(side=RIGHT, fill=Y)
+            listbox.pack(side=LEFT, expand=1)
+            if mode == 'selectcarrier':
+                Button(buttons, text="Add Carrier", width=10,
+                       command=lambda: (self.addnames(listbox.curselection()))).pack(side=LEFT, anchor="w")
+            if mode == 'selectissue':
+                Button(buttons, text="Add Issue", width=10,
+                       command=lambda: (self.addissue(listbox.curselection()))).pack(side=LEFT, anchor="w")
+            if mode == 'selectdecision':
+                Button(buttons, text="Add Decision", width=10,
+                       command=lambda: (self.adddecision(listbox.curselection()))).pack(side=LEFT, anchor="w")
+            # to destroy and re create itself.
+            Button(buttons, text="Clear", width=10,
+                   command=lambda: (self.destroy_companion(), self.informalc_root(mode, grv_no))) \
+                .pack(side=LEFT, anchor="w")
+            Button(buttons, text="Close", width=10,
+                   command=lambda: (self.destroy_companion())).pack(side=LEFT, anchor="w")
+
+        def get_listbox_carrriers(self, grvnum=None):
+            """ get a list of carriers for the listbox in self.informalc_root. if no grv_no is given, the
+            carrier list for year 1000 AD through 9000 AD will be the range of the carrier list. """
+            start = '1000-01-01 00:00:00'
+            end = '9000-01-01 00:00:00'
+            if grvnum:  # if a grievance number is passed, use it to get the carrier list.
+                sql = "SELECT indate_start,indate_end FROM informalc_grv WHERE grv_no='%s'" % grvnum
+                results = inquire(sql)
+                if results:
+                    if results[0][0]:
+                        start = results[0][0]
+                    if results[0][1]:
+                        end = results[0][1]
+            start = dt_converter(start)
+            end = dt_converter(end)
+            # get a list of carriers given the search criteria.
+            self.listbox_fill = ["class action", ] + informalc_gen_clist(start, end, self.parent.station)
+
+        def addnames(self, listbox):
+            """ sets the grievant field by setting the stringvar self.grievant using an index from the
+             listbox and an array generated in informalc root. """
+            for index in listbox:
+                self.grievant.set(self.listbox_fill[index])
+
+        def addissue(self, listbox):
+            """ sets the issue field by setting the stringvar self.issue using an index from the
+             listbox and an array generated in informalc root. """
+            for index in listbox:
+                self.issue.set(self.listbox_fill[index])
+                self.article.set(self.issue_article[index])
+
+        def adddecision(self, listbox):
+            """ sets the decision field by setting the stringvar self.decision using an index from the
+             listbox and an array generated in informalc root. """
+            for index in listbox:
+                self.decision.set(self.listbox_fill[index])
+
+        def destroy_companion(self):
+            """ exit out of a screen with a companion root. Destroy the companion window if it still exist. """
+            try:
+                self.companion_root.destroy()  # destroy the tkinter root object
+                self.companion_root = None  # re initialize the variable
+            except (TclError, AttributeError):
+                pass
+
+        def settlement_delete(self):
+            """ delete the settlement """
+            if not messagebox.\
+                    askokcancel("Grievance Number Change",
+                                "This will delete the settlement for  grievance number {} to  in all records. "
+                                "Are you sure you want to proceed?".format(self.edit_grv_no),
+                                parent=self.win.topframe):
+                return
+            # use loops and arrays to commit changes to db
+            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
+                      "informalc_remedies", "informalc_settlements")
+            fields = ("main", "sub", "main", "sub",
+                      "grv_no", "grv_no")
+            for i in range(6):
+                sql = "DELETE FROM '%s' WHERE '%s'='%s'" % (tables[i], fields[i], self.edit_grv_no)
+                print(sql)  # commit(sql),
+            self.parent.showtime(self.win.topframe)
+
+        def grvchange(self, old_number, new_stringvar):
+            """ change the grievance number. check grv number and input it into the informalc_grv table. """
+            new_number = new_stringvar.get()
+            if not messagebox.\
+                    askokcancel("Grievance Number Change",
+                                "This will change the grievance number from {} to {} in all records. "
+                                "Are you sure you want to proceed?".format(old_number, new_number),
+                                parent=self.win.topframe):
+                return
+            if not self.checking_grv_number(chg_number=True, new_number=new_number):
+                return  # make sure the new number passes standards
+            new_number = self.reformat_grv_no(chg_number=True, new_number=new_number)  # reformat new number
+            # use loops and arrays to commit changes to db
+            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
+                      "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
+                      "informalc_remandindex", "informalc_remedies", "informalc_settlements")
+            fields = ("main", "sub", "main", "sub", "grv_no", "followup", "settlement", "followup", "remanded",
+                      "grv_no", "grv_no")
+            for i in range(11):
+                sql = "UPDATE '%s' SET '%s' = '%s' WHERE '%s' = '%s'" % \
+                      (tables[i], fields[i], new_number, fields[i], old_number)
+                print(sql)  # commit(sql)
+            l_passed_result = [list(x) for x in self.parent.search_result]  # chg tuple of tuples to list of lists
+            for record in l_passed_result:
+                if record[0] == old_number:
+                    record[0] = new_number
+            self.parent.search_result = l_passed_result[:]
+            msg = "Grievance number changed."
+            self.informalc_edit(self.win.topframe, new_number, msg=msg)
+
+        def delete_grievance(self, frame, grv_no):
+            """ deletes a record and associated records for a grievance. """
+            if not messagebox.askokcancel("Delete Grievance",
+                                          "Are you sure you want to delete his grievance and all the "
+                                          "data associated with it?",
+                                          parent=self.win.topframe):
+                return
+            # use loops and arrays to commit changes to db
+            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
+                      "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
+                      "informalc_remandindex", "informalc_remedies", "informalc_settlements")
+            fields = ("main", "sub", "main", "sub", "grv_no", "followup", "settlement", "followup", "remanded",
+                      "grv_no", "grv_no")
+            for i in range(11):
+                sql = "DELETE FROM '%s' WHERE '%s'='%s'" % (tables[i], fields[i], grv_no)
+                print(sql)  # commit(sql)
+            # delete grievance from self.parent.search_result
+            new_search_result = []
+            for rec in self.parent.search_result:
+                if rec[0] != grv_no:
+                    new_search_result.append(rec)
+            self.parent.search_result = new_search_result[:]
+            self.parent.showtime(frame)
+
         def apply(self):
             """
             check the inputs one by one. if there are any errors, a messagebox will show the error and the checks will
@@ -2395,22 +2733,26 @@ class InformalC:
                         array.append(to_add)
                 self.check_indexes.append(array)
             if not self.checking_grievant():
-                return
-            if not self.checking_grv_number:
+                self.apply_fail()  # empty the message in the button frame
                 return
             if not self.checking_grv_number():
+                self.apply_fail()  # empty the message in the button frame
                 return
             if not self.checking_dates():
+                self.apply_fail()  # empty the message in the button frame
                 return
             if not self.checking_issue():
+                self.apply_fail()  # empty the message in the button frame
                 return
             if not self.checking_article():
+                self.apply_fail()  # empty the message in the button frame
                 return
             # since level, decision and docs values come from an option menu, there is no need to check them.
             # entries of 'no status' and 'no decision' will be converted to empty strings
             self.checking_optionmenus()
             if not self.checking_indexes():
                 self.check_indexes = []  # re initialize array for indexes
+                self.apply_fail()  # empty the message in the button frame
                 return
             self.get_grv_changesmade()  # check if changes necessitate an update
             self.get_set_changesmade()  # check if changes necessitate an update
@@ -2418,9 +2760,19 @@ class InformalC:
             self.add_grv_recs()  # add grievance recs to db
             self.add_set_recs()  # add settlement recs to db
             self.add_index_recs()  # add or delete index recs to the db
+            # after the database is updated, regenerate the page.
+            if self.newentry:
+                self.informalc_new(self.win.topframe, msg=self.report())
+            else:
+                self.informalc_edit(self.win.topframe, self.edit_grv_no, msg=self.report())
+
+        def apply_fail(self):
+            """ if there is an error in self.apply, empty the message in the button frame. """
+            self.msg_label.config(text="")
+            projvar.root.update()
 
         def checking_grievant(self):
-            """ a method for checking the grievant.  check the grievant input. this is either 'class action' 
+            """ a method for checking the grievant.  check the grievant input. this is either 'class action'
             or a carrier name. it can be blank. """
             self.check_grievant = self.check_grievant.lower().strip()
             if not self.check_grievant or self.check_grievant == "class action":  # if empty or class action
@@ -2443,37 +2795,57 @@ class InformalC:
                 messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
             return True
 
-        def checking_grv_number(self):
-            """ check the grievance number input """
+        def checking_grv_number(self, chg_number=False, new_number=""):
+            """ check the grievance number input.
+            chg_number is evoked by grvchange to check the grv number before it is changed. """
+            grievance_number = self.check_grv_no
+            if chg_number:
+                grievance_number = new_number
+            if chg_number:
+                sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s'" % grievance_number
+                result = inquire(sql)
+                if result:
+                    msg = "This grievance number is already being used in the database."
+                    messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                    return False
             if self.newentry and self.onrec_grievance:
                 msg = "There is already a record for this grievance in the database."
                 messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
                 return False
-            if not GrievanceChecker(self.check_grv_no).has_value():
+            if not GrievanceChecker(grievance_number).has_value():
                 msg = "The grievance number must not be blank."
                 messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
                 return False
-            if not GrievanceChecker(self.check_grv_no).check_characters():
+            if not GrievanceChecker(grievance_number).check_characters():
                 msg = "The grievance number can only contain numbers and letters."
                 messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
                 return False
-            if not GrievanceChecker(self.check_grv_no).min_lenght():
+            if not GrievanceChecker(grievance_number).min_lenght():
                 msg = "The grievance number must contain at least 4 characters."
                 messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
                 return False
-            if not GrievanceChecker(self.check_grv_no).max_lenght():
+            if not GrievanceChecker(grievance_number).max_lenght():
                 msg = "The grievance number can not contain more than 20 characters."
                 messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
                 return False
-            self.reformat_grv_no()  # clean up the grievance number for database entry
+            if not chg_number:
+                self.reformat_grv_no()  # clean up the grievance number for database entry
             return True
 
-        def reformat_grv_no(self):
-            """ reformat the grievance number to all lowercase, no whitespaces, no dashes. """
-            self.check_grv_no = self.check_grv_no.lower()  # convert grievance number to lowercas
-            self.check_grv_no = self.check_grv_no.strip()  # strip whitespace from start and end of the string.
-            self.check_grv_no = self.check_grv_no.replace('-', '')  # remove any dashes
-            self.check_grv_no = self.check_grv_no.replace(' ', '')  # remove any whitespace
+        def reformat_grv_no(self, chg_number=False, new_number=""):
+            """ reformat the grievance number to all lowercase, no whitespaces, no dashes.
+            this is modified to handle new grv numbers from grvchange"""
+            grievance_number = self.check_grv_no
+            if chg_number:
+                grievance_number = new_number
+            grievance_number = grievance_number.lower()  # convert grievance number to lowercas
+            grievance_number = grievance_number.strip()  # strip whitespace from start and end of the string.
+            grievance_number = grievance_number.replace('-', '')  # remove any dashes
+            grievance_number = grievance_number.replace(' ', '')  # remove any whitespace
+            if chg_number:
+                return grievance_number
+            else:
+                self.check_grv_no = grievance_number
 
         def checking_dates(self):
             """ check the startdate, enddate and meetingdate.
@@ -2706,8 +3078,7 @@ class InformalC:
                   (self.check_grievant, self.parent.station, self.check_grv_no, self.check_dates[0],
                    self.check_dates[1], self.check_dates[2], self.check_issue, self.check_article)
             print(sql)  # commit(sql)
-            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
-            # self.informalc_new(self.win.topframe)
+            self.reporter_grv = True
 
         def update_grv(self):
             """ update the record in the grievance table """
@@ -2716,8 +3087,7 @@ class InformalC:
                   (self.check_grievant, self.check_dates[0], self.check_dates[1], self.check_dates[2],
                    self.check_issue, self.check_article, self.check_grv_no)
             print(sql)  # commit(sql)
-            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
-            # self.informalc_new(self.win.topframe)
+            self.reporter_grv = True
 
         def add_set_recs(self):
             """ insert, update or ignore records for the settlement table """
@@ -2735,15 +3105,13 @@ class InformalC:
             #       )
 
             # if there is no record for this settlement and changes have been made..
-            if not self.onrec_settlement and self.set_changesmade:   
+            if not self.onrec_settlement and self.set_changesmade:
                 self.insert_set()  # insert a record into the settlement table
-            # if there is a pre-existing settlement record and changes have been made... 
+            # if there is a pre-existing settlement record and changes have been made...
             elif self.onrec_settlement and self.set_changesmade:
                 self.update_set()
             else:  # no changes...
                 print("No settlement updates or inserts into database")
-                self.msg = "NO INPUT: Settlement Not Added."
-                # self.informalc_new(self.win.topframe)
 
         def insert_set(self):
             """ insert a record into the settlement table """
@@ -2753,8 +3121,7 @@ class InformalC:
                   (self.check_grv_no, self.check_lvl, self.check_dates[3], self.check_decision,
                    self.check_dates[4], self.check_docs, self.check_gats_no)
             print(sql)  # commit(sql)
-            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
-            # self.informalc_new(self.win.topframe)
+            self.reporter_set = True
 
         def update_set(self):
             """ update a record in the settlement table """
@@ -2763,8 +3130,7 @@ class InformalC:
                   (self.check_lvl, self.check_dates[3], self.check_decision, self.check_dates[4],
                    self.check_docs, self.check_gats_no, self.check_grv_no)
             print(sql)  # commit(sql)
-            self.msg = "Grievance Settlement Added: #{}.".format(self.check_grv_no)
-            # self.informalc_new(self.win.topframe)
+            self.reporter_set = True
 
         def add_index_recs(self):
             """  insert, delete or ignore records for the settlement table. for the indexes, no recs are updated.
@@ -2775,16 +3141,30 @@ class InformalC:
                 ["remanded", "followup"],  # remanded index
                 ["main", "sub"],  # batch settlement index
                 ["main", "sub"]]  # batch gats index
-            for i in range(len(self.add_indexes)):
+            for i in range(len(self.add_indexes)):  # this will loop 4 times. once for each index
                 for rec in self.add_indexes[i]:
                     sql = "INSERT INTO %s(%s, %s) VALUES('%s', '%s')" % \
                           (tables[i], index_columns[i][0], index_columns[i][1], self.check_grv_no, rec)
                     print(sql)  # commit(sql)
+                    self.reporter_index = True
                 for rec in self.del_indexes[i]:
                     sql = "DELETE FROM %s WHERE %s='%s' and %s='%s'" \
                           % (tables[i], index_columns[i][0], self.check_grv_no[0], index_columns[i][1], rec)
                     print(sql)  # commit(sql)
+                    self.reporter_index = True
 
+        def report(self):
+            """ this will generate a message showing inserts/updates/ deletions. """
+            if self.newentry:
+                if any((self.reporter_grv, self.reporter_set, self.reporter_index)):
+                    return "Grievance {} entered".format(self.check_grv_no)
+            else:
+                if any((self.reporter_grv, self.reporter_set)):
+                    return "Grievance {} updated".format(self.edit_grv_no)
+                if self.reporter_set:
+                    return "Settlement {} entered/updated".format(self.edit_grv_no)
+                if self.reporter_index:
+                    return "Index for {} entered/updated".format(self.edit_grv_no)
 
     class PayoutEntry:
         """
@@ -5830,7 +6210,7 @@ class CarrierHistory:
             button.config(anchor="w")
         button.pack(side=LEFT)
         self.win.finish()
-        
+
     def change_station(self, station):
         """ gets the station """
         if station.get() == "Select a station":
