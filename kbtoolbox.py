@@ -148,7 +148,7 @@ class MakeWindow:
     def detect_resize(self, event):
         """ compare the height of the window (event.height) against the height of the body and buttons frame
          if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
-        if event.height >= self.body.winfo_height() + self.buttons.winfo_height():
+        if event.height - 30 >= self.body.winfo_height() + self.buttons.winfo_height():
             self.mousewheel(False)
         else:
             self.mousewheel(True)
