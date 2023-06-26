@@ -1000,7 +1000,7 @@ class InformalCIndex:
         # write decision index
         report.write("Decision Index\n\n")
         report.write('{:>8}  {:<22}\n'.format("index", "decision"))
-        report.write ('----------------------------\n')
+        report.write('----------------------------\n')
         for rec in self.decision_array:
             report.write('{:>8}  {:<22}\n'.format(rec[0], rec[2]))
         report.write("\n\n")
@@ -1056,6 +1056,3 @@ class InformalCIndex:
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
               "ORDER BY carrier_name ASC" % self.station
         self.grievant_array = inquire(sql)
-
-
-

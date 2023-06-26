@@ -976,7 +976,7 @@ class Convert:
         if not self.data:  # if it is empty, return an empty string
             return ""
         dtstr = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')  # first convert it to an actual datetime object
-        return dtstr.strftime("%m/%d/%Y")  # convert that dt ogject to a string formatted as a date.
+        return dtstr.strftime("%m/%d/%Y")  # convert that dt object to a string formatted as a date.
 
     def dt_to_backslash_str(self):
         """ converts a datetime object to a string of a backslash date e.g. 01/01/2000 """
@@ -1017,6 +1017,14 @@ class Convert:
         if self.data == "on":
             return True
         return False
+
+    def backslashdate_to_datetime_or_empty(self):
+        """ convert a date with backslashes into a datetime object or returns empty string that are argued. """
+        if not self.data:
+            return ""
+        date = self.data.split("/")
+        string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
+        return dt_converter(string)
 
     def backslashdate_to_datetime(self):
         """ convert a date with backslashes into a datetime object"""
@@ -1163,6 +1171,12 @@ class Convert:
         """ returns an empty string for None """
         if type(self.data) is None:
             return ""
+        return self.data
+
+    def empty_returns_str(self, fill_in):
+        """ if an empty string is received, return the fill_in argument """
+        if not self.data:
+            return fill_in
         return self.data
 
 
@@ -2139,7 +2153,10 @@ class GrievanceChecker:
 def informalc_date_checker(frame, date, _type):
     """ checks the date.
     to skip the message box show error, pass None to the frame arg. """
-    d = date.get().split("/")
+    try:
+        d = date.get().split("/")  # if the passed variable is a stringvar
+    except AttributeError:
+        d = date.split("/")  # if the passed variable is a string
     if len(d) != 3:
         if frame:
             messagebox.showerror("Invalid Data Entry",

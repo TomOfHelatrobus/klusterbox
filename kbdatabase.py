@@ -6,6 +6,8 @@ either in the hidden .klusterbox folder in documents or in th kb_sub folder.
 import projvar
 from kbtoolbox import inquire, commit, ProgressBarDe
 import os
+from tkinter import messagebox
+from kbtoolbox import Handler
 
 
 class DataBase:
@@ -435,3 +437,21 @@ class DovBase:
                       "VALUES('%s', '%s', '%s', '%s', '%s')" % \
                       ("0001-01-01 00:00:00", self.station, day, self.defaulttime, False)
                 commit(sql)
+
+
+class DataBaseFix:
+    """ fix problems in the database when detected to prevent corruption. """
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def empty_in_rings3(frame):
+        """ if 'empty' value is detected in the rings3 table, delete the record. """
+        sql = "SELECT * FROM rings3 WHERE rings_date = '%s'" % 'empty'
+        result = inquire(sql)
+        if result:
+            msg = "Corrupted records found in carrier rings table. {} record{} will be deleted."\
+                .format(len(result), Handler(len(result)).plurals())
+            messagebox.showwarning("Database Maintenance", msg, parent=frame)
+        sql = "DELETE FROM rings3 WHERE rings_date = '%s'" % 'empty'
+        commit(sql)

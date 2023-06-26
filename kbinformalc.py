@@ -1085,7 +1085,7 @@ class SpeedGrvCheck:
 
     def check_issue(self):
         """ check the issue input """
-        self.issue = self.issue.strip()  # strip out any whitespace before or after the string
+        self.issue = self.issue.strip().lower()  # strip out any whitespace before or after the string
         if self.issue == "":  # accept blank entries
             return
         if isint(self.issue):  # identify issue index entries and execute as valid - this also update the article
