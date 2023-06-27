@@ -45,6 +45,7 @@ from csv import reader
 import sys
 import subprocess
 import time
+from math import ceil
 from webbrowser import open_new  # for hyper link at about_klusterbox()
 from threading import Thread  # run load workbook while progress bar runs
 # Pillow Library
@@ -107,7 +108,7 @@ class InformalC:
         # misc
         self.companion_root = None  # holds the root Tk for the informalc_root()
         self.listbox_fill = None  # used by several methods to carry list for listboxes # v
-        # sql search 
+        # sql search
         self.sql = None  # var for sql grievance query. hold in variable so search can be duplicated.
         self.sql_set = None  # var for sql settlement query. hold in variable so search can be duplicated
         self.search_result = []  # var for the grievances search result
@@ -116,7 +117,7 @@ class InformalC:
         self.search_set_result = []  # a list of distinct grv numbers of settlements that match the search criteria
         # grievance
         self.src_grievance = None  # stringvar used for search of grievance number # v
-        # grievant 
+        # grievant
         self.grvent = []
         self.grvent_entry = []
         self.grvent_del = []
@@ -147,16 +148,16 @@ class InformalC:
             "arbitration"
         )
         # date signed
-        self.option_signeddate = None  # stringvar used for search criteria option menu 
+        self.option_signeddate = None  # stringvar used for search criteria option menu
         self.signed_start = None
         self.signed_end = None
-        # decision        
+        # decision
         self.decision = []
         self.decision_entry = []
         self.decision_del = []
-        self.decision_showlist = None        
+        self.decision_showlist = None
         self.decision_description = []  # a list of decisions from the db.
-        # proof due 
+        # proof due
         self.proofdue_start = None
         self.proofdue_end = None
         self.option_proofduedate = None  # stringvar used for search criteria option menu
@@ -192,14 +193,20 @@ class InformalC:
         self.var_hours = None  # vars for addawards_screen()
         self.var_rate = None  # vars for addawards_screen()
         self.var_amount = None  # vars for addawards_screen()
-        
+        # vars for showtime nav bar function
+        self.current_page = 1  # the current page of results to display
+        self.rec_display_limit = 50  # the number of records displayed before a new page is needed
+
     def informalc(self, frame):
         """ a master method for running the other methods in proper sequence. """
 
         def clear_tempfolders():
-            """ clear contents of temp folder """
-            if os.path.isdir(dir_path_check('infc_grv')):
-                rmtree(dir_path_check('infc_grv'))
+            """ try clear contents of temp folder. ignore is the a file from the folder is in use. """
+            try:
+                if os.path.isdir(dir_path_check('infc_grv')):
+                    rmtree(dir_path_check('infc_grv'))
+            except PermissionError:
+                pass
 
         def get_station():
             """ this sets the station to what was used for the klusterbox investigation range. """
@@ -1105,7 +1112,7 @@ class InformalC:
         grievance_number = self.src_grievance.get()
         if not check_grievance_number():
             return
-        self.sql = "SELECT * FROM informalc_grv WHERE grv_no = '%s' and station = '%s'" % \
+        self.sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
                    (grievance_number, self.station)
         self.search_result = inquire(self.sql)
         if not self.search_result:
@@ -1150,26 +1157,39 @@ class InformalC:
         self.search_result.sort(key=itemgetter(5), reverse=True)  # sort by meeting date, in reverse order
         self.showtime(frame)
 
-    def showtime(self, frame):
+    def showtime(self, frame, turnpage=False):
         """ shows the results for the specified range."""
+        # if turnpage is false, then initize all nav bar vars
+        if not turnpage:
+            self.current_page = 1  # the current page of results to display
+            self.rec_display_limit = 54  # the number of records displayed before a new page is needed
+        # get the range of recs on this page. 's' is the start and 'e' is the end range
+        p = self.current_page
+        dl = self.rec_display_limit
+        r = len(self.search_result)
+        e = (p * dl) - 1
+        s = e - dl
+        if e > r:
+            e = r
         self.win = MakeWindow()
         self.win.create(frame)
         self.pulldown_menu()
         Label(self.win.body, text="Informal C: Search Results", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         Label(self.win.body, text="").grid(row=1)
+        self.navigation_bar(self.win.topframe, row=2)  # navigation bar
         if len(self.search_result) == 0:
-            Label(self.win.body, text="The search has no results.").grid(row=2, column=0, columnspan=4)
+            Label(self.win.body, text="The search has no results.").grid(row=3, column=0, columnspan=4)
         else:
-            Label(self.win.body, text="Grievance Number", fg="grey", anchor="w").grid(row=2, column=1, sticky="w")
-            Label(self.win.body, text="Meeting Date", fg="grey", anchor="w").grid(row=2, column=2, sticky="w")
-            Label(self.win.body, text="Settlement", fg="grey", anchor="w").grid(row=2, column=3, sticky="w")
-            # Label(self.win.body, text="Date Signed", fg="grey", anchor="w").grid(row=2, column=4, sticky="w")
-        row = 3
-        ii = 1
-        for r in self.search_result:
+            Label(self.win.body, text="Grievance Number", fg="grey", anchor="w").grid(row=3, column=1, sticky="w")
+            Label(self.win.body, text="Meeting Date", fg="grey", anchor="w").grid(row=3, column=2, sticky="w")
+            Label(self.win.body, text="Settlement", fg="grey", anchor="w").grid(row=3, column=3, sticky="w")
+        row = 4
+
+        ii = s + 2
+        for i in range(s, e):
             column = 0  # re initialize the column
-            if ii & 1:
+            if ii & 1:  # this alternates the colors of the rows between two colors
                 color = "light yellow"
             else:
                 color = "white"
@@ -1178,32 +1198,36 @@ class InformalC:
             Label(self.win.body, text=str(ii), anchor="w", width=macadj(4, 2), bg=color).grid(row=row, column=column)
             column += 1
             # the grievance number
-            Button(self.win.body, text=" " + r[2], anchor="w", width=macadj(14, 12), relief=RIDGE, bg=color) \
-                .grid(row=row, column=column)
+            Button(self.win.body, text=" " + self.search_result[i][2], anchor="w", width=macadj(14, 12),
+                   relief=RIDGE, bg=color).grid(row=row, column=column)
             column += 1
             # convert datetime object stings into backslash dates
-            meetingdate = Convert(r[5]).dtstr_to_backslashstr()  # convert to backslash date or empty
+            # convert to backslash date or empty
+            meetingdate = Convert(self.search_result[i][5]).dtstr_to_backslashstr()
             # the meeting date
             Button(self.win.body, text=meetingdate, width=macadj(11, 10),
                    anchor="w", relief=RIDGE, bg=color).grid(row=row, column=column)
             column += 1
             # the settlement
-            Button(self.win.body, text=r[11], width=macadj(25, 20), anchor="w", relief=RIDGE, bg=color)\
-                .grid(row=row, column=column)
+            Button(self.win.body, text=self.search_result[i][11], width=macadj(25, 20), anchor="w",
+                   relief=RIDGE, bg=color).grid(row=row, column=column)
             column += 1
             Button(self.win.body, text="Edit", width=macadj(7, 6), relief=RIDGE, bg=color,
-                   command=lambda x=r[2]: self.GrievanceInput(self).informalc_edit(self.win.topframe, x))\
+                   command=lambda x=self.search_result[i][2]:
+                   self.GrievanceInput(self).informalc_edit(self.win.topframe, x))\
                 .grid(row=row, column=column)
             column += 1
             Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE, bg=color,
-                   command=lambda x=r: self.AwardsReports(self).rptbygrv(x)).grid(row=row, column=column)
+                   command=lambda x=self.search_result[i]: self.AwardsReports(self).rptbygrv(x))\
+                .grid(row=row, column=column)
             column += 1
             Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE, bg=color,
-                   command=lambda x=r[2]: self.addawards_screen(self.win.topframe, x)) \
+                   command=lambda x=self.search_result[i][2]: self.addawards_screen(self.win.topframe, x)) \
                 .grid(row=row, column=column)
             row += 1
             ii += 1
-        # define the buttons at the bottom of the page: 
+        self.navigation_bar(self.win.topframe, row=row)  # navigation bar
+        # define the buttons at the bottom of the page:
         Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
                command=lambda: self.master_search(self.win.topframe)) \
             .grid(row=0, column=0)
@@ -1223,6 +1247,57 @@ class InformalC:
         Button(self.win.buttons, text="Carrier List", width=macadj(16, 13),
                command=lambda: self.RptCarrierId(self).run()).grid(row=1, column=3)
         self.win.finish()
+
+    def navigation_bar(self, frame, row=0, ):
+        """ this navigation bar will allow the user to control the index of the search results, so
+        that a limited number of search results appear on a screen. The user can manipulate the
+        nav bar to prompt other sections of the search results. """
+
+        def selectpage(selection):
+            """ when the button is pressed, the passed selection determines what happens """
+            self.current_page = selection
+            self.showtime(frame, turnpage=True)
+
+        mn = 1  # minimum: the first page is always '1'
+        c = self.current_page  # current: the current page/screen
+        dl = self.rec_display_limit
+        mx = ceil(len(self.search_result)/dl)  # maximum: the last page/screen
+        formula = [c - 1, mn, mn + 1, c - 3, c - 2, c - 1, c + 1, c + 2, c + 3, 
+                   mx - 1, mx, c + 1]
+        text = ["<", 1, 2, c-3, c-2, c-1, c+1, c+2, c+3, mx-1, mx, ">", ]
+        if mx == 1:  # do not use is there is only one page
+            return
+        navframe = Frame(self.win.body, borderwidth="1", relief="ridge")
+        navframe.grid(row=row, column=0, columnspan=7, pady=5)
+        Label(navframe, text="Page {} of {}:".format(c, mx), fg="grey").grid(row=0, column=0)
+        for i in range(12):
+            hide = False
+            color = "black"
+            navbuttons = Button(navframe)
+            # general rules
+            if formula[i] < 1:  # if value is less than 1
+                hide = True
+                color = "red"
+            if formula[i] == c:  # if value is same as the current page
+                hide = True
+                color = "red"
+            if formula[i] > mx:  # if the value is greater than last page
+                hide = True
+                color = "red"
+            if i in (3, 4, 5, 6, 7, 8):  # hide buttons with duplicate numbers
+                if formula[i] in (mn, mn + 1, mx - 1, mx):
+                    hide = True
+                    color = "red"
+            if i in (1, 2):
+                if formula[i] in (mx - 1, mx):
+                    hide = True
+                    color = "red"
+
+            navbuttons.config(text=text[i], command=lambda x=formula[i]: selectpage(x), fg=color,
+                              width=4, anchor="center", relief="flat")
+            navbuttons.grid(row=0, column=i+1)
+            if hide:
+                navbuttons.grid_remove()
 
     def informalc_root(self, mode, topframe=None, grv_no=None, childframe=None):
         """ creates a companion window for selecting carrier names.
@@ -1831,11 +1906,12 @@ class InformalC:
             results = []
             for ug in unique_grv:  # do search for each grievance in list of unique grievances
                 sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
-                      "FROM informalc_awards, informalc_grv " \
-                      "WHERE informalc_awards.grv_no = informalc_grv.grv_no and informalc_awards.carrier_name='%s' " \
+                      "informalc_awards.amount, informalc_grvievances.docs, informalc_grvievances.level " \
+                      "FROM informalc_awards, informalc_grvievances " \
+                      "WHERE informalc_awards.grv_no = informalc_grvievances.grv_no and " \
+                      "informalc_awards.carrier_name='%s' " \
                       "and informalc_awards.grv_no = '%s'" \
-                      "ORDER BY informalc_grv.date_signed" % (name, ug)
+                      "ORDER BY informalc_grvievances.date_signed" % (name, ug)
                 query = inquire(sql)
                 if query:
                     for q in query:
@@ -1906,12 +1982,12 @@ class InformalC:
                 results = []
                 for ug in unique_grv:  # do search for each grievance in list of unique grievances
                     sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                          "informalc_awards.amount, informalc_grv.docs, informalc_grv.level " \
-                          "FROM informalc_awards, informalc_grv " \
-                          "WHERE informalc_awards.grv_no = informalc_grv.grv_no and " \
+                          "informalc_awards.amount, informalc_grvievances.docs, informalc_grvievances.level " \
+                          "FROM informalc_awards, informalc_grvievances " \
+                          "WHERE informalc_awards.grv_no = informalc_grvievances.grv_no and " \
                           "informalc_awards.carrier_name='%s'" \
                           "and informalc_awards.grv_no = '%s' " \
-                          "ORDER BY informalc_grv.date_signed" % (name, ug)
+                          "ORDER BY informalc_grvievances.date_signed" % (name, ug)
                     query = inquire(sql)
                     if query:
                         for q in query:

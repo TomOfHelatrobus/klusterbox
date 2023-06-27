@@ -16,10 +16,11 @@ class Fixes:
 
     def check(self, version):
         """ get the version number and compare it to the version number of checks """
-        if not isfloat(version):
+        if not isfloat(version):  # version numbers must be compatable with a float. e.g. 5.08
             return
         self.version = float(version)
-        self.get()
+        self.get()  # get the number of the most resently done fix from the tolerances table
+        # compare the version number to the version number of the fix and what's been marked done in the dbase
         if not self.compare():
             return
         self.update_lastfix()
@@ -28,7 +29,7 @@ class Fixes:
         """ get the number of the most resently done fix from the tolerances table."""
         sql = "SELECT tolerance from tolerances WHERE category = '%s'" % "lastfix"
         result = inquire(sql)
-        self.lastfix = float(result[0][0])
+        self.lastfix = float(result[0][0])  # update the lastfix value in the tolerances table.
 
     def compare(self):
         """ compare the version number to the version number of the fix and what's been marked done in the dbase. """
@@ -37,6 +38,8 @@ class Fixes:
         if self.version >= 5.0:
             V5000Fix().run()
             V5000FixA().run()
+        # if self.version >= 5.08:
+        #     V5008Fix().run()
         return True
 
     def update_lastfix(self):
@@ -166,3 +169,7 @@ class V5000FixA:
               "WHERE leave_type IS NULL" \
               % (types, times)
         commit(sql)
+
+class V5008Fix:
+    """ this is a migration of the a table used for informal c into two new tables.
+    informalc_grv will be copied, and the contents written into informalc_grievances and informalc_settlements. """

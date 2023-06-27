@@ -89,8 +89,8 @@ class DataBase:
             'issue varchar primary key, standard boolean)',
             'CREATE table IF NOT EXISTS informalc_decisioncategories (ssindex, type varchar, '
             'decision varchar primary key, standard boolean)',
-            'CREATE table IF NOT EXISTS informalc_payout(year varchar, pp varchar, payday varchar, '
-            'carrier_name varchar, hours varchar, rate varchar, amount varchar)',
+            # 'CREATE table IF NOT EXISTS informalc_payout(year varchar, pp varchar, payday varchar, '
+            # 'carrier_name varchar, hours varchar, rate varchar, amount varchar)',
             
             'CREATE table IF NOT EXISTS dov(eff_date date, station varchar, day varchar, dov_time varchar, '
             'temp varchar)'
