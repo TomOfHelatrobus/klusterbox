@@ -2358,7 +2358,6 @@ class ProgressBarDe:
         """ changes the text of the progress bar """
         self.pb_text.config(text="{}".format(text))
         self.pb_root.update()
-        # projvar.root.update()
 
     def stop(self):
         """ stop and destroy the progress bar """

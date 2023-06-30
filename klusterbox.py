@@ -35,6 +35,7 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 from tkinter import messagebox, filedialog, BooleanVar, Button, Checkbutton, \
     DISABLED, E, Entry, FALSE, Frame, IntVar, Label, LEFT, Menu, OptionMenu, Radiobutton, RIDGE, StringVar, \
     TclError, Tk, W, BOTH, BOTTOM, Canvas, END, Listbox, RIGHT, Scrollbar, VERTICAL, Y, ttk
+from tkinter.simpledialog import askstring
 from datetime import datetime, timedelta
 import sqlite3
 from operator import itemgetter
@@ -109,12 +110,10 @@ class InformalC:
         self.companion_root = None  # holds the root Tk for the informalc_root()
         self.listbox_fill = None  # used by several methods to carry list for listboxes # v
         # sql search
-        self.sql = None  # var for sql grievance query. hold in variable so search can be duplicated.
-        self.sql_set = None  # var for sql settlement query. hold in variable so search can be duplicated
         self.search_result = []  # var for the grievances search result
-        self.search_result_set = []  # var for the settlements search result
         self.search_grv_result = []  # a list of distinct grv numbers of grievances that match the search criteria
         self.search_set_result = []  # a list of distinct grv numbers of settlements that match the search criteria
+        self.blank_criteria = True  # if all search criteria are blank, do not include 'where' in sql
         # grievance
         self.src_grievance = None  # stringvar used for search of grievance number # v
         # grievant
@@ -187,6 +186,9 @@ class InformalC:
             "within last two years",
             "within last three years"
         )
+        # sort by
+        self.sortby = None
+        self.sort_order = None
         # vars for add awards
         self.var_id = None  # vars for addawards_screen()
         self.var_name = None  # vars for addawards_screen()
@@ -389,22 +391,24 @@ class InformalC:
 
     def get_stringvars(self):
         """ initialize varibles """
-        self.src_grievance = StringVar(self.win.topframe)  # v
-        self.incident_start = StringVar(self.win.topframe)  # v
-        self.incident_end = StringVar(self.win.topframe)  # v
-        self.meeting_start = StringVar(self.win.topframe)  # v
-        self.meeting_end = StringVar(self.win.topframe)  # v
-        self.signed_start = StringVar(self.win.topframe)  # v
-        self.signed_end = StringVar(self.win.topframe)  # v
-        self.proofdue_start = StringVar(self.win.topframe)  # v
-        self.proofdue_end = StringVar(self.win.topframe)  # v
-        self.gats = StringVar(self.win.topframe)  # v
-        self.option_incidentdate = StringVar(self.win.topframe)  # v
-        self.option_meetingdate = StringVar(self.win.topframe)  # v
-        self.option_signeddate = StringVar(self.win.topframe)  # v
-        self.option_proofduedate = StringVar(self.win.topframe)  # v
-        self.option_level = StringVar(self.win.topframe)  # v
-        self.option_docs = StringVar(self.win.topframe)  # v
+        self.src_grievance = StringVar(self.win.topframe)  #
+        self.incident_start = StringVar(self.win.topframe)  #
+        self.incident_end = StringVar(self.win.topframe)  #
+        self.meeting_start = StringVar(self.win.topframe)  #
+        self.meeting_end = StringVar(self.win.topframe)  #
+        self.signed_start = StringVar(self.win.topframe)  #
+        self.signed_end = StringVar(self.win.topframe)  #
+        self.proofdue_start = StringVar(self.win.topframe)  #
+        self.proofdue_end = StringVar(self.win.topframe)  #
+        self.gats = StringVar(self.win.topframe)  #
+        self.option_incidentdate = StringVar(self.win.topframe)  #
+        self.option_meetingdate = StringVar(self.win.topframe)  #
+        self.option_signeddate = StringVar(self.win.topframe)  #
+        self.option_proofduedate = StringVar(self.win.topframe)  #
+        self.option_level = StringVar(self.win.topframe)  #
+        self.option_docs = StringVar(self.win.topframe)  #
+        self.sortby = StringVar(self.win.topframe)
+        self.sort_order = StringVar(self.win.topframe)
 
     def initialize_listbox_components(self):
         """ initialize list holding stringvars, entry and button widgets for listbox/ entry fields for grievant,
@@ -421,7 +425,15 @@ class InformalC:
 
     def build_search_screen(self):
         """ builds page for searching grievance settlements. """
-        self.search_result = []  # initialize list for holding search results
+
+        def re_initialize_search_vars():
+            """ initialize list for holding search results """
+            self.search_grv_result = []
+            self.search_set_result = []
+            self.search_result = []
+
+        re_initialize_search_vars()
+        self.blank_criteria = True
         button_alignment = macadj("w", "center")
         row = 0
         self.pulldown_menu()
@@ -787,6 +799,35 @@ class InformalC:
         om.grid(row=0, column=4, columnspan=2, sticky="e")
         self.gats.set("include all")
         row += 1
+        # separator
+        separator = ttk.Separator(self.win.body, orient='horizontal')
+        separator.grid(column=0, row=row, columnspan=6, sticky="nesw", pady=5)
+        row += 1
+        # --------------------------------------------------------------------------------------------------- sort by
+        sortframe = Frame(self.win.body)
+        sortframe.grid(row=row, column=0, columnspan=6, sticky="w")
+        Label(sortframe, text="Sort by:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        radiotext = ["Start Incident Date", "End Incident Date", "Meeting Date", "Signed Date", "Proof Due"]
+        for i in range(5):
+            r = Radiobutton(sortframe, text=radiotext[i], variable=self.sortby, value=i)
+            r.grid(row=i, column=4, columnspan=2, sticky="w")
+        self.sortby.set(2)
+        row += 1
+        # separator
+        separator = ttk.Separator(self.win.body, orient='horizontal')
+        separator.grid(column=0, row=row, columnspan=6, sticky="nesw", pady=5)
+        row += 1
+        # ------------------------------------------------------------------------------------------------- sort order
+        sortorderframe = Frame(self.win.body)
+        sortorderframe.grid(row=row, column=0, columnspan=6, sticky="w")
+        Label(sortorderframe, text="Sort Order:", width=29, anchor="w") \
+            .grid(row=0, column=0, columnspan=4, sticky="w")
+        radiotext = ["Earliest to Recent", "Recent to Earliest"]
+        for i in range(2):
+            r = Radiobutton(sortorderframe, text=radiotext[i], variable=self.sort_order, value=i)
+            r.grid(row=i, column=4, columnspan=2, sticky="w")
+        self.sort_order.set(1)
         # ------------------------------------------------------------------------------- buttons bottom of the screen
         button_alignment = macadj("w", "center")
         Button(self.win.buttons, text="Go Back", width=20, anchor=button_alignment,
@@ -915,6 +956,7 @@ class InformalC:
                     grvent_sql += " OR "  # add 'or' to the statement
                 i += 1
             grvent_sql += ")"
+            self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
         # ------------------------------------------------------------------------------------------------------ dates
         now = datetime.now().date()  # get the current date as a datetime object
         sixmonthsago = now - timedelta(weeks=26)  # datetime from six months ago
@@ -966,27 +1008,35 @@ class InformalC:
                                              "ending incident date.",
                                              parent=frame)
                         return
-                if date_options_input[i] == "within last 6 months":
-                    start = sixmonthsago
-                    end = default_end
-                if date_options_input[i] == "within last year":
-                    start = oneyearago
-                    end = default_end
-                if date_options_input[i] == "within last two years":
-                    start = twoyearsago
-                    end = default_end
-                if date_options_input[i] == "within last three years":
-                    start = threeyearsago
-                    end = default_end
-                if date_options_input[i] == "within specified range":
-                    if date_types[i] == "incident":
+            # define the start and end dates for the search criteria
+            if date_options_input[i] == "within last 6 months":
+                start = sixmonthsago
+                end = default_end
+            if date_options_input[i] == "within last year":
+                start = oneyearago
+                end = default_end
+            if date_options_input[i] == "within last two years":
+                start = twoyearsago
+                end = default_end
+            if date_options_input[i] == "within last three years":
+                start = threeyearsago
+                end = default_end
+            if date_options_input[i] != "include all":
+                self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
+                # write 'where' statement for incident date sql - incident dates get different treatment
+                if date_types[i] == "incident":
+                    if date_options_input[i] in ("within last 6 months", "within last year", "within last two years",
+                                                 "within last three years"):
+                        incident_sql = "(startdate BETWEEN '{}' AND '{}')".format(start, end)
+                    if date_options_input[i] == "within specified range":
                         incident_sql = "('{}' <= enddate AND startdate <= '{}'  )".format(start, end)
-                    if date_types[i] == "meeting":
-                        meeting_sql = "(meetingdate BETWEEN '{}' AND '{}')".format(start, end)
-                    if date_types[i] == "signed":
-                        signed_sql = "(date_signed BETWEEN '{}' AND '{}')".format(start, end)
-                    if date_types[i] == "proofdue":
-                        proofdue_sql = "(proofdue BETWEEN '{}' AND '{}')".format(start, end)
+                # write 'where' sql statement for meeting, signed or proof due
+                elif date_types[i] == "meeting":
+                    meeting_sql = "(meetingdate BETWEEN '{}' AND '{}')".format(start, end)
+                elif date_types[i] == "signed":
+                    signed_sql = "(date_signed BETWEEN '{}' AND '{}')".format(start, end)
+                elif date_types[i] == "proofdue":
+                    proofdue_sql = "(proofdue BETWEEN '{}' AND '{}')".format(start, end)
         # ------------------------------------------------------------------------------------------------------ issue
         issue_array = []
         for issue in self.src_issue:  # loop for all elements in list
@@ -994,7 +1044,7 @@ class InformalC:
             issue = issue.lower().strip()
             if issue and issue not in issue_array:  # if it is not empty and not a duplicate...
                 issue_array.append(issue)  # put it in the array
-        if issue_array:
+        if issue_array:  # if not empty, then write the sql 'where' statement
             issue_sql = "("  # start the sql statment
             i = 0
             for issue in issue_array:
@@ -1004,12 +1054,13 @@ class InformalC:
                     issue_sql += " OR "  # add 'or' to the statement
                 i += 1
             issue_sql += ")"
+            self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
         # ----------------------------------------------------------------------------------------------------- level
         if self.option_level.get() == "selection":  # shows all options in list
             level_selections = []
             for index in self.level_listbox.curselection():
                 level_selections.append(self.level_options[index])
-            if level_selections:
+            if level_selections:  # if not empty, write the sql 'where' statement
                 level_sql = "("  # start the sql statment
                 i = 0
                 for level in level_selections:
@@ -1019,6 +1070,7 @@ class InformalC:
                         level_sql += " OR "  # add 'or' to the statement
                     i += 1
                 level_sql += ")"
+                self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
         # ---------------------------------------------------------------------------------------------------- decision
         decision_array = []
         for decision in self.decision:  # loop for all elements in list
@@ -1026,7 +1078,7 @@ class InformalC:
             decision = decision.lower().strip()
             if decision and decision not in decision_array:  # if it is not empty and not a duplicate...
                 decision_array.append(decision)  # put it in the array
-        if decision_array:
+        if decision_array:  # if not empty, write the sql 'where' statement
             decision_sql = "("  # start the sql statment
             i = 0
             for decision in decision_array:
@@ -1036,12 +1088,13 @@ class InformalC:
                     decision_sql += " OR "  # add 'or' to the statement
                 i += 1
             decision_sql += ")"
+            self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
         # ------------------------------------------------------------------------------------------------------- docs
         if self.option_docs.get() == "selection":  # shows all options in list
             docs_selections = []
             for index in self.docs_listbox.curselection():
                 docs_selections.append(self.doc_options[index])
-            if docs_selections:
+            if docs_selections:  # if not empty, write the sql 'where' statement
                 docs_sql = "("  # start the sql statment
                 i = 0
                 for docs in docs_selections:
@@ -1051,14 +1104,15 @@ class InformalC:
                         docs_sql += " OR "  # add 'or' to the statement
                     i += 1
                 docs_sql += ")"
+                self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
         # ------------------------------------------------------------------------------------------------------- gats
         gats = self.gats.get()
-        if gats != "include all":
+        if gats != "include all":  # if not empty (aka 'include all'), write the sql 'where' statement.
             if gats == "yes":
                 gats_sql = "(gats_number != '{}')".format("")
             if gats == "no":
                 gats_sql = "(gats_number = '{}')".format("")
-
+            self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
         # ----------------------------------------------------------------------------------------------- grievance sql
         where = ""  # initialize the sql statement builder
         where_array = []
@@ -1074,6 +1128,8 @@ class InformalC:
         if where:  # running a search with an empty search criteria will cause an error
             sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE {}".format(where)
             self.search_grv_result = inquire(sql)
+        else:
+            self.search_grv_result = []
 
         # ----------------------------------------------------------------------------------------- ---- settlement sql
         where = ""  # initialize the sql statement builder
@@ -1090,12 +1146,15 @@ class InformalC:
         if where:  # running a search with an empty search criteria will cause an error
             sql = "SELECT DISTINCT grv_no FROM informalc_settlements WHERE {}".format(where)
             self.search_set_result = inquire(sql)
-        # ------------------------------------------------------------------------------------------------- no results
-        if not self.search_grv_result and not self.search_set_result:
-            msg = "There is no record for any grievances in the database"
-            messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
-            return
-        self.merge_search_results(frame)
+        # ----------------------------------------------------------------------------------------- no search criteria
+        if self.blank_criteria:  # if no search critera was given,
+            self.search_all_apply(frame)  # go to search all
+        else:
+            if not self.search_grv_result and not self.search_set_result:  # no results
+                msg = "There is no record for any grievances in the database"
+                messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
+                return
+            self.merge_search_results(frame)
 
     def search_grv_apply(self, frame):
         """ search for the grievance number from self.build_search_screen() """
@@ -1112,9 +1171,9 @@ class InformalC:
         grievance_number = self.src_grievance.get()
         if not check_grievance_number():
             return
-        self.sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
-                   (grievance_number, self.station)
-        self.search_result = inquire(self.sql)
+        sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
+              (grievance_number, self.station)
+        self.search_result = inquire(sql)
         if not self.search_result:
             msg = "There is no record for this grievance in the database: {}".format(grievance_number)
             messagebox.showerror("Record Not Found", msg, parent=self.win.topframe)
@@ -1136,12 +1195,15 @@ class InformalC:
     def merge_search_results(self, frame):
         """ search results for grievances and settlements need to be combined to show grievance recs and
         settlement recs as one record. """
+        #  get a list of grievances with no corrosponding settlement#
         joint = []  # merge both list of distinct grievence/settlement grv numbers into one joint list
-        for grv in self.search_grv_result:
-            joint.append(grv[0])
-        for sett in self.search_set_result:
-            if sett[0] not in joint:  # avoid duplicates
-                joint.append(sett[0])
+        if self.search_grv_result:
+            for grv in self.search_grv_result:
+                joint.append(grv[0])
+        if self.search_set_result:
+            for sett in self.search_set_result:
+                if sett[0] not in joint:  # avoid duplicates
+                    joint.append(sett[0])
         for number in joint:  # for each number search grievance and settlement tables
             sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s'" % number
             results_raw = inquire(sql)
@@ -1154,27 +1216,32 @@ class InformalC:
                 self.search_result.append(results[0] + set_results[0])
             else:
                 self.search_result.append(results[0] + default_set)
-        self.search_result.sort(key=itemgetter(5), reverse=True)  # sort by meeting date, in reverse order
-        self.showtime(frame)
+        sortby = (3, 4, 5, 10, 12)  # startdate: 3, enddate: 4, meetingdate: 5, date_signed: 10, proofdue:12
+        # recent to earliest: 0, earliest to recent: 1 (True or False)
+        # sort by selected date (self.sortby) in selected order (self.sort_order)
+        itemget_index = sortby[int(self.sortby.get())]  # gets the index for the date to sort the search result
+        reverse_index = bool(int(self.sort_order.get()))  # get the 'true/false' for reverse for sort.
+        self.search_result.sort(key=itemgetter(itemget_index), reverse=reverse_index)
+        self.showtime(frame)  # display the results
 
     def showtime(self, frame, turnpage=False):
         """ shows the results for the specified range."""
         # if turnpage is false, then initize all nav bar vars
         if not turnpage:
             self.current_page = 1  # the current page of results to display
-            self.rec_display_limit = 54  # the number of records displayed before a new page is needed
+            self.rec_display_limit = 50  # the number of records displayed before a new page is needed
         # get the range of recs on this page. 's' is the start and 'e' is the end range
-        p = self.current_page
-        dl = self.rec_display_limit
-        r = len(self.search_result)
-        e = (p * dl) - 1
-        s = e - dl
+        p = self.current_page  # the current page/screen
+        dl = self.rec_display_limit  # the number of records displayed per page
+        r = len(self.search_result)  # the total number of records
+        s = ((p - 1) * dl)  # start: find the start of the range
+        e = (p * dl) - 1  # end: find the end of the range
         if e > r:
-            e = r
+            e = r  # handle index issues on last page
         self.win = MakeWindow()
         self.win.create(frame)
         self.pulldown_menu()
-        Label(self.win.body, text="Informal C: Search Results", font=macadj("bold", "Helvetica 18")) \
+        Label(self.win.body, text="Informal C Search Results", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         Label(self.win.body, text="").grid(row=1)
         self.navigation_bar(self.win.topframe, row=2)  # navigation bar
@@ -1182,12 +1249,15 @@ class InformalC:
             Label(self.win.body, text="The search has no results.").grid(row=3, column=0, columnspan=4)
         else:
             Label(self.win.body, text="Grievance Number", fg="grey", anchor="w").grid(row=3, column=1, sticky="w")
-            Label(self.win.body, text="Meeting Date", fg="grey", anchor="w").grid(row=3, column=2, sticky="w")
+            datetext = ["Start Incident", "End Incident", "Meeting Date", "Signed Date", "Proof Due"]
+            sort_index = int(self.sortby.get())
+            Label(self.win.body, text=datetext[sort_index], fg="grey", anchor="w").grid(row=3, column=2, sticky="w")
             Label(self.win.body, text="Settlement", fg="grey", anchor="w").grid(row=3, column=3, sticky="w")
         row = 4
-
-        ii = s + 2
-        for i in range(s, e):
+        ii = s
+        for i in range(s, e + 1):
+            if i == r:
+                break
             column = 0  # re initialize the column
             if ii & 1:  # this alternates the colors of the rows between two colors
                 color = "light yellow"
@@ -1195,17 +1265,20 @@ class InformalC:
                 color = "white"
             # Show search results. loop once for each settlement.
             # the count at the right margin
-            Label(self.win.body, text=str(ii), anchor="w", width=macadj(4, 2), bg=color).grid(row=row, column=column)
+            Label(self.win.body, text=str(ii + 1), anchor="w", width=macadj(4, 2), bg=color)\
+                .grid(row=row, column=column)
             column += 1
             # the grievance number
             Button(self.win.body, text=" " + self.search_result[i][2], anchor="w", width=macadj(14, 12),
                    relief=RIDGE, bg=color).grid(row=row, column=column)
             column += 1
-            # convert datetime object stings into backslash dates
+            # "Start Incident Date", "End Incident Date", "Meeting Date", "Signed Date", "Proof Due"
+            sortby = (3, 4, 5, 10, 12)
+            sort_index = sortby[int(self.sortby.get())]  # sent by self.sortby stringvar
             # convert to backslash date or empty
-            meetingdate = Convert(self.search_result[i][5]).dtstr_to_backslashstr()
-            # the meeting date
-            Button(self.win.body, text=meetingdate, width=macadj(11, 10),
+            selecteddate = Convert(self.search_result[i][sort_index]).dtstr_to_backslashstr()
+            # the date
+            Button(self.win.body, text=selecteddate, width=macadj(11, 10),
                    anchor="w", relief=RIDGE, bg=color).grid(row=row, column=column)
             column += 1
             # the settlement
@@ -1229,23 +1302,11 @@ class InformalC:
         self.navigation_bar(self.win.topframe, row=row)  # navigation bar
         # define the buttons at the bottom of the page:
         Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
-               command=lambda: self.master_search(self.win.topframe)) \
-            .grid(row=0, column=0)
-        Label(self.win.buttons, text="Report: ", width=macadj(16, 11)).grid(row=0, column=1)
-        Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
-               command=lambda: self.AwardsReports(self).rptgrvsum()) \
-            .grid(row=0, column=2)
-        Button(self.win.buttons, text="By Carriers", width=macadj(16, 13),
-               command=lambda: self.AwardsReports(self).bycarriers()) \
-            .grid(row=0, column=3)
-        Button(self.win.buttons, text="By Carrier", width=macadj(16, 13),
-               command=lambda: self.AwardsReports(self).bycarrier(self.win.topframe)) \
-            .grid(row=0, column=4)
-        Label(self.win.buttons, text="Summary: ", width=macadj(16, 11)).grid(row=1, column=1)
-        Button(self.win.buttons, text="By Settlements", width=macadj(16, 13),
-               command=lambda: self.AwardsReports(self).grvlist_setsum()).grid(row=1, column=2)
-        Button(self.win.buttons, text="Carrier List", width=macadj(16, 13),
-               command=lambda: self.RptCarrierId(self).run()).grid(row=1, column=3)
+               command=lambda: self.master_search(self.win.topframe)).grid(row=0, column=0)
+        Button(self.win.buttons, text="Report", width=macadj(16, 11),
+               command=lambda: self.AwardsReports(self).reports_screen(self.win.topframe)).grid(row=0, column=1)
+        Button(self.win.buttons, text="Summary", width=macadj(16, 11),
+               command=lambda: self.AwardsReports(self).grv_summary(self.win.topframe)).grid(row=0, column=2)
         self.win.finish()
 
     def navigation_bar(self, frame, row=0, ):
@@ -1272,28 +1333,22 @@ class InformalC:
         Label(navframe, text="Page {} of {}:".format(c, mx), fg="grey").grid(row=0, column=0)
         for i in range(12):
             hide = False
-            color = "black"
             navbuttons = Button(navframe)
             # general rules
             if formula[i] < 1:  # if value is less than 1
                 hide = True
-                color = "red"
             if formula[i] == c:  # if value is same as the current page
                 hide = True
-                color = "red"
             if formula[i] > mx:  # if the value is greater than last page
                 hide = True
-                color = "red"
             if i in (3, 4, 5, 6, 7, 8):  # hide buttons with duplicate numbers
                 if formula[i] in (mn, mn + 1, mx - 1, mx):
                     hide = True
-                    color = "red"
             if i in (1, 2):
                 if formula[i] in (mx - 1, mx):
                     hide = True
-                    color = "red"
 
-            navbuttons.config(text=text[i], command=lambda x=formula[i]: selectpage(x), fg=color,
+            navbuttons.config(text=text[i], command=lambda x=formula[i]: selectpage(x), fg="black",
                               width=4, anchor="center", relief="flat")
             navbuttons.grid(row=0, column=i+1)
             if hide:
@@ -1678,8 +1733,8 @@ class InformalC:
         """ gets the awards for a carrier from the informalc awards table. """
         unique_grv = []
         for grv in self.search_result:
-            if grv[0] not in unique_grv:
-                unique_grv.append(grv[0])
+            if grv[2] not in unique_grv:
+                unique_grv.append(grv[2])
         unique_carrier = []
         for each in unique_grv:
             sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % each
@@ -1696,14 +1751,98 @@ class InformalC:
             self.parent = parent
             self.win = None
 
+        def reports_screen(self, frame):
+            """ a screen where users can choose from a list of reports. """
+            self.win = MakeWindow()
+            self.win.create(frame)
+            Label(self.win.body, text="Informal C Reports", font=macadj("bold", "Helvetica 18")) \
+                .grid(row=0, column=0, sticky="w")
+            Label(self.win.body, text="").grid(row=1)
+            row = 3
+            Button(self.win.body, text="Grievance Everything", width=30,
+                   command=lambda: self.rptgrvsum()).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Monetary Awards", width=30,
+                   command=lambda: self.grvlist_setsum()).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Awards by Carriers", width=30,
+                   command=lambda: self.bycarriers()).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Awards by Carrier", width=30,
+                   command=lambda: self.bycarrier(self.win.topframe)).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="No Settlement", width=30,
+                   command=lambda: self.no_settlement(self.win.topframe)).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Employee ID List", width=30,
+                   command=lambda: self.RptCarrierId(self).run()).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Compliance Delinquency", width=30,
+                   command=lambda: self.delinquency(self.win.topframe)).grid(row=row, column=0, pady=5)
+            row += 1
+
+            Label(self.win.body, text="", width=70).grid(row=row)
+            # define the buttons at the bottom of the page:
+            Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
+                   command=lambda: self.parent.showtime(self.win.topframe)).grid(row=0, column=0)
+
+            self.win.finish()
+
+        def grv_summary(self, frame):
+            """ this a summary of all grievances as they appear on the search results screen. """
+            if len(self.parent.search_result) == 0:
+                msg = "There are no records matching your search results. "
+                messagebox.showwarning("Informal C Reports", msg, parent=frame)
+                return
+            # --------------------------------------------------------- get the date by which the results are sorted...
+            # "Start Incident Date", "End Incident Date", "Meeting Date", "Signed Date", "Proof Due"
+            sortby = (3, 4, 5, 10, 12)  # store the indexes of the dates in this tuple.
+            sort_index = sortby[int(self.parent.sortby.get())]  # sent by self.sortby stringvar
+            # convert to backslash date or empty
+            # selecteddate = Convert(self.search_result[i][sort_index]).dtstr_to_backslashstr()
+            # ---------------------------------------------------------------------------------------------- file name
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = "infc_grv_list" + "_" + stamp + ".txt"
+            report = open(dir_path('infc_grv') + filename, "w")
+            # ------------------------------------------------------------------------------------------------ headers
+            # report will display the elements (with indexes):
+            # Grievance Number(2), date (determined by sort index), grievant (0), issue (6), decision (11)
+            report.write("   Grievance List Summary\n\n")
+            report.write("   Showing all grievances/settlements within search criteria\'\n\n")
+            date_header = ("Start Date", "End Date", "Meeting Date", "Signed Date", "Proof Due")
+            date_head_index = int(self.parent.sortby.get())
+            report.write('{:>18}{:>14}  {:<20}{:<22}{:<20}\n'
+                         .format("    Grievance #", date_header[date_head_index], "Grievant", "Issue", "Settlement"))
+            report.write("       --------------------------------------------------------------------------------"
+                         "----\n")
+            i = 0
+            for r in self.parent.search_result:
+                formatted_date = Convert(r[sort_index]).dtstr_to_backslashstr()
+                report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}{:<20}\n'
+                             .format(str(i+1), r[2], formatted_date, r[0], r[6], r[11]))
+                if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
+                    report.write("       ----------------------------------------------------------------------"
+                                 "--------------\n")
+                i += 1
+            report.write("       --------------------------------------------------------------------------------"
+                         "----\n")  # insert line at the end to close out report
+            report.close()
+            # ----------------------------------------------------------------------------------------- save and open
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+
         def grvlist_setsum(self):
             """ generates text report for settlement list summary showing all grievance settlements. """
             if len(self.parent.search_result) > 0:
                 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = "infc_grv_list" + "_" + stamp + ".txt"
                 report = open(dir_path('infc_grv') + filename, "w")
-                report.write("   Monetary Remedy Summary\n")
-                report.write("   (ordered by date signed)\n\n")
+                report.write("   Monetary Remedy Summary\n\n")
+                report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
                 report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
                              .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
                 report.write(
@@ -1724,30 +1863,30 @@ class InformalC:
                         hour = 0.0
                         rate = 0.0
                         amt = 0
-                        if rec[2]:
+                        if rec[2]:  # hours of pay for remedy
                             hour = float(rec[2])
-                        if rec[3]:
+                        if rec[3]:  # the rate at which the hours are paid. 50%, 100%, 150%, etc
                             rate = float(rec[3])
-                        if rec[4]:
+                        if rec[4]:  # a flat amount in dollars of the remedy
                             amt = float(rec[4])
-                        if hour and rate:
-                            awardxhour += hour * rate
+                        if hour and rate:  # combine rate and hours to get an adjusted hours of remedy.
+                            awardxhour += hour * rate  # the adjusted award for hours
                         if amt:
-                            awardxamt += amt
+                            awardxamt += amt  # the award for dollars
                     if not DateTimeChecker().check_dtstring(sett[10]):  # if the date signed can not be made to dt
                         sign = ""
                     else:
-                        sign = dt_converter(sett[10]).strftime("%m/%d/%Y")
-                    s_gats = sett[14].split(" ")
-                    if sett[9] is None or sett[9] == "unknown":
+                        sign = dt_converter(sett[10]).strftime("%m/%d/%Y")  # convert date time to mm/dd/yyyy format
+                    if sett[9] is None or sett[9] == "unknown":  # format level to '---' or the level as a string.
                         lvl = "---"
                     else:
                         lvl = sett[9]
-                    # for gats_no in s_gats:
-                    for gi in range(len(s_gats)):
-                        if gi == 0:
-                            total_hour += awardxhour
-                            total_amt += awardxamt
+                    # impliment batch gats here later ...
+                    s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
+                    for gi in range(len(s_gats)):  # for gats_no in s_gats:
+                        if gi == 0:  # for the first line
+                            total_hour += awardxhour  # tally hours totals for totals line at end of report
+                            total_amt += awardxamt  # tally amount of awards for totals line at end of report
                             report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
                                          .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl,
                                                  "{0:.2f}".format(float(awardxhour)),
@@ -1755,12 +1894,11 @@ class InformalC:
                         if gi != 0:
                             report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
                     if i % 3 == 0:
-                        report.write(
-                            "      ----------------------------------------------------------------------"
-                            "------------\n")
+                        report.write("      ----------------------------------------------------------------------"
+                                     "------------\n")
                     i += 1
-                report.write(
-                    "      ----------------------------------------------------------------------------------\n")
+                report.write("      ------------------------------------------------------------------------------"
+                             "----\n")
                 report.write("{:<20}{:>58}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
                 report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
                 report.close()
@@ -1881,7 +2019,7 @@ class InformalC:
             scrollbar.pack(side=RIGHT, fill=Y)
             listbox.pack(side=LEFT, expand=1)
             Button(self.win.buttons, text="Go Back", width=20,
-                   command=lambda: self.parent.showtime(self.win.topframe)).pack(side=LEFT)
+                   command=lambda: self.reports_screen(self.win.topframe)).pack(side=LEFT)
             Button(self.win.buttons, text="Report", width=20,
                    command=lambda: self.bycarrier_apply
                    (unique_carrier, listbox.curselection())).pack(side=LEFT)
@@ -1893,8 +2031,8 @@ class InformalC:
                 return
             unique_grv = []  # get a list of all grv numbers in search range
             for grv in self.parent.search_result:
-                if grv[0] not in unique_grv:
-                    unique_grv.append(grv[0])  # put these in "unique_grv"
+                if grv[2] not in unique_grv:
+                    unique_grv.append(grv[2])  # put these in "unique_grv"
             name = names[cursor[0]]
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = "infc_grv_list" + "_" + stamp + ".txt"
@@ -1906,12 +2044,12 @@ class InformalC:
             results = []
             for ug in unique_grv:  # do search for each grievance in list of unique grievances
                 sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount, informalc_grvievances.docs, informalc_grvievances.level " \
-                      "FROM informalc_awards, informalc_grvievances " \
-                      "WHERE informalc_awards.grv_no = informalc_grvievances.grv_no and " \
+                      "informalc_awards.amount, informalc_settlements.docs, informalc_settlements.level " \
+                      "FROM informalc_awards, informalc_settlements " \
+                      "WHERE informalc_awards.grv_no = informalc_settlements.grv_no and " \
                       "informalc_awards.carrier_name='%s' " \
                       "and informalc_awards.grv_no = '%s'" \
-                      "ORDER BY informalc_grvievances.date_signed" % (name, ug)
+                      "ORDER BY informalc_settlements.date_signed" % (name, ug)
                 query = inquire(sql)
                 if query:
                     for q in query:
@@ -1967,13 +2105,20 @@ class InformalC:
             unique_carrier = self.parent.uniquecarrier()
             unique_grv = []  # get a list of all grv numbers in search range
             for grv in self.parent.search_result:
-                if grv[0] not in unique_grv:
-                    unique_grv.append(grv[0])  # put these in "unique_grv"
+                if grv[2] not in unique_grv:
+                    unique_grv.append(grv[2])  # put these in "unique_grv"
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = "infc_grv_list" + "_" + stamp + ".txt"
             report = open(dir_path('infc_grv') + filename, "w")
+            # ------------------------------------------------------------------------------------------ progress bar
+            pb = ProgressBarDe(title="Informal C Reports", label="Standby. The report is generating.")
+            pb.max_count(len(unique_carrier))  # the count of the pb is the number of carriers in unique carrier
+            pb.start_up()  # start the progress bar
             report.write("Settlement Report By Carriers\n\n")
+            pb_count = 1
             for name in unique_carrier:
+                pb.move_count(pb_count)
+                pb.change_text("Writing report for {}".format(name))
                 report.write("{:<30}\n\n".format(name))
                 report.write(
                     "        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
@@ -1982,12 +2127,12 @@ class InformalC:
                 results = []
                 for ug in unique_grv:  # do search for each grievance in list of unique grievances
                     sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                          "informalc_awards.amount, informalc_grvievances.docs, informalc_grvievances.level " \
-                          "FROM informalc_awards, informalc_grvievances " \
-                          "WHERE informalc_awards.grv_no = informalc_grvievances.grv_no and " \
+                          "informalc_awards.amount, informalc_settlements.docs, informalc_settlements.level " \
+                          "FROM informalc_awards, informalc_settlements " \
+                          "WHERE informalc_awards.grv_no = informalc_settlements.grv_no and " \
                           "informalc_awards.carrier_name='%s'" \
                           "and informalc_awards.grv_no = '%s' " \
-                          "ORDER BY informalc_grvievances.date_signed" % (name, ug)
+                          "ORDER BY informalc_settlements.date_signed" % (name, ug)
                     query = inquire(sql)
                     if query:
                         for q in query:
@@ -2029,7 +2174,9 @@ class InformalC:
                 report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
                 report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
                 report.write("\n\n\n")
+                pb_count += 1
             report.close()
+            pb.stop()
             try:
                 if sys.platform == "win32":
                     os.startfile(dir_path('infc_grv') + filename)
@@ -2047,13 +2194,12 @@ class InformalC:
                 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filename = "infc_grv_list" + "_" + stamp + ".txt"
                 report = open(dir_path('infc_grv') + filename, "w")
-                report.write("Settlement List\n\n")
+                report.write("Grievance Everything Report\n\n")
+                report.write("    Station:            " + self.parent.station + "\n")
                 i = 1
                 for sett in result:
                     sett = list(sett)  # correct for legacy problem of NULL Settlement Levels
-                    if sett[8] is None:
-                        sett[8] = "unknown"
-                    sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[0]
+                    sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[2]
                     query = inquire(sql)
                     num_space = 3 - (len(str(i)))  # number of spaces for number
                     awardxhour = 0
@@ -2078,16 +2224,29 @@ class InformalC:
                         report.write(str(i) + "\n" + "    Grievance Number:   " + sett[0] + "\n")
                     else:
                         report.write(str(i) + space + "Grievance Number:   " + sett[0] + "\n")
-                    start = dt_converter(sett[1]).strftime("%m/%d/%Y")
-                    end = dt_converter(sett[2]).strftime("%m/%d/%Y")
-                    sign = dt_converter(sett[3]).strftime("%m/%d/%Y")
-                    report.write("    Dates of Violation: " + start + " - " + end + "\n")
+                    article = ""
+                    if sett[7]:
+                        article = "art.{}/ ".format(sett[7])
+                    report.write("    Article/Issue:      " + article + sett[6] + "\n")  # display issue
+                    report.write("    Grievant:           " + sett[0] + "\n")  # display issue
+                    start = Convert(sett[3]).dtstr_to_backslashstr()  # format incident start date
+                    end = Convert(sett[4]).dtstr_to_backslashstr()  # format incident end date
+                    meet = Convert(sett[5]).dtstr_to_backslashstr()  # format meeting date
+                    sign = Convert(sett[10]).dtstr_to_backslashstr()  # format date signed
+                    proof = Convert(sett[12]).dtstr_to_backslashstr()  # format date signed
+                    report.write("    Dates of Violation: " + start + " - " + end + "\n")  # display incident dates
+                    report.write("    Meeting Date:       " + meet + "\n")
+                    report.write("    Decision:           " + sett[11] + "\n")  # display decsion
                     report.write("    Signing Date:       " + sign + "\n")
-                    report.write("    Settlement Level    " + sett[8] + "\n")
-                    report.write("    Station:            " + sett[4] + "\n")
-                    report.write("    GATS Number:        " + sett[5] + "\n")
-                    report.write("    Documentation:      " + sett[6] + "\n")
-                    report.write("    Description:        " + sett[7] + "\n\n")
+                    report.write("    Settlement Level    " + sett[9] + "\n")
+                    report.write("    Proof Due           " + proof + "\n")
+                    report.write("    GATS Number:        " + sett[8] + "\n")
+                    report.write("    Documentation:      " + sett[13] + "\n\n")
+                    # of there are no awards entered/ skip awards display
+                    if not sett[11] in ("monetary remedy", "back pay"):
+                        report.write("\n")
+                        i += 1
+                        continue
                     report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
                     report.write("    -----------------------------------------------------------------\n")
                     if len(query) == 0:
@@ -2118,7 +2277,7 @@ class InformalC:
                                                                   .format(float(awardxhour))))
                     report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
                                                                   .format(float(awardxamt))))
-                    report.write("\n\n\n")
+                    report.write("\n\n")
                     i += 1
                 report.close()
                 try:
@@ -2130,6 +2289,139 @@ class InformalC:
                         subprocess.call(["open", dir_path('infc_grv') + filename])
                 except PermissionError:
                     messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
+
+        def no_settlement(self, frame):
+            """ this a summary of all grievances which do not have settlement records. """
+            no_settlement = []
+            for s in self.parent.search_result:  # loop through all results
+                if not s[8]:  # if there is no grievance number in the settlement portion of the array
+                    no_settlement.append(s)  # add to a list of grvs with no settlement
+            if len(no_settlement) == 0:
+                msg = "There are no records matching your search results. "
+                messagebox.showwarning("Informal C Reports", msg, parent=frame)
+                return
+            # ---------------------------------------------------------------------------------------------- file name
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = "infc_grv_list" + "_" + stamp + ".txt"
+            report = open(dir_path('infc_grv') + filename, "w")
+            # ------------------------------------------------------------------------------------------------ headers
+            # report will display the elements (with indexes):
+            # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
+            report.write("   No Settlement Report\n\n")
+            report.write("   Showing all grievances which do not have settlements. \n\n")
+            report.write('{:>18}{:>14}  {:<20}{:<22}\n'
+                         .format("    Grievance #", "Meeting Date", "Grievant", "Issue"))
+            report.write("       --------------------------------------------------------------------------------"
+                         "----\n")
+            i = 0
+            for r in no_settlement:
+                formatted_date = Convert(r[5]).dtstr_to_backslashstr()
+                report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}\n'
+                             .format(str(i+1), r[2], formatted_date, r[0], r[6]))
+                if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
+                    report.write("       ----------------------------------------------------------------------"
+                                 "--------------\n")
+                i += 1
+            report.write("       --------------------------------------------------------------------------------"
+                         "----\n")  # insert line at the end to close out report
+            report.close()
+            # ----------------------------------------------------------------------------------------- save and open
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+
+        def delinquency(self, frame):
+            """ this a summary of all grievances which do not have settlement records. """
+            def get_present_date():
+                """ use simpledialog to get the present date """
+                default = Convert(datetime.now()).dt_to_backslash_str()
+                entered_date = askstring("Compliance Delinquency Report",
+                                         "Enter the date the report is generated from", initialvalue=default)
+                if not informalc_date_checker(frame, entered_date, "present day"):
+                    msgg = "Report will generate using the current day. Rerun the report to try again"
+                    messagebox.showinfo("Compliance Delinquency Report", msgg, parent=frame)
+                    return Convert(default).backslashdate_to_datetime()
+                else:
+                    return Convert(entered_date).backslashdate_to_datetime()
+            # ------------------------------------------------------------------------------------ get qualifying recs
+            grace_period = 4  # number of weeks in the grace period before proof is due
+            present_date = get_present_date()
+            needproof = []
+            for r in self.parent.search_result:  # loop through all results
+                if r[11] in ("monetary remedy", "backpay", "adjustment"):  # if the grievance requires proof
+                    needproof.append(r)  # add to a list of grvs with no settlement
+            over_due = []  # store records of grievances that require proof, but don't have it.
+            for n in needproof:
+                if n[13] in ("no",):  # only include recs where docs = 'no'
+                    over_due.append(n)
+            if len(over_due) == 0:  # if there are no qualifying recs
+                msg = "There are no records matching your search results. "
+                messagebox.showwarning("Informal C Reports", msg, parent=frame)
+                return
+            # ---------------------------------------------------------------------------------------------- file name
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = "infc_grv_list" + "_" + stamp + ".txt"
+            report = open(dir_path('infc_grv') + filename, "w")
+            # ------------------------------------------------------------------------------------------------ headers
+            # report will display the elements (with indexes):
+            # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
+            report.write("   Compliance Delinquency Report\n\n")
+            report.write("   Showing all settlements where compliance is pending. \n\n")
+            formatted_date = Convert(present_date).dt_to_backslash_str()
+            report.write("   Current day of report: {}. \n\n".format(formatted_date))
+            report.write("   If proof due date not specified, the due date is date signed, plus {} weeks. \n"
+                         "   For most complete results, use \'Search All\' in the search criteria.\n\n"
+                         .format(str(grace_period)))
+            report.write('{:<7}{:<16}{:<14}{:<14}{:<14}{:<22}\n'
+                         .format("", "Grievance #", "Level", "Date Signed", "Proof Due", "Delinquency"))
+            report.write("       -----------------------------------------------------------------------------\n")
+            i = 0
+            for r in over_due:
+                # ------------------------------------------------------------------------------------- get delinquency
+                d_date = datetime(1, 1, 1, 0, 0)  # initialize and declare due date
+                if r[12]:  # if there is a proof due date
+                    d_date = Convert(r[12]).str_to_dt()  # convert string to datetime
+                elif r[10]:  # if there is a date signed date
+                    d_date = Convert(r[10]).str_to_dt() + timedelta(weeks=grace_period)
+                # if there is no proof due nor date signed - due date can not be found
+                if d_date == datetime(1, 1, 1, 0, 0):  # if due date hasn't changed.
+                    delinquency = "unknown"
+                elif d_date < present_date:
+                    diff = present_date - d_date  # returns an int of days
+                    delinquency = "{} days delinquent".format(diff.days)
+                elif present_date < d_date:
+                    diff = d_date - present_date
+                    delinquency = "{} days remaining".format(diff.days)
+                elif d_date.date == present_date.date:
+                    delinquency = "due today"
+                else:
+                    delinquency = "due today"
+                # --------------------------------------------------------------------------------------- format text
+                datesigned = "----------"
+                if r[10]:
+                    datesigned = Convert(r[10]).dtstr_to_backslashstr()  # convert string to datetime
+                proofdue = "----------"
+                if r[12]:
+                    proofdue = Convert(r[12]).dtstr_to_backslashstr()  # convert string to datetime
+                report.write('{:<7}{:<16}{:<14}{:<14}{:<14}{:<22}\n'
+                             .format(str(i+1), r[2], r[9], datesigned, proofdue, delinquency))
+                if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
+                    report.write("       ---------------------------------------------------------------"
+                                 "--------------\n")
+                i += 1
+            report.write("       -------------------------------------------------------------------------"
+                         "----\n")  # insert line at the end to close out report
+            report.close()
+            # ----------------------------------------------------------------------------------------- save and open
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
 
         def rptcarrierandid(self):
             """ generates a text report with only carrier name and employee id number. """
@@ -2160,134 +2452,134 @@ class InformalC:
             except PermissionError:
                 messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
 
-    class RptCarrierId:
-        """
-        Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.
-        """
+        class RptCarrierId:
+            """
+            Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.
+            """
 
-        def __init__(self, parent):
-            self.parent = parent
-            self.wb = None  # workbook object
-            self.carrierlist = None  # workbook name
-            self.ws_header = None  # style
-            self.input_name = None  # style
-            self.input_s = None  # style
-            self.col_header = None  # style
-            self.i = 0  # this counts the rows/ number of carriers.
-            self.no_empid = []  # an array for carriers with no employee id
+            def __init__(self, parent):
+                self.parent = parent
+                self.wb = None  # workbook object
+                self.carrierlist = None  # workbook name
+                self.ws_header = None  # style
+                self.input_name = None  # style
+                self.input_s = None  # style
+                self.col_header = None  # style
+                self.i = 0  # this counts the rows/ number of carriers.
+                self.no_empid = []  # an array for carriers with no employee id
 
-        def run(self):
-            """ this method is the master method for running all other methods in proper order """
-            self.get_styles()
-            self.build_workbook()
-            self.set_dimensions()
-            self.build_header()
-            self.fill_body()
-            self.show_noempid()
-            self.save_open()
+            def run(self):
+                """ this method is the master method for running all other methods in proper order """
+                self.get_styles()
+                self.build_workbook()
+                self.set_dimensions()
+                self.build_header()
+                self.fill_body()
+                self.show_noempid()
+                self.save_open()
 
-        def get_styles(self):
-            """ Named styles for workbook """
-            bd = Side(style='thin', color="80808080")  # defines borders
-            self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-            self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                         border=Border(left=bd, top=bd, right=bd, bottom=bd))
-            self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                                      border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                                      alignment=Alignment(horizontal='right'))
-            self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                                         alignment=Alignment(horizontal='left'))
+            def get_styles(self):
+                """ Named styles for workbook """
+                bd = Side(style='thin', color="80808080")  # defines borders
+                self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+                self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                             border=Border(left=bd, top=bd, right=bd, bottom=bd))
+                self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                          border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                          alignment=Alignment(horizontal='right'))
+                self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                             alignment=Alignment(horizontal='left'))
 
-        def build_workbook(self):
-            """ creates the workbook object """
-            self.wb = Workbook()  # define the workbook
-            self.carrierlist = self.wb.active  # create first worksheet
-            self.carrierlist.title = "carrier list"  # title first worksheet
-            self.carrierlist.oddFooter.center.text = "&A"
+            def build_workbook(self):
+                """ creates the workbook object """
+                self.wb = Workbook()  # define the workbook
+                self.carrierlist = self.wb.active  # create first worksheet
+                self.carrierlist.title = "carrier list"  # title first worksheet
+                self.carrierlist.oddFooter.center.text = "&A"
 
-        def set_dimensions(self):
-            """ adjust the height and width on the violations/ instructions page """
-            self.carrierlist.column_dimensions["A"].width = 5
-            self.carrierlist.column_dimensions["B"].width = 20
-            self.carrierlist.column_dimensions["C"].width = 10
+            def set_dimensions(self):
+                """ adjust the height and width on the violations/ instructions page """
+                self.carrierlist.column_dimensions["A"].width = 5
+                self.carrierlist.column_dimensions["B"].width = 20
+                self.carrierlist.column_dimensions["C"].width = 10
 
-        def build_header(self):
-            """ build the header of the spreadsheet """
-            self.carrierlist.merge_cells('A1:R1')
-            self.carrierlist['A1'] = "Carrier List with Employee ID Numbers"
-            self.carrierlist['A1'].style = self.ws_header
-            cell = self.carrierlist.cell(row=3, column=2)
-            cell.value = "Carrier Name"
-            cell.style = self.col_header
-            cell = self.carrierlist.cell(row=3, column=3)
-            cell.value = "Employee ID"
-            cell.style = self.col_header
+            def build_header(self):
+                """ build the header of the spreadsheet """
+                self.carrierlist.merge_cells('A1:R1')
+                self.carrierlist['A1'] = "Carrier List with Employee ID Numbers"
+                self.carrierlist['A1'].style = self.ws_header
+                cell = self.carrierlist.cell(row=3, column=2)
+                cell.value = "Carrier Name"
+                cell.style = self.col_header
+                cell = self.carrierlist.cell(row=3, column=3)
+                cell.value = "Employee ID"
+                cell.style = self.col_header
 
-        def fill_body(self):
-            """ this loop will fill the body of the spreadsheet with the carrier list """
-            carriers = self.parent.uniquecarrier()  # get a list of carrier names
-            self.i = 1
-            for carrier in carriers:
-                sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
-                result = inquire(sql)
-                if result:
-                    emp_id = result[0][0]
-                    cell = self.carrierlist.cell(row=self.i + 3, column=1)
-                    cell.value = str(self.i)
+            def fill_body(self):
+                """ this loop will fill the body of the spreadsheet with the carrier list """
+                carriers = self.parent.parent.uniquecarrier()  # get a list of carrier names
+                self.i = 1
+                for carrier in carriers:
+                    sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+                    result = inquire(sql)
+                    if result:
+                        emp_id = result[0][0]
+                        cell = self.carrierlist.cell(row=self.i + 3, column=1)
+                        cell.value = str(self.i)
+                        cell.style = self.input_name
+                        cell = self.carrierlist.cell(row=self.i + 3, column=2)
+                        cell.value = carrier
+                        cell.style = self.input_name
+                        cell = self.carrierlist.cell(row=self.i + 3, column=3)
+                        cell.value = emp_id
+                        cell.style = self.input_s
+                        self.i += 1
+                    else:
+                        self.no_empid.append(carrier)
+
+            def show_noempid(self):
+                """ this will display the a list of carriers with no employee id. """
+                if len(self.no_empid) == 0:
+                    return
+                self.i += 4
+                cell = self.carrierlist.cell(row=self.i, column=2)
+                cell.value = "Carriers without Employee ID"
+                cell.style = self.col_header
+                i = 1
+                self.i += 1
+                for carrier in self.no_empid:
+                    cell = self.carrierlist.cell(row=self.i, column=1)
+                    cell.value = str(i)
                     cell.style = self.input_name
-                    cell = self.carrierlist.cell(row=self.i + 3, column=2)
+                    cell = self.carrierlist.cell(row=self.i, column=2)
                     cell.value = carrier
                     cell.style = self.input_name
-                    cell = self.carrierlist.cell(row=self.i + 3, column=3)
-                    cell.value = emp_id
-                    cell.style = self.input_s
                     self.i += 1
-                else:
-                    self.no_empid.append(carrier)
+                    i += 1
 
-        def show_noempid(self):
-            """ this will display the a list of carriers with no employee id. """
-            if len(self.no_empid) == 0:
-                return
-            self.i += 4
-            cell = self.carrierlist.cell(row=self.i, column=2)
-            cell.value = "Carriers without Employee ID"
-            cell.style = self.col_header
-            i = 1
-            self.i += 1
-            for carrier in self.no_empid:
-                cell = self.carrierlist.cell(row=self.i, column=1)
-                cell.value = str(i)
-                cell.style = self.input_name
-                cell = self.carrierlist.cell(row=self.i, column=2)
-                cell.value = carrier
-                cell.style = self.input_name
-                self.i += 1
-                i += 1
-
-        def save_open(self):
-            """ save the spreadsheet and open """
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
-            try:
-                self.wb.save(dir_path('infc_grv') + xl_filename)
-                messagebox.showinfo("Spreadsheet generator",
-                                    "Your spreadsheet was successfully generated. \n"
-                                    "File is named: {}".format(xl_filename),
-                                    parent=self.parent.win.topframe)
-                if sys.platform == "win32":  # open the text document
-                    os.startfile(dir_path('infc_grv') + xl_filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + xl_filename])
-            except PermissionError:
-                messagebox.showerror("Spreadsheet generator",
-                                     "The spreadsheet was not generated. \n"
-                                     "Suggestion: "
-                                     "Make sure that identically named spreadsheets are closed "
-                                     "(the file can't be overwritten while open).",
-                                     parent=self.parent.win.topframe)
+            def save_open(self):
+                """ save the spreadsheet and open """
+                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
+                try:
+                    self.wb.save(dir_path('infc_grv') + xl_filename)
+                    messagebox.showinfo("Spreadsheet generator",
+                                        "Your spreadsheet was successfully generated. \n"
+                                        "File is named: {}".format(xl_filename),
+                                        parent=self.parent.win.topframe)
+                    if sys.platform == "win32":  # open the text document
+                        os.startfile(dir_path('infc_grv') + xl_filename)
+                    if sys.platform == "linux":
+                        subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
+                    if sys.platform == "darwin":
+                        subprocess.call(["open", dir_path('infc_grv') + xl_filename])
+                except PermissionError:
+                    messagebox.showerror("Spreadsheet generator",
+                                         "The spreadsheet was not generated. \n"
+                                         "Suggestion: "
+                                         "Make sure that identically named spreadsheets are closed "
+                                         "(the file can't be overwritten while open).",
+                                         parent=self.parent.win.topframe)
 
     class GrievanceInput:
         """
