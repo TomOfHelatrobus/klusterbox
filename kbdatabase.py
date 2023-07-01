@@ -83,8 +83,8 @@ class DataBase:
             'rate varchar, dollars varchar, gatsverified varchar, payoutverified varchar)',
             'CREATE table IF NOT EXISTS informalc_batchindex (main varchar,sub varchar)',
             'CREATE table IF NOT EXISTS informalc_gatsindex (main varchar,sub varchar)',
-            'CREATE table IF NOT EXISTS informalc_noncindex (settlement varchar, followup varchar)',
-            'CREATE table IF NOT EXISTS informalc_remandindex (remanded varchar, followup varchar)',
+            'CREATE table IF NOT EXISTS informalc_noncindex (followup varchar, overdue varchar)',
+            'CREATE table IF NOT EXISTS informalc_remandindex (refiling varchar, remanded varchar)',
             'CREATE table IF NOT EXISTS informalc_issuescategories (ssindex, article varchar, '
             'issue varchar primary key, standard boolean)',
             'CREATE table IF NOT EXISTS informalc_decisioncategories (ssindex, type varchar, '

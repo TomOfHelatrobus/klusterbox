@@ -97,8 +97,8 @@ class InfcSpeedSheetGen:
         self.input_s = None  # styles for workbook
         self.input_ns = None  # styles for workbook
         self.index_columns = [
-            ["settlement", "follow up"],  # non compliance index
-            ["remanded", "follow up"],  # remanded index
+            ["followup", "overdue"],  # non compliance index
+            ["refiling", "remanded"],  # remanded index
             ["main", "sub"],  # batch settlement index
             ["main", "sub"]  # batch gats index
         ]
@@ -201,7 +201,7 @@ class InfcSpeedSheetGen:
         tables_array = ("informalc_settlements", "informalc_noncindex", "informalc_remandindex",
                         "informalc_batchindex", "informalc_gatsindex")
         # search these columns in the tables
-        search_criteria_array = ("grv_no", "settlement", "remanded", "main", "main")
+        search_criteria_array = ("grv_no", "followup", "refiling", "main", "main")
         for i in range(len(tables_array)):  # loop for each table
             for ii in range(len(grv_list)):  # loop for every grv in the grv list array.
                 sql = "SELECT * FROM '%s' WHERE %s = '%s'" % (tables_array[i], search_criteria_array[i], grv_list[ii])
@@ -393,11 +393,11 @@ class InfcSpeedSheetGen:
         """ format the columns of all index worksheets - non compliance, batch settlements and remanded"""
         for i in range(4):
             self.ws_list[i+2].oddFooter.center.text = "&A"
-            col = self.ws_list[i+2].column_dimensions["A"]  # settlement/main/remanded
+            col = self.ws_list[i+2].column_dimensions["A"]  # followup/refiling/main/main
             col.width = 20
             col.font = Font(size=9, name="Arial")
             col.number_format = '@'
-            col = self.ws_list[i+2].column_dimensions["B"]  # followup/sub/followup
+            col = self.ws_list[i+2].column_dimensions["B"]  # overdue/remanded/sub/sub
             col.width = 20
             col.font = Font(size=9, name="Arial")
             col.number_format = '@'
@@ -592,8 +592,8 @@ class SpeedSheetCheck:
         self.grv_mentioned = False  # keeps grievance numbers from being repeated in reports
         self.worksheet = ("grievances", "settlements", "non compliance", "remanded", "batch set", "batch gats")
         self.index_columns = [
-            ["settlement", "followup"],  # non compliance index
-            ["remanded", "followup"],  # remanded index
+            ["followup", "overdue"],  # non compliance index
+            ["refiling", "remanded"],  # remanded index
             ["main", "sub"],  # batch settlement index
             ["main", "sub"]  # batch gats index
         ]

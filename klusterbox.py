@@ -12,7 +12,7 @@ This version of Klusterbox is being released under the GNU General Public Licens
 """
 # custom modules
 import projvar
-from kbreports import InformalCIndex, Reports, Messenger, CheatSheet, Archive
+from kbreports import InformalCIndex, Reports, Messenger, CheatSheet, Archive, InformalCReports, RptCarrierId
 from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, gen_ns_dict, \
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
@@ -35,7 +35,6 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 from tkinter import messagebox, filedialog, BooleanVar, Button, Checkbutton, \
     DISABLED, E, Entry, FALSE, Frame, IntVar, Label, LEFT, Menu, OptionMenu, Radiobutton, RIDGE, StringVar, \
     TclError, Tk, W, BOTH, BOTTOM, Canvas, END, Listbox, RIGHT, Scrollbar, VERTICAL, Y, ttk
-from tkinter.simpledialog import askstring
 from datetime import datetime, timedelta
 import sqlite3
 from operator import itemgetter
@@ -52,8 +51,7 @@ from threading import Thread  # run load workbook while progress bar runs
 # Pillow Library
 from PIL import ImageTk, Image  # Pillow Library
 # Spreadsheet Libraries
-from openpyxl import load_workbook, Workbook
-from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment
+from openpyxl import load_workbook
 
 __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
@@ -110,6 +108,8 @@ class InformalC:
         self.companion_root = None  # holds the root Tk for the informalc_root()
         self.listbox_fill = None  # used by several methods to carry list for listboxes # v
         # sql search
+        self.grv_sql = ""  # the sql to search for distinct grievances
+        self.set_sql = ""  # the sql to search for distinct settlements
         self.search_result = []  # var for the grievances search result
         self.search_grv_result = []  # a list of distinct grv numbers of grievances that match the search criteria
         self.search_set_result = []  # a list of distinct grv numbers of settlements that match the search criteria
@@ -1126,7 +1126,7 @@ class InformalC:
                 where += " AND "  # insert 'AND' at the end
             i += 1
         if where:  # running a search with an empty search criteria will cause an error
-            sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE {}".format(where)
+            self.grv_sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE {}".format(where)
             self.search_grv_result = inquire(sql)
         else:
             self.search_grv_result = []
@@ -1144,7 +1144,7 @@ class InformalC:
                 where += " AND "
             i += 1
         if where:  # running a search with an empty search criteria will cause an error
-            sql = "SELECT DISTINCT grv_no FROM informalc_settlements WHERE {}".format(where)
+            self.set_sql = "SELECT DISTINCT grv_no FROM informalc_settlements WHERE {}".format(where)
             self.search_set_result = inquire(sql)
         # ----------------------------------------------------------------------------------------- no search criteria
         if self.blank_criteria:  # if no search critera was given,
@@ -1171,30 +1171,43 @@ class InformalC:
         grievance_number = self.src_grievance.get()
         if not check_grievance_number():
             return
-        sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
+        self.grv_sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
               (grievance_number, self.station)
-        self.search_result = inquire(sql)
-        if not self.search_result:
+        self.search_grv_result = inquire(self.grv_sql)
+        if not self.search_grv_result:
             msg = "There is no record for this grievance in the database: {}".format(grievance_number)
             messagebox.showerror("Record Not Found", msg, parent=self.win.topframe)
             return
-        self.showtime(frame)
+        self.merge_search_results(frame)
 
     def search_all_apply(self, frame):
         """ search for all grievances in the station from self.build_search_screen() """
-        sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE station = '%s'" % self.station
-        self.search_grv_result = inquire(sql)
-        sql = "SELECT DISTINCT grv_no FROM informalc_settlements"
-        self.search_set_result = inquire(sql)
+        self.grv_sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE station = '%s'" % self.station
+        self.search_grv_result = inquire(self.grv_sql)
+        self.set_sql = "SELECT DISTINCT grv_no FROM informalc_settlements"
+        self.search_set_result = inquire(self.set_sql)
         if not self.search_grv_result and not self.search_set_result:
             msg = "There is no record for any grievances in the database"
             messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
             return
         self.merge_search_results(frame)
 
-    def merge_search_results(self, frame):
+    def refresh_search(self, frame):
+        """ when changes are made the the db, it is necessary to update the search results, as some things
+        might have changed."""
+        self.search_grv_result = inquire(self.grv_sql)
+        self.search_set_result = inquire(self.set_sql)
+        if not self.search_grv_result and not self.search_set_result:
+            msg = "There is no record for any grievances in the database matching the search criteria. "
+            messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
+            self.build_search_screen()
+        else:
+            self.merge_search_results(frame, showtime=False)
+
+    def merge_search_results(self, frame, showtime=True):
         """ search results for grievances and settlements need to be combined to show grievance recs and
-        settlement recs as one record. """
+        settlement recs as one record. showtime=False is passed from self.refresh_search,
+        so that self.showtime() isn't run """
         #  get a list of grievances with no corrosponding settlement#
         joint = []  # merge both list of distinct grievence/settlement grv numbers into one joint list
         if self.search_grv_result:
@@ -1222,7 +1235,8 @@ class InformalC:
         itemget_index = sortby[int(self.sortby.get())]  # gets the index for the date to sort the search result
         reverse_index = bool(int(self.sort_order.get()))  # get the 'true/false' for reverse for sort.
         self.search_result.sort(key=itemgetter(itemget_index), reverse=reverse_index)
-        self.showtime(frame)  # display the results
+        if showtime:
+            self.showtime(frame)  # display the results
 
     def showtime(self, frame, turnpage=False):
         """ shows the results for the specified range."""
@@ -1416,10 +1430,10 @@ class InformalC:
              listbox and an array generated in informalc root. """
             for index in listbox.curselection():
                 carrier_name = self.listbox_fill[index]
-                if not self.grvent[0].get():
-                    self.grvent[0].set(carrier_name)
+                if not self.grvent[0].get():  # if there is nothing in the first stringvar
+                    self.grvent[0].set(carrier_name)  # add the name to that empty stringvar
                 else:
-                    self.add_grvent_field(childframe, carrier=carrier_name)
+                    self.add_grvent_field(childframe, carrier=carrier_name)  # create a new stringvar and widgets
 
         def addissue():
             """ sets the issue field by setting the stringvar src_issue using an index from the
@@ -1775,10 +1789,11 @@ class InformalC:
                    command=lambda: self.no_settlement(self.win.topframe)).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Employee ID List", width=30,
-                   command=lambda: self.RptCarrierId(self).run()).grid(row=row, column=0, pady=5)
+                   command=lambda: RptCarrierId(self).run()).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Compliance Delinquency", width=30,
-                   command=lambda: self.delinquency(self.win.topframe)).grid(row=row, column=0, pady=5)
+                   command=lambda: InformalCReports().delinquency(self.win.topframe, self.parent.search_result))\
+                .grid(row=row, column=0, pady=5)
             row += 1
 
             Label(self.win.body, text="", width=70).grid(row=row)
@@ -2333,96 +2348,6 @@ class InformalC:
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('infc_grv') + filename])
 
-        def delinquency(self, frame):
-            """ this a summary of all grievances which do not have settlement records. """
-            def get_present_date():
-                """ use simpledialog to get the present date """
-                default = Convert(datetime.now()).dt_to_backslash_str()
-                entered_date = askstring("Compliance Delinquency Report",
-                                         "Enter the date the report is generated from", initialvalue=default)
-                if not informalc_date_checker(frame, entered_date, "present day"):
-                    msgg = "Report will generate using the current day. Rerun the report to try again"
-                    messagebox.showinfo("Compliance Delinquency Report", msgg, parent=frame)
-                    return Convert(default).backslashdate_to_datetime()
-                else:
-                    return Convert(entered_date).backslashdate_to_datetime()
-            # ------------------------------------------------------------------------------------ get qualifying recs
-            grace_period = 4  # number of weeks in the grace period before proof is due
-            present_date = get_present_date()
-            needproof = []
-            for r in self.parent.search_result:  # loop through all results
-                if r[11] in ("monetary remedy", "backpay", "adjustment"):  # if the grievance requires proof
-                    needproof.append(r)  # add to a list of grvs with no settlement
-            over_due = []  # store records of grievances that require proof, but don't have it.
-            for n in needproof:
-                if n[13] in ("no",):  # only include recs where docs = 'no'
-                    over_due.append(n)
-            if len(over_due) == 0:  # if there are no qualifying recs
-                msg = "There are no records matching your search results. "
-                messagebox.showwarning("Informal C Reports", msg, parent=frame)
-                return
-            # ---------------------------------------------------------------------------------------------- file name
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            # ------------------------------------------------------------------------------------------------ headers
-            # report will display the elements (with indexes):
-            # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
-            report.write("   Compliance Delinquency Report\n\n")
-            report.write("   Showing all settlements where compliance is pending. \n\n")
-            formatted_date = Convert(present_date).dt_to_backslash_str()
-            report.write("   Current day of report: {}. \n\n".format(formatted_date))
-            report.write("   If proof due date not specified, the due date is date signed, plus {} weeks. \n"
-                         "   For most complete results, use \'Search All\' in the search criteria.\n\n"
-                         .format(str(grace_period)))
-            report.write('{:<7}{:<16}{:<14}{:<14}{:<14}{:<22}\n'
-                         .format("", "Grievance #", "Level", "Date Signed", "Proof Due", "Delinquency"))
-            report.write("       -----------------------------------------------------------------------------\n")
-            i = 0
-            for r in over_due:
-                # ------------------------------------------------------------------------------------- get delinquency
-                d_date = datetime(1, 1, 1, 0, 0)  # initialize and declare due date
-                if r[12]:  # if there is a proof due date
-                    d_date = Convert(r[12]).str_to_dt()  # convert string to datetime
-                elif r[10]:  # if there is a date signed date
-                    d_date = Convert(r[10]).str_to_dt() + timedelta(weeks=grace_period)
-                # if there is no proof due nor date signed - due date can not be found
-                if d_date == datetime(1, 1, 1, 0, 0):  # if due date hasn't changed.
-                    delinquency = "unknown"
-                elif d_date < present_date:
-                    diff = present_date - d_date  # returns an int of days
-                    delinquency = "{} days delinquent".format(diff.days)
-                elif present_date < d_date:
-                    diff = d_date - present_date
-                    delinquency = "{} days remaining".format(diff.days)
-                elif d_date.date == present_date.date:
-                    delinquency = "due today"
-                else:
-                    delinquency = "due today"
-                # --------------------------------------------------------------------------------------- format text
-                datesigned = "----------"
-                if r[10]:
-                    datesigned = Convert(r[10]).dtstr_to_backslashstr()  # convert string to datetime
-                proofdue = "----------"
-                if r[12]:
-                    proofdue = Convert(r[12]).dtstr_to_backslashstr()  # convert string to datetime
-                report.write('{:<7}{:<16}{:<14}{:<14}{:<14}{:<22}\n'
-                             .format(str(i+1), r[2], r[9], datesigned, proofdue, delinquency))
-                if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
-                    report.write("       ---------------------------------------------------------------"
-                                 "--------------\n")
-                i += 1
-            report.write("       -------------------------------------------------------------------------"
-                         "----\n")  # insert line at the end to close out report
-            report.close()
-            # ----------------------------------------------------------------------------------------- save and open
-            if sys.platform == "win32":
-                os.startfile(dir_path('infc_grv') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('infc_grv') + filename])
-
         def rptcarrierandid(self):
             """ generates a text report with only carrier name and employee id number. """
             if len(self.parent.search_result) == 0:
@@ -2451,135 +2376,6 @@ class InformalC:
                     subprocess.call(["open", dir_path('infc_grv') + filename])
             except PermissionError:
                 messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
-
-        class RptCarrierId:
-            """
-            Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.
-            """
-
-            def __init__(self, parent):
-                self.parent = parent
-                self.wb = None  # workbook object
-                self.carrierlist = None  # workbook name
-                self.ws_header = None  # style
-                self.input_name = None  # style
-                self.input_s = None  # style
-                self.col_header = None  # style
-                self.i = 0  # this counts the rows/ number of carriers.
-                self.no_empid = []  # an array for carriers with no employee id
-
-            def run(self):
-                """ this method is the master method for running all other methods in proper order """
-                self.get_styles()
-                self.build_workbook()
-                self.set_dimensions()
-                self.build_header()
-                self.fill_body()
-                self.show_noempid()
-                self.save_open()
-
-            def get_styles(self):
-                """ Named styles for workbook """
-                bd = Side(style='thin', color="80808080")  # defines borders
-                self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-                self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                             border=Border(left=bd, top=bd, right=bd, bottom=bd))
-                self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                                          border=Border(left=bd, top=bd, right=bd, bottom=bd),
-                                          alignment=Alignment(horizontal='right'))
-                self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
-                                             alignment=Alignment(horizontal='left'))
-
-            def build_workbook(self):
-                """ creates the workbook object """
-                self.wb = Workbook()  # define the workbook
-                self.carrierlist = self.wb.active  # create first worksheet
-                self.carrierlist.title = "carrier list"  # title first worksheet
-                self.carrierlist.oddFooter.center.text = "&A"
-
-            def set_dimensions(self):
-                """ adjust the height and width on the violations/ instructions page """
-                self.carrierlist.column_dimensions["A"].width = 5
-                self.carrierlist.column_dimensions["B"].width = 20
-                self.carrierlist.column_dimensions["C"].width = 10
-
-            def build_header(self):
-                """ build the header of the spreadsheet """
-                self.carrierlist.merge_cells('A1:R1')
-                self.carrierlist['A1'] = "Carrier List with Employee ID Numbers"
-                self.carrierlist['A1'].style = self.ws_header
-                cell = self.carrierlist.cell(row=3, column=2)
-                cell.value = "Carrier Name"
-                cell.style = self.col_header
-                cell = self.carrierlist.cell(row=3, column=3)
-                cell.value = "Employee ID"
-                cell.style = self.col_header
-
-            def fill_body(self):
-                """ this loop will fill the body of the spreadsheet with the carrier list """
-                carriers = self.parent.parent.uniquecarrier()  # get a list of carrier names
-                self.i = 1
-                for carrier in carriers:
-                    sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
-                    result = inquire(sql)
-                    if result:
-                        emp_id = result[0][0]
-                        cell = self.carrierlist.cell(row=self.i + 3, column=1)
-                        cell.value = str(self.i)
-                        cell.style = self.input_name
-                        cell = self.carrierlist.cell(row=self.i + 3, column=2)
-                        cell.value = carrier
-                        cell.style = self.input_name
-                        cell = self.carrierlist.cell(row=self.i + 3, column=3)
-                        cell.value = emp_id
-                        cell.style = self.input_s
-                        self.i += 1
-                    else:
-                        self.no_empid.append(carrier)
-
-            def show_noempid(self):
-                """ this will display the a list of carriers with no employee id. """
-                if len(self.no_empid) == 0:
-                    return
-                self.i += 4
-                cell = self.carrierlist.cell(row=self.i, column=2)
-                cell.value = "Carriers without Employee ID"
-                cell.style = self.col_header
-                i = 1
-                self.i += 1
-                for carrier in self.no_empid:
-                    cell = self.carrierlist.cell(row=self.i, column=1)
-                    cell.value = str(i)
-                    cell.style = self.input_name
-                    cell = self.carrierlist.cell(row=self.i, column=2)
-                    cell.value = carrier
-                    cell.style = self.input_name
-                    self.i += 1
-                    i += 1
-
-            def save_open(self):
-                """ save the spreadsheet and open """
-                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
-                try:
-                    self.wb.save(dir_path('infc_grv') + xl_filename)
-                    messagebox.showinfo("Spreadsheet generator",
-                                        "Your spreadsheet was successfully generated. \n"
-                                        "File is named: {}".format(xl_filename),
-                                        parent=self.parent.win.topframe)
-                    if sys.platform == "win32":  # open the text document
-                        os.startfile(dir_path('infc_grv') + xl_filename)
-                    if sys.platform == "linux":
-                        subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
-                    if sys.platform == "darwin":
-                        subprocess.call(["open", dir_path('infc_grv') + xl_filename])
-                except PermissionError:
-                    messagebox.showerror("Spreadsheet generator",
-                                         "The spreadsheet was not generated. \n"
-                                         "Suggestion: "
-                                         "Make sure that identically named spreadsheets are closed "
-                                         "(the file can't be overwritten while open).",
-                                         parent=self.parent.win.topframe)
 
     class GrievanceInput:
         """
@@ -2651,6 +2447,10 @@ class InformalC:
             self.batset_del = []  # this array stores the delete buttons for the batch settlement entry widgets
             self.batgat_entry = []  # this array store the entry fields of the batch gats indexes
             self.batgat_del = []  # this array stores the delete buttons for the batch gats entry widgets
+            self.nonc_frame = None  # this is a frame for the associations/indexes
+            self.reman_frame = None  # this is a frame for the associations/indexes
+            self.batset_frame = None  # this is a frame for the associations/indexes
+            self.batgat_frame = None  # this is a frame for the associations/indexes
 
             # check elements of grievances and settlements
             self.check_grievant = None  # 1
@@ -2760,10 +2560,10 @@ class InformalC:
             tables_array = ("informalc_noncindex", "informalc_remandindex",
                             "informalc_batchindex", "informalc_gatsindex")
             # search these columns in the tables
-            search_criteria_array = ("settlement", "remanded", "main", "main")
+            search_criteria_array = ("followup", "refiling", "main", "main")
             for i in range(len(tables_array)):  # loop for each table
-                sql = "SELECT * FROM '%s' WHERE %s = '%s'" % \
-                      (tables_array[i], search_criteria_array[i], self.check_grv_no)
+                sql = "SELECT * FROM %s WHERE %s = '%s'" % \
+                      (tables_array[i], search_criteria_array[i], self.edit_grv_no)
                 result = inquire(sql)
                 if tables_array[i] == "informalc_noncindex":  # get the onrecs for non compliance index
                     if result:  # if there is a result
@@ -2834,6 +2634,7 @@ class InformalC:
             self.build_settlement()  # this area of the screen is for settlement information
             self.build_batset_assocs()  # this area of the screen is for batch settlements
             self.build_batgat_assocs()  # this area of the screen is for batch gats
+            self.fillin_index_onrecs()  # this will set stringvars for indexes and populate fields
             self.build_buttons()  # configure buttons on the bottom of the screen
 
         def build_grievanceinfo(self):
@@ -2915,10 +2716,10 @@ class InformalC:
             Label(self.win.body, text="Delete Grievance: ", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
                 .grid(row=self.row, column=0, sticky="w")
-            Button(self.win.body, text="delete", width=macadj(4, 3), anchor="center",
+            Button(self.win.body, text="delete", width=macadj(17, 15), bg="red", fg="white", anchor="center",
                    command=lambda: (self.destroy_companion(),
                                     self.delete_grievance(self.win.topframe, self.edit_grv_no))) \
-                .grid(row=self.row, column=1, sticky="e")
+                .grid(row=self.row, column=1, sticky="e", pady=5)
             self.row += 1
 
         def build_nonc_assocs(self):
@@ -2929,16 +2730,16 @@ class InformalC:
             Label(self.win.body, text=text, anchor="w",
                   fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
             self.row += 1
-            nonc_frame = Frame(self.win.body)
-            nonc_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
-            Label(nonc_frame, text="Subject Grievance", background=macadj("gray95", "white"),
+            self.nonc_frame = Frame(self.win.body)
+            self.nonc_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(self.nonc_frame, text="Overdue Grievances", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
                 .grid(row=0, column=0, sticky="w")
-            nonc = Entry(nonc_frame, textvariable=self.non_c[0], justify='right', width=macadj(20, 15))
+            nonc = Entry(self.nonc_frame, textvariable=self.non_c[0], justify='right', width=macadj(20, 15))
             nonc.grid(row=0, column=1, sticky="w")
             self.nonc_entry.append(nonc)  # add this to an array of entry widgets for non compliance
-            del_ = Button(nonc_frame, text="add", width=macadj(4, 3), anchor="center",
-                          command=lambda: self.add_nonc_field(nonc_frame))
+            del_ = Button(self.nonc_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_nonc_field(self.nonc_frame))
             del_.grid(row=0, column=3)
             self.nonc_del.append(del_)  # add this to an array of widgets of delete buttons
             self.row += 1
@@ -2951,16 +2752,16 @@ class InformalC:
             Label(self.win.body, text=text, anchor="w",
                   fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
             self.row += 1
-            reman_frame = Frame(self.win.body)
-            reman_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
-            Label(reman_frame, text="Remanded Grievance", background=macadj("gray95", "white"),
+            self.reman_frame = Frame(self.win.body)
+            self.reman_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(self.reman_frame, text="Remanded Grievances", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
                 .grid(row=0, column=0, sticky="w")
-            reman = Entry(reman_frame, textvariable=self.reman[0], justify='right', width=macadj(20, 15))
+            reman = Entry(self.reman_frame, textvariable=self.reman[0], justify='right', width=macadj(20, 15))
             reman.grid(row=0, column=1, sticky="w")
             self.reman_entry.append(reman)  # add this to an array of entry widgets for non compliance
-            del_ = Button(reman_frame, text="add", width=macadj(4, 3), anchor="center",
-                          command=lambda: self.add_reman_field(reman_frame))
+            del_ = Button(self.reman_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_reman_field(self.reman_frame))
             del_.grid(row=0, column=3)
             self.reman_del.append(del_)  # add this to an array of widgets of delete buttons
             self.row += 1
@@ -3043,16 +2844,16 @@ class InformalC:
             Label(self.win.body, text=text, anchor="w",
                   fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
             self.row += 1
-            batset_frame = Frame(self.win.body)
-            batset_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
-            Label(batset_frame, text="Included Grievances", background=macadj("gray95", "white"),
+            self.batset_frame = Frame(self.win.body)
+            self.batset_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(self.batset_frame, text="Included Grievances", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
                 .grid(row=0, column=0, sticky="w")
-            batset = Entry(batset_frame, textvariable=self.batset[0], justify='right', width=macadj(20, 15))
+            batset = Entry(self.batset_frame, textvariable=self.batset[0], justify='right', width=macadj(20, 15))
             batset.grid(row=0, column=1, sticky="w")
             self.batset_entry.append(batset)  # add this to an array of entry widgets for non compliance
-            del_ = Button(batset_frame, text="add", width=macadj(4, 3), anchor="center",
-                          command=lambda: self.add_batset_field(batset_frame))
+            del_ = Button(self.batset_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_batset_field(self.batset_frame))
             del_.grid(row=0, column=3)
             self.batset_del.append(del_)  # add this to an array of widgets of delete buttons
             self.row += 1
@@ -3064,16 +2865,16 @@ class InformalC:
             Label(self.win.body, text=text, anchor="w",
                   fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
             self.row += 1
-            batgat_frame = Frame(self.win.body)
-            batgat_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
-            Label(batgat_frame, text="Included Settlements", background=macadj("gray95", "white"),
+            self.batgat_frame = Frame(self.win.body)
+            self.batgat_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
+            Label(self.batgat_frame, text="Included Settlements", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
                 .grid(row=0, column=0, sticky="w")
-            batgat = Entry(batgat_frame, textvariable=self.batgat[0], justify='right', width=macadj(20, 15))
+            batgat = Entry(self.batgat_frame, textvariable=self.batgat[0], justify='right', width=macadj(20, 15))
             batgat.grid(row=0, column=1, sticky="w")
             self.batgat_entry.append(batgat)  # add this to an array of entry widgets for non compliance
-            del_ = Button(batgat_frame, text="add", width=macadj(4, 3), anchor="center",
-                          command=lambda: self.add_batgat_field(batgat_frame))
+            del_ = Button(self.batgat_frame, text="add", width=macadj(4, 3), anchor="center",
+                          command=lambda: self.add_batgat_field(self.batgat_frame))
             del_.grid(row=0, column=3)
             self.batgat_del.append(del_)  # add this to an array of widgets of delete buttons
             self.row += 1
@@ -3098,9 +2899,11 @@ class InformalC:
             self.msg_label = Label(self.win.buttons, text=self.msg, fg="red")
             self.msg_label.grid(row=0, column=2)
 
-        def add_nonc_field(self, frame):
+        def add_nonc_field(self, frame, onrec=None):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
+            if onrec:  # when the onrec field is not None, it has been called by self.fillin_index_onrecs
+                add_stringvar.set(onrec)  # this sets the stringvar with data from the the db
             self.non_c.append(add_stringvar)  # add this to an array of stringvars for non compliance
             nonc = Entry(frame, textvariable=self.non_c[len(self.non_c)-1], justify='right', width=macadj(20, 15))
             nonc.grid(row=len(self.non_c)-1, column=1, sticky="w")
@@ -3120,9 +2923,11 @@ class InformalC:
             self.nonc_del[x].grid_remove()
             self.non_c[x].set("")  # set the value of the stringvar to empty string
 
-        def add_reman_field(self, frame):
+        def add_reman_field(self, frame, onrec=None):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
+            if onrec:
+                add_stringvar.set(onrec)
             self.reman.append(add_stringvar)  # add this to an array of stringvars for remanded
             reman = Entry(frame, textvariable=self.reman[len(self.reman)-1], justify='right', width=macadj(20, 15))
             reman.grid(row=len(self.reman)-1, column=1, sticky="w")
@@ -3142,7 +2947,7 @@ class InformalC:
             self.reman_del[x].grid_remove()
             self.reman[x].set("")  # set the value of the stringvar to empty string
 
-        def add_batset_field(self, frame):
+        def add_batset_field(self, frame, onrec=None):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
             self.batset.append(add_stringvar)  # add this to an array of stringvars for non compliance
@@ -3164,7 +2969,7 @@ class InformalC:
             self.batset_del[x].grid_remove()
             self.batset[x].set("")  # set the value of the stringvar to empty string
 
-        def add_batgat_field(self, frame):
+        def add_batgat_field(self, frame, onrec=None):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
             self.batgat.append(add_stringvar)  # add this to an array of stringvars for non compliance
@@ -3185,6 +2990,37 @@ class InformalC:
             self.batgat_entry[x].grid_remove()
             self.batgat_del[x].grid_remove()
             self.batgat[x].set("")  # set the value of the stringvar to empty string
+
+        def fillin_index_onrecs(self):
+            """ this will set the stringvars for associations/index fields by passing an 'onrec' argument to
+            'add_ _field()' method for each index. by looping through self.index_onrecs. """
+            tables_array = ("informalc_noncindex", "informalc_remandindex",
+                            "informalc_batchindex", "informalc_gatsindex")
+            for i in range(len(self.index_onrecs)):  # this will loop 4 times. once per table.
+                if tables_array[i] == "informalc_noncindex":
+                    for rec in self.index_onrecs[i]:  # for each record
+                        if not self.non_c[0].get():  # if there is nothing in the first stringvar
+                            self.non_c[0].set(rec[1])  # add this to an array of stringvars for non compliance
+                        else:
+                            self.add_nonc_field(self.nonc_frame, onrec=rec[1])  # build a field and a del button
+                if tables_array[i] == "informalc_remandindex":
+                    for rec in self.index_onrecs[i]:  # for each record
+                        if not self.reman[0].get():  # if there is nothing in the first stringvar
+                            self.reman[0].set(rec[1])  # add this to an array of stringvars for non compliance
+                        else:
+                            self.add_reman_field(self.reman_frame, onrec=rec[1])  # build a field and a del button
+                if tables_array[i] == "informalc_batchindex":
+                    for rec in self.index_onrecs[i]:  # for each record
+                        if not self.batset[0].get():  # if there is nothing in the first stringvar
+                            self.batset[0].set(rec[1])  # add this to an array of stringvars for non compliance
+                        else:
+                            self.add_batset_field(self.batset_frame, onrec=rec[1])  # build a field and a del button
+                if tables_array[i] == "informalc_gatsindex":
+                    for rec in self.index_onrecs[i]:  # for each record
+                        if not self.batgat[0].get():  # if there is nothing in the first stringvar
+                            self.batgat[0].set(rec[1])  # add this to an array of stringvars for non compliance
+                        else:
+                            self.add_batgat_field(self.batgat_frame, onrec=rec[1])  # build a field and a del button
 
         def informalc_root(self, mode, grv_no=None):
             """ creates a companion window for selecting carrier names.
@@ -3290,7 +3126,7 @@ class InformalC:
             fields = ("main", "sub", "main", "sub",
                       "grv_no", "grv_no")
             for i in range(6):
-                sql = "DELETE FROM '%s' WHERE '%s'='%s'" % (tables[i], fields[i], self.edit_grv_no)
+                sql = "DELETE FROM %s WHERE %s='%s'" % (tables[i], fields[i], self.edit_grv_no)
                 commit(sql),
             self.parent.showtime(self.win.topframe)
 
@@ -3310,10 +3146,10 @@ class InformalC:
             tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
                       "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
                       "informalc_remandindex", "informalc_remedies", "informalc_settlements")
-            fields = ("main", "sub", "main", "sub", "grv_no", "followup", "settlement", "followup", "remanded",
+            fields = ("main", "sub", "main", "sub", "grv_no", "overdue", "followup", "remanded", "refiling",
                       "grv_no", "grv_no")
             for i in range(11):
-                sql = "UPDATE '%s' SET '%s' = '%s' WHERE '%s' = '%s'" % \
+                sql = "UPDATE %s SET %s = '%s' WHERE %s = '%s'" % \
                       (tables[i], fields[i], new_number, fields[i], old_number)
                 commit(sql)
             l_passed_result = [list(x) for x in self.parent.search_result]  # chg tuple of tuples to list of lists
@@ -3335,15 +3171,15 @@ class InformalC:
             tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
                       "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
                       "informalc_remandindex", "informalc_remedies", "informalc_settlements")
-            fields = ("main", "sub", "main", "sub", "grv_no", "followup", "settlement", "followup", "remanded",
+            fields = ("main", "sub", "main", "sub", "grv_no", "followup", "overdue", "refiling", "remanded",
                       "grv_no", "grv_no")
             for i in range(11):
-                sql = "DELETE FROM '%s' WHERE '%s'='%s'" % (tables[i], fields[i], grv_no)
+                sql = "DELETE FROM %s WHERE %s='%s'" % (tables[i], fields[i], grv_no)
                 commit(sql)
             # delete grievance from self.parent.search_result
             new_search_result = []
             for rec in self.parent.search_result:
-                if rec[0] != grv_no:
+                if rec[2] != grv_no:
                     new_search_result.append(rec)
             self.parent.search_result = new_search_result[:]
             self.parent.showtime(frame)
@@ -3369,7 +3205,7 @@ class InformalC:
             self.check_gats_no = self.gats_no.get()  # 15 the gats  number of the proof of compliance
             # get stringvar values for indexes and place them in a multidimentional list
             # - non compliance, remanded, batch settlements and batch gats
-            if self.newentry:
+            if self.newentry:  # get onrecs to ensure that existing grievances aren't added to db.
                 self.get_onrecs(self.check_grv_no)
             for index in [self.non_c, self.reman, self.batset, self.batgat]:
                 array = []
@@ -3411,6 +3247,9 @@ class InformalC:
             if self.newentry:
                 self.informalc_new(self.win.topframe, msg=self.report())
             else:
+                if self.grv_changesmade or self.set_changesmade:
+                    self.grv_changesmade, self.set_changesmade = False, False  # re initialize
+                    self.parent.refresh_search(self.win.topframe)  # refresh search results
                 self.informalc_edit(self.win.topframe, self.edit_grv_no, msg=self.report())
 
         def apply_fail(self):
@@ -3714,7 +3553,7 @@ class InformalC:
         def update_grv(self):
             """ update the record in the grievance table """
             sql = "UPDATE informalc_grievances SET grievant = '%s', startdate = '%s', enddate = '%s', " \
-                  "meetingdate = '%s', issue = '%s', article = '%s' WHERE grv_no = '%s" % \
+                  "meetingdate = '%s', issue = '%s', article = '%s' WHERE grv_no = '%s'" % \
                   (self.check_grievant, self.check_dates[0], self.check_dates[1], self.check_dates[2],
                    self.check_issue, self.check_article, self.check_grv_no)
             commit(sql)
@@ -3749,23 +3588,27 @@ class InformalC:
             self.reporter_set = True
 
         def add_index_recs(self):
-            """  insert, delete or ignore records for the settlement table. for the indexes, no recs are updated.
-             there is only inserting and deleting. """
+            """  insert, delete or ignore records for the indexes, no recs are updated. there is only
+            inserting and deleting. """
             tables = ("informalc_noncindex", "informalc_remandindex", "informalc_batchindex", "informalc_gatsindex")
             index_columns = [
-                ["settlement", "followup"],  # non compliance index
-                ["remanded", "followup"],  # remanded index
+                ["followup", "overdue"],  # non compliance index
+                ["refiling", "remanded"],  # remanded index
                 ["main", "sub"],  # batch settlement index
                 ["main", "sub"]]  # batch gats index
             for i in range(len(self.add_indexes)):  # this will loop 4 times. once for each index
                 for rec in self.add_indexes[i]:
-                    sql = "INSERT INTO %s(%s, %s) VALUES('%s', '%s')" % \
-                          (tables[i], index_columns[i][0], index_columns[i][1], self.check_grv_no, rec)
-                    commit(sql)
-                    self.reporter_index = True
+                    # check if the record already exist in the database
+                    sql = "SELECT * FROM %s WHERE %s = '%s' AND %s = '%s'" % \
+                          (tables[i], index_columns[i][0], self.check_grv_no, index_columns[i][1], rec)
+                    if not inquire(sql):  # if there is no result
+                        sql = "INSERT INTO %s(%s, %s) VALUES('%s','%s')" % \
+                              (tables[i], index_columns[i][0], index_columns[i][1], self.check_grv_no, rec)
+                        commit(sql)
+                        self.reporter_index = True
                 for rec in self.del_indexes[i]:
                     sql = "DELETE FROM %s WHERE %s='%s' and %s='%s'" \
-                          % (tables[i], index_columns[i][0], self.check_grv_no[0], index_columns[i][1], rec)
+                          % (tables[i], index_columns[i][0], self.check_grv_no, index_columns[i][1], rec)
                     commit(sql)
                     self.reporter_index = True
 

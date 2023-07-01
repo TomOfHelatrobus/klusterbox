@@ -5,14 +5,19 @@ investigation range, or their ns days, etc. The Messenger class gives the locati
 the user information in the form of message boxes.
 """
 import projvar
-from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path, Convert, check_path
+from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path, Convert, check_path, \
+    informalc_date_checker
 from tkinter import messagebox, simpledialog, filedialog
+from tkinter.simpledialog import askstring
 from shutil import rmtree
 import os
 import sys
 import subprocess
 from datetime import datetime, timedelta
 from operator import itemgetter
+# Spreadsheet Libraries
+from openpyxl import Workbook
+from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment
 
 
 class Reports:
@@ -1056,3 +1061,230 @@ class InformalCIndex:
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' " \
               "ORDER BY carrier_name ASC" % self.station
         self.grievant_array = inquire(sql)
+
+
+class InformalCReports:
+    """ generates some of the reports for informal c """
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def delinquency(frame, search_result):
+        """ this a summary of all grievances which do not have settlement records. """
+
+        def get_present_date():
+            """ use simpledialog to get the present date """
+            default = Convert(datetime.now()).dt_to_backslash_str()
+            entered_date = askstring("Compliance Delinquency Report",
+                                     "Enter the date the report is generated from", initialvalue=default)
+            if not informalc_date_checker(frame, entered_date, "present day"):
+                msgg = "Report will generate using the current day. Rerun the report to try again"
+                messagebox.showinfo("Compliance Delinquency Report", msgg, parent=frame)
+                return Convert(default).backslashdate_to_datetime()
+            else:
+                return Convert(entered_date).backslashdate_to_datetime()
+        # ------------------------------------------------------------------------------------ get qualifying recs
+        grace_period = 4  # number of weeks in the grace period before proof is due
+        present_date = get_present_date()
+        needproof = []
+        for r in search_result:  # loop through all results
+            if r[11] in ("monetary remedy", "backpay", "adjustment"):  # if the grievance requires proof
+                needproof.append(r)  # add to a list of grvs with no settlement
+        over_due = []  # store records of grievances that require proof, but don't have it.
+        for n in needproof:
+            if n[13] in ("no",):  # only include recs where docs = 'no'
+                over_due.append(n)
+        if len(over_due) == 0:  # if there are no qualifying recs
+            msg = "There are no records matching your search results. "
+            messagebox.showwarning("Informal C Reports", msg, parent=frame)
+            return
+        # ---------------------------------------------------------------------------------------------- file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ------------------------------------------------------------------------------------------------ headers
+        # report will display the elements (with indexes):
+        # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
+        report.write("   Compliance Delinquency Report\n\n")
+        report.write("   Showing all settlements where compliance is pending. \n\n")
+        formatted_date = Convert(present_date).dt_to_backslash_str()
+        report.write("   Current day of report: {}. \n\n".format(formatted_date))
+        report.write("   If proof due date not specified, the due date is date signed, plus {} weeks. \n"
+                     "   For most complete results, use \'Search All\' in the search criteria.\n\n"
+                     .format(str(grace_period)))
+        report.write('{:<7}{:<16}{:<14}{:<14}{:<14}{:<22}\n'
+                     .format("", "Grievance #", "Level", "Date Signed", "Proof Due", "Delinquency"))
+        report.write("       -----------------------------------------------------------------------------\n")
+        i = 0
+        for r in over_due:
+            # ------------------------------------------------------------------------------------- get delinquency
+            d_date = datetime(1, 1, 1, 0, 0)  # initialize and declare due date
+            if r[12]:  # if there is a proof due date
+                d_date = Convert(r[12]).str_to_dt()  # convert string to datetime
+            elif r[10]:  # if there is a date signed date
+                d_date = Convert(r[10]).str_to_dt() + timedelta(weeks=grace_period)
+            # if there is no proof due nor date signed - due date can not be found
+            if d_date == datetime(1, 1, 1, 0, 0):  # if due date hasn't changed.
+                delinquency = "unknown"
+            elif d_date < present_date:
+                diff = present_date - d_date  # returns an int of days
+                delinquency = "{} days delinquent".format(diff.days)
+            elif present_date < d_date:
+                diff = d_date - present_date
+                delinquency = "{} days remaining".format(diff.days)
+            elif d_date.date == present_date.date:
+                delinquency = "due today"
+            else:
+                delinquency = "due today"
+            # --------------------------------------------------------------------------------------- format text
+            datesigned = "----------"
+            if r[10]:
+                datesigned = Convert(r[10]).dtstr_to_backslashstr()  # convert string to datetime
+            proofdue = "----------"
+            if r[12]:
+                proofdue = Convert(r[12]).dtstr_to_backslashstr()  # convert string to datetime
+            report.write('{:<7}{:<16}{:<14}{:<14}{:<14}{:<22}\n'
+                         .format(str(i + 1), r[2], r[9], datesigned, proofdue, delinquency))
+            if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
+                report.write("       -----------------------------------------------------------------------------\n")
+            i += 1
+        # insert line at the end to close out report
+        report.write("       -----------------------------------------------------------------------------\n")
+        report.close()
+        # ----------------------------------------------------------------------------------------- save and open
+        if sys.platform == "win32":
+            os.startfile(dir_path('infc_grv') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('infc_grv') + filename])
+
+
+class RptCarrierId:
+    """
+    Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.
+    """
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.wb = None  # workbook object
+        self.carrierlist = None  # workbook name
+        self.ws_header = None  # style
+        self.input_name = None  # style
+        self.input_s = None  # style
+        self.col_header = None  # style
+        self.i = 0  # this counts the rows/ number of carriers.
+        self.no_empid = []  # an array for carriers with no employee id
+
+    def run(self):
+        """ this method is the master method for running all other methods in proper order """
+        self.get_styles()
+        self.build_workbook()
+        self.set_dimensions()
+        self.build_header()
+        self.fill_body()
+        self.show_noempid()
+        self.save_open()
+
+    def get_styles(self):
+        """ Named styles for workbook """
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='left'))
+
+    def build_workbook(self):
+        """ creates the workbook object """
+        self.wb = Workbook()  # define the workbook
+        self.carrierlist = self.wb.active  # create first worksheet
+        self.carrierlist.title = "carrier list"  # title first worksheet
+        self.carrierlist.oddFooter.center.text = "&A"
+
+    def set_dimensions(self):
+        """ adjust the height and width on the violations/ instructions page """
+        self.carrierlist.column_dimensions["A"].width = 5
+        self.carrierlist.column_dimensions["B"].width = 20
+        self.carrierlist.column_dimensions["C"].width = 10
+
+    def build_header(self):
+        """ build the header of the spreadsheet """
+        self.carrierlist.merge_cells('A1:R1')
+        self.carrierlist['A1'] = "Carrier List with Employee ID Numbers"
+        self.carrierlist['A1'].style = self.ws_header
+        cell = self.carrierlist.cell(row=3, column=2)
+        cell.value = "Carrier Name"
+        cell.style = self.col_header
+        cell = self.carrierlist.cell(row=3, column=3)
+        cell.value = "Employee ID"
+        cell.style = self.col_header
+
+    def fill_body(self):
+        """ this loop will fill the body of the spreadsheet with the carrier list """
+        carriers = self.parent.parent.uniquecarrier()  # get a list of carrier names
+        self.i = 1
+        for carrier in carriers:
+            sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+            result = inquire(sql)
+            if result:
+                emp_id = result[0][0]
+                cell = self.carrierlist.cell(row=self.i + 3, column=1)
+                cell.value = str(self.i)
+                cell.style = self.input_name
+                cell = self.carrierlist.cell(row=self.i + 3, column=2)
+                cell.value = carrier
+                cell.style = self.input_name
+                cell = self.carrierlist.cell(row=self.i + 3, column=3)
+                cell.value = emp_id
+                cell.style = self.input_s
+                self.i += 1
+            else:
+                self.no_empid.append(carrier)
+
+    def show_noempid(self):
+        """ this will display the a list of carriers with no employee id. """
+        if len(self.no_empid) == 0:
+            return
+        self.i += 4
+        cell = self.carrierlist.cell(row=self.i, column=2)
+        cell.value = "Carriers without Employee ID"
+        cell.style = self.col_header
+        i = 1
+        self.i += 1
+        for carrier in self.no_empid:
+            cell = self.carrierlist.cell(row=self.i, column=1)
+            cell.value = str(i)
+            cell.style = self.input_name
+            cell = self.carrierlist.cell(row=self.i, column=2)
+            cell.value = carrier
+            cell.style = self.input_name
+            self.i += 1
+            i += 1
+
+    def save_open(self):
+        """ save the spreadsheet and open """
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
+        try:
+            self.wb.save(dir_path('infc_grv') + xl_filename)
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.parent.win.topframe)
+            if sys.platform == "win32":  # open the text document
+                os.startfile(dir_path('infc_grv') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not generated. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=self.parent.win.topframe)
