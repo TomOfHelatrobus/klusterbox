@@ -1172,7 +1172,7 @@ class InformalC:
         if not check_grievance_number():
             return
         self.grv_sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
-              (grievance_number, self.station)
+                       (grievance_number, self.station)
         self.search_grv_result = inquire(self.grv_sql)
         if not self.search_grv_result:
             msg = "There is no record for this grievance in the database: {}".format(grievance_number)
@@ -1195,6 +1195,7 @@ class InformalC:
     def refresh_search(self, frame):
         """ when changes are made the the db, it is necessary to update the search results, as some things
         might have changed."""
+        self.search_result = []  # empty and reinitialize search results
         self.search_grv_result = inquire(self.grv_sql)
         self.search_set_result = inquire(self.set_sql)
         if not self.search_grv_result and not self.search_set_result:
@@ -1305,7 +1306,7 @@ class InformalC:
                 .grid(row=row, column=column)
             column += 1
             Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE, bg=color,
-                   command=lambda x=self.search_result[i]: self.AwardsReports(self).rptbygrv(x))\
+                   command=lambda x=self.search_result[i]: InformalCReports(self).rptbygrv(x))\
                 .grid(row=row, column=column)
             column += 1
             Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE, bg=color,
@@ -1320,7 +1321,7 @@ class InformalC:
         Button(self.win.buttons, text="Report", width=macadj(16, 11),
                command=lambda: self.AwardsReports(self).reports_screen(self.win.topframe)).grid(row=0, column=1)
         Button(self.win.buttons, text="Summary", width=macadj(16, 11),
-               command=lambda: self.AwardsReports(self).grv_summary(self.win.topframe)).grid(row=0, column=2)
+               command=lambda: InformalCReports(self).grv_summary()).grid(row=0, column=2)
         self.win.finish()
 
     def navigation_bar(self, frame, row=0, ):
@@ -1743,22 +1744,6 @@ class InformalC:
         pb.destroy()
         self.addawards_screen(topframe, grv_no)
 
-    def uniquecarrier(self):
-        """ gets the awards for a carrier from the informalc awards table. """
-        unique_grv = []
-        for grv in self.search_result:
-            if grv[2] not in unique_grv:
-                unique_grv.append(grv[2])
-        unique_carrier = []
-        for each in unique_grv:
-            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % each
-            results = inquire(sql)
-            for r in results:
-                if r[1] not in unique_carrier:
-                    unique_carrier.append(r[1])
-        unique_carrier.sort()
-        return unique_carrier
-
     class AwardsReports:
         """ generate reports for settlement awards """
         def __init__(self, parent):
@@ -1774,252 +1759,56 @@ class InformalC:
             Label(self.win.body, text="").grid(row=1)
             row = 3
             Button(self.win.body, text="Grievance Everything", width=30,
-                   command=lambda: self.rptgrvsum()).grid(row=row, column=0, pady=5)
+                   command=lambda: InformalCReports(self).rptgrvsum()).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Monetary Awards", width=30,
-                   command=lambda: self.grvlist_setsum()).grid(row=row, column=0, pady=5)
+                   command=lambda: InformalCReports(self).monetary_sum()).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Awards by Carriers", width=30,
-                   command=lambda: self.bycarriers()).grid(row=row, column=0, pady=5)
+                   command=lambda: InformalCReports(self).bycarriers()).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Awards by Carrier", width=30,
                    command=lambda: self.bycarrier(self.win.topframe)).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="No Settlement", width=30,
-                   command=lambda: self.no_settlement(self.win.topframe)).grid(row=row, column=0, pady=5)
-            row += 1
-            Button(self.win.body, text="Employee ID List", width=30,
-                   command=lambda: RptCarrierId(self).run()).grid(row=row, column=0, pady=5)
+                   command=lambda: InformalCReports(self).no_settlement()).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Compliance Delinquency", width=30,
-                   command=lambda: InformalCReports().delinquency(self.win.topframe, self.parent.search_result))\
+                   command=lambda: InformalCReports(self).delinquency())\
                 .grid(row=row, column=0, pady=5)
             row += 1
-
+            Button(self.win.body, text="Employee ID (spreadsheet)", width=30,
+                   command=lambda: RptCarrierId(self).run()).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Employee ID (text file)", width=30,
+                   command=lambda: InformalCReports(self).rptcarrierandid())\
+                .grid(row=row, column=0, pady=5)
+            row += 1
             Label(self.win.body, text="", width=70).grid(row=row)
             # define the buttons at the bottom of the page:
             Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
                    command=lambda: self.parent.showtime(self.win.topframe)).grid(row=0, column=0)
-
             self.win.finish()
 
-        def grv_summary(self, frame):
-            """ this a summary of all grievances as they appear on the search results screen. """
-            if len(self.parent.search_result) == 0:
-                msg = "There are no records matching your search results. "
-                messagebox.showwarning("Informal C Reports", msg, parent=frame)
-                return
-            # --------------------------------------------------------- get the date by which the results are sorted...
-            # "Start Incident Date", "End Incident Date", "Meeting Date", "Signed Date", "Proof Due"
-            sortby = (3, 4, 5, 10, 12)  # store the indexes of the dates in this tuple.
-            sort_index = sortby[int(self.parent.sortby.get())]  # sent by self.sortby stringvar
-            # convert to backslash date or empty
-            # selecteddate = Convert(self.search_result[i][sort_index]).dtstr_to_backslashstr()
-            # ---------------------------------------------------------------------------------------------- file name
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            # ------------------------------------------------------------------------------------------------ headers
-            # report will display the elements (with indexes):
-            # Grievance Number(2), date (determined by sort index), grievant (0), issue (6), decision (11)
-            report.write("   Grievance List Summary\n\n")
-            report.write("   Showing all grievances/settlements within search criteria\'\n\n")
-            date_header = ("Start Date", "End Date", "Meeting Date", "Signed Date", "Proof Due")
-            date_head_index = int(self.parent.sortby.get())
-            report.write('{:>18}{:>14}  {:<20}{:<22}{:<20}\n'
-                         .format("    Grievance #", date_header[date_head_index], "Grievant", "Issue", "Settlement"))
-            report.write("       --------------------------------------------------------------------------------"
-                         "----\n")
-            i = 0
-            for r in self.parent.search_result:
-                formatted_date = Convert(r[sort_index]).dtstr_to_backslashstr()
-                report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}{:<20}\n'
-                             .format(str(i+1), r[2], formatted_date, r[0], r[6], r[11]))
-                if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
-                    report.write("       ----------------------------------------------------------------------"
-                                 "--------------\n")
-                i += 1
-            report.write("       --------------------------------------------------------------------------------"
-                         "----\n")  # insert line at the end to close out report
-            report.close()
-            # ----------------------------------------------------------------------------------------- save and open
-            if sys.platform == "win32":
-                os.startfile(dir_path('infc_grv') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('infc_grv') + filename])
-
-        def grvlist_setsum(self):
-            """ generates text report for settlement list summary showing all grievance settlements. """
-            if len(self.parent.search_result) > 0:
-                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = "infc_grv_list" + "_" + stamp + ".txt"
-                report = open(dir_path('infc_grv') + filename, "w")
-                report.write("   Monetary Remedy Summary\n\n")
-                report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
-                report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
-                             .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
-                report.write(
-                    "      ----------------------------------------------------------------------------------\n")
-                total_hour = 0
-                total_amt = 0
-                i = 1
-                monetary_remedies = []  # store all grievances where there is a monetary remedy settlement
-                for sett in self.parent.search_result:
-                    if sett[11] in ("monetary remedy", "back pay"):  # find decisions of monetary / back pay
-                        monetary_remedies.append(sett)
-                for sett in monetary_remedies:
-                    sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[2]
-                    query = inquire(sql)
-                    awardxhour = 0
-                    awardxamt = 0
-                    for rec in query:  # calculate total award amounts
-                        hour = 0.0
-                        rate = 0.0
-                        amt = 0
-                        if rec[2]:  # hours of pay for remedy
-                            hour = float(rec[2])
-                        if rec[3]:  # the rate at which the hours are paid. 50%, 100%, 150%, etc
-                            rate = float(rec[3])
-                        if rec[4]:  # a flat amount in dollars of the remedy
-                            amt = float(rec[4])
-                        if hour and rate:  # combine rate and hours to get an adjusted hours of remedy.
-                            awardxhour += hour * rate  # the adjusted award for hours
-                        if amt:
-                            awardxamt += amt  # the award for dollars
-                    if not DateTimeChecker().check_dtstring(sett[10]):  # if the date signed can not be made to dt
-                        sign = ""
-                    else:
-                        sign = dt_converter(sett[10]).strftime("%m/%d/%Y")  # convert date time to mm/dd/yyyy format
-                    if sett[9] is None or sett[9] == "unknown":  # format level to '---' or the level as a string.
-                        lvl = "---"
-                    else:
-                        lvl = sett[9]
-                    # impliment batch gats here later ...
-                    s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
-                    for gi in range(len(s_gats)):  # for gats_no in s_gats:
-                        if gi == 0:  # for the first line
-                            total_hour += awardxhour  # tally hours totals for totals line at end of report
-                            total_amt += awardxamt  # tally amount of awards for totals line at end of report
-                            report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
-                                         .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl,
-                                                 "{0:.2f}".format(float(awardxhour)),
-                                                 "{0:.2f}".format(float(awardxamt))))
-                        if gi != 0:
-                            report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
-                    if i % 3 == 0:
-                        report.write("      ----------------------------------------------------------------------"
-                                     "------------\n")
-                    i += 1
-                report.write("      ------------------------------------------------------------------------------"
-                             "----\n")
-                report.write("{:<20}{:>58}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
-                report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
-                report.close()
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-
-        def rptbygrv(self, grv_info):
-            """ generates a text report for a specific grievance number. """
-            grv_info = list(grv_info)  # correct for legacy problem of NULL Settlement Levels
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Settlement Summary\n\n")
-            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % grv_info[2]
-            query = inquire(sql)
-            awardxhour = 0
-            awardxamt = 0
-            report.write("    Grievance Number:   " + grv_info[2] + "\n")
-            grievant = Convert(grv_info[0]).empty_returns_str("undefined")  # if blank - assign "undefined"
-            start = Convert(grv_info[3]).dtstr_to_backslashstr()
-            start = Convert(start).empty_returns_str("undefined")  # if blank - assign "undefined"
-            end = Convert(grv_info[4]).dtstr_to_backslashstr()
-            end = Convert(end).empty_returns_str("undefined")  # if blank - assign "undefined"
-            sign = Convert(grv_info[10]).dtstr_to_backslashstr()
-            sign = Convert(sign).empty_returns_str("undefined")  # if blank - assign "undefined"
-            meet = Convert(grv_info[5]).dtstr_to_backslashstr()
-            meet = Convert(meet).empty_returns_str("undefined")  # if blank - assign "undefined"
-            settlement = Convert(grv_info[11]).empty_returns_str("pending")  # if blank - assign "pending"
-            level = Convert(grv_info[9]).empty_returns_str("undefined")  # if blank - assign "undefined"
-            docs = Convert(grv_info[13]).empty_returns_str("undefined")  # if blank - assign "undefined"
-            gats = Convert(grv_info[14]).empty_returns_str("undefined")  # if blank - assign "undefined"
-            if grv_info[11] not in ("monetary remedy", "back pay", "adjustment"):
-                docs = Convert(grv_info[13]).empty_returns_str("not applicable")  # if blank - assign "undefined"
-                gats = Convert(grv_info[14]).empty_returns_str("not applicable")  # if blank - assign "undefined"
-            report.write("    Grievant:           " + grievant + "\n")
-            report.write("    Issue:              " + grv_info[6] + "\n")
-            report.write("    Dates of Violation: " + start + " - " + end + "\n")
-            report.write("    Meeting Date:       " + meet + "\n")
-            report.write("    Article:            " + grv_info[8] + "\n")
-            report.write("    Decision:           " + settlement + "\n")
-            report.write("    Signing Date:       " + sign + "\n")
-            report.write("    Settlement Level    " + level + "\n")
-            report.write("    Documentation:      " + docs + "\n")
-            report.write("    GATS Number:        " + gats + "\n")
-            report.write("    Station:            " + grv_info[1] + "\n\n")
-            report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
-            report.write("    -----------------------------------------------------------------\n")
-            if len(query) == 0:
-                report.write("         No awards recorded for this settlement.\n")
-            cc = 1
-            for rec in query:
-                hour = 0.0
-                rate = 0.0
-                amt = 0
-                if rec[2]:
-                    hour = float(rec[2])
-                if rec[3]:
-                    rate = float(rec[3])
-                if rec[4]:
-                    amt = float(rec[4])
-                if hour and rate:
-                    awardxhour += hour * rate
-                if amt:
-                    awardxamt += amt
-                if rec[2]:
-                    hours = "{0:.2f}".format(float(rec[2]))
-                else:
-                    hours = "---"
-                if rec[3]:
-                    rate = "{0:.2f}".format(float(rec[3]))
-                else:
-                    rate = "---"
-                if rec[2] and rec[3]:
-                    adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
-                else:
-                    adj = "---"
-                if rec[4]:
-                    amt = "{0:.2f}".format(float(rec[4]))
-                else:
-                    amt = "---"
-                report.write('    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
-                cc += 1
-            report.write("    -----------------------------------------------------------------\n")
-            report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
-                                                          .format(float(awardxhour))))
-            report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
-                                                          .format(float(awardxamt))))
-            report.write("\n\n\n")
-            report.close()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
+        def uniquecarrier(self):
+            """ gets the awards for a carrier from the informalc awards table. """
+            unique_grv = []
+            for grv in self.parent.search_result:
+                if grv[2] not in unique_grv:
+                    unique_grv.append(grv[2])
+            unique_carrier = []
+            for each in unique_grv:
+                sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % each
+                results = inquire(sql)
+                for r in results:
+                    if r[1] not in unique_carrier:
+                        unique_carrier.append(r[1])
+            unique_carrier.sort()
+            return unique_carrier
 
         def bycarrier(self, frame):
             """ builds a screen that allows a user to select a carrier and generate a text report of settlements. """
-            unique_carrier = self.parent.uniquecarrier()
+            unique_carrier = self.uniquecarrier()
             self.win = MakeWindow()
             self.win.create(frame)
             Label(self.win.body, text="Informal C: Select Carrier", font=macadj("bold", "Helvetica 18")) \
@@ -2104,268 +1893,6 @@ class InformalC:
             t_amt = "{0:.2f}".format(float(total_amt))
             report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
             report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
-            report.close()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
-
-        def bycarriers(self):
-            """ generates a text report for settlements by carriers. """
-            unique_carrier = self.parent.uniquecarrier()
-            unique_grv = []  # get a list of all grv numbers in search range
-            for grv in self.parent.search_result:
-                if grv[2] not in unique_grv:
-                    unique_grv.append(grv[2])  # put these in "unique_grv"
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            # ------------------------------------------------------------------------------------------ progress bar
-            pb = ProgressBarDe(title="Informal C Reports", label="Standby. The report is generating.")
-            pb.max_count(len(unique_carrier))  # the count of the pb is the number of carriers in unique carrier
-            pb.start_up()  # start the progress bar
-            report.write("Settlement Report By Carriers\n\n")
-            pb_count = 1
-            for name in unique_carrier:
-                pb.move_count(pb_count)
-                pb.change_text("Writing report for {}".format(name))
-                report.write("{:<30}\n\n".format(name))
-                report.write(
-                    "        Grievance Number    Hours    Rate    Adjusted      Amount       docs       level\n")
-                report.write(
-                    "    ------------------------------------------------------------------------------------\n")
-                results = []
-                for ug in unique_grv:  # do search for each grievance in list of unique grievances
-                    sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                          "informalc_awards.amount, informalc_settlements.docs, informalc_settlements.level " \
-                          "FROM informalc_awards, informalc_settlements " \
-                          "WHERE informalc_awards.grv_no = informalc_settlements.grv_no and " \
-                          "informalc_awards.carrier_name='%s'" \
-                          "and informalc_awards.grv_no = '%s' " \
-                          "ORDER BY informalc_settlements.date_signed" % (name, ug)
-                    query = inquire(sql)
-                    if query:
-                        for q in query:
-                            q = list(q)
-                            results.append(q)
-                if len(results) == 0:
-                    report.write("    There are no awards on record for this carrier.\n")
-                total_adj = 0
-                total_amt = 0
-                i = 1
-                for r in results:
-                    if r[1]:
-                        hours = "{0:.2f}".format(float(r[1]))
-                    else:
-                        hours = "---"
-                    if r[2]:
-                        rate = "{0:.2f}".format(float(r[2]))
-                    else:
-                        rate = "---"
-                    if r[1] and r[2]:
-                        adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
-                        total_adj += float(r[1]) * float(r[2])
-                    else:
-                        adj = "---"
-                    if r[3]:
-                        amt = "{0:.2f}".format(float(r[3]))
-                        total_amt += float(r[3])
-                    else:
-                        amt = "---"
-                    if r[5] is None or r[5] == "unknown":
-                        r[5] = "---"
-                    report.write("    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
-                                 .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
-                    i += 1
-                report.write(
-                    "    ------------------------------------------------------------------------------------\n")
-                t_adj = "{0:.2f}".format(float(total_adj))
-                t_amt = "{0:.2f}".format(float(total_amt))
-                report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
-                report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
-                report.write("\n\n\n")
-                pb_count += 1
-            report.close()
-            pb.stop()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
-
-        def rptgrvsum(self):
-            """ generates a text report for grievance summary. """
-            if len(self.parent.search_result) > 0:
-                result = list(self.parent.search_result)
-                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = "infc_grv_list" + "_" + stamp + ".txt"
-                report = open(dir_path('infc_grv') + filename, "w")
-                report.write("Grievance Everything Report\n\n")
-                report.write("    Station:            " + self.parent.station + "\n")
-                i = 1
-                for sett in result:
-                    sett = list(sett)  # correct for legacy problem of NULL Settlement Levels
-                    sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[2]
-                    query = inquire(sql)
-                    num_space = 3 - (len(str(i)))  # number of spaces for number
-                    awardxhour = 0
-                    awardxamt = 0
-                    for rec in query:
-                        hour = 0.0
-                        rate = 0.0
-                        amt = 0
-                        if rec[2]:
-                            hour = float(rec[2])
-                        if rec[3]:
-                            rate = float(rec[3])
-                        if rec[4]:
-                            amt = float(rec[4])
-                        if hour and rate:
-                            awardxhour += hour * rate
-                        if amt:
-                            awardxamt += amt
-                    space = " "
-                    space += num_space * " "
-                    if i > 99:
-                        report.write(str(i) + "\n" + "    Grievance Number:   " + sett[0] + "\n")
-                    else:
-                        report.write(str(i) + space + "Grievance Number:   " + sett[0] + "\n")
-                    article = ""
-                    if sett[7]:
-                        article = "art.{}/ ".format(sett[7])
-                    report.write("    Article/Issue:      " + article + sett[6] + "\n")  # display issue
-                    report.write("    Grievant:           " + sett[0] + "\n")  # display issue
-                    start = Convert(sett[3]).dtstr_to_backslashstr()  # format incident start date
-                    end = Convert(sett[4]).dtstr_to_backslashstr()  # format incident end date
-                    meet = Convert(sett[5]).dtstr_to_backslashstr()  # format meeting date
-                    sign = Convert(sett[10]).dtstr_to_backslashstr()  # format date signed
-                    proof = Convert(sett[12]).dtstr_to_backslashstr()  # format date signed
-                    report.write("    Dates of Violation: " + start + " - " + end + "\n")  # display incident dates
-                    report.write("    Meeting Date:       " + meet + "\n")
-                    report.write("    Decision:           " + sett[11] + "\n")  # display decsion
-                    report.write("    Signing Date:       " + sign + "\n")
-                    report.write("    Settlement Level    " + sett[9] + "\n")
-                    report.write("    Proof Due           " + proof + "\n")
-                    report.write("    GATS Number:        " + sett[8] + "\n")
-                    report.write("    Documentation:      " + sett[13] + "\n\n")
-                    # of there are no awards entered/ skip awards display
-                    if not sett[11] in ("monetary remedy", "back pay"):
-                        report.write("\n")
-                        i += 1
-                        continue
-                    report.write("    Carrier Name                Hours      Rate   Adjusted     Amount\n")
-                    report.write("    -----------------------------------------------------------------\n")
-                    if len(query) == 0:
-                        report.write("         No awards recorded for this settlement.\n")
-                    cc = 1
-                    for rec in query:
-                        if rec[2]:
-                            hours = "{0:.2f}".format(float(rec[2]))
-                        else:
-                            hours = "---"
-                        if rec[3]:
-                            rate = "{0:.2f}".format(float(rec[3]))
-                        else:
-                            rate = "---"
-                        if rec[2] and rec[3]:
-                            adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))
-                        else:
-                            adj = "---"
-                        if rec[4]:
-                            amt = "{0:.2f}".format(float(rec[4]))
-                        else:
-                            amt = "---"
-                        report.write(
-                            '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(cc), rec[1], hours, rate, adj, amt))
-                        cc += 1
-                    report.write("    -----------------------------------------------------------------\n")
-                    report.write("         {:<38}{:>10}\n".format("Awards adjusted to straight time", "{0:.2f}"
-                                                                  .format(float(awardxhour))))
-                    report.write("         {:<38}{:>22}\n".format("Awards as flat dollar amount", "{0:.2f}"
-                                                                  .format(float(awardxamt))))
-                    report.write("\n\n")
-                    i += 1
-                report.close()
-                try:
-                    if sys.platform == "win32":
-                        os.startfile(dir_path('infc_grv') + filename)
-                    if sys.platform == "linux":
-                        subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                    if sys.platform == "darwin":
-                        subprocess.call(["open", dir_path('infc_grv') + filename])
-                except PermissionError:
-                    messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
-
-        def no_settlement(self, frame):
-            """ this a summary of all grievances which do not have settlement records. """
-            no_settlement = []
-            for s in self.parent.search_result:  # loop through all results
-                if not s[8]:  # if there is no grievance number in the settlement portion of the array
-                    no_settlement.append(s)  # add to a list of grvs with no settlement
-            if len(no_settlement) == 0:
-                msg = "There are no records matching your search results. "
-                messagebox.showwarning("Informal C Reports", msg, parent=frame)
-                return
-            # ---------------------------------------------------------------------------------------------- file name
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            # ------------------------------------------------------------------------------------------------ headers
-            # report will display the elements (with indexes):
-            # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
-            report.write("   No Settlement Report\n\n")
-            report.write("   Showing all grievances which do not have settlements. \n\n")
-            report.write('{:>18}{:>14}  {:<20}{:<22}\n'
-                         .format("    Grievance #", "Meeting Date", "Grievant", "Issue"))
-            report.write("       --------------------------------------------------------------------------------"
-                         "----\n")
-            i = 0
-            for r in no_settlement:
-                formatted_date = Convert(r[5]).dtstr_to_backslashstr()
-                report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}\n'
-                             .format(str(i+1), r[2], formatted_date, r[0], r[6]))
-                if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
-                    report.write("       ----------------------------------------------------------------------"
-                                 "--------------\n")
-                i += 1
-            report.write("       --------------------------------------------------------------------------------"
-                         "----\n")  # insert line at the end to close out report
-            report.close()
-            # ----------------------------------------------------------------------------------------- save and open
-            if sys.platform == "win32":
-                os.startfile(dir_path('infc_grv') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('infc_grv') + filename])
-
-        def rptcarrierandid(self):
-            """ generates a text report with only carrier name and employee id number. """
-            if len(self.parent.search_result) == 0:
-                return
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Carrier List\n\n")
-            carriers = self.parent.uniquecarrier()  # get a list of carrier names
-            i = 1
-            for carrier in carriers:
-                emp_id = ""
-                sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
-                result = inquire(sql)
-                if result:
-                    emp_id = result[0][0]
-                report.write("{:>4} {:<25}{:>8}\n".format(str(i), carrier, emp_id))
-                i += 1
             report.close()
             try:
                 if sys.platform == "win32":
@@ -2882,22 +2409,22 @@ class InformalC:
         def build_buttons(self):
             """ configure buttons on the bottom of the screen """
             button_alignment = macadj("w", "center")
-            if self.newentry:
-                Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
-                       command=lambda: (self.destroy_companion(), self.parent.informalc(self.win.topframe)))\
-                    .grid(row=0, column=0)
-            else:
-                Button(self.win.buttons, text="Go Back", width=macadj(19, 18), anchor=button_alignment,
-                       command=lambda: (self.destroy_companion(), self.parent.showtime(self.win.topframe)))\
-                    .grid(row=0, column=0)
-            Button(self.win.buttons, text="Enter", width=macadj(19, 18), anchor=button_alignment,
+            Button(self.win.buttons, text="Submit", width=macadj(13, 18), anchor=button_alignment,
+                   command=lambda: (self.destroy_companion(), self.apply(goback=True))).grid(row=0, column=0)
+            Button(self.win.buttons, text="Apply", width=macadj(13, 18), anchor=button_alignment,
                    command=lambda: (self.destroy_companion(), self.apply())).grid(row=0, column=1)
+            if self.newentry:  # new entries go back to informal c main menu
+                Button(self.win.buttons, text="Go Back", width=macadj(13, 18), anchor=button_alignment,
+                       command=lambda: (self.destroy_companion(), self.parent.informalc(self.win.topframe)))\
+                    .grid(row=0, column=2)
+            else:  # edits go back to showtime
+                Button(self.win.buttons, text="Go Back", width=macadj(13, 18), anchor=button_alignment,
+                       command=lambda: (self.destroy_companion(), self.parent.showtime(self.win.topframe)))\
+                    .grid(row=0, column=2)
             # a label on the button bar gives notification of past actions ie insert, delete, etc
-            # Label(self.win.buttons, text=self.msg, fg="red").
-            # self.pb_text.config(text="{}".format(text))
-            # self.pb_root.update()
+            Label(self.win.buttons, text=self.msg, fg="red")
             self.msg_label = Label(self.win.buttons, text=self.msg, fg="red")
-            self.msg_label.grid(row=0, column=2)
+            self.msg_label.grid(row=0, column=3)
 
         def add_nonc_field(self, frame, onrec=None):
             """ added fields for compliance index"""
@@ -2950,6 +2477,8 @@ class InformalC:
         def add_batset_field(self, frame, onrec=None):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
+            if onrec:
+                add_stringvar.set(onrec)
             self.batset.append(add_stringvar)  # add this to an array of stringvars for non compliance
             batset = Entry(frame, textvariable=self.batset[len(self.batset)-1], justify='right', width=macadj(20, 15))
             batset.grid(row=len(self.batset)-1, column=1, sticky="w")
@@ -2972,6 +2501,8 @@ class InformalC:
         def add_batgat_field(self, frame, onrec=None):
             """ added fields for compliance index"""
             add_stringvar = StringVar(self.win.body)
+            if onrec:
+                add_stringvar.set(onrec)
             self.batgat.append(add_stringvar)  # add this to an array of stringvars for non compliance
             batgat = Entry(frame, textvariable=self.batgat[len(self.batgat)-1], justify='right', width=macadj(20, 15))
             batgat.grid(row=len(self.batgat)-1, column=1, sticky="w")
@@ -3184,7 +2715,7 @@ class InformalC:
             self.parent.search_result = new_search_result[:]
             self.parent.showtime(frame)
 
-        def apply(self):
+        def apply(self, goback=False):
             """
             check the inputs one by one. if there are any errors, a messagebox will show the error and the checks will
             stop. otherwise all inputs are put into a variable to be saved for entry into the database. .
@@ -3245,12 +2776,18 @@ class InformalC:
             self.add_index_recs()  # add or delete index recs to the db
             # after the database is updated, regenerate the page.
             if self.newentry:
-                self.informalc_new(self.win.topframe, msg=self.report())
+                if not goback:
+                    self.informalc_new(self.win.topframe, msg=self.report())
+                else:
+                    self.parent.informalc(self.win.topframe)
             else:
                 if self.grv_changesmade or self.set_changesmade:
                     self.grv_changesmade, self.set_changesmade = False, False  # re initialize
                     self.parent.refresh_search(self.win.topframe)  # refresh search results
-                self.informalc_edit(self.win.topframe, self.edit_grv_no, msg=self.report())
+                if not goback:
+                    self.informalc_edit(self.win.topframe, self.edit_grv_no, msg=self.report())
+                else:
+                    self.parent.showtime(self.win.topframe)
 
         def apply_fail(self):
             """ if there is an error in self.apply, empty the message in the button frame. """
