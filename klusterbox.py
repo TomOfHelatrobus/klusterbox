@@ -1127,7 +1127,7 @@ class InformalC:
             i += 1
         if where:  # running a search with an empty search criteria will cause an error
             self.grv_sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE {}".format(where)
-            self.search_grv_result = inquire(sql)
+            self.search_grv_result = inquire(self.grv_sql)
         else:
             self.search_grv_result = []
 
@@ -1145,7 +1145,7 @@ class InformalC:
             i += 1
         if where:  # running a search with an empty search criteria will cause an error
             self.set_sql = "SELECT DISTINCT grv_no FROM informalc_settlements WHERE {}".format(where)
-            self.search_set_result = inquire(sql)
+            self.search_set_result = inquire(self.set_sql)
         # ----------------------------------------------------------------------------------------- no search criteria
         if self.blank_criteria:  # if no search critera was given,
             self.search_all_apply(frame)  # go to search all
@@ -1195,6 +1195,7 @@ class InformalC:
     def refresh_search(self, frame):
         """ when changes are made the the db, it is necessary to update the search results, as some things
         might have changed."""
+        print("hello from refresh search")
         self.search_result = []  # empty and reinitialize search results
         self.search_grv_result = inquire(self.grv_sql)
         self.search_set_result = inquire(self.set_sql)
@@ -1825,84 +1826,9 @@ class InformalC:
             Button(self.win.buttons, text="Go Back", width=20,
                    command=lambda: self.reports_screen(self.win.topframe)).pack(side=LEFT)
             Button(self.win.buttons, text="Report", width=20,
-                   command=lambda: self.bycarrier_apply
-                   (unique_carrier, listbox.curselection())).pack(side=LEFT)
+                   command=lambda: InformalCReports(self).bycarrier_apply(unique_carrier, listbox.curselection()))\
+                .pack(side=LEFT)
             self.win.finish()
-
-        def bycarrier_apply(self, names, cursor):
-            """ generates a text report for a specified carrier. """
-            if len(cursor) == 0:
-                return
-            unique_grv = []  # get a list of all grv numbers in search range
-            for grv in self.parent.search_result:
-                if grv[2] not in unique_grv:
-                    unique_grv.append(grv[2])  # put these in "unique_grv"
-            name = names[cursor[0]]
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Settlement Report By Carrier\n\n")
-            report.write("{:<30}\n\n".format(name))
-            report.write("        Grievance Number    hours    rate    adjusted      amount       docs       level\n")
-            report.write("    ------------------------------------------------------------------------------------\n")
-            results = []
-            for ug in unique_grv:  # do search for each grievance in list of unique grievances
-                sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                      "informalc_awards.amount, informalc_settlements.docs, informalc_settlements.level " \
-                      "FROM informalc_awards, informalc_settlements " \
-                      "WHERE informalc_awards.grv_no = informalc_settlements.grv_no and " \
-                      "informalc_awards.carrier_name='%s' " \
-                      "and informalc_awards.grv_no = '%s'" \
-                      "ORDER BY informalc_settlements.date_signed" % (name, ug)
-                query = inquire(sql)
-                if query:
-                    for q in query:
-                        q = list(q)
-                        results.append(q)
-            if len(results) == 0:
-                report.write("    There are no awards on record for this carrier.\n")
-            total_adj = 0
-            total_amt = 0
-            i = 1
-            for r in results:
-                if r[1]:
-                    hours = "{0:.2f}".format(float(r[1]))
-                else:
-                    hours = "---"
-                if r[2]:
-                    rate = "{0:.2f}".format(float(r[2]))
-                else:
-                    rate = "---"
-                if r[1] and r[2]:
-                    adj = "{0:.2f}".format(float(r[1]) * float(r[2]))
-                    total_adj += float(r[1]) * float(r[2])
-                else:
-                    adj = "---"
-                if r[3]:
-                    amt = "{0:.2f}".format(float(r[3]))
-                    total_amt += float(r[3])
-                else:
-                    amt = "---"
-                if r[5] is None or r[5] == "unknown":
-                    r[5] = "---"
-                report.write("    {:<4}{:<18}{:>7}{:>8}{:>12}{:>12}{:>11}{:>12}\n"
-                             .format(str(i), r[0], hours, rate, adj, amt, r[4], r[5]))
-                i += 1
-            report.write("    ------------------------------------------------------------------------------------\n")
-            t_adj = "{0:.2f}".format(float(total_adj))
-            t_amt = "{0:.2f}".format(float(total_amt))
-            report.write("        {:<34}{:>11}\n".format("Total hours as straight time", t_adj))
-            report.write("        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt))
-            report.close()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator", "The report was not generated.", parent=self.win.topframe)
 
     class GrievanceInput:
         """
