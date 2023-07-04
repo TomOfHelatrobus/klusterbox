@@ -1241,18 +1241,18 @@ class InformalCReports:
             """ generates reports for grievances/ settlements for non compliance, remanded, batch settlement and
                     batch gats indexes. """
             first_message = (
-                "This is a non compliance grievance for: \n",
-                "This is a refiling of a remanded grievance/s. \n",
-                "This settlement is a batch settlement for the following: \n ",
-                "The gats report for this settlement also applies to: \n"
+                "    This is a non compliance grievance for: \n",
+                "    This is a refiling of a remanded grievance/s. \n",
+                "    This settlement is a batch settlement for the following: \n ",
+                "    The gats report for this settlement also applies to: \n"
             )
             second_message = (
-                "This settlement is the subject of non compliance grievance/s: \n",
-                "This grievance was remanded and refiled under grievance/s: \n",
-                "The settlement for this grievance is included in the batch settlement for: \n",
-                "The gats report for this settlement is attached to grievance: \n"
+                "    This settlement is the subject of non compliance grievance/s: \n",
+                "    This grievance was remanded and refiled under grievance/s: \n",
+                "    The settlement for this grievance is included in the batch settlement for: \n",
+                "    The gats report for this settlement is attached to grievance: \n"
             )
-            line_text = "-----------------------------------------------------------------------\n"
+            line_text = "    -----------------------------------------------------------------------\n"
             for i in range(4):
                 if self.first_array[i]:  # if there is something in the first array
                     self.reports_array.append(first_message[i])  # add this to text to be displayed
@@ -1260,7 +1260,7 @@ class InformalCReports:
                     count = 1
                     for r in self.first_array[i]:
                         rec = self.get_recforindex(r)  # get the grv/set info for the grievance
-                        text = "{:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
+                        text = "    {:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
                         self.reports_array.append(text)  # add this to text to be displayed
                         count += 1
                 if self.second_array[i]:  # if there is something in the second array
@@ -1269,7 +1269,7 @@ class InformalCReports:
                     count = 1
                     for r in self.second_array[i]:
                         rec = self.get_recforindex(r)  # get the grv/set info for the grievance
-                        text = "{:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
+                        text = "    {:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
                         self.reports_array.append(text)  # add this to text to be displayed
                         count += 1
                 if self.first_array[i] or self.second_array[i]:
@@ -1293,6 +1293,285 @@ class InformalCReports:
                 if set_result[0][0]:
                     decision = set_result[0][0]
             return [issue, meetingdate, decision]
+        
+    class EverythingReport:
+        """ show a full report with all grievance particulars """
+
+        @staticmethod
+        def run(rec, count=None):
+            """ show all the particulars of a grievance and the settlement """
+            everything_stack = []
+            # ------------------------------------------------------------------------------------configure first line
+            if count:
+                num_space = 3 - (len(str(count)))  # number of spaces for number
+                space = " "
+                space += num_space * " "
+                if count > 99:  # create a staggered line number if the line is 100+
+                    everything_stack.append(str(count) + "\n" + "    Grievance Number:   " + rec[2] + "\n")
+                else:
+                    everything_stack.append(str(count) + space + "Grievance Number:   " + rec[2] + "\n")
+            else:
+                everything_stack.append("    Grievance Number:   " + rec[2] + "\n")
+            # ------------------------------------------------------------------------------------- grievance details
+            article = ""
+            if rec[7]:
+                article = "art.{}/ ".format(rec[7])
+            everything_stack.append("    Article/Issue:      " + article + rec[6] + "\n")  # display issue
+            everything_stack.append("    Grievant:           " + rec[0] + "\n")  # display issue
+            start = Convert(rec[3]).dtstr_to_backslashstr()  # format incident start date
+            end = Convert(rec[4]).dtstr_to_backslashstr()  # format incident end date
+            meet = Convert(rec[5]).dtstr_to_backslashstr()  # format meeting date
+            sign = Convert(rec[10]).dtstr_to_backslashstr()  # format date signed
+            proof = Convert(rec[12]).dtstr_to_backslashstr()  # format date signed
+            everything_stack.append("    Dates of Violation: " + start + " - " + end + "\n")  # display incident dates
+            everything_stack.append("    Meeting Date:       " + meet + "\n")
+            # ------------------------------------------------------------------------------------- settlement details
+            if rec[8]:  # if there is not a grievance number here, there is no settlement
+                everything_stack.append("    Decision:           " + rec[11] + "\n")  # display decsion
+                everything_stack.append("    Signing Date:       " + sign + "\n")
+                everything_stack.append("    Settlement Level    " + rec[9] + "\n")
+                everything_stack.append("    Proof Due           " + proof + "\n")
+                everything_stack.append("    GATS Number:        " + rec[8] + "\n")
+                everything_stack.append("    Documentation:      " + rec[13] + "\n\n")
+            else:  # if there is no settlement record...
+                everything_stack.append("\n")
+                everything_stack.append("    There is no settlement entered for this grievance. \n\n")
+            return everything_stack
+
+    def everything_all_report(self):
+        """ generates a text report for grievance summary.
+        this is called the the button 'grievance everything' in the informalc reports screen. """
+        if not len(self.parent.parent.search_result):
+            return
+        result = list(self.parent.parent.search_result)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("Grievance Everything Report\n\n")
+        report.write("    Station:            " + self.parent.parent.station + "\n\n")
+        i = 1
+        for sett in result:
+            # ---------------------------------------------------------------------------------- get everything stack
+            everything_stack = self.EverythingReport().run(sett, count=i)
+            for row in everything_stack:
+                report.write(row)
+            # ------------------------------------------------------------------------- get index/associations report
+            index_reports = self.IndexReports().run(sett[2])
+            for ir in index_reports:
+                report.write(ir)  # write index/associations line by line
+            if index_reports:
+                report.write("\n")
+            # ------------------------------------------------------------------------------------- get awards stack
+            if sett[11] in ("monetary remedy", "back pay"):  # skip if decision is not either.
+                award_stack = self.GrvAwardReports().run(sett[2])
+                for row in award_stack:
+                    report.write(row)
+                report.write("\n")
+            report.write("\n\n")
+            i += 1
+        report.close()
+        # --------------------------------------------------------------------------------------------- save and open
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.parent.win.topframe)
+
+    def monetary_sum(self):
+        """ generates text report for settlement list summary showing all grievance settlements. """
+        if not len(self.parent.parent.search_result):
+            return
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("   Monetary Remedy Summary\n\n")
+        report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
+        report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
+                     .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
+        report.write(
+            "      ----------------------------------------------------------------------------------\n")
+        total_hour = 0
+        total_amt = 0
+        i = 1
+        monetary_remedies = []  # store all grievances where there is a monetary remedy settlement
+        for sett in self.parent.parent.search_result:
+            if sett[11] in ("monetary remedy", "back pay"):  # find decisions of monetary / back pay
+                monetary_remedies.append(sett)
+        for sett in monetary_remedies:
+            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[2]
+            query = inquire(sql)
+            awardxhour = 0
+            awardxamt = 0
+            for rec in query:  # calculate total award amounts
+                hour = 0.0
+                rate = 0.0
+                amt = 0
+                if rec[2]:  # hours of pay for remedy
+                    hour = float(rec[2])
+                if rec[3]:  # the rate at which the hours are paid. 50%, 100%, 150%, etc
+                    rate = float(rec[3])
+                if rec[4]:  # a flat amount in dollars of the remedy
+                    amt = float(rec[4])
+                if hour and rate:  # combine rate and hours to get an adjusted hours of remedy.
+                    awardxhour += hour * rate  # the adjusted award for hours
+                if amt:
+                    awardxamt += amt  # the award for dollars
+            if not DateTimeChecker().check_dtstring(sett[10]):  # if the date signed can not be made to dt
+                sign = ""
+            else:
+                sign = dt_converter(sett[10]).strftime("%m/%d/%Y")  # convert date time to mm/dd/yyyy format
+            if sett[9] is None or sett[9] == "unknown":  # format level to '---' or the level as a string.
+                lvl = "---"
+            else:
+                lvl = sett[9]
+            # impliment batch gats here later ...
+            s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
+            for gi in range(len(s_gats)):  # for gats_no in s_gats:
+                if gi == 0:  # for the first line
+                    total_hour += awardxhour  # tally hours totals for totals line at end of report
+                    total_amt += awardxamt  # tally amount of awards for totals line at end of report
+                    report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
+                                 .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl,
+                                         "{0:.2f}".format(float(awardxhour)),
+                                         "{0:.2f}".format(float(awardxamt))))
+                if gi != 0:
+                    report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
+            if i % 3 == 0:
+                report.write(
+                    "      ----------------------------------------------------------------------------------\n")
+            i += 1
+        report.write("      ----------------------------------------------------------------------------------\n")
+        report.write("{:<20}{:>58}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
+        report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
+        report.close()
+        if sys.platform == "win32":
+            os.startfile(dir_path('infc_grv') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('infc_grv') + filename])
+
+    def bycarriers(self):
+        """ generates a text report for settlements by carriers. """
+        # ------------------------------------------------------------------------- get carriers and grievance numbers
+        unique_carrier = self.parent.uniquecarrier()  # get a list of distinct carrier names
+        unique_grv = []  # get a list of all grv numbers in search range
+        for grv in self.parent.parent.search_result:
+            if grv[2] not in unique_grv:  # make a list of distinct grievance numbers
+                unique_grv.append(grv[2])  # put these in "unique_grv"
+        # ------------------------------------------------------------------------------------------------- name file
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ----------------------------------------------------------------------------------------------- progress bar
+        pb = ProgressBarDe(title="Informal C Reports", label="Standby. The report is generating.")
+        pb.max_count(len(unique_carrier))  # the count of the pb is the number of carriers in unique carrier
+        pb.start_up()  # start the progress bar
+        # ---------------------------------------------------------------------------------------------- write to text
+        report.write("Settlement Report By Carriers\n\n")
+        pb_count = 1
+        for name in unique_carrier:
+            pb.move_count(pb_count)
+            pb.change_text("Writing report for {}".format(name))
+            report.write("{:<30}\n\n".format(name))
+            # --------------------------------------------------------------------------------------- call award stack
+            award_stack = self.CarrierAwardsReports().run(name, unique_grv)
+            for award in award_stack:
+                report.write(award)
+            report.write("\n\n\n")
+            pb_count += 1
+        report.close()
+        pb.stop()
+        # ---------------------------------------------------------------------------------------------- save and open
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.parent.win.topframe)
+
+    def bycarrier_apply(self, names, cursor):
+        """ generates a text report for a specified carrier. """
+        if not cursor:
+            return
+        # ------------------------------------------------------------------------------------------------- name file
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        unique_grv = []  # get a list of all grv numbers in search range
+        for grv in self.parent.parent.search_result:
+            if grv[2] not in unique_grv:
+                unique_grv.append(grv[2])  # put these in "unique_grv"
+        name = names[cursor[0]]
+        report.write("Settlement Report By Carrier\n\n")
+        report.write("{:<30}\n\n".format(name))
+        # ----------------------------------------------------------------------------------------------- award stack
+        award_stack = self.CarrierAwardsReports().run(name, unique_grv)
+        for row in award_stack:
+            report.write(row)
+        report.close()
+        # --------------------------------------------------------------------------------------------- save and open
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator", "The report was not generated.", parent=self.parent.win.topframe)
+
+    def no_settlement(self):
+        """ this a summary of all grievances which do not have settlement records. """
+        no_settlement = []
+        for s in self.parent.parent.search_result:  # loop through all results
+            if not s[8]:  # if there is no grievance number in the settlement portion of the array
+                no_settlement.append(s)  # add to a list of grvs with no settlement
+        if len(no_settlement) == 0:
+            msg = "There are no records matching your search results. "
+            messagebox.showwarning("Informal C Reports", msg, parent=self.parent.win.topframe)
+            return
+        # ---------------------------------------------------------------------------------------------- file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ------------------------------------------------------------------------------------------------ headers
+        # report will display the elements (with indexes):
+        # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
+        report.write("   No Settlement Report\n\n")
+        report.write("   Showing all grievances which do not have settlements. \n\n")
+        report.write('{:>18}{:>14}  {:<20}{:<22}\n'
+                     .format("    Grievance #", "Meeting Date", "Grievant", "Issue"))
+        report.write("       --------------------------------------------------------------------------------"
+                     "----\n")
+        i = 0
+        for r in no_settlement:
+            formatted_date = Convert(r[5]).dtstr_to_backslashstr()
+            report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}\n'
+                         .format(str(i+1), r[2], formatted_date, r[0], r[6]))
+            if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
+                report.write("       ----------------------------------------------------------------------"
+                             "--------------\n")
+            i += 1
+        report.write("       --------------------------------------------------------------------------------"
+                     "----\n")  # insert line at the end to close out report
+        report.close()
+        # ----------------------------------------------------------------------------------------- save and open
+        if sys.platform == "win32":
+            os.startfile(dir_path('infc_grv') + filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('infc_grv') + filename])
 
     def delinquency(self):
         """ this a summary of all grievances which do not have settlement records. """
@@ -1384,6 +1663,79 @@ class InformalCReports:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
 
+    def missing_awards(self):
+        """ finds settlements with missing awards and writes a report showing grievances where awards have not
+        been entered. """
+        # --------------------------------------------------------------------------- find settlements missing awards
+        needawards = []
+        for r in self.parent.parent.search_result:  # loop through all results
+            if r[11] in ("monetary remedy", "backpay"):  # if the grievance requires proof
+                sql = "SELECT * FROM informalc_awards WHERE grv_no = '%s'" % r[2]  # search by grievance number
+                result = inquire(sql)
+                if not result:  # if there is no result from the sql search
+                    needawards.append(r[2])  # all settlement to the list of those missing awards.
+        # ---------------------------------------------------------------------------------------------- file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_missing_awards" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ---------------------------------------------------------------------------------------------- write report
+        report.write("Missing Awards\n\n")
+        report.write("    This report list all grievances settled for \'monetary remedy\' or \'backpay\' \n"
+                     "    and checks if awards have been entered. \n\n")
+        if not needawards:
+            report.write("    No \'monetary remedy\' or \'backpay\' settlements were found missing awards.")
+        else:
+            report.write("    Missing Awards:\n")
+            i = 1
+            for na in needawards:
+                report.write("    {:>5}. {}\n".format(str(i),na))
+                i += 1
+        # --------------------------------------------------------------------------------------- close, save and open
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.parent.win.topframe)
+
+    def rptcarrierandid(self):
+        """ generates a text report with only carrier name and employee id number. """
+        carriers = self.parent.uniquecarrier()  # get a list of carrier names
+        if len(carriers) == 0:
+            messagebox.showerror("Report Generator",
+                                 "There are no carriers in the carrier list. The report was not generated.",
+                                 parent=self.parent.win.topframe)
+            return
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        report.write("Carrier List\n\n")
+        i = 1
+        for carrier in carriers:
+            emp_id = ""
+            sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
+            result = inquire(sql)
+            if result:
+                emp_id = result[0][0]
+            report.write("{:>4} {:<25}{:>8}\n".format(str(i), carrier, emp_id))
+            i += 1
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.parent.win.topframe)
+
     def grv_summary(self):
         """ this a summary of all grievances as they appear on the search results screen.
         this is called by the button on the bottom of showtime. """
@@ -1432,81 +1784,7 @@ class InformalCReports:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('infc_grv') + filename])
 
-    def monetary_sum(self):
-        """ generates text report for settlement list summary showing all grievance settlements. """
-        if len(self.parent.parent.search_result) > 0:
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("   Monetary Remedy Summary\n\n")
-            report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
-            report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
-                         .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
-            report.write(
-                "      ----------------------------------------------------------------------------------\n")
-            total_hour = 0
-            total_amt = 0
-            i = 1
-            monetary_remedies = []  # store all grievances where there is a monetary remedy settlement
-            for sett in self.parent.parent.search_result:
-                if sett[11] in ("monetary remedy", "back pay"):  # find decisions of monetary / back pay
-                    monetary_remedies.append(sett)
-            for sett in monetary_remedies:
-                sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[2]
-                query = inquire(sql)
-                awardxhour = 0
-                awardxamt = 0
-                for rec in query:  # calculate total award amounts
-                    hour = 0.0
-                    rate = 0.0
-                    amt = 0
-                    if rec[2]:  # hours of pay for remedy
-                        hour = float(rec[2])
-                    if rec[3]:  # the rate at which the hours are paid. 50%, 100%, 150%, etc
-                        rate = float(rec[3])
-                    if rec[4]:  # a flat amount in dollars of the remedy
-                        amt = float(rec[4])
-                    if hour and rate:  # combine rate and hours to get an adjusted hours of remedy.
-                        awardxhour += hour * rate  # the adjusted award for hours
-                    if amt:
-                        awardxamt += amt  # the award for dollars
-                if not DateTimeChecker().check_dtstring(sett[10]):  # if the date signed can not be made to dt
-                    sign = ""
-                else:
-                    sign = dt_converter(sett[10]).strftime("%m/%d/%Y")  # convert date time to mm/dd/yyyy format
-                if sett[9] is None or sett[9] == "unknown":  # format level to '---' or the level as a string.
-                    lvl = "---"
-                else:
-                    lvl = sett[9]
-                # impliment batch gats here later ...
-                s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
-                for gi in range(len(s_gats)):  # for gats_no in s_gats:
-                    if gi == 0:  # for the first line
-                        total_hour += awardxhour  # tally hours totals for totals line at end of report
-                        total_amt += awardxamt  # tally amount of awards for totals line at end of report
-                        report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
-                                     .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl,
-                                             "{0:.2f}".format(float(awardxhour)),
-                                             "{0:.2f}".format(float(awardxamt))))
-                    if gi != 0:
-                        report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
-                if i % 3 == 0:
-                    report.write("      ----------------------------------------------------------------------"
-                                 "------------\n")
-                i += 1
-            report.write("      ------------------------------------------------------------------------------"
-                         "----\n")
-            report.write("{:<20}{:>58}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
-            report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
-            report.close()
-            if sys.platform == "win32":
-                os.startfile(dir_path('infc_grv') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('infc_grv') + filename])
-
-    def rptbygrv(self, grv_info):
+    def everything_report(self, grv_info):
         """ generates a text report for a specific grievance number.
         this is called by the buttons in showtime on the rows with 'report' and 'enter awards'. """
         grv_info = list(grv_info)  # correct for legacy problem of NULL Settlement Levels
@@ -1514,262 +1792,23 @@ class InformalCReports:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
         report = open(dir_path('infc_grv') + filename, "w")
-        # ----------------------------------------------------------------------------------------------- define vars
-        grievant = Convert(grv_info[0]).empty_returns_str("undefined")  # if blank - assign "undefined"
-        start = Convert(grv_info[3]).dtstr_to_backslashstr()
-        start = Convert(start).empty_returns_str("undefined")  # if blank - assign "undefined"
-        end = Convert(grv_info[4]).dtstr_to_backslashstr()
-        end = Convert(end).empty_returns_str("undefined")  # if blank - assign "undefined"
-        sign = Convert(grv_info[10]).dtstr_to_backslashstr()
-        sign = Convert(sign).empty_returns_str("undefined")  # if blank - assign "undefined"
-        meet = Convert(grv_info[5]).dtstr_to_backslashstr()
-        meet = Convert(meet).empty_returns_str("undefined")  # if blank - assign "undefined"
-        settlement = Convert(grv_info[11]).empty_returns_str("pending")  # if blank - assign "pending"
-        level = Convert(grv_info[9]).empty_returns_str("undefined")  # if blank - assign "undefined"
-        docs = Convert(grv_info[13]).empty_returns_str("undefined")  # if blank - assign "undefined"
-        gats = Convert(grv_info[14]).empty_returns_str("undefined")  # if blank - assign "undefined"
-        if grv_info[11] not in ("monetary remedy", "back pay", "adjustment"):
-            docs = Convert(grv_info[13]).empty_returns_str("not applicable")  # if blank - assign "undefined"
-            gats = Convert(grv_info[14]).empty_returns_str("not applicable")  # if blank - assign "undefined"
-        # ---------------------------------------------------------------------------------------------- write report
-        report.write("Grievance Summary\n\n")
-        report.write("    Grievance Number:   " + grv_info[2] + "\n")
-        report.write("    Grievant:           " + grievant + "\n")
-        report.write("    Issue:              " + grv_info[6] + "\n")
-        report.write("    Dates of Violation: " + start + " - " + end + "\n")
-        report.write("    Meeting Date:       " + meet + "\n")
-        report.write("    Article:            " + grv_info[8] + "\n")
-        report.write("    Decision:           " + settlement + "\n")
-        report.write("    Signing Date:       " + sign + "\n")
-        report.write("    Settlement Level    " + level + "\n")
-        report.write("    Documentation:      " + docs + "\n")
-        report.write("    GATS Number:        " + gats + "\n")
-        report.write("    Station:            " + grv_info[1] + "\n\n")
+        # --------------------------------------------------------------------------------------- get everything stack
+        everything_stack = self.EverythingReport().run(grv_info)
+        for row in everything_stack:
+            report.write(row)
         # ------------------------------------------------------------------------------- get index/associations report
         index_reports = self.IndexReports().run(grv_info[2])
         for ir in index_reports:
-            report.write("    {}".format(ir))  # write index/associations line by line
+            report.write(ir)  # write index/associations line by line
+        if index_reports:
+            report.write("\n")
         # ------------------------------------------------------------------------------------------ get awards stack
-        if settlement in ("monetary remedy", "back pay"):  # only run if settlement is monetary or back pay
+        if grv_info[11] in ("monetary remedy", "back pay"):  # only run if settlement is monetary or back pay
             award_stack = self.GrvAwardReports().run(grv_info[2])
             for row in award_stack:
                 report.write(row)
         report.close()
         # ------------------------------------------------------------------------------------------- save and open
-        try:
-            if sys.platform == "win32":
-                os.startfile(dir_path('infc_grv') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('infc_grv') + filename])
-        except PermissionError:
-            messagebox.showerror("Report Generator",
-                                 "The report was not generated.", parent=self.parent.win.topframe)
-
-    def bycarriers(self):
-        """ generates a text report for settlements by carriers. """
-        # ------------------------------------------------------------------------- get carriers and grievance numbers
-        unique_carrier = self.parent.uniquecarrier()  # get a list of distinct carrier names
-        unique_grv = []  # get a list of all grv numbers in search range
-        for grv in self.parent.parent.search_result:
-            if grv[2] not in unique_grv:  # make a list of distinct grievance numbers
-                unique_grv.append(grv[2])  # put these in "unique_grv"
-        # ------------------------------------------------------------------------------------------------- name file
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = "infc_grv_list" + "_" + stamp + ".txt"
-        report = open(dir_path('infc_grv') + filename, "w")
-        # ----------------------------------------------------------------------------------------------- progress bar
-        pb = ProgressBarDe(title="Informal C Reports", label="Standby. The report is generating.")
-        pb.max_count(len(unique_carrier))  # the count of the pb is the number of carriers in unique carrier
-        pb.start_up()  # start the progress bar
-        # ---------------------------------------------------------------------------------------------- write to text
-        report.write("Settlement Report By Carriers\n\n")
-        pb_count = 1
-        for name in unique_carrier:
-            pb.move_count(pb_count)
-            pb.change_text("Writing report for {}".format(name))
-            report.write("{:<30}\n\n".format(name))
-            # --------------------------------------------------------------------------------------- call award stack
-            award_stack = self.CarrierAwardsReports().run(name, unique_grv)
-            for award in award_stack:
-                report.write(award)
-            report.write("\n\n\n")
-            pb_count += 1
-        report.close()
-        pb.stop()
-        # ---------------------------------------------------------------------------------------------- save and open
-        try:
-            if sys.platform == "win32":
-                os.startfile(dir_path('infc_grv') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('infc_grv') + filename])
-        except PermissionError:
-            messagebox.showerror("Report Generator",
-                                 "The report was not generated.", parent=self.parent.win.topframe)
-
-    def bycarrier_apply(self, names, cursor):
-        """ generates a text report for a specified carrier. """
-        if not cursor:
-            return
-        # ------------------------------------------------------------------------------------------------- name file
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = "infc_grv_list" + "_" + stamp + ".txt"
-        report = open(dir_path('infc_grv') + filename, "w")
-        unique_grv = []  # get a list of all grv numbers in search range
-        for grv in self.parent.parent.search_result:
-            if grv[2] not in unique_grv:
-                unique_grv.append(grv[2])  # put these in "unique_grv"
-        name = names[cursor[0]]
-        report.write("Settlement Report By Carrier\n\n")
-        report.write("{:<30}\n\n".format(name))
-        # ----------------------------------------------------------------------------------------------- award stack
-        award_stack = self.CarrierAwardsReports().run(name, unique_grv)
-        for row in award_stack:
-            report.write(row)
-        report.close()
-        # --------------------------------------------------------------------------------------------- save and open
-        try:
-            if sys.platform == "win32":
-                os.startfile(dir_path('infc_grv') + filename)
-            if sys.platform == "linux":
-                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-            if sys.platform == "darwin":
-                subprocess.call(["open", dir_path('infc_grv') + filename])
-        except PermissionError:
-            messagebox.showerror("Report Generator", "The report was not generated.", parent=self.parent.win.topframe)
-
-    def rptgrvsum(self):
-        """ generates a text report for grievance summary.
-        this is called the the button 'grievance everything' in the informalc reports screen. """
-        if len(self.parent.parent.search_result) > 0:
-            result = list(self.parent.parent.search_result)
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = "infc_grv_list" + "_" + stamp + ".txt"
-            report = open(dir_path('infc_grv') + filename, "w")
-            report.write("Grievance Everything Report\n\n")
-            report.write("    Station:            " + self.parent.parent.station + "\n\n")
-            i = 1
-            for sett in result:
-                num_space = 3 - (len(str(i)))  # number of spaces for number
-                space = " "
-                space += num_space * " "
-                if i > 99:  # create a staggered line number if the line is 100+
-                    report.write(str(i) + "\n" + "    Grievance Number:   " + sett[2] + "\n")
-                else:
-                    report.write(str(i) + space + "Grievance Number:   " + sett[2] + "\n")
-                article = ""
-                if sett[7]:
-                    article = "art.{}/ ".format(sett[7])
-                report.write("    Article/Issue:      " + article + sett[6] + "\n")  # display issue
-                report.write("    Grievant:           " + sett[0] + "\n")  # display issue
-                start = Convert(sett[3]).dtstr_to_backslashstr()  # format incident start date
-                end = Convert(sett[4]).dtstr_to_backslashstr()  # format incident end date
-                meet = Convert(sett[5]).dtstr_to_backslashstr()  # format meeting date
-                sign = Convert(sett[10]).dtstr_to_backslashstr()  # format date signed
-                proof = Convert(sett[12]).dtstr_to_backslashstr()  # format date signed
-                report.write("    Dates of Violation: " + start + " - " + end + "\n")  # display incident dates
-                report.write("    Meeting Date:       " + meet + "\n")
-                report.write("    Decision:           " + sett[11] + "\n")  # display decsion
-                report.write("    Signing Date:       " + sign + "\n")
-                report.write("    Settlement Level    " + sett[9] + "\n")
-                report.write("    Proof Due           " + proof + "\n")
-                report.write("    GATS Number:        " + sett[8] + "\n")
-                report.write("    Documentation:      " + sett[13] + "\n\n")
-                # ----------------------------------------------------------------------- get index/associations report
-                index_reports = self.IndexReports().run(sett[2])
-                for ir in index_reports:
-                    report.write("    {}".format(ir))  # write index/associations line by line
-                if index_reports:
-                    report.write("\n")
-                # ----------------------------------------------------------------------------------------- get awards
-                if sett[11] in ("monetary remedy", "back pay"):  # skip if decision is not either.
-                    award_stack = self.GrvAwardReports().run(sett[2])
-                    for row in award_stack:
-                        report.write(row)
-                    report.write("\n")
-                report.write("\n\n")
-                i += 1
-            report.close()
-            # ------------------------------------------------------------------------------------------ save and open
-            try:
-                if sys.platform == "win32":
-                    os.startfile(dir_path('infc_grv') + filename)
-                if sys.platform == "linux":
-                    subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-                if sys.platform == "darwin":
-                    subprocess.call(["open", dir_path('infc_grv') + filename])
-            except PermissionError:
-                messagebox.showerror("Report Generator",
-                                     "The report was not generated.", parent=self.parent.win.topframe)
-
-    def no_settlement(self):
-        """ this a summary of all grievances which do not have settlement records. """
-        no_settlement = []
-        for s in self.parent.parent.search_result:  # loop through all results
-            if not s[8]:  # if there is no grievance number in the settlement portion of the array
-                no_settlement.append(s)  # add to a list of grvs with no settlement
-        if len(no_settlement) == 0:
-            msg = "There are no records matching your search results. "
-            messagebox.showwarning("Informal C Reports", msg, parent=self.parent.win.topframe)
-            return
-        # ---------------------------------------------------------------------------------------------- file name
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = "infc_grv_list" + "_" + stamp + ".txt"
-        report = open(dir_path('infc_grv') + filename, "w")
-        # ------------------------------------------------------------------------------------------------ headers
-        # report will display the elements (with indexes):
-        # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
-        report.write("   No Settlement Report\n\n")
-        report.write("   Showing all grievances which do not have settlements. \n\n")
-        report.write('{:>18}{:>14}  {:<20}{:<22}\n'
-                     .format("    Grievance #", "Meeting Date", "Grievant", "Issue"))
-        report.write("       --------------------------------------------------------------------------------"
-                     "----\n")
-        i = 0
-        for r in no_settlement:
-            formatted_date = Convert(r[5]).dtstr_to_backslashstr()
-            report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}\n'
-                         .format(str(i+1), r[2], formatted_date, r[0], r[6]))
-            if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
-                report.write("       ----------------------------------------------------------------------"
-                             "--------------\n")
-            i += 1
-        report.write("       --------------------------------------------------------------------------------"
-                     "----\n")  # insert line at the end to close out report
-        report.close()
-        # ----------------------------------------------------------------------------------------- save and open
-        if sys.platform == "win32":
-            os.startfile(dir_path('infc_grv') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('infc_grv') + filename])
-
-    def rptcarrierandid(self):
-        """ generates a text report with only carrier name and employee id number. """
-        carriers = self.parent.uniquecarrier()  # get a list of carrier names
-        if len(carriers) == 0:
-            messagebox.showerror("Report Generator",
-                                 "There are no carriers in the carrier list. The report was not generated.",
-                                 parent=self.parent.win.topframe)
-            return
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = "infc_grv_list" + "_" + stamp + ".txt"
-        report = open(dir_path('infc_grv') + filename, "w")
-        report.write("Carrier List\n\n")
-        i = 1
-        for carrier in carriers:
-            emp_id = ""
-            sql = "SELECT emp_id FROM name_index WHERE kb_name = '%s'" % carrier
-            result = inquire(sql)
-            if result:
-                emp_id = result[0][0]
-            report.write("{:>4} {:<25}{:>8}\n".format(str(i), carrier, emp_id))
-            i += 1
-        report.close()
         try:
             if sys.platform == "win32":
                 os.startfile(dir_path('infc_grv') + filename)

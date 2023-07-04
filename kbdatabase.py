@@ -65,22 +65,16 @@ class DataBase:
             'station varchar, makeups varchar)',
             'CREATE table IF NOT EXISTS refusals (refusal_date varchar, carrier_name varchar, refusal_type varchar, '
             'refusal_time varchar)',
-
-            'CREATE table IF NOT EXISTS informalc_grv (grv_no varchar, indate_start varchar, indate_end varchar,'
-            'date_signed varchar, station varchar, gats_number varchar, docs varchar, description varchar, '
-            'level varchar)',
+            'CREATE table IF NOT EXISTS dov(eff_date date, station varchar, day varchar, dov_time varchar, '
+            'temp varchar)',
             'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, '
-            'rate varchar, amount varchar)',
+            'rate varchar, amount varchar, gatsverified varchar, payoutverified varchar)',
             'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, payday varchar, '
             'carrier_name varchar, hours varchar, rate varchar, amount varchar)',
-
             'CREATE table IF NOT EXISTS informalc_grievances(grievant varchar, station varchar, grv_no varchar, '
             'startdate varchar, enddate varchar, meetingdate varchar, issue varchar, article varchar)',
-
             'CREATE table IF NOT EXISTS informalc_settlements(grv_no varchar, level varchar, date_signed varchar, '
             'decision varchar, proofdue varchar, docs varchar, gats_number varchar)',
-            'CREATE table IF NOT EXISTS informalc_remedies (grv_no varchar, carrier_name varchar, hours varchar, '
-            'rate varchar, dollars varchar, gatsverified varchar, payoutverified varchar)',
             'CREATE table IF NOT EXISTS informalc_batchindex (main varchar,sub varchar)',
             'CREATE table IF NOT EXISTS informalc_gatsindex (main varchar,sub varchar)',
             'CREATE table IF NOT EXISTS informalc_noncindex (followup varchar, overdue varchar)',
@@ -89,11 +83,6 @@ class DataBase:
             'issue varchar primary key, standard boolean)',
             'CREATE table IF NOT EXISTS informalc_decisioncategories (ssindex, type varchar, '
             'decision varchar primary key, standard boolean)',
-            # 'CREATE table IF NOT EXISTS informalc_payout(year varchar, pp varchar, payday varchar, '
-            # 'carrier_name varchar, hours varchar, rate varchar, amount varchar)',
-            
-            'CREATE table IF NOT EXISTS dov(eff_date date, station varchar, day varchar, dov_time varchar, '
-            'temp varchar)'
         )
 
         tables_text = (
@@ -275,12 +264,25 @@ class DataBase:
         self.pbar_counter += 1
         self.pbar.move_count(self.pbar_counter)
         self.pbar.change_text("Setting up: Tables - Informal C > update ")
-        # modify table for legacy version which did not have level column of informalc_grv table.
-        sql = 'PRAGMA table_info(informalc_grv)'  # get table info. returns an array of columns.
+        # modify table for v5.08 to add gatsverified for informalc_awards.
+        sql = 'PRAGMA table_info(informalc_awards)'  # get table info. returns an array of columns.
         result = inquire(sql)
-        if len(result) <= 8:  # if there are not enough columns add the leave type and leave time columns
-            sql = 'ALTER table informalc_grv ADD COLUMN level varchar'
+        if len(result) <= 5:  # if there are not enough columns add gatsverified column
+            sql = 'ALTER table informalc_awards ADD COLUMN gatsverified varchar'
             commit(sql)
+            sql = "UPDATE informalc_awards SET gatsverified = ''"
+            commit(sql)  # replace all the null values in gatsverified with empty strings
+        # modify table for v5.08 to add payoutverified for informalc_awards.
+        sql = 'PRAGMA table_info(informalc_awards)'  # get table info. returns an array of columns.
+        result = inquire(sql)
+        if len(result) <= 6:  # if there are not enough columns add payoutverified column
+            sql = 'ALTER table informalc_awards ADD COLUMN payoutverified varchar'
+            commit(sql)
+            sql = "UPDATE informalc_awards SET payoutverified = ''"
+            commit(sql)  # replace all the null values in payoutverified with empty strings
+
+        sql = "UPDATE informalc_awards SET gatsverified = '', payoutverified = ''"
+        commit(sql)
 
     def informalc_issues(self):
         """  set up the standard issues for informal c issue categories

@@ -1307,7 +1307,7 @@ class InformalC:
                 .grid(row=row, column=column)
             column += 1
             Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE, bg=color,
-                   command=lambda x=self.search_result[i]: InformalCReports(self).rptbygrv(x))\
+                   command=lambda x=self.search_result[i]: InformalCReports(self).everything_report(x))\
                 .grid(row=row, column=column)
             column += 1
             Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE, bg=color,
@@ -1589,7 +1589,7 @@ class InformalC:
                 r += 1
                 i += 1
         Button(self.win.buttons, text="Go Back", width=15,
-               command=lambda: (self.destroy_companion(), self.showtime(self.win.topframe))) \
+               command=lambda: (self.destroy_companion(), self.showtime(self.win.topframe, turnpage=True))) \
             .grid(row=0, column=0)
         Button(self.win.buttons, text="Apply", width=15,
                command=lambda: self.addaward_apply(self.win.topframe, grv_no)).grid(row=0, column=1)
@@ -1760,7 +1760,7 @@ class InformalC:
             Label(self.win.body, text="").grid(row=1)
             row = 3
             Button(self.win.body, text="Grievance Everything", width=30,
-                   command=lambda: InformalCReports(self).rptgrvsum()).grid(row=row, column=0, pady=5)
+                   command=lambda: InformalCReports(self).everything_all_report()).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Monetary Awards", width=30,
                    command=lambda: InformalCReports(self).monetary_sum()).grid(row=row, column=0, pady=5)
@@ -1775,7 +1775,11 @@ class InformalC:
                    command=lambda: InformalCReports(self).no_settlement()).grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Compliance Delinquency", width=30,
-                   command=lambda: InformalCReports(self).delinquency())\
+                   command=lambda: InformalCReports(self).delinquency()) \
+                .grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Missing Awards", width=30,
+                   command=lambda: InformalCReports(self).missing_awards())\
                 .grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="Employee ID (spreadsheet)", width=30,
@@ -1785,7 +1789,7 @@ class InformalC:
                    command=lambda: InformalCReports(self).rptcarrierandid())\
                 .grid(row=row, column=0, pady=5)
             row += 1
-            Label(self.win.body, text="", width=70).grid(row=row)
+            Label(self.win.body, text="", width=70).grid(row=row)  # widen the column so buttons appear center
             # define the buttons at the bottom of the page:
             Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
                    command=lambda: self.parent.showtime(self.win.topframe)).grid(row=0, column=0)
@@ -2166,13 +2170,14 @@ class InformalC:
                 .grid(row=self.row, column=1, sticky="w")
             self.row += 1
             # delete button
-            Label(self.win.body, text="Delete Grievance: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Button(self.win.body, text="delete", width=macadj(17, 15), bg="red", fg="white", anchor="center",
-                   command=lambda: (self.destroy_companion(),
-                                    self.delete_grievance(self.win.topframe, self.edit_grv_no))) \
-                .grid(row=self.row, column=1, sticky="e", pady=5)
+            if not self.newentry:  # disable if this is a new entry
+                Label(self.win.body, text="Delete Grievance: ", background=macadj("gray95", "white"),
+                      fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+                    .grid(row=self.row, column=0, sticky="w")
+                Button(self.win.body, text="delete", width=macadj(17, 15), bg="red", fg="white", anchor="center",
+                       command=lambda: (self.destroy_companion(),
+                                        self.delete_grievance(self.win.topframe, self.edit_grv_no))) \
+                    .grid(row=self.row, column=1, sticky="e", pady=5)
             self.row += 1
 
         def build_nonc_assocs(self):

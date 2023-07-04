@@ -5,7 +5,7 @@ the version number, fixes will be looked for and applied.  Once fixes are applie
 table will be updated to match the current version number, so that the update only occurs once.
 """
 
-from kbtoolbox import isfloat, inquire, commit
+from kbtoolbox import isfloat, inquire, commit, ProgressBarDe
 
 
 class Fixes:
@@ -24,6 +24,7 @@ class Fixes:
         if not self.compare():
             return
         self.update_lastfix()
+        # print("update lastfix() disabled")
 
     def get(self):
         """ get the number of the most resently done fix from the tolerances table."""
@@ -38,8 +39,8 @@ class Fixes:
         if self.version >= 5.0:
             V5000Fix().run()
             V5000FixA().run()
-        # if self.version >= 5.08:
-        #     V5008Fix().run()
+        if self.version >= 5.08:
+            V5008Fix().run()
         return True
 
     def update_lastfix(self):
@@ -170,6 +171,75 @@ class V5000FixA:
               % (types, times)
         commit(sql)
 
+
 class V5008Fix:
     """ this is a migration of the a table used for informal c into two new tables.
     informalc_grv will be copied, and the contents written into informalc_grievances and informalc_settlements. """
+
+    def __init__(self):
+        self.transfer_array = []
+        self.distinct_grievances = []
+        self.distinct_settlements = []
+        self.pb = None
+
+    def run(self):
+        """ a master method for controlling other methods """
+        if not self.get_transfer_array():
+            return
+        self.pb = ProgressBarDe(title="Informal C Data Transfer")
+        self.pb.max_count(len(self.transfer_array))
+        self.get_distinct()
+        self.transfer_records()
+        self.pb.stop()
+
+    def get_transfer_array(self):
+        """ get an array of information to be moved to new tables. """
+        sql = "SELECT * FROM informalc_grv"
+        self.transfer_array = inquire(sql)
+        if not self.transfer_array:
+            print("There is no data in the informalc table to transfer")
+            return False
+        return True
+
+    def get_distinct(self):
+        """ because we don't want to write duplicate records get a list of distinct records from informalc
+        grievances and informalc settlements so we can check if a record exist before we create it. """
+        sql = "SELECT DISTINCT grv_no FROM informalc_grievances"
+        results = inquire(sql)
+        for r in results:
+            self.distinct_grievances.append(*r)
+        sql = "SELECT DISTINCT grv_no FROM informalc_settlements"
+        results = inquire(sql)
+        for r in results:
+            self.distinct_settlements.append(*r)
+
+    def transfer_records(self):
+        """ insert data into informalc_grievances and informalc_settlements """
+        i = 1
+        for rec in self.transfer_array:
+            self.pb.change_text("processing: {}".format(rec[0]))
+            self.pb.move_count(i)
+            if rec[0] not in self.distinct_grievances:  # if the grievance number is not in the list of distinct
+                sql = "INSERT INTO informalc_grievances " \
+                      "(grievant, station, grv_no, startdate, enddate, meetingdate, issue, article) " \
+                      "VALUES ('', '%s', '%s', '%s', '%s', '', '%s', '')" % \
+                      (rec[4], rec[0], rec[1], rec[2], rec[7])
+                commit(sql)
+                # print(sql)
+            else:
+                pass
+                # print("integrated grievnance: ", rec[0])
+            if rec[0] not in self.distinct_settlements:
+                sql = "INSERT INTO informalc_settlements " \
+                      "(grv_no, level, date_signed, decision, proofdue, docs, gats_number) " \
+                      "VALUES('%s', '%s', '%s', '', '', '%s', '%s')" % \
+                      (rec[0], rec[8], rec[3], rec[6], rec[5])
+                commit(sql)
+                # print(sql)
+            else:
+                # print("integrated settlements: ", rec[0])
+                pass
+            i += 1
+
+
+        
