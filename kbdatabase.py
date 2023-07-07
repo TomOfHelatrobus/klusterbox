@@ -75,8 +75,8 @@ class DataBase:
             'startdate varchar, enddate varchar, meetingdate varchar, issue varchar, article varchar)',
             'CREATE table IF NOT EXISTS informalc_settlements(grv_no varchar, level varchar, date_signed varchar, '
             'decision varchar, proofdue varchar, docs varchar, gats_number varchar)',
-            'CREATE table IF NOT EXISTS informalc_batchindex (main varchar,sub varchar)',
-            'CREATE table IF NOT EXISTS informalc_gatsindex (main varchar,sub varchar)',
+            'CREATE table IF NOT EXISTS informalc_batchindex (main varchar, sub varchar)',
+            'CREATE table IF NOT EXISTS informalc_gats (grv_no varchar, gats_no varchar)',
             'CREATE table IF NOT EXISTS informalc_noncindex (followup varchar, overdue varchar)',
             'CREATE table IF NOT EXISTS informalc_remandindex (refiling varchar, remanded varchar)',
             'CREATE table IF NOT EXISTS informalc_issuescategories (ssindex, article varchar, '
@@ -104,7 +104,7 @@ class DataBase:
             "Setting up: Tables - Informal C Settlements",
             "Setting up: Tables - Informal C Remedies",
             "Setting up: Tables - Informal C Batch Index",
-            "Setting up: Tables - Informal C Batch Gats Index",
+            "Setting up: Tables - Informal C Gats Reports",
             "Setting up: Tables - Informal C Noncompliance Index",
             "Setting up: Tables - Informal C Remand Index",
             "Setting up: Tables - Informal C Issue Categories",

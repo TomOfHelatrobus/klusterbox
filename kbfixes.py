@@ -188,6 +188,7 @@ class V5008Fix:
             return
         self.pb = ProgressBarDe(title="Informal C Data Transfer")
         self.pb.max_count(len(self.transfer_array))
+        self.pb.start_up()
         self.get_distinct()
         self.transfer_records()
         self.pb.stop()
@@ -225,21 +226,16 @@ class V5008Fix:
                       "VALUES ('', '%s', '%s', '%s', '%s', '', '%s', '')" % \
                       (rec[4], rec[0], rec[1], rec[2], rec[7])
                 commit(sql)
-                # print(sql)
-            else:
-                pass
-                # print("integrated grievnance: ", rec[0])
             if rec[0] not in self.distinct_settlements:
                 sql = "INSERT INTO informalc_settlements " \
                       "(grv_no, level, date_signed, decision, proofdue, docs, gats_number) " \
-                      "VALUES('%s', '%s', '%s', '', '', '%s', '%s')" % \
+                      "VALUES('%s', '%s', '%s', 'monetary remedy', '', '%s', '%s')" % \
                       (rec[0], rec[8], rec[3], rec[6], rec[5])
                 commit(sql)
-                # print(sql)
-            else:
-                # print("integrated settlements: ", rec[0])
-                pass
+                if rec[5]:  # if there is a gats number
+                    # insert the grievance number and gats number into the informalc gats table
+                    sql = "INSERT INTO informalc_gats (grv_no, gats_no) VALUES('%s', '%s')" % (rec[0], rec[5])
+                    commit(sql)
             i += 1
-
-
-        
+        sql = "DROP TABLE informalc_grv"
+        commit(sql)

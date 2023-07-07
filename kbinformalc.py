@@ -26,9 +26,6 @@ from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment
 global root  # used to hold the Tk() root for the new window used by all Informal C windows.
 global pb_flag  #
 
-""" this module has its own MakeWindow() class since it uses a different root. 
-So it is not imported from kbtoolbar. """
-
 
 def informalc_gen_clist(start, end, station):
     """ generates carrier list for informal c. """
@@ -80,7 +77,8 @@ class InfcSpeedSheetGen:
         self.titles = []
         self.filename = ""
         # self.ws_titles = ["grievances", "settlements", "non compliance", "batch settlements", "remanded"]
-        self.ws_titles = ["grievances", "settlements", "non compliance", "remanded", "batch settlements", "batch gats"]
+        self.ws_titles = ["grievances", "settlements", "non compliance", "remanded", "batch settlements",
+                          "gats reports"]
         # get sql results from the tables.
         self.grievance_onrecs = []
         self.settlement_onrecs = []
@@ -100,7 +98,7 @@ class InfcSpeedSheetGen:
             ["followup", "overdue"],  # non compliance index
             ["refiling", "remanded"],  # remanded index
             ["main", "sub"],  # batch settlement index
-            ["main", "sub"]  # batch gats index
+            ["grievance number", "gats number"]  # gats reports index
         ]
 
     def run(self):
@@ -190,7 +188,7 @@ class InfcSpeedSheetGen:
         nonc_onrecs = []
         remand_onrecs = []
         batchset_onrecs = []  # store sql results for batch settlements
-        batchgats_onrecs = []  # store sql results for batch gats
+        batchgats_onrecs = []  # store sql results for gats reports
         sql = "SELECT * FROM 'informalc_grievances' WHERE station = '%s'" % self.station
         self.grievance_onrecs = inquire(sql)
         grv_list = []  # array to hold all grievance numbers
@@ -199,9 +197,9 @@ class InfcSpeedSheetGen:
         # use arrays and loops to get search results for all the grievances in the grv_list array.
         # search these tables
         tables_array = ("informalc_settlements", "informalc_noncindex", "informalc_remandindex",
-                        "informalc_batchindex", "informalc_gatsindex")
+                        "informalc_batchindex", "informalc_gats")
         # search these columns in the tables
-        search_criteria_array = ("grv_no", "followup", "refiling", "main", "main")
+        search_criteria_array = ("grv_no", "followup", "refiling", "main", "grv_no")
         for i in range(len(tables_array)):  # loop for each table
             for ii in range(len(grv_list)):  # loop for every grv in the grv list array.
                 sql = "SELECT * FROM '%s' WHERE %s = '%s'" % (tables_array[i], search_criteria_array[i], grv_list[ii])
@@ -222,7 +220,7 @@ class InfcSpeedSheetGen:
                     if result:
                         for r in result:
                             batchset_onrecs.append(r)
-                if tables_array[i] == "informalc_batchgats":  # get the onrecs for informalc_batchindex
+                if tables_array[i] == "informalc_gats":  # get the onrecs for informalc_batchindex
                     if result:
                         for r in result:
                             batchgats_onrecs.append(r)
@@ -230,7 +228,7 @@ class InfcSpeedSheetGen:
 
     def make_workbook_object(self):
         """ make the workbook object """
-        self.ws_list = ["grievances", "settlements", "non compliance", "remanded", "batch settlements", "batch gats"]
+        self.ws_list = ["grievances", "settlements", "non compliance", "remanded", "batch settlements", "gats reports"]
         self.ws_list[0] = self.wb.active  # create first worksheet - this will be for grievances
         self.ws_list[0].title = self.ws_titles[0]  # title first worksheet - this is for grievances
         for i in range(1, len(self.ws_list)):  # loop to create all other worksheets
@@ -393,11 +391,11 @@ class InfcSpeedSheetGen:
         """ format the columns of all index worksheets - non compliance, batch settlements and remanded"""
         for i in range(4):
             self.ws_list[i+2].oddFooter.center.text = "&A"
-            col = self.ws_list[i+2].column_dimensions["A"]  # followup/refiling/main/main
+            col = self.ws_list[i+2].column_dimensions["A"]  # followup/refiling/main/grv_no
             col.width = 20
             col.font = Font(size=9, name="Arial")
             col.number_format = '@'
-            col = self.ws_list[i+2].column_dimensions["B"]  # overdue/remanded/sub/sub
+            col = self.ws_list[i+2].column_dimensions["B"]  # overdue/remanded/sub/gats_no
             col.width = 20
             col.font = Font(size=9, name="Arial")
             col.number_format = '@'
@@ -449,8 +447,8 @@ class InfcSpeedSheetGen:
     def insert_index_onrecs(self):
         # """ loop for each table - non compliance, batch and remanded"""
         # sheet_count = 2  # 2 non compliance, 3 batch and 4 remanded
-        """ loop for each table - non compliance, remanded, batch settlements and batch gats"""
-        sheet_count = 2  # 2 non compliance, 3 remanded 4 batch set and 5 batch gats
+        """ loop for each table - non compliance, remanded, batch settlements and gats reports"""
+        sheet_count = 2  # 2 non compliance, 3 remanded 4 batch set and 5 gats reports
         for index in self.index_onrecs:  # there are four indexes...
             row = 6  # start on row 6 to make room for headers
             for rec in index:  # loop for each record in the index
@@ -577,7 +575,7 @@ class SpeedSheetCheck:
         self.settlement_fatal_rpt = 0
         self.settlement_add_rpt = 0
         self.settlement_fyi_rpt = 0
-        # count of how many index (non compliance, remanded, batch settlements, and batch gats) have been checked
+        # count of how many index (non compliance, remanded, batch settlements, and gats reports) have been checked
         self.index_count = [0, 0, 0, 0]
         self.index_fatal_rpt = [0, 0, 0, 0]
         self.index_add_rpt = [0, 0, 0, 0]
@@ -590,12 +588,12 @@ class SpeedSheetCheck:
         self.filename = ReportName("speedsheet_precheck").create()  # generate a name for the report
         self.report = open(dir_path('report') + self.filename, "w")  # open the report
         self.grv_mentioned = False  # keeps grievance numbers from being repeated in reports
-        self.worksheet = ("grievances", "settlements", "non compliance", "remanded", "batch set", "batch gats")
+        self.worksheet = ("grievances", "settlements", "non compliance", "remanded", "batch set", "gats reports")
         self.index_columns = [
             ["followup", "overdue"],  # non compliance index
             ["refiling", "remanded"],  # remanded index
             ["main", "sub"],  # batch settlement index
-            ["main", "sub"]  # batch gats index
+            ["grv_no", "gats_no"]  # gats reports index
         ]
         self.allowaddrecs = True
         self.fullreport = True
@@ -685,7 +683,7 @@ class SpeedSheetCheck:
 
     def checking(self):
         """ reads rows and send to scan grievances, scan settlements or scan indexes. """
-        # self.worksheet = ("grievances", "settlements", "non compliance", "remanded", "batch set", "batch gats")
+        # self.worksheet = ("grievances", "settlements", "non compliance", "remanded", "batch set", "gats reports")
         count_diff = self.sheet_count * (self.start_row - 1)  # subtract top five/six rows from the row count
         self.pb.max_count(self.row_count() - count_diff)  # get total count of rows for the progress bar
         self.pb.start_up()  # start up the progress bar
@@ -703,7 +701,7 @@ class SpeedSheetCheck:
                 self.scan_indexes(i)
             if self.worksheet[i] == "batch set":
                 self.scan_indexes(i)
-            if self.worksheet[i] == "batch gats":
+            if self.worksheet[i] == "gats reports":
                 self.scan_indexes(i)
 
     def scan_grievances(self, i):
@@ -791,7 +789,7 @@ class SpeedSheetCheck:
         else:
             msg = "fyi notification{}".format(Handler(self.settlement_fyi_rpt).plurals())
             self.report.write('{:>6}  {:<40}\n'.format(self.settlement_fyi_rpt, msg))
-        # use a loop to write the report for 4 indexes (non compliance, remanded, batch settlements and batch gats).
+        # use a loop to write the report for 4 indexes (non compliance, remanded, batch settlements and gats reports).
         index_rpt_subheader = ("\n\nNon Compliance Index Check Complete.\n\n",
                                "\n\nRemanded Index Check Complete.\n\n",
                                "\n\nBatch Settlements Index Check Complete.\n\n",
@@ -1353,7 +1351,7 @@ class SpeedSetCheck:
         #  store the grv number so this can be deleted from batch settlement index in SpeedIndexCheck()
         if self.grv_no not in self.parent.del_batch:
             self.parent.del_batch.append(self.grv_no)
-        #  store the grv number so this can be deleted from batch gats index in SpeedIndexCheck()
+        #  store the grv number so this can be deleted from gats reports index in SpeedIndexCheck()
         if self.grv_no not in self.parent.del_gatsbatch:
             self.parent.del_gatsbatch.append(self.grv_no)
 
@@ -1706,7 +1704,7 @@ class SpeedIndexCheck:
         self.second = second.lower().strip()
         self.action = action.lower().strip()
         self.grv_array = [self.first, self.second]  # combine both first and second into an array.
-        self.tables = ("informalc_noncindex", "informalc_remandindex", "informalc_batchindex", "informalc_gatsindex")
+        self.tables = ("informalc_noncindex", "informalc_remandindex", "informalc_batchindex", "informalc_gats")
         self.error_array = []  # gives a report of failed checks
         self.attn_array = []  # gives a report of issues to bring to the attention of users
         self.add_array = []  # gives a report of records to add to the database
@@ -1817,6 +1815,8 @@ class SpeedIndexCheck:
         for r in result:
             distinct.append(r[0])
         for i in range(2):
+            if self.sheet == "gats reports" and i == 1:  # make an exception for the second value in gats reports
+                continue
             if self.grv_array[i] not in distinct:
                 error = "     ERROR: Grievance number {} entered for {} does not exist in the database. \n" \
                     .format(self.grv_array[i], self.parent.index_columns[self.i][i])

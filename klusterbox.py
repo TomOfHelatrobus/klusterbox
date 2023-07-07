@@ -428,9 +428,12 @@ class InformalC:
 
         def re_initialize_search_vars():
             """ initialize list for holding search results """
+            self.grv_sql = ""  # the sql to search for distinct grievances
+            self.set_sql = ""  # the sql to search for distinct settlements
             self.search_grv_result = []
             self.search_set_result = []
             self.search_result = []
+            self.current_page = 1
 
         re_initialize_search_vars()
         self.blank_criteria = True
@@ -1195,7 +1198,6 @@ class InformalC:
     def refresh_search(self, frame):
         """ when changes are made the the db, it is necessary to update the search results, as some things
         might have changed."""
-        print("hello from refresh search")
         self.search_result = []  # empty and reinitialize search results
         self.search_grv_result = inquire(self.grv_sql)
         self.search_set_result = inquire(self.set_sql)
@@ -1792,7 +1794,7 @@ class InformalC:
             Label(self.win.body, text="", width=70).grid(row=row)  # widen the column so buttons appear center
             # define the buttons at the bottom of the page:
             Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
-                   command=lambda: self.parent.showtime(self.win.topframe)).grid(row=0, column=0)
+                   command=lambda: self.parent.showtime(self.win.topframe, turnpage=True)).grid(row=0, column=0)
             self.win.finish()
 
         def uniquecarrier(self):
@@ -1875,7 +1877,7 @@ class InformalC:
             self.docs = None  # 14 the status of any documentation needed for proof of compliance
             self.gats_no = None  # 15 the gats  number of the proof of compliance
             self.batset = None  # 16 is the settlement part of a batch settlement?
-            self.batgat = None  # 17  is the settlement part of a batch gats?
+            self.batgat = None  # 17  is the settlement part of a gats reports?
 
             # get the values of the grievance/settlements on record
             self.onrec_grievance = False
@@ -1902,8 +1904,8 @@ class InformalC:
             self.reman_del = []  # this array stores the delete buttons for the remanded widgets
             self.batset_entry = []  # this array store the entry fields of the batch settlement indexes
             self.batset_del = []  # this array stores the delete buttons for the batch settlement entry widgets
-            self.batgat_entry = []  # this array store the entry fields of the batch gats indexes
-            self.batgat_del = []  # this array stores the delete buttons for the batch gats entry widgets
+            self.batgat_entry = []  # this array store the entry fields of the gats reports indexes
+            self.batgat_del = []  # this array stores the delete buttons for the gats reports entry widgets
             self.nonc_frame = None  # this is a frame for the associations/indexes
             self.reman_frame = None  # this is a frame for the associations/indexes
             self.batset_frame = None  # this is a frame for the associations/indexes
@@ -1924,7 +1926,7 @@ class InformalC:
             self.check_proofdue = None  # 13 the date that the prooof of the remedy is due, if applicable
             self.check_docs = None  # 14 the status of any documentation needed for proof of compliance
             self.check_gats_no = None  # 15 the gats  number of the proof of compliance
-            self.check_indexes = []  # multidimensional list to store indexes - nonc, remanded, batch set, batch gats
+            self.check_indexes = []  # multidimensional list to store indexes - nonc, remanded, batch set, gats reports
             self.add_indexes = []
             self.del_indexes = []
 
@@ -2015,9 +2017,9 @@ class InformalC:
             # use arrays and loops to get search results for all the grievances in the grv_list array.
             # search these tables
             tables_array = ("informalc_noncindex", "informalc_remandindex",
-                            "informalc_batchindex", "informalc_gatsindex")
+                            "informalc_batchindex", "informalc_gats")
             # search these columns in the tables
-            search_criteria_array = ("followup", "refiling", "main", "main")
+            search_criteria_array = ("followup", "refiling", "main", "grv_no")
             for i in range(len(tables_array)):  # loop for each table
                 sql = "SELECT * FROM %s WHERE %s = '%s'" % \
                       (tables_array[i], search_criteria_array[i], self.edit_grv_no)
@@ -2034,7 +2036,7 @@ class InformalC:
                     if result:
                         for r in result:
                             onrec_batset.append(r)
-                if tables_array[i] == "informalc_batchgats":  # get the onrecs for informalc_batchindex
+                if tables_array[i] == "informalc_gats":  # get the onrecs for informalc_batchindex
                     if result:
                         for r in result:
                             onrec_batgat.append(r)
@@ -2090,7 +2092,7 @@ class InformalC:
             self.build_remand_assoc()  # for remanded grievance associations
             self.build_settlement()  # this area of the screen is for settlement information
             self.build_batset_assocs()  # this area of the screen is for batch settlements
-            self.build_batgat_assocs()  # this area of the screen is for batch gats
+            self.build_batgat_assocs()  # this area of the screen is for gats reports
             self.fillin_index_onrecs()  # this will set stringvars for indexes and populate fields
             self.build_buttons()  # configure buttons on the bottom of the screen
 
@@ -2277,13 +2279,13 @@ class InformalC:
             doc_om.config(width=macadj(14, 13))
             doc_om.grid(row=self.row, column=1)
             self.row += 1
-            # gats number
-            Label(self.win.body, text="Gats Number: ", background=macadj("gray95", "white"),
-                  fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
-                .grid(row=self.row, column=0, sticky="w")
-            Entry(self.win.body, textvariable=self.gats_no, justify='right', width=macadj(20, 15)) \
-                .grid(row=self.row, column=1, sticky="w")
-            self.row += 1
+            # -------------------------------------------------------------------------------------------- gats number
+            # Label(self.win.body, text="Gats Number: ", background=macadj("gray95", "white"),
+            #       fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
+            #     .grid(row=self.row, column=0, sticky="w")
+            # Entry(self.win.body, textvariable=self.gats_no, justify='right', width=macadj(20, 15)) \
+            #     .grid(row=self.row, column=1, sticky="w")
+            # self.row += 1
             # delete button
             if not self.newentry:
                 Label(self.win.body, text="Delete Settlement: ", background=macadj("gray95", "white"),
@@ -2317,15 +2319,15 @@ class InformalC:
             self.row += 1
 
         def build_batgat_assocs(self):
-            """ create a gui for BATch GATs associations.  """
-            text = macadj("Batch Gats Associations __________________________________",
-                          "Batch Gats Associations _________________________")
+            """ create a gui for BATch GATs associations. """
+            text = macadj("Gats Report/s ____________________________________________",
+                          "Gats Report/s ___________________________________")
             Label(self.win.body, text=text, anchor="w",
                   fg="blue").grid(row=self.row, column=0, columnspan=3, sticky="w", pady=10)
             self.row += 1
             self.batgat_frame = Frame(self.win.body)
             self.batgat_frame.grid(row=self.row, column=0, sticky="w", columnspan=2)
-            Label(self.batgat_frame, text="Included Settlements", background=macadj("gray95", "white"),
+            Label(self.batgat_frame, text="Gats Number", background=macadj("gray95", "white"),
                   fg=macadj("black", "black"), width=macadj(19, 17), anchor="w", height=macadj(1, 1)) \
                 .grid(row=0, column=0, sticky="w")
             batgat = Entry(self.batgat_frame, textvariable=self.batgat[0], justify='right', width=macadj(20, 15))
@@ -2350,7 +2352,8 @@ class InformalC:
                     .grid(row=0, column=2)
             else:  # edits go back to showtime
                 Button(self.win.buttons, text="Go Back", width=macadj(13, 18), anchor=button_alignment,
-                       command=lambda: (self.destroy_companion(), self.parent.showtime(self.win.topframe)))\
+                       command=lambda: (self.destroy_companion(),
+                                        self.parent.showtime(self.win.topframe, turnpage=True)))\
                     .grid(row=0, column=2)
             # a label on the button bar gives notification of past actions ie insert, delete, etc
             Label(self.win.buttons, text=self.msg, fg="red")
@@ -2457,7 +2460,7 @@ class InformalC:
             """ this will set the stringvars for associations/index fields by passing an 'onrec' argument to
             'add_ _field()' method for each index. by looping through self.index_onrecs. """
             tables_array = ("informalc_noncindex", "informalc_remandindex",
-                            "informalc_batchindex", "informalc_gatsindex")
+                            "informalc_batchindex", "informalc_gats")
             for i in range(len(self.index_onrecs)):  # this will loop 4 times. once per table.
                 if tables_array[i] == "informalc_noncindex":
                     for rec in self.index_onrecs[i]:  # for each record
@@ -2477,7 +2480,7 @@ class InformalC:
                             self.batset[0].set(rec[1])  # add this to an array of stringvars for non compliance
                         else:
                             self.add_batset_field(self.batset_frame, onrec=rec[1])  # build a field and a del button
-                if tables_array[i] == "informalc_gatsindex":
+                if tables_array[i] == "informalc_gats":
                     for rec in self.index_onrecs[i]:  # for each record
                         if not self.batgat[0].get():  # if there is nothing in the first stringvar
                             self.batgat[0].set(rec[1])  # add this to an array of stringvars for non compliance
@@ -2583,9 +2586,9 @@ class InformalC:
                                 parent=self.win.topframe):
                 return
             # use loops and arrays to commit changes to db
-            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
-                      "informalc_remedies", "informalc_settlements")
-            fields = ("main", "sub", "main", "sub",
+            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gats", "informalc_gats",
+                      "informalc_awards", "informalc_settlements")
+            fields = ("main", "sub", "grv_no", "gats_no",
                       "grv_no", "grv_no")
             for i in range(6):
                 sql = "DELETE FROM %s WHERE %s='%s'" % (tables[i], fields[i], self.edit_grv_no)
@@ -2605,10 +2608,10 @@ class InformalC:
                 return  # make sure the new number passes standards
             new_number = self.reformat_grv_no(chg_number=True, new_number=new_number)  # reformat new number
             # use loops and arrays to commit changes to db
-            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
+            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gats", "informalc_gats",
                       "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
-                      "informalc_remandindex", "informalc_remedies", "informalc_settlements")
-            fields = ("main", "sub", "main", "sub", "grv_no", "overdue", "followup", "remanded", "refiling",
+                      "informalc_remandindex", "informalc_awards", "informalc_settlements")
+            fields = ("main", "sub", "grv_no", "gats_no", "grv_no", "overdue", "followup", "remanded", "refiling",
                       "grv_no", "grv_no")
             for i in range(11):
                 sql = "UPDATE %s SET %s = '%s' WHERE %s = '%s'" % \
@@ -2630,10 +2633,10 @@ class InformalC:
                                           parent=self.win.topframe):
                 return
             # use loops and arrays to commit changes to db
-            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gatsindex", "informalc_gatsindex",
+            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gats", "informalc_gats",
                       "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
-                      "informalc_remandindex", "informalc_remedies", "informalc_settlements")
-            fields = ("main", "sub", "main", "sub", "grv_no", "followup", "overdue", "refiling", "remanded",
+                      "informalc_remandindex", "informalc_awards", "informalc_settlements")
+            fields = ("main", "sub", "grv_no", "gats_no", "grv_no", "followup", "overdue", "refiling", "remanded",
                       "grv_no", "grv_no")
             for i in range(11):
                 sql = "DELETE FROM %s WHERE %s='%s'" % (tables[i], fields[i], grv_no)
@@ -2666,7 +2669,7 @@ class InformalC:
             self.check_docs = self.docs.get()  # 14 the status of any documentation needed for proof of compliance
             self.check_gats_no = self.gats_no.get()  # 15 the gats  number of the proof of compliance
             # get stringvar values for indexes and place them in a multidimentional list
-            # - non compliance, remanded, batch settlements and batch gats
+            # - non compliance, remanded, batch settlements and gats reports
             if self.newentry:  # get onrecs to ensure that existing grievances aren't added to db.
                 self.get_onrecs(self.check_grv_no)
             for index in [self.non_c, self.reman, self.batset, self.batgat]:
@@ -2718,7 +2721,7 @@ class InformalC:
                 if not goback:
                     self.informalc_edit(self.win.topframe, self.edit_grv_no, msg=self.report())
                 else:
-                    self.parent.showtime(self.win.topframe)
+                    self.parent.showtime(self.win.topframe, turnpage=True)
 
         def apply_fail(self):
             """ if there is an error in self.apply, empty the message in the button frame. """
@@ -2903,10 +2906,20 @@ class InformalC:
                 self.check_docs = ""
 
         def checking_indexes(self):
-            """ check all of the indexes. indexes are called 'associations' in the gui.
-            """
-            indexes = ("non compliance", "remanded", "batch settlements", "batch gats")
-            for i in range(4):
+            """ check all of the indexes. indexes are called 'associations' in the gui."""
+
+            def grv_exist(check_this):
+                """ check to against the informalc_grievances table to verify grievance is in the db. """
+                sql = "SELECT COUNT(*) FROM informalc_grievances WHERE grv_no = '%s'" % check_this
+                result = inquire(sql)
+                if not result[0][0]:  # if there is not a record of the grievance in the grievances table
+                    return False
+                return True
+            indexes = ("non compliance", "remanded", "batch settlements", "gats reports")
+            for i in range(4):  # loop once for each of the index tables
+                is_gats = False
+                if i == 3:
+                    is_gats = True
                 mentioned_grv = []
                 for ii in range(len(self.check_indexes[i])):
                     if self.check_indexes[i][ii] == self.check_grv_no:
@@ -2915,18 +2928,20 @@ class InformalC:
                             .format(Handler(ii + 1).make_ordinal(), indexes[i], self.edit_grv_no)
                         messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
                         return False
-                    sql = "SELECT COUNT(*) FROM informalc_grievances WHERE grv_no = '%s'" % self.check_indexes[i][ii]
-                    result = inquire(sql)
-                    if not result[0][0]:  # if there is not a record of the grievance in the grievances table
-                        msg = "There is no record of the {} grievance number for {} association: {}\n" \
-                              "Grievances in the associations must first be entered as grievances."\
-                            .format(Handler(ii + 1).make_ordinal(), indexes[i], self.check_indexes[i][ii])
-                        messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
-                        return False
+                    if not is_gats:  # do not do this check for gats numbers.
+                        if not grv_exist(self.check_indexes[i][ii]):  # check if grv_no is in the db.
+                            msg = "There is no record of the {} grievance number for {} association: {}\n" \
+                                  "Grievances in the associations must first be entered as grievances."\
+                                .format(Handler(ii + 1).make_ordinal(), indexes[i], self.check_indexes[i][ii])
+                            messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
+                            return False
                     if self.check_indexes[i][ii] in mentioned_grv:
-                        msg = "The {} grievance number for {} association was entered more than once: {}. " \
+                        number_type = "grievance"
+                        if is_gats:
+                            number_type = "gats"  # change text message if checking gats numbers
+                        msg = "The {} {} number for {} association was entered more than once: {}. " \
                               "Duplicates are not allowed. \n" \
-                            .format(Handler(ii + 1).make_ordinal(), indexes[i], self.edit_grv_no)
+                            .format(Handler(ii + 1).make_ordinal(), number_type, indexes[i], self.edit_grv_no)
                         messagebox.showerror("Invalid Data Entry", msg, parent=self.win.topframe)
                         return False
                     mentioned_grv.append(self.check_indexes[i][ii])  # add grv num to a list of mentioned grv numbers.
@@ -3058,12 +3073,12 @@ class InformalC:
         def add_index_recs(self):
             """  insert, delete or ignore records for the indexes, no recs are updated. there is only
             inserting and deleting. """
-            tables = ("informalc_noncindex", "informalc_remandindex", "informalc_batchindex", "informalc_gatsindex")
+            tables = ("informalc_noncindex", "informalc_remandindex", "informalc_batchindex", "informalc_gats")
             index_columns = [
                 ["followup", "overdue"],  # non compliance index
                 ["refiling", "remanded"],  # remanded index
                 ["main", "sub"],  # batch settlement index
-                ["main", "sub"]]  # batch gats index
+                ["grv_no", "gats_no"]]  # gats reports index
             for i in range(len(self.add_indexes)):  # this will loop 4 times. once for each index
                 for rec in self.add_indexes[i]:
                     # check if the record already exist in the database

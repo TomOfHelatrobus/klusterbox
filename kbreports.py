@@ -24,6 +24,7 @@ class Reports:
     """
     generates reports
     """
+
     def __init__(self, frame):
         self.frame = frame
         self.start_date = projvar.invran_date
@@ -546,7 +547,7 @@ class Reports:
         report.write('     -----------------------------------------------------------------------------\n')
         i = 1
         for line in history_array:
-            date = Convert(date_array[i-1]).str_to_dt()
+            date = Convert(date_array[i - 1]).str_to_dt()
             date = Convert(date).dt_to_backslash_str()
             report.write('{:>4} {:<16} {:<7} {:<7} {:<7} {:<7} {:<7} {:<7} {:<7}\n'
                          .format("", date, line[0], line[1], line[2], line[3], line[4], line[5], line[6]))
@@ -578,6 +579,7 @@ class CheatSheet:
     This class generates a cheatsheet which allows the user to view a generated document showing codes they need to
     read TACS reports.
     """
+
     def __init__(self):
         pass
 
@@ -681,7 +683,8 @@ class CheatSheet:
         report.write("CODE: if List Status is \"wal\" or \"nl\":\n")
         report.write("           \"none\", \"ns day\"\n")
         report.write("      if List Status is \"otdl\", \"aux\", or \"ptf\":\n")
-        report.write("           \"none\", \"no call\", \"light\", \"sch chg\", \"annual\", \"sick\", \"excused\"\n")
+        report.write("           \"none\", \"ns day\", \"no call\", \"light\", \"sch chg\",")
+        report.write("           \"annual\", \"sick\", \"excused\"")
         report.write("\n")
         report.write("LV type: Leave type: \"none\", \"annual\", \"sick\", \"holiday\", \"other\"\n")
         report.write("\n")
@@ -700,6 +703,7 @@ class Messenger:
     The Messenger class gives the location of the program and also provides the user information in the form of
     message boxes.
     """
+
     def __init__(self, frame):
         self.frame = frame
 
@@ -795,8 +799,8 @@ class Messenger:
             text = "Limits what is displayed in the Improper Mandates No.4 \n" \
                    "Spreadsheet for no-list and work assignment carriers \n" \
                    "(all otdl and auxiliary carriers will be displayed).\n" \
-                   "\"show all\" will display all carriers. \n"\
-                   "\"only workdays\" will display who worked that day. \n"\
+                   "\"show all\" will display all carriers. \n" \
+                   "\"only workdays\" will display who worked that day. \n" \
                    "\"only mandates\" will display all carriers who worked \n" \
                    "overtime or off their routes. \n"
         if switch == "min_ot_equit":
@@ -1065,6 +1069,7 @@ class InformalCIndex:
 
 class InformalCReports:
     """ generates some of the reports for informal c """
+
     def __init__(self, parent):
         self.parent = parent
 
@@ -1094,7 +1099,7 @@ class InformalCReports:
                 rec = self.get_recs(grv_no)  # get recs with sql
                 if rec:  # if there is a record, create a row of text
                     hours, rate, adj, amt, docs, level = rec[1], rec[2], rec[3], rec[4], rec[5], rec[6]
-                    row = "    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n"\
+                    row = "    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n" \
                         .format(str(i), grv_no, hours, rate, adj, amt, docs, level)
                     award_stack.append(row)  # build the stack row by row
                     i += 1
@@ -1193,14 +1198,14 @@ class InformalCReports:
     class IndexReports:
         """ get index data from db, sort the data into 'first array' and 'second array' for each index, 
         then write a report to be displayed for informal c reports. """
-        
+
         def __init__(self):
             self.index_recs = [[], [], [], []]  # store results in self.index_recs
             self.first_array = [[], [], [], []]  # store first values of index/associations
             self.second_array = [[], [], [], []]  # store second values of index/associations
             self.grv_no = ""  # the grievance number being investigated
             self.reports_array = []  # store all the reports in this array
-            
+
         def run(self, grv_no):
             """ master method for controlling sequence of methods """
             self.grv_no = grv_no  # the grievance number being investigated
@@ -1212,10 +1217,10 @@ class InformalCReports:
         def get_index_recs(self):
             """ calls indexes/associations from tables and puts all in self.index_recs multi array. """
             tables_array = ("informalc_noncindex", "informalc_remandindex",  # search these tables
-                            "informalc_batchindex", "informalc_gatsindex")
+                            "informalc_batchindex", "informalc_gats")
             # search these columns in the tables
-            first_search_criteria = ("followup", "refiling", "main", "main")
-            second_search_criteria = ("overdue", "remanded", "sub", "sub")
+            first_search_criteria = ("followup", "refiling", "main", "grv_no")
+            second_search_criteria = ("overdue", "remanded", "sub", "gats_no")
             for i in range(4):  # loop for each table
                 sql = "SELECT * FROM %s WHERE %s = '%s' OR %s = '%s'" % \
                       (tables_array[i], first_search_criteria[i], self.grv_no, second_search_criteria[i], self.grv_no)
@@ -1233,34 +1238,40 @@ class InformalCReports:
                 if self.index_recs[i]:  # if there is any rec this iteration...
                     for r in self.index_recs[i]:
                         if r[0] == self.grv_no:  # if the grv no is the first value
-                            self.first_array[i].append(r[1])  # capture 2nd: "overdue", "remanded", "sub", "sub"
+                            self.first_array[i].append(r[1])  # capture 2nd: "overdue", "remanded", "sub", "gats_no"
                         if r[1] == self.grv_no:  # if the grv no is the second value
-                            self.second_array[i].append(r[0])  # capture 1st: "followup", "refiling", "main", "main"
+                            self.second_array[i].append(r[0])  # capture 1st: "followup", "refiling", "main", "grv_no"
 
         def gen_index_reports(self):
             """ generates reports for grievances/ settlements for non compliance, remanded, batch settlement and
-                    batch gats indexes. """
+                    gats reports indexes. """
             first_message = (
                 "    This is a non compliance grievance for: \n",
                 "    This is a refiling of a remanded grievance/s. \n",
                 "    This settlement is a batch settlement for the following: \n ",
-                "    The gats report for this settlement also applies to: \n"
+                "    The gats reports for this settlement are: \n"
             )
             second_message = (
                 "    This settlement is the subject of non compliance grievance/s: \n",
                 "    This grievance was remanded and refiled under grievance/s: \n",
                 "    The settlement for this grievance is included in the batch settlement for: \n",
-                "    The gats report for this settlement is attached to grievance: \n"
+                "    Gats reports (this text generated in error): \n"
             )
             line_text = "    -----------------------------------------------------------------------\n"
             for i in range(4):
+                is_gats = False  # detect is the gats report index is being read.
+                if i == 3:  # since the gats report is the fourth index
+                    is_gats = True
                 if self.first_array[i]:  # if there is something in the first array
                     self.reports_array.append(first_message[i])  # add this to text to be displayed
                     self.reports_array.append(line_text)
                     count = 1
                     for r in self.first_array[i]:
-                        rec = self.get_recforindex(r)  # get the grv/set info for the grievance
-                        text = "    {:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
+                        if not is_gats:  # if the gats report is being read
+                            rec = self.get_recforindex(r)  # get the grv/set info for the grievance
+                            text = "    {:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
+                        else:  # use alternate format for gats reports
+                            text = "    {:<4}{:<20}\n".format(count, r)
                         self.reports_array.append(text)  # add this to text to be displayed
                         count += 1
                 if self.second_array[i]:  # if there is something in the second array
@@ -1275,7 +1286,7 @@ class InformalCReports:
                 if self.first_array[i] or self.second_array[i]:
                     self.reports_array.append("\n")  # add blank line for formatting to be displayed
 
-        @ staticmethod
+        @staticmethod
         def get_recforindex(sub_grv_no):
             """ will get the records for grievances mentioned in indexes. """
             sql = "SELECT issue, meetingdate FROM informalc_grievances WHERE grv_no = '%s'" % sub_grv_no
@@ -1293,7 +1304,7 @@ class InformalCReports:
                 if set_result[0][0]:
                     decision = set_result[0][0]
             return [issue, meetingdate, decision]
-        
+
     class EverythingReport:
         """ show a full report with all grievance particulars """
 
@@ -1331,7 +1342,7 @@ class InformalCReports:
                 everything_stack.append("    Signing Date:       " + sign + "\n")
                 everything_stack.append("    Settlement Level    " + rec[9] + "\n")
                 everything_stack.append("    Proof Due           " + proof + "\n")
-                everything_stack.append("    GATS Number:        " + rec[8] + "\n")
+                everything_stack.append("    GATS Number:        " + rec[14] + "\n")
                 everything_stack.append("    Documentation:      " + rec[13] + "\n\n")
             else:  # if there is no settlement record...
                 everything_stack.append("\n")
@@ -1363,8 +1374,8 @@ class InformalCReports:
                 report.write("\n")
             # ------------------------------------------------------------------------------------- get awards stack
             if sett[11] in ("monetary remedy", "back pay"):  # skip if decision is not either.
-                award_stack = self.GrvAwardReports().run(sett[2])
-                for row in award_stack:
+                grv_stack = self.GrvAwardReports().run(sett[2])
+                for row in grv_stack:
                     report.write(row)
                 report.write("\n")
             report.write("\n\n")
@@ -1429,7 +1440,7 @@ class InformalCReports:
                 lvl = "---"
             else:
                 lvl = sett[9]
-            # impliment batch gats here later ...
+            # impliment gats reports here later ...
             s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
             for gi in range(len(s_gats)):  # for gats_no in s_gats:
                 if gi == 0:  # for the first line
@@ -1557,7 +1568,7 @@ class InformalCReports:
         for r in no_settlement:
             formatted_date = Convert(r[5]).dtstr_to_backslashstr()
             report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}\n'
-                         .format(str(i+1), r[2], formatted_date, r[0], r[6]))
+                         .format(str(i + 1), r[2], formatted_date, r[0], r[6]))
             if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
                 report.write("       ----------------------------------------------------------------------"
                              "--------------\n")
@@ -1587,6 +1598,7 @@ class InformalCReports:
                 return Convert(default).backslashdate_to_datetime()
             else:
                 return Convert(entered_date).backslashdate_to_datetime()
+
         # ------------------------------------------------------------------------------------ get qualifying recs
         grace_period = 4  # number of weeks in the grace period before proof is due
         present_date = get_present_date()
@@ -1688,7 +1700,7 @@ class InformalCReports:
             report.write("    Missing Awards:\n")
             i = 1
             for na in needawards:
-                report.write("    {:>5}. {}\n".format(str(i),na))
+                report.write("    {:>5}. {}\n".format(str(i), na))
                 i += 1
         # --------------------------------------------------------------------------------------- close, save and open
         report.close()
@@ -1768,7 +1780,7 @@ class InformalCReports:
         for r in self.parent.search_result:
             formatted_date = Convert(r[sort_index]).dtstr_to_backslashstr()
             report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}{:<20}\n'
-                         .format(str(i+1), r[2], formatted_date, r[0], r[6], r[11]))
+                         .format(str(i + 1), r[2], formatted_date, r[0], r[6], r[11]))
             if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
                 report.write("       ----------------------------------------------------------------------"
                              "--------------\n")
@@ -1804,8 +1816,8 @@ class InformalCReports:
             report.write("\n")
         # ------------------------------------------------------------------------------------------ get awards stack
         if grv_info[11] in ("monetary remedy", "back pay"):  # only run if settlement is monetary or back pay
-            award_stack = self.GrvAwardReports().run(grv_info[2])
-            for row in award_stack:
+            grv_stack = self.GrvAwardReports().run(grv_info[2])
+            for row in grv_stack:
                 report.write(row)
         report.close()
         # ------------------------------------------------------------------------------------------- save and open
