@@ -27,7 +27,8 @@ from kbcsv_repair import CsvRepair
 from kbcsv_reader import MaxHr, ee_skimmer
 from kbpdfhandling import PdfConverter
 from kbenterrings import EnterRings
-from kbinformalc import InfcSpeedSheetGen, InfcSpeedWorkBookGet, informalc_gen_clist, informalc_date_converter
+from kbinformalc import InformalCSettings, InfcSpeedSheetGen, InfcSpeedWorkBookGet, informalc_gen_clist, \
+    informalc_date_converter, InformalCTest
 from kbfixes import Fixes
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
@@ -110,9 +111,11 @@ class InformalC:
         # sql search
         self.grv_sql = ""  # the sql to search for distinct grievances
         self.set_sql = ""  # the sql to search for distinct settlements
+        self.gats_sql = "SELECT DISTINCT grv_no FROM informalc_gats"  # get all grievances with gats numbers on record
         self.search_result = []  # var for the grievances search result
         self.search_grv_result = []  # a list of distinct grv numbers of grievances that match the search criteria
         self.search_set_result = []  # a list of distinct grv numbers of settlements that match the search criteria
+        self.search_gat_result = []  # a list of distinct grv numbers that have associated gats numbers
         self.blank_criteria = True  # if all search criteria are blank, do not include 'where' in sql
         # grievance
         self.src_grievance = None  # stringvar used for search of grievance number # v
@@ -432,11 +435,12 @@ class InformalC:
             self.set_sql = ""  # the sql to search for distinct settlements
             self.search_grv_result = []
             self.search_set_result = []
+            self.search_gat_result = []
             self.search_result = []
             self.current_page = 1
+            self.blank_criteria = True
 
-        re_initialize_search_vars()
-        self.blank_criteria = True
+        re_initialize_search_vars()  # in the event that a search is run more than once, re initialize
         button_alignment = macadj("w", "center")
         row = 0
         self.pulldown_menu()
@@ -1108,14 +1112,17 @@ class InformalC:
                     i += 1
                 docs_sql += ")"
                 self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
-        # ------------------------------------------------------------------------------------------------------- gats
-        gats = self.gats.get()
-        if gats != "include all":  # if not empty (aka 'include all'), write the sql 'where' statement.
-            if gats == "yes":
-                gats_sql = "(gats_number != '{}')".format("")
-            if gats == "no":
-                gats_sql = "(gats_number = '{}')".format("")
-            self.blank_criteria = False  # if all criteria are blank, don't include 'where' in sql
+        # --------------------------------------------------------------------------------------------------- gats sql
+        # Since gats information comes from a different table i.e. the informalc_gats table, a different
+        # process is used. A list of grievance numbers with gats numbers is built. Later that list is either a filter
+        # for the search results ('yes' - selected) or the list is removed from the search results ('no' - selected).
+        if self.gats.get() != "include all":  # if not empty (aka 'include all') then get gats search results.
+            result = inquire(self.gats_sql)  # inquire from informalc_gats table
+            if result:  # if the result is not empty
+                for r in result:  # build a list...
+                    self.search_gat_result.append(r[0])  # of grievances with gats numbers
+            print(self.search_gat_result)
+
         # ----------------------------------------------------------------------------------------------- grievance sql
         where = ""  # initialize the sql statement builder
         where_array = []
@@ -1201,6 +1208,11 @@ class InformalC:
         self.search_result = []  # empty and reinitialize search results
         self.search_grv_result = inquire(self.grv_sql)
         self.search_set_result = inquire(self.set_sql)
+        self.search_gat_result = []  # initialize the search gat results array
+        result = inquire(self.gats_sql)  # inquire from informalc_gats table
+        if result:
+            for r in result:
+                self.search_gat_result.append(r[0])  # build list of grievances with gats numbers
         if not self.search_grv_result and not self.search_set_result:
             msg = "There is no record for any grievances in the database matching the search criteria. "
             messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
@@ -1212,7 +1224,7 @@ class InformalC:
         """ search results for grievances and settlements need to be combined to show grievance recs and
         settlement recs as one record. showtime=False is passed from self.refresh_search,
         so that self.showtime() isn't run """
-        #  get a list of grievances with no corrosponding settlement#
+        #  get a list of grievances with no corrosponding settlement
         joint = []  # merge both list of distinct grievence/settlement grv numbers into one joint list
         if self.search_grv_result:
             for grv in self.search_grv_result:
@@ -1221,6 +1233,10 @@ class InformalC:
             for sett in self.search_set_result:
                 if sett[0] not in joint:  # avoid duplicates
                     joint.append(sett[0])
+        if self.gats.get() == "yes":  # if self.gats is 'yes' revise list to show only those with gats reports
+            joint = [x for x in joint if x in self.search_gat_result]
+        if self.gats.get() == "no":  # if self.gats is 'no' revise list to show only those with no gats reports
+            joint = [x for x in joint if x not in self.search_gat_result]
         for number in joint:  # for each number search grievance and settlement tables
             sql = "SELECT * FROM informalc_grievances WHERE grv_no = '%s'" % number
             results_raw = inquire(sql)
@@ -1258,14 +1274,13 @@ class InformalC:
             e = r  # handle index issues on last page
         self.win = MakeWindow()
         self.win.create(frame)
-        self.pulldown_menu()
         Label(self.win.body, text="Informal C Search Results", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         Label(self.win.body, text="").grid(row=1)
-        self.navigation_bar(self.win.topframe, row=2)  # navigation bar
-        if len(self.search_result) == 0:
+        if not self.search_result:  # if there is nothing in the search results
             Label(self.win.body, text="The search has no results.").grid(row=3, column=0, columnspan=4)
-        else:
+        else:  # if there is something in the search results
+            self.navigation_bar(self.win.topframe, row=2)  # navigation bar
             Label(self.win.body, text="Grievance Number", fg="grey", anchor="w").grid(row=3, column=1, sticky="w")
             datetext = ["Start Incident", "End Incident", "Meeting Date", "Signed Date", "Proof Due"]
             sort_index = int(self.sortby.get())
@@ -1317,7 +1332,8 @@ class InformalC:
                 .grid(row=row, column=column)
             row += 1
             ii += 1
-        self.navigation_bar(self.win.topframe, row=row)  # navigation bar
+        if self.search_result:  # only show the nav bar if there are search results.
+            self.navigation_bar(self.win.topframe, row=row)  # navigation bar
         # define the buttons at the bottom of the page:
         Button(self.win.buttons, text="Go Back", width=macadj(16, 13),
                command=lambda: self.master_search(self.win.topframe)).grid(row=0, column=0)
@@ -2279,14 +2295,6 @@ class InformalC:
             doc_om.config(width=macadj(14, 13))
             doc_om.grid(row=self.row, column=1)
             self.row += 1
-            # -------------------------------------------------------------------------------------------- gats number
-            # Label(self.win.body, text="Gats Number: ", background=macadj("gray95", "white"),
-            #       fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
-            #     .grid(row=self.row, column=0, sticky="w")
-            # Entry(self.win.body, textvariable=self.gats_no, justify='right', width=macadj(20, 15)) \
-            #     .grid(row=self.row, column=1, sticky="w")
-            # self.row += 1
-            # delete button
             if not self.newentry:
                 Label(self.win.body, text="Delete Settlement: ", background=macadj("gray95", "white"),
                       fg=macadj("black", "black"), width=macadj(24, 22), anchor="w", height=macadj(1, 1)) \
@@ -2592,7 +2600,8 @@ class InformalC:
                       "grv_no", "grv_no")
             for i in range(6):
                 sql = "DELETE FROM %s WHERE %s='%s'" % (tables[i], fields[i], self.edit_grv_no)
-                commit(sql),
+                commit(sql)
+            self.parent.refresh_search(self.win.topframe)
             self.parent.showtime(self.win.topframe)
 
         def grvchange(self, old_number, new_stringvar):
@@ -2642,11 +2651,7 @@ class InformalC:
                 sql = "DELETE FROM %s WHERE %s='%s'" % (tables[i], fields[i], grv_no)
                 commit(sql)
             # delete grievance from self.parent.search_result
-            new_search_result = []
-            for rec in self.parent.search_result:
-                if rec[2] != grv_no:
-                    new_search_result.append(rec)
-            self.parent.search_result = new_search_result[:]
+            self.parent.refresh_search(self.win.topframe)
             self.parent.showtime(frame)
 
         def apply(self, goback=False):
@@ -13107,6 +13112,12 @@ class MainFrame:
             management_menu.entryconfig(6, state=DISABLED)  # disable ns day configurations if invran is not set.
         management_menu.add_command(label="Speedsheet Settings",
                                     command=lambda: SpeedConfig(self.win.topframe).create())
+        management_menu.add_command(label="Informal C Settings",
+                                    command=lambda: (InformalCSettings().create(self.win.topframe),
+                                                     MainFrame().start()))
+        management_menu.add_command(label="Informal C Test",
+                                    command=lambda: (InformalCTest().start(self.win.topframe),
+                                                     MainFrame().start()))
         management_menu.add_separator()
         management_menu.add_command(label="Auto Data Entry Settings",
                                     command=lambda: AdeSettings().start(self.win.topframe))

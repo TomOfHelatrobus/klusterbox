@@ -1310,7 +1310,9 @@ class InformalCReports:
 
         @staticmethod
         def run(rec, count=None):
-            """ show all the particulars of a grievance and the settlement """
+            """ show all the particulars of a grievance and the settlement.
+            The count is the line number. If the line number is over 99, a new line is created to avoid
+            the line number exceeding it's column. """
             everything_stack = []
             # ------------------------------------------------------------------------------------configure first line
             if count:
@@ -1341,9 +1343,10 @@ class InformalCReports:
                 everything_stack.append("    Decision:           " + rec[11] + "\n")  # display decsion
                 everything_stack.append("    Signing Date:       " + sign + "\n")
                 everything_stack.append("    Settlement Level    " + rec[9] + "\n")
-                everything_stack.append("    Proof Due           " + proof + "\n")
-                everything_stack.append("    GATS Number:        " + rec[14] + "\n")
-                everything_stack.append("    Documentation:      " + rec[13] + "\n\n")
+                # only display proof due and documentation if decision is monetary remedy, back pay or adjustment.
+                if rec[11] in ("monetary remedy", "back pay", "adjustment"):
+                    everything_stack.append("    Proof Due:          " + proof + "\n")
+                    everything_stack.append("    Documentation:      " + rec[13] + "\n\n")
             else:  # if there is no settlement record...
                 everything_stack.append("\n")
                 everything_stack.append("    There is no settlement entered for this grievance. \n\n")
@@ -1395,6 +1398,20 @@ class InformalCReports:
 
     def monetary_sum(self):
         """ generates text report for settlement list summary showing all grievance settlements. """
+
+        def get_gats(grv_no):
+            """ get all the gats numbers for the grievance number sent as an argument.
+            return a list of gats numbers as an array or return an array with one empty string. """
+            sql_ = "SELECT gats_no FROM informalc_gats WHERE grv_no = '%s'" % grv_no
+            result = inquire(sql_)
+            gats_array = []
+            if result:
+                for gats in result:
+                    gats_array.append(*gats)
+                return gats_array
+            else:
+                return [""]
+
         if not len(self.parent.parent.search_result):
             return
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1441,7 +1458,8 @@ class InformalCReports:
             else:
                 lvl = sett[9]
             # impliment gats reports here later ...
-            s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
+            s_gats = get_gats(sett[2])  # get all gats information from informalc_gats table
+            # s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
             for gi in range(len(s_gats)):  # for gats_no in s_gats:
                 if gi == 0:  # for the first line
                     total_hour += awardxhour  # tally hours totals for totals line at end of report
@@ -1451,7 +1469,7 @@ class InformalCReports:
                                          "{0:.2f}".format(float(awardxhour)),
                                          "{0:.2f}".format(float(awardxamt))))
                 if gi != 0:
-                    report.write('{:<34}{:<12}\n'.format("", s_gats[gi]))
+                    report.write('{:<32}{:<12}\n'.format("", s_gats[gi]))
             if i % 3 == 0:
                 report.write(
                     "      ----------------------------------------------------------------------------------\n")
@@ -1592,6 +1610,8 @@ class InformalCReports:
             default = Convert(datetime.now()).dt_to_backslash_str()
             entered_date = askstring("Compliance Delinquency Report",
                                      "Enter the date the report is generated from", initialvalue=default)
+            if entered_date is None:  # if the user selects 'cancel'
+                return entered_date
             if not informalc_date_checker(self.parent.win.topframe, entered_date, "present day"):
                 msgg = "Report will generate using the current day. Rerun the report to try again"
                 messagebox.showinfo("Compliance Delinquency Report", msgg, parent=self.parent.win.topframe)
@@ -1602,6 +1622,8 @@ class InformalCReports:
         # ------------------------------------------------------------------------------------ get qualifying recs
         grace_period = 4  # number of weeks in the grace period before proof is due
         present_date = get_present_date()
+        if present_date is None:  # if the user selects cancel, abort the report
+            return
         needproof = []
         for r in self.parent.parent.search_result:  # loop through all results
             if r[11] in ("monetary remedy", "backpay", "adjustment"):  # if the grievance requires proof
@@ -1772,21 +1794,21 @@ class InformalCReports:
         report.write("   Showing all grievances/settlements within search criteria\'\n\n")
         date_header = ("Start Date", "End Date", "Meeting Date", "Signed Date", "Proof Due")
         date_head_index = int(self.parent.sortby.get())
-        report.write('{:>18}{:>14}  {:<20}{:<22}{:<20}\n'
+        report.write('{:>18}{:>14}  {:<20}{:<22}  {:<20}\n'
                      .format("    Grievance #", date_header[date_head_index], "Grievant", "Issue", "Settlement"))
-        report.write("       --------------------------------------------------------------------------------"
+        report.write("       ----------------------------------------------------------------------------------"
                      "----\n")
         i = 0
         for r in self.parent.search_result:
             formatted_date = Convert(r[sort_index]).dtstr_to_backslashstr()
-            report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}{:<20}\n'
+            report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}  {:<20}\n'
                          .format(str(i + 1), r[2], formatted_date, r[0], r[6], r[11]))
             if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
                 report.write("       ----------------------------------------------------------------------"
-                             "--------------\n")
+                             "----------------\n")
             i += 1
         report.write("       --------------------------------------------------------------------------------"
-                     "----\n")  # insert line at the end to close out report
+                     "------\n")  # insert line at the end to close out report
         report.close()
         # ----------------------------------------------------------------------------------------- save and open
         if sys.platform == "win32":

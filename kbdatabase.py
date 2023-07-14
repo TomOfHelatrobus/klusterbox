@@ -19,12 +19,12 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(136)
+        self.pbar.max_count(137)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
         self.stations()  # pb increment: 1
-        self.tolerances()  # pb increment: 45
+        self.tolerances()  # pb increment: 46
         self.rings()  # pb increment: 1
         self.skippers()  # pb increment: 1
         self.ns_config()  # pb increment: 6
@@ -74,7 +74,7 @@ class DataBase:
             'CREATE table IF NOT EXISTS informalc_grievances(grievant varchar, station varchar, grv_no varchar, '
             'startdate varchar, enddate varchar, meetingdate varchar, issue varchar, article varchar)',
             'CREATE table IF NOT EXISTS informalc_settlements(grv_no varchar, level varchar, date_signed varchar, '
-            'decision varchar, proofdue varchar, docs varchar, gats_number varchar)',
+            'decision varchar, proofdue varchar, docs varchar)',
             'CREATE table IF NOT EXISTS informalc_batchindex (main varchar, sub varchar)',
             'CREATE table IF NOT EXISTS informalc_gats (grv_no varchar, gats_no varchar)',
             'CREATE table IF NOT EXISTS informalc_noncindex (followup varchar, overdue varchar)',
@@ -174,7 +174,8 @@ class DataBase:
             (42, "offbid_maxpivot", 2.0),
             (43, "triad_routefirst", "False"),  # when False, the route is displayed at the end of the route triad
             (44, "wal_12_hour", "True"),  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
-            (45, "wal_dec_exempt", "False")
+            (45, "wal_dec_exempt", "False"),
+            (46, "informalc_result_limit", 50)  # limits the number of rows in InformalC().showtime()
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:

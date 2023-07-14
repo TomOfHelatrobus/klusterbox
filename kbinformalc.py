@@ -8,11 +8,11 @@ by grievance as well as summaries.
 
 # custom modules
 import projvar  # defines project variables used in all modules.
-from kbtoolbox import commit, dir_path, inquire, \
+from kbtoolbox import commit, dir_path, inquire, macadj, \
     isint, titlebar_icon, ProgressBarDe, ReportName, Handler, NameChecker, \
-    GrievanceChecker, BackSlashDateChecker, Convert, DateTimeChecker
+    GrievanceChecker, BackSlashDateChecker, Convert, DateTimeChecker, MakeWindow
 # standard libraries
-from tkinter import messagebox, ttk, Tk, filedialog, Label
+from tkinter import messagebox, ttk, Tk, filedialog, Label, Button, StringVar, OptionMenu, LEFT, Entry
 from datetime import datetime, timedelta
 import os
 import sys
@@ -300,10 +300,10 @@ class InfcSpeedSheetGen:
         cell = self.ws_list[1].cell(column=6, row=5)
         cell.value = "docs"
         cell.style = self.col_header
+        # cell = self.ws_list[1].cell(column=7, row=5)
+        # cell.value = "gats number"
+        # cell.style = self.col_header
         cell = self.ws_list[1].cell(column=7, row=5)
-        cell.value = "gats number"
-        cell.style = self.col_header
-        cell = self.ws_list[1].cell(column=8, row=5)
         cell.value = "action"
         cell.style = self.col_header
         # freeze panes
@@ -380,10 +380,10 @@ class InfcSpeedSheetGen:
         col = self.ws_list[1].column_dimensions["F"]  # docs
         col.width = 15
         col.font = Font(size=9, name="Arial")
-        col = self.ws_list[1].column_dimensions["G"]  # gats_number
-        col.width = 12
-        col.font = Font(size=9, name="Arial")
-        col = self.ws_list[1].column_dimensions["H"]  # action
+        # col = self.ws_list[1].column_dimensions["G"]  # gats_number
+        # col.width = 12
+        # col.font = Font(size=9, name="Arial")
+        col = self.ws_list[1].column_dimensions["G"]  # action
         col.width = 9
         col.font = Font(size=9, name="Arial")
 
@@ -433,9 +433,9 @@ class InfcSpeedSheetGen:
             decision = sett[3]
             proofdue = Convert(sett[4]).dtstr_to_backslashstr()
             docs = sett[5]
-            gats_number = sett[6]
+            # gats_number = sett[6]
             values_array = [grievance_number, level, date_signed, decision,
-                            proofdue, docs, gats_number]
+                            proofdue, docs]
             for i in range(len(values_array)):  # loop for each column
                 cell = self.ws_list[1].cell(row=row, column=i+1)  # define the cell by sheet and cell coordinates
                 cell.value = values_array[i]  # insert the appropriate element
@@ -666,7 +666,7 @@ class SpeedSheetCheck:
         for i in range(self.sheet_count):
             ws = self.wb[self.sheets[i]]  # assign the worksheet object
             row_count = ws.max_row  # get the total amount of rows in the worksheet
-            self.sheet_rowcount.append(row_count)
+            # self.sheet_rowcount.append(row_count)
             total_rows += row_count
         return total_rows
 
@@ -720,9 +720,10 @@ class SpeedSheetCheck:
             article = Handler(self.ws.cell(row=ii, column=7).value).nonetype()
             action = Handler(self.ws.cell(row=ii, column=8).value).nonetype()
             self.pb.change_text("Reading Speedcell: {}".format(grv_no))  # update text for progress bar
+            self.pb.move_count(self.pb_counter)  # update count for progress bar
             SpeedGrvCheck(self, self.sheets[i], ii, grievant, grv_no, startdate, enddate, meetingdate,
                           issue, article, action).check_all()
-        self.pb_counter += 1
+            self.pb_counter += 1
 
     def scan_settlements(self, i):
         """ scan the values of the grievances worksheet, line by line. """
@@ -738,12 +739,12 @@ class SpeedSheetCheck:
                 decision = Handler(self.ws.cell(row=ii, column=4).value).nonetype()
                 proofdue = Handler(self.ws.cell(row=ii, column=5).value).nonetype()
                 docs = Handler(self.ws.cell(row=ii, column=6).value).nonetype()
-                gatsnumber = Handler(self.ws.cell(row=ii, column=7).value).nonetype()
-                action = Handler(self.ws.cell(row=ii, column=8).value).nonetype()
+                action = Handler(self.ws.cell(row=ii, column=7).value).nonetype()
                 self.pb.change_text("Reading Speedcell: {}".format(grv_no))  # update text for progress bar
+                self.pb.move_count(self.pb_counter)  # update count for progress bar
                 SpeedSetCheck(self, self.sheets[i], ii, grv_no, level, datesigned, decision, proofdue, docs,
-                              gatsnumber, action).check_all()
-        self.pb_counter += 1
+                              action).check_all()
+            self.pb_counter += 1
 
     def scan_indexes(self, i):
         """ scan the values of the index worksheets, line by line. """
@@ -759,8 +760,9 @@ class SpeedSheetCheck:
                 action = Handler(self.ws.cell(row=ii, column=3).value).nonetype()
                 # update text for progress bar
                 self.pb.change_text("Reading Speedcell: {}".format(self.index_columns[i-2][0]))
+                self.pb.move_count(self.pb_counter)  # update count for progress bar
                 SpeedIndexCheck(self, i, self.sheets[i], ii, first, second, action).check_all()
-        self.pb_counter += 1
+            self.pb_counter += 1
 
     def reporter(self):
         """ writes the report """
@@ -1248,7 +1250,7 @@ class SpeedGrvCheck:
 
 class SpeedSetCheck:
     """ checks one line of the settlement speedsheet when it is called by the SpeedSheetCheck class. """
-    def __init__(self, parent, sheet, row, grv_no, level, datesigned, decision, proofdue, docs, gatsnumber, action):
+    def __init__(self, parent, sheet, row, grv_no, level, datesigned, decision, proofdue, docs, action):
         self.parent = parent
         self.sheet = sheet  # input here is coming directly from the speedcell
         self.row = str(row)
@@ -1259,7 +1261,7 @@ class SpeedSetCheck:
         self.proofdue = proofdue
         self.input_date = []  # array to hold datesigned and proofdue - form in check_dates()
         self.docs = docs
-        self.gatsnumber = gatsnumber
+        # self.gatsnumber = gatsnumber
         self.action = action
         self.onrec = False  # this value is True if a sql search shows that there is a rec of the grv_no in the db.
         self.onrec_grv_no = None
@@ -1275,7 +1277,7 @@ class SpeedSetCheck:
         self.addproofdue = "empty"
         self.adddate = [self.adddatesigned, self.addproofdue]  # holds date values for self.add_date() loop
         self.adddocs = "empty"
-        self.addgatsnumber = "empty"
+        # self.addgatsnumber = "empty"
         self.error_array = []  # gives a report of failed checks
         self.attn_array = []  # gives a report of issues to bring to the attention of users
         self.add_array = []  # gives a report of records to add to the database
@@ -1295,7 +1297,7 @@ class SpeedSetCheck:
                 self.check_dates()
                 self.check_decision()
                 self.check_docs()
-                self.check_gatsnumber()
+                # self.check_gatsnumber()
                 self.add_recs()
         self.generate_report()
 
@@ -1565,30 +1567,30 @@ class SpeedSetCheck:
             fyi = "     FYI: New or updated docs: {}\n".format(self.docs)
             self.fyi_array.append(fyi)
             self.adddocs = self.docs
-
-    def check_gatsnumber(self):
-        """ check the article input - this is an open field that takes almost anything with no limits or indexes. """
-        self.gatsnumber = self.gatsnumber.strip()
-        self.gatsnumber = self.gatsnumber.lower()
-        if not self.gatsnumber:
-            pass
-        if len(self.gatsnumber) < 30:
-            pass
-        else:
-            error = "     ERROR: The gats number must not be longer than 30 characters.  \n"
-            self.error_array.append(error)
-            self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
-            return False
-        self.add_gatsnumber()
-
-    def add_gatsnumber(self):
-        """ add gats number to the self.addgatsnumber var """
-        if self.gatsnumber == self.onrec_gatsnumber:
-            pass
-        else:
-            fyi = "     FYI: New or updated gats number: {}\n".format(self.gatsnumber)
-            self.fyi_array.append(fyi)
-            self.addgatsnumber = self.gatsnumber
+    #
+    # def check_gatsnumber(self):
+    #     """ check the article input - this is an open field that takes almost anything with no limits or indexes. """
+    #     self.gatsnumber = self.gatsnumber.strip()
+    #     self.gatsnumber = self.gatsnumber.lower()
+    #     if not self.gatsnumber:
+    #         pass
+    #     if len(self.gatsnumber) < 30:
+    #         pass
+    #     else:
+    #         error = "     ERROR: The gats number must not be longer than 30 characters.  \n"
+    #         self.error_array.append(error)
+    #         self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
+    #         return False
+    #     self.add_gatsnumber()
+    #
+    # def add_gatsnumber(self):
+    #     """ add gats number to the self.addgatsnumber var """
+    #     if self.gatsnumber == self.onrec_gatsnumber:
+    #         pass
+    #     else:
+    #         fyi = "     FYI: New or updated gats number: {}\n".format(self.gatsnumber)
+    #         self.fyi_array.append(fyi)
+    #         self.addgatsnumber = self.gatsnumber
 
     def add_recs(self):
         """ add records using the add___ vars. """
@@ -1643,24 +1645,23 @@ class SpeedSetCheck:
         else:
             docs_place = self.onrec_docs
         # get gats place
-        if self.addgatsnumber != "empty":
-            add = "     INPUT: Gats Number added or updated to database >>{}\n".format(self.addgatsnumber)  # report
-            self.add_array.append(add)
-            chg_these.append("gatsnumber")
-            gats_place = self.addgatsnumber
-        else:
-            gats_place = self.onrec_gatsnumber
+        # if self.addgatsnumber != "empty":
+        #     add = "     INPUT: Gats Number added or updated to database >>{}\n".format(self.addgatsnumber)  # report
+        #     self.add_array.append(add)
+        #     chg_these.append("gatsnumber")
+        #     gats_place = self.addgatsnumber
+        # else:
+        #     gats_place = self.onrec_gatsnumber
         # if any values have changed - form sql statements using _place vars and commit to db.
         if len(chg_these) != 0:  # if change these is empty, then there is no need to insert/update records
             if not self.onrec:  # if there is no rec on file for the grievance, insert the first rec
                 sql = "INSERT INTO informalc_settlements(grv_no, level, date_signed, decision, proofdue, " \
-                      "docs, gats_number) VALUES('%s','%s','%s','%s','%s','%s','%s')" \
-                      % (self.grv_no, level_place, date_place[0], decision_place, date_place[1], docs_place, gats_place)
+                      "docs) VALUES('%s','%s','%s','%s','%s','%s')" \
+                      % (self.grv_no, level_place, date_place[0], decision_place, date_place[1], docs_place)
             else:  # update the first rec to replace pre existing record.
                 sql = "UPDATE informalc_settlements SET level='%s', date_signed='%s', decision ='%s', " \
-                      "proofdue='%s', docs='%s', gats_number='%s' WHERE grv_no='%s'" \
-                      % (level_place, date_place[0], decision_place, date_place[1], docs_place, gats_place,
-                         self.grv_no)
+                      "proofdue='%s', docs='%s' WHERE grv_no='%s'" \
+                      % (level_place, date_place[0], decision_place, date_place[1], docs_place, self.grv_no)
             commit(sql)
 
     def generate_report(self):
@@ -1901,6 +1902,125 @@ class ProgressBarIn:
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
+
+
+class InformalCTest:
+    """" test """
+    def __init__(self):
+        self.win = None
+
+    def start(self, frame):
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.win.topframe.tkraise()
+        Label(self.win.body, text="hello there").pack()
+        Button(self.win.buttons, text="go back",
+               command=lambda: (self.win.topframe.quit(), self.win.topframe.destroy())).pack()
+        self.win.finish()
+
+
+class InformalCSettings:
+    """
+    this creates a screen which will allow the user to change configure informal c 'results per page',
+    'decision options', 'issue options', etc
+    """
+
+    def __init__(self):
+        self.frame = None
+        self.win = None
+        self.informalc_result_limit = 0
+        self.result_limit = None  # stringvar
+        self.row = 0
+        self.status_update = None  # a label widget for status report
+
+    def create(self, frame):
+        """ this is a master method for calling other methods in the class in sequence. """
+        self.frame = frame
+        self.get_settings()
+        self.get_window_object()
+        self.get_stringvars()
+        self.build()
+        self.button_frame()
+        self.win.finish()
+        # informalc_issuescategories
+        # informalc_decisioncategories
+
+    def get_settings(self):
+        """ get records from the database and define variables. """
+        sql = "SELECT * FROM informalc_decisioncategories"
+        decision_categories = inquire(sql)
+        sql = "SELECT * FROM informalc_issuescategories"
+        issue_categories = inquire(sql)
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "informalc_result_limit"
+        results = inquire(sql)
+        self.informalc_result_limit = results[0][0]
+
+    def get_window_object(self):
+        """ create the window object and define self.win """
+        self.win = MakeWindow()
+        self.win.create(self.frame)
+
+    def get_stringvars(self):
+        """ create the stringvars """
+        self.result_limit = StringVar(self.win.body)
+
+    def build(self):
+        """ build the screens """
+        Label(self.win.body, text="Informal C Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=self.row, sticky="w", columnspan=14)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        text = macadj("Search Results __________________________________",
+                      "Search Results _________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=self.row, column=0, columnspan=14, sticky="w")
+        self.row += 1
+        # mousewheel scrolling direction
+        Label(self.win.body, text="Results Per Page:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        entry_width = macadj(35, 24)
+        e = Entry(self.win.body, width=entry_width, textvariable=self.result_limit)
+        e.grid(row=self.row, column=0, sticky="w")
+        self.result_limit.set("")
+        Button(self.win.body, width=5, anchor="w", text="ENTER",
+               command=lambda: self.update_result_limit()). \
+            grid(row=self.row, column=1, sticky="w")
+        self.row += 1
+
+    def button_frame(self):
+        """ Display buttons and status update message """
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20, command=lambda: (self.win.topframe.quit(), self.win.topframe.destroy()))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.status_update.pack(side=LEFT)
+
+    def update_result_limit(self):
+        """ apply the informal c result per page limit into the db after a check """
+        result_limit = self.result_limit.get()
+        if not result_limit:
+            msg = "The Results Per Page can not be blank or zero. "
+            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
+            self.status_update.config(text="")  # empty the status update message
+            return
+        if not isint(result_limit):
+            msg = "The Results Per Page must be an integer"
+            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
+            self.status_update.config(text="")  # empty the status update message
+            return
+        result_limit = int(result_limit)
+        if not 0 < result_limit < 101:
+            msg = "The Results Per Page must be between 0 and 201"
+            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
+            self.status_update.config(text="")  # empty the status update message
+            return
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % \
+              (result_limit, "informalc_result_limit")
+        commit(sql)
+        msg = "Results Per Page updated: {}".format(result_limit)
+        self.status_update.config(text="{}".format(msg))
 
 
 if __name__ == "__main__":

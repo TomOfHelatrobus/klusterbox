@@ -215,7 +215,8 @@ class V5008Fix:
             self.distinct_settlements.append(*r)
 
     def transfer_records(self):
-        """ insert data into informalc_grievances and informalc_settlements """
+        """ insert data into informalc_grievances, informalc_settlements and informalc_gats tables.
+        when the transfer is complete, delete the informalc_grv table"""
         i = 1
         for rec in self.transfer_array:
             self.pb.change_text("processing: {}".format(rec[0]))
@@ -228,9 +229,9 @@ class V5008Fix:
                 commit(sql)
             if rec[0] not in self.distinct_settlements:
                 sql = "INSERT INTO informalc_settlements " \
-                      "(grv_no, level, date_signed, decision, proofdue, docs, gats_number) " \
-                      "VALUES('%s', '%s', '%s', 'monetary remedy', '', '%s', '%s')" % \
-                      (rec[0], rec[8], rec[3], rec[6], rec[5])
+                      "(grv_no, level, date_signed, decision, proofdue, docs) " \
+                      "VALUES('%s', '%s', '%s', 'monetary remedy', '', '%s')" % \
+                      (rec[0], rec[8], rec[3], rec[6])
                 commit(sql)
                 if rec[5]:  # if there is a gats number
                     # insert the grievance number and gats number into the informalc gats table
