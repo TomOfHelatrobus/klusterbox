@@ -8,11 +8,10 @@ by grievance as well as summaries.
 
 # custom modules
 import projvar  # defines project variables used in all modules.
-from kbtoolbox import commit, dir_path, inquire, macadj, \
-    isint, titlebar_icon, ProgressBarDe, ReportName, Handler, NameChecker, \
-    GrievanceChecker, BackSlashDateChecker, Convert, DateTimeChecker, MakeWindow
+from kbtoolbox import commit, dir_path, inquire, isint, titlebar_icon, ProgressBarDe, ReportName, Handler, \
+    NameChecker, GrievanceChecker, BackSlashDateChecker, Convert, DateTimeChecker
 # standard libraries
-from tkinter import messagebox, ttk, Tk, filedialog, Label, Button, StringVar, OptionMenu, LEFT, Entry
+from tkinter import messagebox, ttk, Tk, filedialog, Label
 from datetime import datetime, timedelta
 import os
 import sys
@@ -1902,127 +1901,3 @@ class ProgressBarIn:
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
-
-
-class InformalCTest:
-    """" test """
-    def __init__(self):
-        self.win = None
-
-    def start(self, frame):
-        self.win = MakeWindow()
-        self.win.create(frame)
-        self.win.topframe.tkraise()
-        Label(self.win.body, text="hello there").pack()
-        Button(self.win.buttons, text="go back",
-               command=lambda: (self.win.topframe.quit(), self.win.topframe.destroy())).pack()
-        self.win.finish()
-
-
-class InformalCSettings:
-    """
-    this creates a screen which will allow the user to change configure informal c 'results per page',
-    'decision options', 'issue options', etc
-    """
-
-    def __init__(self):
-        self.frame = None
-        self.win = None
-        self.informalc_result_limit = 0
-        self.result_limit = None  # stringvar
-        self.row = 0
-        self.status_update = None  # a label widget for status report
-
-    def create(self, frame):
-        """ this is a master method for calling other methods in the class in sequence. """
-        self.frame = frame
-        self.get_settings()
-        self.get_window_object()
-        self.get_stringvars()
-        self.build()
-        self.button_frame()
-        self.win.finish()
-        # informalc_issuescategories
-        # informalc_decisioncategories
-
-    def get_settings(self):
-        """ get records from the database and define variables. """
-        sql = "SELECT * FROM informalc_decisioncategories"
-        decision_categories = inquire(sql)
-        sql = "SELECT * FROM informalc_issuescategories"
-        issue_categories = inquire(sql)
-        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "informalc_result_limit"
-        results = inquire(sql)
-        self.informalc_result_limit = results[0][0]
-
-    def get_window_object(self):
-        """ create the window object and define self.win """
-        self.win = MakeWindow()
-        self.win.create(self.frame)
-
-    def get_stringvars(self):
-        """ create the stringvars """
-        self.result_limit = StringVar(self.win.body)
-
-    def build(self):
-        """ build the screens """
-        Label(self.win.body, text="Informal C Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, sticky="w", columnspan=14)
-        self.row += 1
-        Label(self.win.body, text=" ").grid(row=self.row, column=0)
-        self.row += 1
-        text = macadj("Search Results __________________________________",
-                      "Search Results _________________________")
-        Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=self.row, column=0, columnspan=14, sticky="w")
-        self.row += 1
-        # mousewheel scrolling direction
-        Label(self.win.body, text="Results Per Page:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
-        entry_width = macadj(35, 24)
-        e = Entry(self.win.body, width=entry_width, textvariable=self.result_limit)
-        e.grid(row=self.row, column=0, sticky="w")
-        self.result_limit.set("")
-        Button(self.win.body, width=5, anchor="w", text="ENTER",
-               command=lambda: self.update_result_limit()). \
-            grid(row=self.row, column=1, sticky="w")
-        self.row += 1
-
-    def button_frame(self):
-        """ Display buttons and status update message """
-        button = Button(self.win.buttons)
-        button.config(text="Go Back", width=20, command=lambda: (self.win.topframe.quit(), self.win.topframe.destroy()))
-        if sys.platform == "win32":
-            button.config(anchor="w")
-        button.pack(side=LEFT)
-        self.status_update = Label(self.win.buttons, text="", fg="red")
-        self.status_update.pack(side=LEFT)
-
-    def update_result_limit(self):
-        """ apply the informal c result per page limit into the db after a check """
-        result_limit = self.result_limit.get()
-        if not result_limit:
-            msg = "The Results Per Page can not be blank or zero. "
-            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
-            self.status_update.config(text="")  # empty the status update message
-            return
-        if not isint(result_limit):
-            msg = "The Results Per Page must be an integer"
-            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
-            self.status_update.config(text="")  # empty the status update message
-            return
-        result_limit = int(result_limit)
-        if not 0 < result_limit < 101:
-            msg = "The Results Per Page must be between 0 and 201"
-            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
-            self.status_update.config(text="")  # empty the status update message
-            return
-        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % \
-              (result_limit, "informalc_result_limit")
-        commit(sql)
-        msg = "Results Per Page updated: {}".format(result_limit)
-        self.status_update.config(text="{}".format(msg))
-
-
-if __name__ == "__main__":
-    """ this is where the program starts if not launched from another app. """
-    # InformalC().informalc(None)

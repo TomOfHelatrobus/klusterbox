@@ -1855,6 +1855,116 @@ class InformalCReports:
                                  "The report was not generated.", parent=self.parent.win.topframe)
 
 
+class InformalCOptions:
+    """ this class will generate text files for displaying options of issues and decisions for informalc.
+    The class can accept a frame passed from the method so that a messagebox can be displayed. """
+
+    def __init__(self):
+        self.frame = None
+
+    def issue_options(self, frame):
+        """ this is open a text document showing a list of all issue options for informal c. Showing standard
+        and custom. """
+        self.frame = frame
+        # --------------------------------------------------------------------------- find settlements missing awards
+        standard_options = []  # array for standard issue categories
+        custom_options = []  # array for custom issue categories
+        sql = "SELECT * FROM informalc_issuescategories"
+        result = inquire(sql)
+        for r in result:  # separate the issue categories into standard and custom
+            if r[3] == "True":
+                standard_options.append(r)
+            else:
+                custom_options.append(r)
+        # ---------------------------------------------------------------------------------------------- file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_list_options" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ---------------------------------------------------------------------------------------------- write report
+        report.write("Issue Options\n\n")
+        report.write("    This report list all standard and custom issue options. Standard issue options \n"
+                     "    can not be deleted. Indexes are used by Informal C Speedsheets as a shortcut.\n\n")
+        report.write("\n    Standard Issue Options \n")
+        report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Article", "Issue Option"))
+        report.write("    -----------------------------------------\n")
+        for so in standard_options:
+            report.write("    {:>5} {:>8}  {:<25}\n".format(so[0], so[1], so[2]))
+        report.write("\n")
+        if not custom_options:
+            report.write("    No custom options have been created.")
+        else:
+            report.write("\n    Custom Issue Options \n")
+            report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Article", "Issue Option"))
+            report.write("    -----------------------------------------\n")
+            for co in custom_options:
+                report.write("    {:>5} {:>8}  {:<25}\n".format(co[0], co[1], co[2]))
+            report.write("\n")
+
+        # --------------------------------------------------------------------------------------- close, save and open
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.frame)
+            
+    def decision_options(self, frame):
+        """ this is open a text document showing a list of all decision options for informal c. Showing standard
+        and custom. """
+        self.frame = frame
+        # --------------------------------------------------------------------------- find settlements missing awards
+        standard_options = []  # array for standard decision categories
+        custom_options = []  # array for custom decision categories
+        sql = "SELECT * FROM informalc_decisioncategories"
+        result = inquire(sql)
+        for r in result:  # separate the decision categories into standard and custom
+            if r[3] == "True":
+                standard_options.append(r)
+            else:
+                custom_options.append(r)
+        # ---------------------------------------------------------------------------------------------- file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_list_options" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ---------------------------------------------------------------------------------------------- write report
+        report.write("Decision Options\n\n")
+        report.write("    This report list all standard and custom decision options. Standard decision options \n"
+                     "    can not be deleted. Indexes are used by Informal C Speedsheets as a shortcut.\n\n")
+        report.write("\n    Standard Decision Options \n")
+        report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Type", "Decision Option"))
+        report.write("    -----------------------------------------\n")
+        for so in standard_options:
+            report.write("    {:>5} {:>8}  {:<25}\n".format(so[0], so[1], so[2]))
+        report.write("\n")
+        if not custom_options:
+            report.write("    No custom options have been created.")
+        else:
+            report.write("\n    Custom Decision Options \n")
+            report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Type", "Decision Option"))
+            report.write("    -----------------------------------------\n")
+            for co in custom_options:
+                report.write("    {:>5} {:>8}  {:<25}\n".format(co[0], co[1], co[2]))
+            report.write("\n")
+
+        # --------------------------------------------------------------------------------------- close, save and open
+        report.close()
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.frame)
+
+
 class RptCarrierId:
     """
     Generate a spread sheet with the carrier's name and employee id for all carriers in the search criteria.

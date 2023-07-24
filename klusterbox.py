@@ -12,13 +12,15 @@ This version of Klusterbox is being released under the GNU General Public Licens
 """
 # custom modules
 import projvar
-from kbreports import InformalCIndex, Reports, Messenger, CheatSheet, Archive, InformalCReports, RptCarrierId
+from kbreports import InformalCIndex, Reports, Messenger, CheatSheet, Archive, InformalCReports, RptCarrierId, \
+    InformalCOptions
 from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, gen_ns_dict, \
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
     find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
-    RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker, DateTimeChecker, GrievanceChecker
+    RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker, DateTimeChecker, GrievanceChecker, \
+    IndexArticleChecker, IssueDecisionChecker, DecisionTypeChecker, distinctresult_to_list
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase, DataBaseFix
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -27,8 +29,8 @@ from kbcsv_repair import CsvRepair
 from kbcsv_reader import MaxHr, ee_skimmer
 from kbpdfhandling import PdfConverter
 from kbenterrings import EnterRings
-from kbinformalc import InformalCSettings, InfcSpeedSheetGen, InfcSpeedWorkBookGet, informalc_gen_clist, \
-    informalc_date_converter, InformalCTest
+from kbinformalc import InfcSpeedSheetGen, InfcSpeedWorkBookGet, informalc_gen_clist, \
+    informalc_date_converter
 from kbfixes import Fixes
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
@@ -225,6 +227,12 @@ class InformalC:
             if "out of station" in self.station_options:
                 self.station_options.remove("out of station")
 
+        def get_display_limit():
+            """ fetch the informalc result limit from the tolerances table. """
+            sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "informalc_result_limit"
+            result = inquire(sql)
+            self.rec_display_limit = int(result[0][0])
+
         def get_issuecats():
             """ fetch the issue categories from the informalc_issuescategories table of the db
             and place them in arrays. """
@@ -267,6 +275,7 @@ class InformalC:
         clear_tempfolders()  # clear contents of temp folder
         get_station()  # this uses the investigation range station as the default
         get_station_options()  # this gets the list of stations
+        get_display_limit()  # get the number of search results per page to be displayed
         get_issuecats()  # gets all from informalc_issuescategories table and puts it in self.issue_description
         get_decisioncats()  # get all from informalc_decisioncategories and puts it in self.decision_description
         if not station_screen_autorouting():
@@ -1121,7 +1130,6 @@ class InformalC:
             if result:  # if the result is not empty
                 for r in result:  # build a list...
                     self.search_gat_result.append(r[0])  # of grievances with gats numbers
-            print(self.search_gat_result)
 
         # ----------------------------------------------------------------------------------------------- grievance sql
         where = ""  # initialize the sql statement builder
@@ -1263,7 +1271,7 @@ class InformalC:
         # if turnpage is false, then initize all nav bar vars
         if not turnpage:
             self.current_page = 1  # the current page of results to display
-            self.rec_display_limit = 50  # the number of records displayed before a new page is needed
+            # self.rec_display_limit = 50  # the number of records displayed before a new page is needed
         # get the range of recs on this page. 's' is the start and 'e' is the end range
         p = self.current_page  # the current page/screen
         dl = self.rec_display_limit  # the number of records displayed per page
@@ -3622,6 +3630,314 @@ class InformalC:
                 subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('infc_grv') + filename])
+
+
+class InformalCSettings:
+    """
+    this creates a screen which will allow the user to change configure informal c 'results per page',
+    'decision options', 'issue options', etc
+    """
+
+    def __init__(self):
+        self.win = None
+        self.informalc_result_limit = 0
+        self.custom_issue = []  # a list of custom issues from informalc issues categories.
+        self.custom_decision = []  # a list of custom decisions from informalc decision categories
+        self.result_limit = None  # stringvar
+        self.addcustomissue = None  # stringvar
+        self.addcustomindex = None  # stringvar
+        self.addcustomarticle = None  # stringvar
+        self.addcustomdecision = None  # stringvar
+        self.adddecindex = None  # stringvar
+        self.adddectype = None  # stringvar
+        self.row = 0
+        self.status_update = None  # a label widget for status report
+        self.max_issue_index = None  # the biggest value for issue index in the db
+        self.max_decision_index = None  # the biggest value for decision index in the db
+
+    def create(self, frame):
+        """ this is a master method for calling other methods in the class in sequence. """
+        self.win = MakeWindow()
+        self.win.create(frame)
+        self.get_stringvars()
+        self.get_recs()
+        self.build()
+        self.button_frame()
+        self.win.finish()
+
+    def get_stringvars(self):
+        """ create the stringvars """
+        self.result_limit = StringVar(self.win.body)
+        self.addcustomissue = StringVar(self.win.body)
+        self.addcustomindex = StringVar(self.win.body)
+        self.addcustomarticle = StringVar(self.win.body)
+        self.addcustomdecision = StringVar(self.win.body)
+        self.adddecindex = StringVar(self.win.body)
+        self.adddectype = StringVar(self.win.body)
+
+    def get_recs(self):
+        """ get records from the database and define variables. """
+
+        def find_available_index(sqlresult):
+            """ accepts a list of distinct numeric strings, converts them to integers, and returns
+            the lowest available value not in the distinct list as a string """
+            array = distinctresult_to_list(sqlresult)  # convert the results to a list
+            int_array = [int(x) for x in array]  # convert all strings to int
+            for i in range(1, 999):
+                if i in int_array:  # ignore if the number is already in use
+                    pass
+                else:
+                    return str(i)  # return the first number not in use as a string
+
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "informalc_result_limit"
+        results = inquire(sql)
+        self.informalc_result_limit = results[0][0]
+        self.result_limit.set(self.informalc_result_limit)
+        sql = "SELECT * FROM informalc_decisioncategories WHERE standard = 'False'"
+        self.custom_decision = inquire(sql)
+        sql = "SELECT * FROM informalc_issuescategories WHERE standard = 'False'"
+        self.custom_issue = inquire(sql)
+        sql = "SELECT DISTINCT(ssindex) FROM informalc_issuescategories"
+        result = inquire(sql)
+        self.max_issue_index = find_available_index(result)  # find the largest value
+        sql = "SELECT DISTINCT(ssindex) FROM informalc_decisioncategories"
+        result = inquire(sql)
+        self.max_decision_index = find_available_index(result)  # find the largest value
+
+    def build(self):
+        """ build the screens """
+        self.row = 0
+        Label(self.win.body, text="Informal C Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
+            .grid(row=self.row, sticky="w", columnspan=14)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
+        # ----------------------------------------------------------------------------------- search results per page
+        text = macadj("Search Results __________________________________",
+                      "Search Results _________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=self.row, column=0, columnspan=14, sticky="w")
+        self.row += 1
+        Label(self.win.body, text="Results Per Page:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        entry_width = macadj(6, 5)
+        e = Entry(self.win.body, width=entry_width, textvariable=self.result_limit)
+        e.grid(row=self.row, column=13, sticky="e", pady=3)
+        self.row += 1
+        Button(self.win.body, width=5, anchor="w", text="ENTER",
+               command=lambda: self.update_result_limit()). \
+            grid(row=self.row, column=13, sticky="e")
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)  # blank line for reabability
+        self.row += 1
+        # --------------------------------------------------------------------------------------------- issue options
+        text = macadj("Issue Options ___________________________________",
+                      "Issue Options __________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=self.row, column=0, columnspan=14, sticky="w")
+        self.row += 1
+        Label(self.win.body, text="Available Issue Options:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        Button(self.win.body, width=5, anchor="w", text="list",
+               command=lambda: InformalCOptions().issue_options(self.win.topframe)). \
+            grid(row=self.row, column=13, sticky="e")
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)  # blank line for reabability
+        self.row += 1
+        # -------------------------------------------------------------------------------------------- add custom issue
+        addissueframe = Frame(self.win.body)
+        addissueframe.grid(row=self.row, column=0, columnspan=14, sticky="w")
+        self.addcustomindex.set(str(self.max_issue_index))
+        self.addcustomarticle.set("")
+        self.addcustomissue.set("")  # assign stringvars an empty value
+        Label(addissueframe, text="Add New Custom Issue ").grid(row=0, column=0, columnspan=3, sticky="w")
+        entry_width = macadj(5, 4)
+        Label(addissueframe, text="Index", fg="grey").grid(row=1, column=0, sticky="w")
+        Label(addissueframe, text="Article", fg="grey").grid(row=1, column=1, sticky="w")
+        Label(addissueframe, text="Issue", fg="grey").grid(row=1, column=2, sticky="w")
+        e = Entry(addissueframe, width=entry_width, textvariable=self.addcustomindex)
+        e.grid(row=2, column=0, sticky="w", pady=3)
+        e = Entry(addissueframe, width=6, textvariable=self.addcustomarticle)
+        e.grid(row=2, column=1, sticky="w", pady=3)
+        e = Entry(addissueframe, width=macadj(30, 28), textvariable=self.addcustomissue)
+        e.grid(row=2, column=2, sticky="w", pady=3)
+        Button(addissueframe, width=5, anchor="w", text="add",
+               command=lambda: self.add_customissue()). \
+            grid(row=3, column=2, sticky="e")
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)  # blank line for reabability
+        self.row += 1
+        # -------------------------------------------------------------------------------- show / delete custom issues
+        customissueframe = Frame(self.win.body)
+        customissueframe.grid(row=self.row, column=0, columnspan=14, sticky="w")
+        if not self.custom_issue:
+            text = "There are no custom issue options to show."
+            Label(customissueframe, text=text).grid(row=0, column=0, sticky="w")
+        else:
+            text = "Available Custom Issue Options"
+            Label(customissueframe, text=text).grid(row=0, column=0, sticky="w", columnspan=3)
+            Label(customissueframe, text="Index", fg="grey").grid(row=1, column=0, sticky="w")
+            Label(customissueframe, text="Article", fg="grey").grid(row=1, column=1, sticky="w")
+            Label(customissueframe, text="Issue", fg="grey").grid(row=1, column=2, sticky="w")
+        row = 2
+        for ci in self.custom_issue:
+            Label(customissueframe, text=ci[0]).grid(row=row, column=0, sticky="w")  # index
+            Label(customissueframe, text=ci[1]).grid(row=row, column=1, sticky="w")  # article
+            Label(customissueframe, text=ci[2], width=19, anchor="w").grid(row=row, column=2, sticky="w")  # issue
+            Button(customissueframe, text="delete",  # button
+                   command=lambda delete_this=ci[2]: self.delete_customissue(delete_this))\
+                .grid(row=row, column=3, sticky="w")
+            row += 1
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row)  # blank line for reabability
+        self.row += 1
+        # ------------------------------------------------------------------------------------------- decision options
+        text = macadj("Decision Options ________________________________",
+                      "Decision Options _______________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=self.row, column=0, columnspan=14, sticky="w")
+        self.row += 1
+        Label(self.win.body, text="Available Decision Options: ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        Button(self.win.body, width=5, anchor="w", text="list",
+               command=lambda: InformalCOptions().decision_options(self.win.topframe)). \
+            grid(row=self.row, column=13, sticky="e")
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)  # blank line for reabability
+        self.row += 1
+        # ----------------------------------------------------------------------------------------- add custom decision
+        adddecisionframe = Frame(self.win.body)
+        adddecisionframe.grid(row=self.row, column=0, columnspan=14, sticky="w")
+        self.addcustomdecision.set("")  # assign stringvars an empty value
+        self.adddecindex.set(str(self.max_decision_index))
+        self.adddectype.set("general")
+        Label(adddecisionframe, text="Add New Custom Decision ").grid(row=0, column=0, columnspan=3, sticky="w")
+        entry_width = macadj(5, 4)
+        Label(adddecisionframe, text="Index", fg="grey").grid(row=1, column=0, sticky="w")
+        Label(adddecisionframe, text="Type", fg="grey").grid(row=1, column=1, sticky="w")
+        Label(adddecisionframe, text="Decision", fg="grey").grid(row=1, column=2, sticky="w")
+        e = Entry(adddecisionframe, width=entry_width, textvariable=self.adddecindex)
+        e.grid(row=2, column=0, sticky="w", pady=3)
+        e = Entry(adddecisionframe, width=8, textvariable=self.adddectype)
+        e.grid(row=2, column=1, sticky="w", pady=3)
+        e = Entry(adddecisionframe, width=macadj(27, 25), textvariable=self.addcustomdecision)
+        e.grid(row=2, column=2, sticky="w", pady=3)
+        Button(adddecisionframe, width=5, anchor="w", text="add",
+               command=lambda: self.add_customdecision()). \
+            grid(row=3, column=2, sticky="e")
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row)  # blank line for reabability
+        self.row += 1
+        # ----------------------------------------------------------------------------- show / delete custom decisions
+        customdecisionframe = Frame(self.win.body)
+        customdecisionframe.grid(row=self.row, column=0, columnspan=14, sticky="w")
+        if not self.custom_decision:
+            text = "There are no custom decision options to show."
+            Label(customdecisionframe, text=text).grid(row=0, column=0, sticky="w")
+        else:
+            text = "Available Custom Decision Options"
+            Label(customdecisionframe, text=text).grid(row=0, column=0, sticky="w", columnspan=3)
+            Label(customdecisionframe, text="Index", fg="grey").grid(row=1, column=0, sticky="w")
+            Label(customdecisionframe, text="Type", fg="grey").grid(row=1, column=1, sticky="w")
+            Label(customdecisionframe, text="Decision", fg="grey").grid(row=1, column=2, sticky="w")
+        row = 2
+        for ci in self.custom_decision:
+            Label(customdecisionframe, text=ci[0]).grid(row=row, column=0, sticky="w")
+            Label(customdecisionframe, text=ci[1]).grid(row=row, column=1, sticky="w")
+            Label(customdecisionframe, text=ci[2], width=19, anchor="w").grid(row=row, column=2, sticky="w")
+            Button(customdecisionframe, text="delete",
+                   command=lambda delete_this=ci[2]: (self.delete_customdecision(delete_this)))\
+                .grid(row=row, column=3, sticky="w")
+            row += 1
+        self.row += 1
+        Label(self.win.body, text="").grid(row=self.row)  # blank line for reabability
+        self.row += 1
+
+    def button_frame(self):
+        """ Display buttons and status update message """
+        button = Button(self.win.buttons)
+        button.config(text="Go Back", width=20,
+                      command=lambda: MainFrame().start(frame=self.win.topframe))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")
+        self.status_update.pack(side=LEFT)
+
+    def update_result_limit(self):
+        """ apply the informal c result per page limit into the db after a check """
+        result_limit = self.result_limit.get()
+        if not result_limit:
+            msg = "The Results Per Page can not be blank or zero. "
+            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
+            self.status_update.config(text="")  # empty the status update message
+            return
+        if not isint(result_limit):
+            msg = "The Results Per Page must be an integer"
+            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
+            self.status_update.config(text="")  # empty the status update message
+            return
+        result_limit = int(result_limit)
+        if not 0 < result_limit < 101:
+            msg = "The Results Per Page must be between 0 and 201"
+            messagebox.showerror("Informal C Settings", msg, parent=self.win.topframe)
+            self.status_update.config(text="")  # empty the status update message
+            return
+        sql = "UPDATE tolerances SET tolerance='%s'WHERE category='%s'" % \
+              (result_limit, "informalc_result_limit")
+        commit(sql)
+        msg = "Results Per Page updated: {}".format(result_limit)
+        self.status_update.config(text="{}".format(msg))
+
+    def add_customissue(self):
+        """ run when the button 'add' for new custom issue is pressed. """
+        index = self.addcustomindex.get().strip()
+        article = self.addcustomarticle.get().strip()
+        issue = self.addcustomissue.get().lower().strip()
+        # return if any of the checks fail
+        if not IndexArticleChecker().check_all(self.win.topframe, index, "issue index"):
+            return
+        if not IndexArticleChecker().check_all(self.win.topframe, article, "article"):
+            return
+        if not IssueDecisionChecker().check_all(self.win.topframe, issue, "issue"):
+            return
+        index = str(int(index))  # convert string to int to string to eliminate leading zeros.
+        article = str(int(article))  # convert string to int to string to eliminate leading zeros.
+        sql = "INSERT INTO informalc_issuescategories(ssindex, article, issue, standard)" \
+              "VALUES('%s', '%s', '%s', '%s')" % (index, article, issue, "False")
+        commit(sql)
+        InformalCSettings().create(self.win.topframe)
+
+    def delete_customissue(self, delete_this):
+        """ run when the 'delete' button is pressed in the display of custom issue options.
+        this will delete the selected custom issue option. """
+        sql = "DELETE FROM informalc_issuescategories WHERE issue = '%s'" % delete_this
+        commit(sql)
+        InformalCSettings().create(self.win.topframe)
+
+    def add_customdecision(self):
+        """ run when the button 'add' for new custom decision is pressed. """
+        index = self.adddecindex.get().strip()
+        dectype = self.adddectype.get().strip().lower()
+        # if no value was entered for decision type, use "general" as a default
+        dectype = Convert(dectype).empty_returns_str("general")
+        decision = self.addcustomdecision.get().lower().strip()
+        # return if any of the checks fail
+        if not IndexArticleChecker().check_all(self.win.topframe, index, "decision index"):
+            return
+        if not DecisionTypeChecker().check_all(self.win.topframe, dectype):
+            return
+        if not IssueDecisionChecker().check_all(self.win.topframe, decision, "decision"):
+            return
+        index = str(int(index))  # convert string to int to string to eliminate leading zeros.
+        sql = "INSERT INTO informalc_decisioncategories(ssindex, type, decision, standard)" \
+              "VALUES('%s', '%s', '%s', '%s')" % (index, dectype, decision, "False")
+        commit(sql)
+        InformalCSettings().create(self.win.topframe)
+
+    def delete_customdecision(self, delete_this):
+        """ run when the 'delete' button is pressed in the display of custom decision options.
+        this will delete the selected custom decision option. """
+        sql = "DELETE FROM informalc_decisioncategories WHERE decision = '%s'" % delete_this
+        commit(sql)
+        InformalCSettings().create(self.win.topframe)
 
 
 class OtDistribution:
@@ -13113,11 +13429,7 @@ class MainFrame:
         management_menu.add_command(label="Speedsheet Settings",
                                     command=lambda: SpeedConfig(self.win.topframe).create())
         management_menu.add_command(label="Informal C Settings",
-                                    command=lambda: (InformalCSettings().create(self.win.topframe),
-                                                     MainFrame().start()))
-        management_menu.add_command(label="Informal C Test",
-                                    command=lambda: (InformalCTest().start(self.win.topframe),
-                                                     MainFrame().start()))
+                                    command=lambda: InformalCSettings().create(self.win.topframe))
         management_menu.add_separator()
         management_menu.add_command(label="Auto Data Entry Settings",
                                     command=lambda: AdeSettings().start(self.win.topframe))

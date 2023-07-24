@@ -108,6 +108,17 @@ def macadj(win, mac):
     return arg
 
 
+def distinctresult_to_list(results):
+    """ this will take distinct sql results from an inquiry and convert it to a list then return that list. """
+    array = []
+    if results:
+        for r in results:
+            for rr in r:
+                if rr:
+                    array.append(rr)
+    return array
+
+
 class MakeWindow:
     """
     creates a window with a scrollbar and a frame for buttons on the bottom
@@ -136,6 +147,7 @@ class MakeWindow:
         """ call this method to build the window. If a frame is passed, it will be destroyed """
         if frame is not None:
             frame.destroy()  # close out the previous frame
+            # frame.quit()
         self.topframe.pack(fill=BOTH, side=LEFT)  # pack topframe on the root
         self.buttons.pack(fill=BOTH, side=BOTTOM)  # pack buttons on the topframe
         self.s.pack(side=RIGHT, fill=BOTH)  # pack scrollbar on topframe
@@ -177,7 +189,7 @@ class MakeWindow:
                 self.c.unbind_all('<Button-5>')
 
     def finish(self):
-        """ This closes the window created by front_window() """
+        """ This closes the window created by create() """
         projvar.root.update()
         self.c.config(scrollregion=self.c.bbox("all"))
         try:
@@ -1300,6 +1312,18 @@ def isint(value):
         return False
 
 
+def good_character(data):
+    """ checks that the arguement is contains only valid letters, numbers or special characters """
+    for char in data:
+        if char in ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
+                    "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "-", "0", "1", "2", "3", "4", "5",
+                    "6", "7", "8", "9"):
+            pass
+        else:
+            return False
+    return True
+
+
 def dir_path_check(dirr):
     """ return appropriate path depending on platorm """
     path = ""
@@ -2146,6 +2170,171 @@ class GrievanceChecker:
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number must not exceed 20 characters in length.",
                                      parent=self.frame)
+            return False
+        return True
+
+
+class IssueDecisionChecker:
+    """ this class will check 'issue' and 'decision' input for informal c issue and decision options. """
+    def __init__(self):
+        self.frame = None
+        self.data = None
+        self._type = ""  # is either 'issue' or 'decision'
+
+    def check_all(self, frame, data, _type):
+        """ this is a controller method running all other methods in the class """
+        self.frame = frame
+        self.data = data.strip()
+        self._type = _type  # is either 'article' or 'index'
+        if not self.not_empty():
+            return False
+        if not self.numeric():
+            return False
+        if not self.length():
+            return False
+        if not self.already_used():
+            return False
+        return True
+
+    def not_empty(self):
+        """ check to make sure that the input is not empty """
+        if not self.data:
+            msg = "The {} can not be blank. Please enter a the name of the {}. ".format(self._type, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def numeric(self):
+        """ this checks that that input is not numeric. """
+        if self.data.isnumeric():
+            msg = "The {} must not be a number. Instead got {}".format(self._type, self.data)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def length(self):
+        """ this checks that the length is not longer than 20 characters. """
+        if len(self.data) > 20:
+            msg = "The {} must not be longer than 20 characters. Instead got {}".format(self._type, self.data)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def already_used(self):
+        """ check the issue or decision to make sure that it is not already in use """
+        sql = ""
+        if self._type == "issue":
+            sql = "SELECT DISTINCT issue FROM informalc_issuescategories"
+        if self._type == "decision":
+            sql = "SELECT DISTINCT decision FROM informalc_decisioncategories"
+        usedoptions = inquire(sql)
+        usedoptions = distinctresult_to_list(usedoptions)
+        if self.data in usedoptions:
+            msg = "The value {} entered for {} is already in use. Consult the list of {} options to " \
+                  "select an option not already in use.".format(self.data, self._type, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+
+class IndexArticleChecker:
+    """ this class will check articles and indexes for informal c issue options """
+    def __init__(self):
+        self.frame = None
+        self.data = None
+        self._type = ""  # is either 'article', 'issue index' or 'decision index'
+
+    def check_all(self, frame, data, _type):
+        """ this is a controller method running all other methods in the class """
+        self.frame = frame
+        self.data = data
+        self._type = _type  # is either 'article', 'issue index' or 'decision index'
+        if not self.not_empty():
+            return False
+        if not self.number():
+            return False
+        self.data = int(self.data)  # convert the string to an integer.
+        if not self.range():
+            return False
+        if not self.already_used():
+            return False
+        return True
+
+    def not_empty(self):
+        """ check to make sure that the input is not empty """
+        if not self.data:
+            msg = "The {} can not be blank. Please enter a number for the {}. ".format(self._type, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def number(self):
+        """ returns False if the the data is not a number. """
+        if not isint(self.data):
+            msg = "The {} must be a number. Instead got {}".format(self._type, self.data)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def range(self):
+        """ returns False is the data is not between 0 and 1000 """
+        if 0 < self.data < 1000:
+            return True
+        msg = "The {} must be a value between 0 and 1000. Instead got {}".format(self._type, self.data)
+        messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+        return False
+
+    def already_used(self):
+        """ check the index to make sure that it is not already in use """
+        self.data = str(int(self.data))  # convert from string to int to string to eliminate leading zeros.
+        sql = ""
+        if self._type == "article":  # if checking article, duplicates are allowed
+            return True
+        if self._type == "issue index":
+            sql = "SELECT DISTINCT ssindex FROM informalc_issuescategories"
+        if self._type == "decision index":
+            sql = "SELECT DISTINCT ssindex FROM informalc_decisioncategories"
+        usedindexes = inquire(sql)
+        usedindexes = distinctresult_to_list(usedindexes)
+        if self.data in usedindexes:
+            msg = "The value {} entered for {} is already in use. Consult the list of issue options to " \
+                  "select a number not already in use.".format(self.data, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+
+class DecisionTypeChecker:
+    """ this class will check types for informal c decision options """
+    def __init__(self):
+        self.frame = None
+        self.data = None
+
+    def check_all(self, frame, data):
+        """ this is a controller method running all other methods in the class """
+        self.frame = frame
+        self.data = data.lower().strip()
+        if not self.check_length():
+            return False
+        if not self.isalphanumeric():
+            return False
+        return True
+
+    def check_length(self):
+        """ returns false if the input is greater than 7 characters long"""
+        if len(self.data) > 7:
+            msg = f"The value given for decision type {self.data} exceeds 7 characters. " \
+                  f"Please enter a value with less than 8 characters. "
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def isalphanumeric(self):
+        """ returns false if the input is not alpha numeric """
+        if not good_character(self.data):
+            msg = f"The value given for decision type \'{self.data}\' contains special characters. " \
+                  f"Please enter a value with only numbers/letters (spaces and hyphens are also acceptable). "
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
             return False
         return True
 
