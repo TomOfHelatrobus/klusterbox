@@ -6,7 +6,7 @@ the user information in the form of message boxes.
 """
 import projvar
 from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path, Convert, check_path, \
-    informalc_date_checker, DateTimeChecker, ProgressBarDe
+    informalc_date_checker, DateTimeChecker, ProgressBarDe, issuedecisionresult_sorter
 from tkinter import messagebox, simpledialog, filedialog
 from tkinter.simpledialog import askstring
 from shutil import rmtree
@@ -1871,6 +1871,7 @@ class InformalCOptions:
         custom_options = []  # array for custom issue categories
         sql = "SELECT * FROM informalc_issuescategories"
         result = inquire(sql)
+        result = issuedecisionresult_sorter(result)  # sort results by first value
         for r in result:  # separate the issue categories into standard and custom
             if r[3] == "True":
                 standard_options.append(r)
@@ -1884,7 +1885,7 @@ class InformalCOptions:
         report.write("Issue Options\n\n")
         report.write("    This report list all standard and custom issue options. Standard issue options \n"
                      "    can not be deleted. Indexes are used by Informal C Speedsheets as a shortcut.\n\n")
-        report.write("\n    Standard Issue Options \n")
+        report.write("\n    Standard Issue Options \n\n")
         report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Article", "Issue Option"))
         report.write("    -----------------------------------------\n")
         for so in standard_options:
@@ -1893,7 +1894,7 @@ class InformalCOptions:
         if not custom_options:
             report.write("    No custom options have been created.")
         else:
-            report.write("\n    Custom Issue Options \n")
+            report.write("\n    Custom Issue Options \n\n")
             report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Article", "Issue Option"))
             report.write("    -----------------------------------------\n")
             for co in custom_options:
@@ -1922,6 +1923,7 @@ class InformalCOptions:
         custom_options = []  # array for custom decision categories
         sql = "SELECT * FROM informalc_decisioncategories"
         result = inquire(sql)
+        result = issuedecisionresult_sorter(result)  # sort results by index
         for r in result:  # separate the decision categories into standard and custom
             if r[3] == "True":
                 standard_options.append(r)
@@ -1935,7 +1937,7 @@ class InformalCOptions:
         report.write("Decision Options\n\n")
         report.write("    This report list all standard and custom decision options. Standard decision options \n"
                      "    can not be deleted. Indexes are used by Informal C Speedsheets as a shortcut.\n\n")
-        report.write("\n    Standard Decision Options \n")
+        report.write("\n    Standard Decision Options \n\n")
         report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Type", "Decision Option"))
         report.write("    -----------------------------------------\n")
         for so in standard_options:
@@ -1944,7 +1946,7 @@ class InformalCOptions:
         if not custom_options:
             report.write("    No custom options have been created.")
         else:
-            report.write("\n    Custom Decision Options \n")
+            report.write("\n    Custom Decision Options \n\n")
             report.write("    {:>5} {:>8}  {:<25}\n".format("Index", "Type", "Decision Option"))
             report.write("    -----------------------------------------\n")
             for co in custom_options:

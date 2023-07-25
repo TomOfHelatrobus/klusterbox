@@ -6,11 +6,11 @@ It is called by all klusterbox modules in whole or in part with the exeption of 
 from tkinter import Tk, ttk, Frame, Scrollbar, Canvas, BOTH, LEFT, BOTTOM, RIGHT, NW, Label, mainloop, \
     messagebox, TclError, PhotoImage
 import projvar
+from operator import itemgetter
 import os
 import sys
 import sqlite3
 import csv
-# import re
 from datetime import datetime, timedelta
 
 
@@ -1322,6 +1322,18 @@ def good_character(data):
         else:
             return False
     return True
+
+
+def issuedecisionresult_sorter(result):
+    """ this sorts the sql results so that they appear in the order of the ssindex. first convert ssindex
+    to an int, then sort, then return the results """
+    mod_result = []
+    for r in result:
+        r = [int(r[0]), r[1], r[2], r[3]]  # convert the first column to an int
+        mod_result.append(r)  # add to the array, line by line
+    if mod_result:
+        mod_result.sort(key=itemgetter(0))  # sort by the first column
+    return mod_result
 
 
 def dir_path_check(dirr):

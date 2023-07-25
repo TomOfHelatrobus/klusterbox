@@ -20,7 +20,8 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     find_pp, gen_carrier_list, Quarter, RingTimeChecker, Globals, \
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
     RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker, DateTimeChecker, GrievanceChecker, \
-    IndexArticleChecker, IssueDecisionChecker, DecisionTypeChecker, distinctresult_to_list
+    IndexArticleChecker, IssueDecisionChecker, DecisionTypeChecker, distinctresult_to_list, \
+    issuedecisionresult_sorter
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase, DataBaseFix
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -240,6 +241,7 @@ class InformalC:
             self.issue_article = []  # re initialize list
             sql = "SELECT * FROM informalc_issuescategories"
             results = inquire(sql)
+            results = issuedecisionresult_sorter(results)
             for r in results:
                 self.issue_description.append(r[2])
                 self.issue_article.append(r[1])
@@ -250,6 +252,7 @@ class InformalC:
             self.decision_description = []  # re initialize list
             sql = "SELECT * FROM informalc_decisioncategories"
             results = inquire(sql)
+            results = issuedecisionresult_sorter(results)
             for r in results:
                 self.decision_description.append(r[2])
 
@@ -1407,7 +1410,8 @@ class InformalC:
             unique_carrier = []
             for carrier in results:
                 if carrier[0] not in unique_carrier and carrier[0] is not "class action":
-                    unique_carrier.append(carrier[0])
+                    if carrier[0]:
+                        unique_carrier.append(carrier[0])
             unique_carrier.sort()
             self.listbox_fill = ["class action", ] + unique_carrier
 
@@ -3652,8 +3656,8 @@ class InformalCSettings:
         self.adddectype = None  # stringvar
         self.row = 0
         self.status_update = None  # a label widget for status report
-        self.max_issue_index = None  # the biggest value for issue index in the db
-        self.max_decision_index = None  # the biggest value for decision index in the db
+        self.max_issue_index = "0"  # the biggest value for issue index in the db
+        self.max_decision_index = "0"  # the biggest value for decision index in the db
 
     def create(self, frame):
         """ this is a master method for calling other methods in the class in sequence. """
@@ -3695,8 +3699,10 @@ class InformalCSettings:
         self.result_limit.set(self.informalc_result_limit)
         sql = "SELECT * FROM informalc_decisioncategories WHERE standard = 'False'"
         self.custom_decision = inquire(sql)
+        self.custom_decision = issuedecisionresult_sorter(self.custom_decision)  # sort results by first value
         sql = "SELECT * FROM informalc_issuescategories WHERE standard = 'False'"
         self.custom_issue = inquire(sql)
+        self.custom_issue = issuedecisionresult_sorter(self.custom_issue)  # sort results by first value
         sql = "SELECT DISTINCT(ssindex) FROM informalc_issuescategories"
         result = inquire(sql)
         self.max_issue_index = find_available_index(result)  # find the largest value
@@ -3723,9 +3729,8 @@ class InformalCSettings:
         e = Entry(self.win.body, width=entry_width, textvariable=self.result_limit)
         e.grid(row=self.row, column=13, sticky="e", pady=3)
         self.row += 1
-        Button(self.win.body, width=5, anchor="w", text="ENTER",
-               command=lambda: self.update_result_limit()). \
-            grid(row=self.row, column=13, sticky="e")
+        b = Button(self.win.body, width=5, anchor="w", text="ENTER", command=lambda: self.update_result_limit())
+        b.grid(row=self.row, column=13, sticky="e")
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)  # blank line for reabability
         self.row += 1
@@ -3779,11 +3784,14 @@ class InformalCSettings:
             Label(customissueframe, text="Issue", fg="grey").grid(row=1, column=2, sticky="w")
         row = 2
         for ci in self.custom_issue:
-            Label(customissueframe, text=ci[0]).grid(row=row, column=0, sticky="w")  # index
-            Label(customissueframe, text=ci[1]).grid(row=row, column=1, sticky="w")  # article
-            Label(customissueframe, text=ci[2], width=19, anchor="w").grid(row=row, column=2, sticky="w")  # issue
-            Button(customissueframe, text="delete",  # button
-                   command=lambda delete_this=ci[2]: self.delete_customissue(delete_this))\
+            Label(customissueframe, text=ci[0], width=4, anchor="w", borderwidth=1, relief="groove", pady=3)\
+                .grid(row=row, column=0, sticky="w")  # index
+            Label(customissueframe, text=ci[1], width=5, anchor="w", borderwidth=1, relief="groove", pady=3)\
+                .grid(row=row, column=1, sticky="w")  # article
+            Label(customissueframe, text=ci[2], width=19, anchor="w", borderwidth=1, relief="groove", pady=3)\
+                .grid(row=row, column=2, sticky="w")  # issue
+            Button(customissueframe, text="delete",  # button x
+                   command=lambda delete_issue=ci[2]: (self.delete_customissue(delete_issue)))\
                 .grid(row=row, column=3, sticky="w")
             row += 1
         self.row += 1
@@ -3820,8 +3828,7 @@ class InformalCSettings:
         e = Entry(adddecisionframe, width=macadj(27, 25), textvariable=self.addcustomdecision)
         e.grid(row=2, column=2, sticky="w", pady=3)
         Button(adddecisionframe, width=5, anchor="w", text="add",
-               command=lambda: self.add_customdecision()). \
-            grid(row=3, column=2, sticky="e")
+               command=lambda: self.add_customdecision()).grid(row=3, column=2, sticky="e")
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row)  # blank line for reabability
         self.row += 1
@@ -3838,12 +3845,15 @@ class InformalCSettings:
             Label(customdecisionframe, text="Type", fg="grey").grid(row=1, column=1, sticky="w")
             Label(customdecisionframe, text="Decision", fg="grey").grid(row=1, column=2, sticky="w")
         row = 2
-        for ci in self.custom_decision:
-            Label(customdecisionframe, text=ci[0]).grid(row=row, column=0, sticky="w")
-            Label(customdecisionframe, text=ci[1]).grid(row=row, column=1, sticky="w")
-            Label(customdecisionframe, text=ci[2], width=19, anchor="w").grid(row=row, column=2, sticky="w")
+        for cd in self.custom_decision:
+            Label(customdecisionframe, text=cd[0], width=4, anchor="w", borderwidth=1, relief="groove", pady=3)\
+                .grid(row=row, column=0, sticky="w")
+            Label(customdecisionframe, text=cd[1], width=6, anchor="w", borderwidth=1, relief="groove", pady=3)\
+                .grid(row=row, column=1, sticky="w")
+            Label(customdecisionframe, text=cd[2], width=18, anchor="w", borderwidth=1, relief="groove", pady=3)\
+                .grid(row=row, column=2, sticky="w")
             Button(customdecisionframe, text="delete",
-                   command=lambda delete_this=ci[2]: (self.delete_customdecision(delete_this)))\
+                   command=lambda delete_decision=cd[2]: (self.delete_customdecision(delete_decision)))\
                 .grid(row=row, column=3, sticky="w")
             row += 1
         self.row += 1
@@ -3905,10 +3915,10 @@ class InformalCSettings:
         commit(sql)
         InformalCSettings().create(self.win.topframe)
 
-    def delete_customissue(self, delete_this):
+    def delete_customissue(self, delete_issue):
         """ run when the 'delete' button is pressed in the display of custom issue options.
         this will delete the selected custom issue option. """
-        sql = "DELETE FROM informalc_issuescategories WHERE issue = '%s'" % delete_this
+        sql = "DELETE FROM informalc_issuescategories WHERE issue = '%s'" % delete_issue
         commit(sql)
         InformalCSettings().create(self.win.topframe)
 
@@ -3932,10 +3942,10 @@ class InformalCSettings:
         commit(sql)
         InformalCSettings().create(self.win.topframe)
 
-    def delete_customdecision(self, delete_this):
+    def delete_customdecision(self, delete_decision):
         """ run when the 'delete' button is pressed in the display of custom decision options.
         this will delete the selected custom decision option. """
-        sql = "DELETE FROM informalc_decisioncategories WHERE decision = '%s'" % delete_this
+        sql = "DELETE FROM informalc_decisioncategories WHERE decision = '%s'" % delete_decision
         commit(sql)
         InformalCSettings().create(self.win.topframe)
 
@@ -6204,7 +6214,14 @@ class DatabaseAdmin:
         sql = "SELECT DISTINCT carrier_name FROM carriers WHERE station = '%s' ORDER BY carrier_name" \
               % station
         results = inquire(sql)
+        pb = ProgressBarDe(title="Clock Rings Summary", label="Gathering Data")
+        pb.max_count(len(results))
+        pb.start_up()
+        count = 0
         for name in results:
+            count += 1
+            pb.move_count(count)
+            pb.change_text(f"reading {name[0]}")
             active_station = []
             # get all records for the carrier from the carriers table
             sql = "SELECT * FROM carriers WHERE carrier_name= '%s' ORDER BY effective_date" % name[0]
@@ -6239,12 +6256,16 @@ class DatabaseAdmin:
                     the_dates = inquire(sql)
                     for td in the_dates:
                         gross_dates.append(td[0])
+        pb.stop()
         for gd in gross_dates:  # get a list of unique dates
             if gd not in unique_dates:
                 unique_dates.append(gd)
         unique_dates.sort(reverse=True)  # sort the unique dates in reverse order
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "clock_rings_summary" + "_" + stamp + ".txt"
+        pb = ProgressBarDe(title="Clock Rings Summary", label="Building Report")
+        pb.max_count(len(unique_dates))
+        pb.start_up()
         try:
             report = open(dir_path('report') + filename, "w")
             report.write("\nClock Rings Summary Report\n\n\n")
@@ -6259,6 +6280,8 @@ class DatabaseAdmin:
                              .format("", dt_converter(line).strftime("%m/%d/%Y - %a"), gross_dates.count(line)))
                 if i % 3 == 0:
                     report.write('      --------------------------------------------\n')
+                pb.move_count(i)
+                pb.change_text(f"building date: {dt_converter(line).strftime('%Y')}")
                 i += 1
             report.write('\n')
             report.write('Total distinct dates for which clock ring records are available: {:<9}\n'.format(i - 1))
@@ -6270,9 +6293,9 @@ class DatabaseAdmin:
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('report') + filename])
         except PermissionError:
-            messagebox.showerror("Report Generator",
-                                 "The report failed to generate.",
-                                 parent=frame)
+            pb.delete()
+            messagebox.showerror("Report Generator", "The report failed to generate.", parent=frame)
+        pb.stop()
 
     @staticmethod
     def carrier_list_cleaning(frame):
