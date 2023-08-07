@@ -21,7 +21,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
     RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker, DateTimeChecker, GrievanceChecker, \
     IndexArticleChecker, IssueDecisionChecker, DecisionTypeChecker, distinctresult_to_list, \
-    issuedecisionresult_sorter
+    issuedecisionresult_sorter, AwardsChecker
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase, DataBaseFix
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
@@ -30,7 +30,7 @@ from kbcsv_repair import CsvRepair
 from kbcsv_reader import MaxHr, ee_skimmer
 from kbpdfhandling import PdfConverter
 from kbenterrings import EnterRings
-from kbinformalc import InfcSpeedSheetGen, InfcSpeedWorkBookGet, informalc_gen_clist, \
+from kbinformalc import InfcSpeedSheetGen, InfcSpeedWorkBookGet, Awards, informalc_gen_clist, \
     informalc_date_converter
 from kbfixes import Fixes
 # PDF Converter Libraries
@@ -61,7 +61,7 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = "5.08"  # version number must be convertable to a float and should increase for Fixes()
+version = 5.08  # version number must be convertable to a float and should increase for Fixes()
 release_date = "undetermined"  # format is Jan 1, 2022
 
 
@@ -198,9 +198,13 @@ class InformalC:
         # vars for add awards
         self.var_id = None  # vars for addawards_screen()
         self.var_name = None  # vars for addawards_screen()
-        self.var_hours = None  # vars for addawards_screen()
-        self.var_rate = None  # vars for addawards_screen()
-        self.var_amount = None  # vars for addawards_screen()
+        # self.var_hours = None  # vars for addawards_screen()
+        # self.var_rate = None  # vars for addawards_screen()
+        # self.var_amount = None  # vars for addawards_screen()
+        self.var_award = None  # vars for addawards_screen()
+        self.var_gats = None  # an array of stringvars for addawards_screen() gats discrepancies.
+        self.award_gats_entry = []  # an array for holding entry widgets for gats discrepancies
+        self.award_gats_del = []  # an array for holding delete buttons for gats discrepancies
         # vars for showtime nav bar function
         self.current_page = 1  # the current page of results to display
         self.rec_display_limit = 50  # the number of records displayed before a new page is needed
@@ -1490,9 +1494,9 @@ class InformalC:
         def add_awardnames():
             """ inserts names into informal c awards table. """
             for index in listbox.curselection():
-                sql = "INSERT INTO informalc_awards (grv_no,carrier_name,hours,rate,amount) " \
-                      "VALUES('%s','%s','%s','%s','%s')" \
-                      % (grv_no, self.listbox_fill[int(index)], '', '', '')
+                sql = "INSERT INTO informalc_awards2 (grv_no, carrier_name, award, gats_discrepancy) " \
+                      "VALUES('%s','%s','%s','%s')" \
+                      % (grv_no, self.listbox_fill[int(index)], '', '')
                 commit(sql)
 
         self.destroy_companion()  # destroy other companion windows if they exist
@@ -1562,12 +1566,39 @@ class InformalC:
 
     def addawards_screen(self, frame, grv_no):
         """ creates a screen which allows a user to adds the awards to a settlement. """
+        award_frame = []  # each award is given its own frame so that multiple gats_discrepancies can displayed.
+        self.award_gats_entry = []  # an array that holds entry widgets for gats discrepancies
+        self.award_gats_del = []  # an array that holds delete button widgets for gats discrepancies
 
         def deletename(ids):
             """ deletes records from informal c awards. self.win.topframe, grv_no, ident"""
-            sql_del = "DELETE FROM informalc_awards WHERE rowid='%s'" % ids
+            sql_del = "DELETE FROM informalc_awards2 WHERE rowid='%s'" % ids
             commit(sql_del)
             self.addawards_screen(self.win.topframe, grv_no)
+
+        def add_gats_field(x, childframe):
+            """ added fields for gats discrepancies """
+            add_stringvar = StringVar(self.win.body)
+            self.var_gats[x].append(add_stringvar)  # add this to an array of stringvars for gats discrepancies
+            gats_entry = Entry(childframe, textvariable=self.var_gats[x][len(self.var_gats[x]) - 1],
+                               width=macadj(16, 15))
+            gats_entry.grid(row=len(self.var_gats[x]) - 1, column=4, padx=2)
+            self.award_gats_entry[x].append(gats_entry)  # add this to an array of entry widgets for gats discrepancies
+            del_ = Button(childframe, text="-", anchor="center",
+                          command=lambda xx=x, y=len(self.var_gats[x]) - 1: del_gats_field(xx, y))
+            del_.grid(row=len(self.var_gats[x]) - 1, column=5)
+            self.award_gats_del[x].append(del_)  # add this to an array of widgets of delete buttons
+            projvar.root.update()
+            # bind the expanding frome to the canvas and scrollregion
+            childframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+            self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
+
+        def del_gats_field(x, y):
+            """ delete a field from search criteria - grievant, entry widgets as well as the delete button.
+            set the value of the corresponding stringvar to an empty string. """
+            self.award_gats_entry[x][y].grid_remove()
+            self.award_gats_del[x][y].grid_remove()
+            self.var_gats[x][y].set("")  # set the value of the stringvar to empty string
 
         self.win = MakeWindow()
         self.win.create(frame)
@@ -1575,47 +1606,61 @@ class InformalC:
         Label(self.win.body, text="Add/Update Settlement Awards", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w", columnspan=4)
         Label(self.win.body, text="   Grievance Number: {}".format(grv_no), fg="blue") \
-            .grid(row=2, column=0, sticky="w", columnspan=4)
-        sql = "SELECT grv_no,rowid,carrier_name,hours,rate,amount FROM informalc_awards WHERE grv_no ='%s' " \
+            .grid(row=1, column=0, sticky="w", columnspan=4)
+        Label(self.win.body, text="Instructions/ Help ").grid(row=2, column=0, sticky="e", columnspan=5)
+        Button(self.win.body, text=" read ",
+               command= lambda: Awards().award_instructions(self.win.topframe)).grid(row=2, column=5)
+        sql = "SELECT grv_no,rowid,carrier_name,award,gats_discrepancy FROM informalc_awards2 WHERE grv_no ='%s' " \
               "ORDER BY carrier_name" % grv_no
         result = inquire(sql)
         # initialize arrays for names
         self.var_id = []
         self.var_name = []
-        self.var_hours = []
-        self.var_rate = []
-        self.var_amount = []
+        self.var_award = []
+        self.var_gats = []
         if len(result) == 0:
             Label(self.win.body, text="No records in database").grid(row=3)
         else:
-            Label(self.win.body, text="Carrier", fg="grey", padx=10).grid(row=3, column=0, sticky="w")
-            Label(self.win.body, text="Hours", fg="grey", padx=10).grid(row=3, column=1, sticky="w")
-            Label(self.win.body, text="Rate", fg="grey", padx=10).grid(row=3, column=2, sticky="w")
-            Label(self.win.body, text="Amount", fg="grey", padx=10).grid(row=3, column=3, sticky="w")
+            Label(self.win.body, text="Carrier", fg="grey", padx=2).grid(row=3, column=0, sticky="w")
+            Label(self.win.body, text="Award", fg="grey", padx=2).grid(row=3, column=3, sticky="w")
+            Label(self.win.body, text="Gats discrepancy", fg="grey", padx=2).grid(row=3, column=4, sticky="w")
             i = 0
             r = 4
             for res in result:
+                # ----------------------------------------------------------------------------------------------- frame
+                award_frame.append(Frame(self.win.body))
+                award_frame[i].grid(row=r, sticky="w", columnspan=5)
+                # ------------------------------------------------------------------------------------------------- id
                 self.var_id.append(StringVar(self.win.topframe))  # add to arrays
-                self.var_name.append(StringVar(self.win.topframe))
-                self.var_hours.append(StringVar(self.win.topframe))
-                self.var_rate.append(StringVar(self.win.topframe))
-                self.var_amount.append(StringVar(self.win.topframe))
-                Label(self.win.body, text=res[2], anchor="w", width=16) \
-                    .grid(row=r, column=0, sticky="w", padx=10)  # display name widget
-                Entry(self.win.body, textvariable=self.var_hours[i], width=8) \
-                    .grid(row=r, column=1, padx=10)  # display hours widget
-                Entry(self.win.body, textvariable=self.var_rate[i], width=8) \
-                    .grid(row=r, column=2, padx=10)  # display rate widget
-                Entry(self.win.body, textvariable=self.var_amount[i], width=8) \
-                    .grid(row=r, column=3, padx=10)  # display amount widget
-                Button(self.win.body, text="delete",
-                       command=lambda ident=res[1]: deletename(ident)) \
-                    .grid(row=r, column=4, padx=10)  # display the delete button
                 self.var_id[i].set(res[1])  # set the textvariables
+                # ----------------------------------------------------------------------------------------------- name
+                self.var_name.append(StringVar(self.win.topframe))
+                Label(award_frame[i], text=res[2], anchor="w", width=16) \
+                    .grid(row=0, column=0, sticky="w", padx=2)  # display name widget
                 self.var_name[i].set(res[2])
-                self.var_hours[i].set(res[3])
-                self.var_rate[i].set(res[4])
-                self.var_amount[i].set(res[5])
+                # ---------------------------------------------------------------------------------------------- award
+                self.var_award.append(StringVar(self.win.topframe))
+                Entry(award_frame[i], textvariable=self.var_award[i], width=16) \
+                    .grid(row=0, column=3, padx=2)  # display award widget
+                self.var_award[i].set(res[3])
+                # ------------------------------------------------------------------------------------ gats discrepancy
+                self.var_gats.append([])  # add an array to hold the stringvars
+                self.award_gats_entry.append([])  # add an array to hold the gats discrepancies entry widgets
+                self.award_gats_del.append([])  # add an array to hold the gats discrepancies delete buttons.
+                gats_result = Convert(res[4]).string_to_array()  # the gats results are a string in the db
+                for ii in range(len(gats_result)):  # create a separate stringvar for each element
+                    self.var_gats[i].append(StringVar(self.win.topframe))
+                    self.var_gats[i][ii].set(gats_result[ii])
+                    gat_entry = Entry(award_frame[i], textvariable=self.var_gats[i][ii], width=16)
+                    gat_entry.grid(row=0 + ii, column=4, padx=2)  # display gats discrepancy widget
+                    self.award_gats_entry[i].append(gat_entry)  # add to array of entry widgets
+                    del_but = Button(award_frame[i], text="+", command=lambda x=i: add_gats_field(x, award_frame[x]))
+                    del_but.grid(row=0, column=5, padx=2)  # display the delete button
+                    self.award_gats_del[i].append(del_but)  # add to array of delete button widgets
+                # --------------------------------------------------------------------------------------- delete button
+                Button(award_frame[i], text="delete",
+                       command=lambda ident=res[1]: deletename(ident)) \
+                    .grid(row=0, column=6, padx=2)  # display the delete button
                 r += 1
                 i += 1
         Button(self.win.buttons, text="Go Back", width=15,
@@ -1637,137 +1682,145 @@ class InformalC:
         for i in range(len(self.var_id)):
             pb["value"] = ii  # increment progress bar
             id_no = self.var_id[i].get()  # simplify variable names
-            name = self.var_name[i].get()
-            hours = self.var_hours[i].get().strip()
-            rate = self.var_rate[i].get().strip()
-            amount = self.var_amount[i].get().strip()
-            if hours and amount:
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. You can not enter both hours and "
-                                     "amount. You can only enter one or another, but not both. "
-                                     "Awards can be in the form of "
-                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=topframe)
+            carrier = self.var_name[i].get()  # this is a stringvar
+            award = self.var_award[i].get().strip()  # this is a stringvar
+            gats_discrepancy = self.var_gats[i]  # this is a list of stringvars
+            print("award", award)
+            print("gats_discrepancy", gats_discrepancy)
+            for each in gats_discrepancy:
+                print(each.get())
+            if not AwardsChecker().check_all(topframe, carrier, award, gats_discrepancy):
                 pb_label.destroy()  # destroy the label for the progress bar
                 pb.destroy()  # destroy the progress bar
                 return
-            if rate and amount:
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. You can not enter both rate and "
-                                     "amount. You can only enter one or another, but not both. "
-                                     "Awards can be in the form of "
-                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if hours and not rate:
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. Hours must be a accompanied by a "
-                                     "rate.".format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if rate and not hours:
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. Rate must be a accompanied by a "
-                                     "hours.".format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if hours and not isfloat(hours):
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. Hours must be a number."
-                                     .format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if hours and '.' in hours:
-                s_hrs = hours.split(".")
-                if len(s_hrs[1]) > 2:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. Hours must have no "
-                                         "more than 2 decimal places.".format(name, str(i + 1)),
-                                         parent=topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-            if rate and amount:
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. You can not enter both rate and "
-                                     "amount. You can only enter one or another, but not both. "
-                                     "Awards can be in the form of "
-                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if rate and amount:
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. You can not enter both rate and "
-                                     "amount. You can only enter one or another, but not both. "
-                                     "Awards can be in the form of "
-                                     "hours at a given rate OR an amount.".format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if rate and not isfloat(rate):
-                messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
-                                     .format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if rate and '.' in rate:
-                s_rate = rate.split(".")
-                if len(s_rate[1]) > 2:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. Rates must have no "
-                                         "more than 2 decimal places.".format(name, str(i + 1)),
-                                         parent=topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-            if rate and float(rate) > 10:
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. Values greater than 10 are not "
-                                     "accepted. \n"
-                                     "Note the following rates would be expressed as: \n "
-                                     "additional %50         .50 or just .5 \n"
-                                     "straight time rate     1.00 or just 1 \n"
-                                     "overtime rate          1.50 or 1.5 \n"
-                                     "penalty rate           2.00 or just 2".format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if amount and not isfloat(amount):
-                messagebox.showerror("Data Input Error",
-                                     "Input error for {} in row {}. Amounts can only be expressed as "
-                                     "numbers. No special characters, such as $ are allowed."
-                                     .format(name, str(i + 1)),
-                                     parent=topframe)
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            if amount and '.' in amount:
-                s_amt = amount.split(".")
-                if len(s_amt[1]) > 2:
-                    messagebox.showerror("Data Input Error",
-                                         "Input error for {} in row {}. "
-                                         "Amounts must have no more than 2 decimal places."
-                                         .format(name, str(i + 1)),
-                                         parent=topframe)
-                    pb_label.destroy()  # destroy the label for the progress bar
-                    pb.destroy()  # destroy the progress bar
-                    return
-            sql = "UPDATE informalc_awards SET hours='%s',rate='%s',amount='%s' WHERE rowid='%s'" % (
-                hours, rate, amount, id_no)
-            commit(sql)
+            # if hours and amount:
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. You can not enter both hours and "
+            #                          "amount. You can only enter one or another, but not both. "
+            #                          "Awards can be in the form of "
+            #                          "hours at a given rate OR an amount.".format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if rate and amount:
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. You can not enter both rate and "
+            #                          "amount. You can only enter one or another, but not both. "
+            #                          "Awards can be in the form of "
+            #                          "hours at a given rate OR an amount.".format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if hours and not rate:
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. Hours must be a accompanied by a "
+            #                          "rate.".format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if rate and not hours:
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. Rate must be a accompanied by a "
+            #                          "hours.".format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if hours and not isfloat(hours):
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. Hours must be a number."
+            #                          .format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if hours and '.' in hours:
+            #     s_hrs = hours.split(".")
+            #     if len(s_hrs[1]) > 2:
+            #         messagebox.showerror("Data Input Error",
+            #                              "Input error for {} in row {}. Hours must have no "
+            #                              "more than 2 decimal places.".format(name, str(i + 1)),
+            #                              parent=topframe)
+            #         pb_label.destroy()  # destroy the label for the progress bar
+            #         pb.destroy()  # destroy the progress bar
+            #         return
+            # if rate and amount:
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. You can not enter both rate and "
+            #                          "amount. You can only enter one or another, but not both. "
+            #                          "Awards can be in the form of "
+            #                          "hours at a given rate OR an amount.".format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if rate and amount:
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. You can not enter both rate and "
+            #                          "amount. You can only enter one or another, but not both. "
+            #                          "Awards can be in the form of "
+            #                          "hours at a given rate OR an amount.".format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if rate and not isfloat(rate):
+            #     messagebox.showerror("Data Input Error", "Input error for {} in row {}. Rates must be a number."
+            #                          .format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if rate and '.' in rate:
+            #     s_rate = rate.split(".")
+            #     if len(s_rate[1]) > 2:
+            #         messagebox.showerror("Data Input Error",
+            #                              "Input error for {} in row {}. Rates must have no "
+            #                              "more than 2 decimal places.".format(name, str(i + 1)),
+            #                              parent=topframe)
+            #         pb_label.destroy()  # destroy the label for the progress bar
+            #         pb.destroy()  # destroy the progress bar
+            #         return
+            # if rate and float(rate) > 10:
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. Values greater than 10 are not "
+            #                          "accepted. \n"
+            #                          "Note the following rates would be expressed as: \n "
+            #                          "additional %50         .50 or just .5 \n"
+            #                          "straight time rate     1.00 or just 1 \n"
+            #                          "overtime rate          1.50 or 1.5 \n"
+            #                          "penalty rate           2.00 or just 2".format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if amount and not isfloat(amount):
+            #     messagebox.showerror("Data Input Error",
+            #                          "Input error for {} in row {}. Amounts can only be expressed as "
+            #                          "numbers. No special characters, such as $ are allowed."
+            #                          .format(name, str(i + 1)),
+            #                          parent=topframe)
+            #     pb_label.destroy()  # destroy the label for the progress bar
+            #     pb.destroy()  # destroy the progress bar
+            #     return
+            # if amount and '.' in amount:
+            #     s_amt = amount.split(".")
+            #     if len(s_amt[1]) > 2:
+            #         messagebox.showerror("Data Input Error",
+            #                              "Input error for {} in row {}. "
+            #                              "Amounts must have no more than 2 decimal places."
+            #                              .format(name, str(i + 1)),
+            #                              parent=topframe)
+            #         pb_label.destroy()  # destroy the label for the progress bar
+            #         pb.destroy()  # destroy the progress bar
+            #         return
+            sql = "UPDATE informalc_awards SET award='%s',gats_discrepancy='%s' WHERE rowid='%s'" % (
+                award, gats_discrepancy, id_no)
+            print(sql)
+            # commit(sql)
             self.win.buttons.update()  # update the progress bar
             ii += 1
         pb.stop()  # stop and destroy the progress bar

@@ -1870,6 +1870,78 @@ class SpeedIndexCheck:
                 self.parent.report.write(rpt)
 
 
+class Awards:
+    """ this will generate a text file showing the user how to work with award settlement input as well as the
+    gats short feature. """
+
+    def __init__(self):
+        self.frame = None
+
+    def award_instructions(self, frame):
+        """ generate a report and display instructions for add/update settlement awards. """
+        self.frame = frame
+        # ---------------------------------------------------------------------------------------------- file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "award_instructions" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ---------------------------------------------------------------------------------------------- write report
+        report.write("Add/Update Settlement Awards\n\n")
+        report.write("The purpose of the Add/Update Settlement Awards screen is to\n")
+        report.write("allow the user to enter awards for grievance settlements. This\n")
+        report.write("allows the user to track every award for every carrier for every\n")
+        report.write("settlement to ensure total compliance with settlements. These\n")
+        report.write("awards can be entered as hours and a rate or a flat dollar\n")
+        report.write("amount. There is also a field for gats discrepancies.\n\n")
+        report.write("Settlement awards will be either in the form of hours/rate or\n")
+        report.write("dollars. Entering both hours/rate and dollars in the same row\n")
+        report.write("will result in an error. It is allowed to have multiple awards\n")
+        report.write("for any grievant i.e. the same carrier can have multiple awards\n")
+        report.write("in the same settlement.  \n\n")
+        report.write("examples of hour/rate awards\n")
+        report.write("	for one hour and 35 clicks:\n")
+        report.write("		1.35 in the hours column\n")
+        report.write("		.50 in the rate column\n")
+        report.write("example of dollars awards: \n")
+        report.write("	for $250.00\n")
+        report.write("		250.00 in the dollars column\n\n")
+        report.write("The 'gats discrepancy' field is filled out if the gats report\n")
+        report.write("provided by management does not show the complete award. The \n")
+        report.write("gats discrepancy field allows the user to track where \n")
+        report.write("management has not complied fully with an award for a given \n")
+        report.write("carrier. If there is no discrepancy, then leave the field \n")
+        report.write("blank. Do not enter the discrepancy into the gats \n")
+        report.write("discrepancy field, instead enter the total amount shown \n")
+        report.write("blank. Do not enter the discrepancy into the gats \n")
+        report.write("discrepancy field, instead enter the total amount shown \n")
+        report.write("awarded by the gats report. Informal C will calculate the \n")
+        report.write("discrepancy. \n\n")
+        report.write("There is a special notation for gats discrepancies. Since \n")
+        report.write("there is only one field, any hour/rate discrepancy will have\n")
+        report.write("both values in the same field separated by a '/'. Do not use \n")
+        report.write("$ signs or % signs. If a carrier has multiple rows of awards,\n")
+        report.write("group time award discrepancies with rows were awards are\n")
+        report.write("given as time and likewise with hour/rate award \n")
+        report.write("discrepancies.\n\n")
+        report.write("examples of hour/rate award discrepancies\n")
+        report.write("	for one hour and 35 clicks at the 50% rate:\n")
+        report.write("		1.35/.50 in the gats discrepancy column\n")
+        report.write("example of dollars awards discrepancies: \n")
+        report.write("	for $250.00\n")
+        report.write("		250.00 in the gats discrepancy column\n")
+        report.close()
+        # --------------------------------------------------------------------------------------------- save and open
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.frame)
+
+
 class ProgressBarIn:
     """ Indeterminate Progress Bar """
 

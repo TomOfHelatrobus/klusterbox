@@ -14,7 +14,7 @@ import csv
 from datetime import datetime, timedelta
 
 
-def inquire(sql):
+def inquire(sql, returnerror=False):
     """
     query the database
     """
@@ -33,9 +33,10 @@ def inquire(sql):
         results = cursor.fetchall()
         return results
     except sqlite3.OperationalError:
-        messagebox.showerror("Database Error",
-                             "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql))
+        if returnerror:
+            return "OperationalError"
+        else:
+            messagebox.showerror("Database Error", "Unable to access database.\n\n Attempted Query: {}".format(sql))
     db.close()
 
 
@@ -2182,6 +2183,70 @@ class GrievanceChecker:
                 messagebox.showerror("Invalid Data Entry",
                                      "The grievance number must not exceed 20 characters in length.",
                                      parent=self.frame)
+            return False
+        return True
+
+
+class AwardsChecker:
+    """ this class deals with awards for grievance settlements. """
+    def __init__(self):
+        self.frame = None
+        self.carrier = None
+        self.award = None  # input for awards
+        self.gats = None  # input for gats discrepancies
+
+    def check_all(self, frame, carrier, award, gats):
+        """ this method runs all checks for awards chekcker"""
+        self.frame = frame
+        self.carrier = carrier
+        self.award = award
+        self.gats = gats
+        if not self.check_empty():
+            return False
+        if not self.check_raw(self.award, "award"):
+            return False
+        for element in self.gats:
+            if not self.check_raw(element.get(), "gats discrepancies"):
+                return False
+        if not self.count_slashes(self.award, "award"):
+            return False
+        for element in self.gats:
+            if not self.count_slashes(element.get(), "gats discrepancies"):
+                return False
+        return True
+
+    def check_empty(self):
+        """ this checks if the awards field is empty """
+        if not self.award:
+            messagebox.showerror("Informal C Awards",
+                                 "The field for Awards for {} can not be blank. Use the delete button to delete"
+                                 "a record. ".format(self.carrier),
+                                 parent=self.frame)
+            return False
+        return True
+
+    def check_raw(self, check_this, value):
+        """ this checks raw input for awards. """
+        allowed_characters = (".", " ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "%", "$")
+        i = 0
+        for char in check_this:
+            if char not in allowed_characters:
+                messagebox.showerror("Informal C Awards",
+                                     "Only numbers and certain special characters ( %, $ and .) are allowed in "
+                                     "the {} field for {}. Instead got \"{}\""
+                                     .format(value, self.carrier, check_this),
+                                     parent=self.frame)
+                return False
+            i += 1
+        return True
+
+    def count_slashes(self, check_this, value):
+        """ this counts the number of slashes and returns false if there is more than one. """
+        if check_this.count("/") > 1:
+            messagebox.showerror("Informal C Awards",
+                                 "The {} for {} may only contain one backslash ('/') to indicate an hour and rate."
+                                 .format(value, self.carrier),
+                                 parent=self.frame)
             return False
         return True
 

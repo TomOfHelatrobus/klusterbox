@@ -69,6 +69,8 @@ class DataBase:
             'temp varchar)',
             'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, '
             'rate varchar, amount varchar, gatsverified varchar, payoutverified varchar)',
+            'CREATE table IF NOT EXISTS informalc_awards2 (grv_no varchar,carrier_name varchar, award varchar, '
+            'gats_discrepancy varchar)',
             'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, payday varchar, '
             'carrier_name varchar, hours varchar, rate varchar, amount varchar)',
             'CREATE table IF NOT EXISTS informalc_grievances(grievant varchar, station varchar, grv_no varchar, '
@@ -281,7 +283,6 @@ class DataBase:
             commit(sql)
             sql = "UPDATE informalc_awards SET payoutverified = ''"
             commit(sql)  # replace all the null values in payoutverified with empty strings
-
         sql = "UPDATE informalc_awards SET gatsverified = '', payoutverified = ''"
         commit(sql)
 

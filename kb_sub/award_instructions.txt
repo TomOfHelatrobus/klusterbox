@@ -1,0 +1,47 @@
+Add/Update Settlement Awards
+
+The purpose of the Add/Update Settlement Awards screen is to
+allow the user to enter awards for grievance settlements. This
+allows the user to track every award for every carrier for every
+settlement to ensure total compliance with settlements. These
+awards can be entered as hours and a rate or a flat dollar
+amount. There is also a field for gats discrepancies.
+
+Settlement awards will be either in the form of hours/rate or
+dollars. Entering both hours/rate and dollars in the same row
+will result in an error. It is allowed to have multiple awards
+for any grievant i.e. the same carrier can have multiple awards
+in the same settlement.  
+
+examples of hour/rate awards
+	for one hour and 35 clicks:
+		1.35 in the hours column
+		.50 in the rate column
+example of dollars awards: 
+	for $250.00
+		250.00 in the dollars column
+		
+The 'gats discrepancy' field is filled out if the gats report
+provided by management does not show the complete award. The 
+gats discrepancy field allows the user to track where 
+management has not complied fully with an award for a given 
+carrier. If there is no discrepancy, then leave the field 
+blank. Do not enter the discrepancy into the gats 
+discrepancy field, instead enter the total amount shown 
+awarded by the gats report. Informal C will calculate the 
+discrepancy. 
+
+There is a special notation for gats discrepancies. Since 
+there is only one field, any hour/rate discrepancy will have
+both values in the same field separated by a '/'. Do not use 
+$ signs or % signs. If a carrier has multiple rows of awards,
+group time award discrepancies with rows were awards are
+given as time and likewise with hour/rate award 
+discrepancies. 
+ 
+examples of hour/rate award discrepancies
+	for one hour and 35 clicks at the 50% rate:
+		1.35/.50 in the gats discrepancy column
+example of dollars awards discrepancies: 
+	for $250.00
+		250.00 in the gats discrepancy column

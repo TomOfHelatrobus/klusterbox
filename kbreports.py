@@ -1165,29 +1165,40 @@ class InformalCReports:
             award_stack = []
             awardxhour = 0.0
             awardxamt = 0.0
-            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s' ORDER BY carrier_name" % self.grv_no
+            sql = "SELECT * FROM informalc_awards2 WHERE grv_no='%s' ORDER BY carrier_name" % self.grv_no
             query = inquire(sql)
             i = 1
             for rec in query:
                 hour, rate, adj, amt = "---", "---", "---", "---"
+
                 carrier = rec[1]
-                if rec[2]:  # if hours is not empty
-                    hour = "{0:.2f}".format(float(rec[2]))
-                if rec[3]:  # if rate is not empty
-                    rate = "{0:.2f}".format(float(rec[3]))
-                if rec[2] and rec[3]:  # if hour and rate is not empty
-                    adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))  # add to total adjusted hours
-                    awardxhour += float(rec[2]) * float(rec[3])
-                if rec[4]:  # if amount  is not empty
-                    amt = "{0:.2f}".format(float(rec[4]))
-                    awardxamt += float(rec[4])  # add to total adjusted dollar amounts
+                # if rec[2]:  # if hours is not empty
+                #     hour = "{0:.2f}".format(float(rec[2]))
+                # if rec[3]:  # if rate is not empty
+                #     rate = "{0:.2f}".format(float(rec[3]))
+                # if rec[2] and rec[3]:  # if hour and rate is not empty
+                #     adj = "{0:.2f}".format(float(rec[2]) * float(rec[3]))  # add to total adjusted hours
+                #     awardxhour += float(rec[2]) * float(rec[3])
+                # if rec[4]:  # if amount  is not empty
+                #     amt = "{0:.2f}".format(float(rec[4]))
+                #     awardxamt += float(rec[4])  # add to total adjusted dollar amounts
+
+                if "/" in rec[2]:  # if the award is an hour and rate
+                    hour, rate = rec[2].split("/")[0], rec[2].split("/")[1]  # split the award by '/'
+                    hour, rate = "{0:.2f}".format(float(hour)), "{0:.2f}".format(float(rate))
+                    adj = "{0:.2f}".format(float(hour) * float(rate))  # add to total adjusted hours
+                    awardxhour += float(hour) * float(rate)
+                else:  # if the award is a dollar value
+                    amt = "{0:.2f}".format(float(rec[2]))
+                    awardxamt += float(amt)  # add to total adjusted dollar amounts
+
                 row = '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(i), carrier, hour, rate, adj, amt)
                 award_stack.append(row)
                 i += 1
             if award_stack:  # if there is somthing in the award stack, write column headers and totals
                 totalhours = "{0:.2f}".format(float(awardxhour))
                 totaldollars = "{0:.2f}".format(float(awardxamt))
-                firstrow = ["    Carrier Name                Hours      Rate   Adjusted     Amount\n", ]
+                firstrow = ["    Carrier Name                Hours      Rate   Adjusted    Dollars\n", ]
                 line_row = ["    -----------------------------------------------------------------\n", ]
                 totalhoursrow = ["         {:<38}{:>10}\n".format("Awards adjusted to straight time", totalhours), ]
                 totaldollarsrow = ["         {:<38}{:>22}\n".format("Awards as flat dollar amount", totaldollars), ]
