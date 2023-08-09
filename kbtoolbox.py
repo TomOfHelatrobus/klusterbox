@@ -1192,6 +1192,19 @@ class Convert:
             return fill_in
         return self.data
 
+    def strvarlist_to_string(self):
+        """ converts a list of stringvars (self.data) to a string. return the string.  """
+        string = ""
+        array = []
+        for strvar in self.data:
+            if strvar.get():  # do not add empty values
+                array.append(strvar.get())
+        for i in range(len(array)):
+            string += array[i]
+            if i+1 != len(array):
+                string += ", "
+        return string
+
 
 class Handler:
     """
@@ -1379,6 +1392,28 @@ class Quarter:
             return 3
         if int(self.data) in (10, 11, 12):
             return 4
+
+
+class AwardsFormatting:
+    """ class for formatting awards for input into database. """
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def format_for_db(input_):
+        """ format the arg for input into the database. accepts strings of dollars, hour/rate """
+        return_string = ""
+        array = input_.split(",")
+        for award in array:
+            if "/" in award:
+                hour_rate_array = award.split("/")
+                for i in range(len(hour_rate_array)):
+                    return_string += Convert(hour_rate_array[i]).hundredths()
+                    if i+1 != len(hour_rate_array):
+                        return_string += "/"
+            else:
+                return_string += Convert(award).hundredths()
+        return return_string
 
 
 class Rings:
@@ -2194,30 +2229,47 @@ class AwardsChecker:
         self.carrier = None
         self.award = None  # input for awards
         self.gats = None  # input for gats discrepancies
+        self.pb = None  # a kwarg for a progress bar if one is in use.
 
-    def check_all(self, frame, carrier, award, gats):
+    def check_all(self, frame, carrier, award, gats, pb=None):
         """ this method runs all checks for awards chekcker"""
         self.frame = frame
         self.carrier = carrier
         self.award = award
         self.gats = gats
-        if not self.check_empty():
+        self.pb = pb
+        if not self.check_empty():  # make sure the award is not empty
             return False
-        if not self.check_raw(self.award, "award"):
+        if not self.check_list(self.award, "award"):  # run all checks on self.award
             return False
-        for element in self.gats:
-            if not self.check_raw(element.get(), "gats discrepancies"):
+        for element in self.gats:  # run all checks on self.gats / self.gats is a list of stringvars, so break it down
+            if not self.check_list(element.get(), "gats discrepancies"):
                 return False
-        if not self.count_slashes(self.award, "award"):
+        return True
+
+    def check_list(self, check_this, value):
+        """ a list of checks that must be passed before input can be entered into the database """
+        if not self.check_raw(check_this, value):  # if unallowed characters are found
             return False
-        for element in self.gats:
-            if not self.count_slashes(element.get(), "gats discrepancies"):
+        if not self.count_slashes(check_this, value):  # if award contains more than one '/'
+            return False
+        check_array = (check_this, )  # for dollar awards, only one item needs to be in the check array.
+        if "/" in check_this:  # for hour/rate awards, split the award by the '/' and check each element
+            check_array = check_this.split("/")
+            if not self.check_empty_hours(check_array, value):  # check hour/rate for empty values
+                return False
+        for check_element in check_array:
+            if not self.count_decimals(check_element, value):  # only one decimal point is allowed
+                return False
+            if not self.two_decimals_places(check_element, value):  # if any number has more than two decimal places
                 return False
         return True
 
     def check_empty(self):
         """ this checks if the awards field is empty """
         if not self.award:
+            if self.pb:
+                self.pb.destroy()  # destroy the progress bar
             messagebox.showerror("Informal C Awards",
                                  "The field for Awards for {} can not be blank. Use the delete button to delete"
                                  "a record. ".format(self.carrier),
@@ -2226,28 +2278,71 @@ class AwardsChecker:
         return True
 
     def check_raw(self, check_this, value):
-        """ this checks raw input for awards. """
-        allowed_characters = (".", " ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "/", "%", "$")
-        i = 0
+        """ this checks raw input for awards by checking each charcter and returning False if unallowed
+        characters are found """
+        allowed_characters = (".", " ", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
         for char in check_this:
             if char not in allowed_characters:
+                if self.pb:
+                    self.pb.destroy()  # destroy the progress bar
                 messagebox.showerror("Informal C Awards",
-                                     "Only numbers and certain special characters ( %, $ and .) are allowed in "
-                                     "the {} field for {}. Instead got \"{}\""
-                                     .format(value, self.carrier, check_this),
+                                     "Only numbers and certain special characters ( '/' and '.') are allowed in "
+                                     "the {} field for {}. Instead got '{}'".format(value, self.carrier, check_this),
                                      parent=self.frame)
                 return False
-            i += 1
         return True
 
     def count_slashes(self, check_this, value):
         """ this counts the number of slashes and returns false if there is more than one. """
         if check_this.count("/") > 1:
+            if self.pb:
+                self.pb.destroy()  # destroy the progress bar
             messagebox.showerror("Informal C Awards",
                                  "The {} for {} may only contain one backslash ('/') to indicate an hour and rate."
                                  .format(value, self.carrier),
                                  parent=self.frame)
             return False
+        return True
+
+    def check_empty_hours(self, check_array, value):
+        """ only run for hour/rate awards - if there is a backslash. Return False is either hour or rate is empty"""
+        hour_rate = ("hour", "rate")
+        i = 0
+        for element in check_array:
+            if not element:
+                if self.pb:
+                    self.pb.destroy()  # destroy the progress bar
+                messagebox.showerror("Informal C Awards",
+                                     "For Hour/Rate Awards, both fields must have a value. In the {} field for {} "
+                                     "the {} does not have a value. a record. "
+                                     .format(value, self.carrier, hour_rate[i]), parent=self.frame)
+                return False
+            i += 0
+        return True
+
+    def count_decimals(self, check_this, value):
+        """ count the number of decimals. return False is there is more than one. """
+        if check_this.count(".") > 1:
+            if self.pb:
+                self.pb.destroy()  # destroy the progress bar
+            messagebox.showerror("Informal C Awards",
+                                 "The {} for {} can have only one decimal points. Instead got: {}."
+                                 .format(value, self.carrier, check_this),
+                                 parent=self.frame)
+            return False
+        return True
+
+    def two_decimals_places(self, check_this, value):
+        """ how many decimal places? if more than 2, return false """
+        if "." in check_this:
+            if len(str(check_this).split(".")[1]) > 2:
+                if self.pb:
+                    self.pb.destroy()  # destroy the progress bar
+                messagebox.showerror("Informal C Awards",
+                                     "The {} for {} can not have more than 2 decimal places. Instead got: {}."
+                                     .format(value, self.carrier, check_this),
+                                     parent=self.frame)
+                return False
         return True
 
 

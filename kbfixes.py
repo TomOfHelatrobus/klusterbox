@@ -299,4 +299,3 @@ class V5008Fix:
         sql = "DROP TABLE informalc_awards"
         commit(sql)
 
-
