@@ -1584,7 +1584,7 @@ class InformalC:
                                width=macadj(16, 15))
             gats_entry.grid(row=len(self.var_gats[x]) - 1, column=4, padx=2)
             self.award_gats_entry[x].append(gats_entry)  # add this to an array of entry widgets for gats discrepancies
-            del_ = Button(childframe, text="-", anchor="center",
+            del_ = Button(childframe, text="-", anchor="center", width=2,
                           command=lambda xx=x, y=len(self.var_gats[x]) - 1: del_gats_field(xx, y))
             del_.grid(row=len(self.var_gats[x]) - 1, column=5)
             self.award_gats_del[x].append(del_)  # add this to an array of widgets of delete buttons
@@ -1602,14 +1602,16 @@ class InformalC:
 
         self.win = MakeWindow()
         self.win.create(frame)
+        # self.win.body.config(width=100)
+        # projvar.root.update()
         self.informalc_root("award", grv_no=grv_no, topframe=self.win.topframe)
         Label(self.win.body, text="Add/Update Settlement Awards", font=macadj("bold", "Helvetica 18")) \
             .grid(row=0, column=0, sticky="w", columnspan=4)
         Label(self.win.body, text="   Grievance Number: {}".format(grv_no), fg="blue") \
             .grid(row=1, column=0, sticky="w", columnspan=4)
-        Label(self.win.body, text="Instructions/ Help ").grid(row=2, column=0, sticky="e", columnspan=5)
-        Button(self.win.body, text=" read ",
-               command=lambda: Awards().award_instructions(self.win.topframe)).grid(row=2, column=5)
+        Label(self.win.body, text="Instructions/ Help ").grid(row=2, column=1, columnspan=2, sticky="e")
+        Button(self.win.body, text=" read ", width=8,
+               command=lambda: Awards().award_instructions(self.win.topframe)).grid(row=2, column=3)
         sql = "SELECT grv_no,rowid,carrier_name,award,gats_discrepancy FROM informalc_awards2 WHERE grv_no ='%s' " \
               "ORDER BY carrier_name" % grv_no
         result = inquire(sql)
@@ -1621,15 +1623,17 @@ class InformalC:
         if len(result) == 0:
             Label(self.win.body, text="No records in database").grid(row=3)
         else:
-            Label(self.win.body, text="Carrier", fg="grey", padx=2).grid(row=3, column=0, sticky="w")
-            Label(self.win.body, text="Award", fg="grey", padx=2).grid(row=3, column=3, sticky="w")
-            Label(self.win.body, text="Gats discrepancy", fg="grey", padx=2).grid(row=3, column=4, sticky="w")
+            Label(self.win.body, text="Carrier", fg="grey", anchor="w", width=17).grid(row=3, column=0, sticky="w")
+            Label(self.win.body, text="Award", fg="grey", anchor="w", width=14).grid(row=3, column=1, sticky="w")
+            Label(self.win.body, text="Gats discrepancy", fg="grey", anchor="w", width=13)\
+                .grid(row=3, column=2, sticky="w")
+            Label(self.win.body, text="", fg="grey", anchor="w", width=9).grid(row=3, column=3, sticky="w")
             i = 0
             r = 4
             for res in result:
                 # ----------------------------------------------------------------------------------------------- frame
                 award_frame.append(Frame(self.win.body))
-                award_frame[i].grid(row=r, sticky="w", columnspan=5)
+                award_frame[i].grid(row=r, sticky="w", columnspan=4)
                 # ------------------------------------------------------------------------------------------------- id
                 self.var_id.append(StringVar(self.win.topframe))  # add to arrays
                 self.var_id[i].set(res[1])  # set the textvariables
@@ -1654,8 +1658,12 @@ class InformalC:
                     gat_entry = Entry(award_frame[i], textvariable=self.var_gats[i][ii], width=16)
                     gat_entry.grid(row=0 + ii, column=4, padx=2)  # display gats discrepancy widget
                     self.award_gats_entry[i].append(gat_entry)  # add to array of entry widgets
-                    del_but = Button(award_frame[i], text="+", command=lambda x=i: add_gats_field(x, award_frame[x]))
-                    del_but.grid(row=0, column=5, padx=2)  # display the delete button
+                    del_but = Button(award_frame[i], text="+", width=2,
+                                     command=lambda x=i: add_gats_field(x, award_frame[x]))
+                    if ii > 0:
+                        del_but = Button(award_frame[i], text="-", width=2,
+                                         command=lambda xx=i, y=len(self.var_gats[i]) - 1: del_gats_field(xx, y))
+                    del_but.grid(row=0 + ii, column=5, padx=2)  # display the delete button
                     self.award_gats_del[i].append(del_but)  # add to array of delete button widgets
                 # --------------------------------------------------------------------------------------- delete button
                 Button(award_frame[i], text="delete",
@@ -1672,6 +1680,21 @@ class InformalC:
 
     def addaward_apply(self, topframe, grv_no):
         """ checks and adds records to the informal c add awards table. """
+        sql_queue = []
+        for i in range(len(self.var_id)):
+            id_no = self.var_id[i].get()  # simplify variable names
+            carrier = self.var_name[i].get()  # this is a stringvar
+            award = self.var_award[i].get().strip()  # this is a stringvar
+            gats_discrepancy = self.var_gats[i]  # this is a list of stringvars
+            if not AwardsChecker().check_all(topframe, carrier, award, gats_discrepancy):
+                return
+            award_add = AwardsFormatting().format_for_db(award)  # add decimal points and hundredths.
+            gats_add = Convert(gats_discrepancy).strvarlist_to_string()  # make list of stringvars into a string
+            gats_add = AwardsFormatting().format_for_db(gats_add)  # add decimal points and hundredths.
+            sql = "UPDATE informalc_awards2 SET award='%s',gats_discrepancy='%s' WHERE rowid='%s'" % (
+                award_add, gats_add, id_no)  # write sql command
+            sql_queue.append(sql)  # put all sql commands in queue until all checks pass.
+            self.win.buttons.update()  # update the progress bar
         pb_label = Label(self.win.buttons, text="Updating Changes: ")  # make label for progress bar
         pb_label.grid(row=0, column=2)
         pb = ttk.Progressbar(self.win.buttons, length=200, mode="determinate")  # create progress bar
@@ -1679,38 +1702,9 @@ class InformalC:
         pb["maximum"] = len(self.var_id)  # set length of progress bar
         pb.start()
         ii = 0
-        for i in range(len(self.var_id)):
+        for sql in sql_queue:
             pb["value"] = ii  # increment progress bar
-            id_no = self.var_id[i].get()  # simplify variable names
-            carrier = self.var_name[i].get()  # this is a stringvar
-            award = self.var_award[i].get().strip()  # this is a stringvar
-            gats_discrepancy = self.var_gats[i]  # this is a list of stringvars
-            if not AwardsChecker().check_all(topframe, carrier, award, gats_discrepancy, pb=pb):
-                pb_label.destroy()  # destroy the label for the progress bar
-                pb.destroy()  # destroy the progress bar
-                return
-            # if rate and float(rate) > 10:
-            #     messagebox.showerror("Data Input Error",
-            #                          "Input error for {} in row {}. Values greater than 10 are not "
-            #                          "accepted. \n"
-            #                          "Note the following rates would be expressed as: \n "
-            #                          "additional %50         .50 or just .5 \n"
-            #                          "straight time rate     1.00 or just 1 \n"
-            #                          "overtime rate          1.50 or 1.5 \n"
-            #                          "penalty rate           2.00 or just 2".format(name, str(i + 1)),
-            #                          parent=topframe)
-            #     pb_label.destroy()  # destroy the label for the progress bar
-            #     pb.destroy()  # destroy the progress bar
-            #     return
-            award_add = AwardsFormatting().format_for_db(award)
-            gats_add = Convert(gats_discrepancy).strvarlist_to_string()
-            gats_add = AwardsFormatting().format_for_db(gats_add)
-
-            sql = "UPDATE informalc_awards SET award='%s',gats_discrepancy='%s' WHERE rowid='%s'" % (
-                award_add, gats_add, id_no)
-            print(sql)
-            # commit(sql)
-            self.win.buttons.update()  # update the progress bar
+            commit(sql)
             ii += 1
         pb.stop()  # stop and destroy the progress bar
         pb_label.destroy()  # destroy the label for the progress bar
