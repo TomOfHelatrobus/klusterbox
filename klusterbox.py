@@ -1658,10 +1658,10 @@ class InformalC:
                     gat_entry = Entry(award_frame[i], textvariable=self.var_gats[i][ii], width=16)
                     gat_entry.grid(row=0 + ii, column=4, padx=2)  # display gats discrepancy widget
                     self.award_gats_entry[i].append(gat_entry)  # add to array of entry widgets
-                    del_but = Button(award_frame[i], text="+", width=2,
+                    del_but = Button(award_frame[i], text="+", width=2,  # the first button will add fields
                                      command=lambda x=i: add_gats_field(x, award_frame[x]))
-                    if ii > 0:
-                        del_but = Button(award_frame[i], text="-", width=2,
+                    if ii > 0:  # if the button is not the first, redefine to a delete button
+                        del_but = Button(award_frame[i], text="-", width=2,  # this button will delete fields
                                          command=lambda xx=i, y=len(self.var_gats[i]) - 1: del_gats_field(xx, y))
                     del_but.grid(row=0 + ii, column=5, padx=2)  # display the delete button
                     self.award_gats_del[i].append(del_but)  # add to array of delete button widgets
