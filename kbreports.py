@@ -6,7 +6,7 @@ the user information in the form of message boxes.
 """
 import projvar
 from kbtoolbox import inquire, CarrierList, dt_converter, NsDayDict, dir_path, Convert, check_path, \
-    informalc_date_checker, DateTimeChecker, ProgressBarDe, issuedecisionresult_sorter
+    informalc_date_checker, DateTimeChecker, ProgressBarDe, issuedecisionresult_sorter, distinctresult_to_list
 from tkinter import messagebox, simpledialog, filedialog
 from tkinter.simpledialog import askstring
 from shutil import rmtree
@@ -1147,6 +1147,110 @@ class InformalCReports:
                 return [grv_no, hours, rate, adj, amt, docs, level]
 
     class GrvAwardReports:
+        """ get the awards from the db for the grievance, format that information into rows stored in
+        self.award_stack which can be unpacked for display inside a report. """
+
+        def __init__(self):
+            self.award_stack = []
+            self.grv_no = ""
+            self.dollar_array = []
+            self.hourrate_array = []
+            self.gats_dollar_array = []
+            self.gats_hourrate_array = []
+            self.dollar_total = 0.0
+            self.hourrate_total = 0.0
+            self.gats_dollar_total = 0.0
+            self.gats_hourrate_total = 0.0
+            
+            self.award_stack = []
+            self.awardxhour = 0.0
+            self.awardxamt = 0.0
+
+        def run(self, grv_no):
+            """ a master method for controlling the other methods """
+            self.grv_no = grv_no
+            self.build_stack()
+            return self.award_stack
+
+        def get_arrays(self, query):
+            """ build the dollar, hourrate, gats_dollar and gats_hourrate arrays.
+            accept the search results for informalc_awards2. """
+            self.dollar_array = []  # re initialize arrays
+            self.hourrate_array = []
+            self.gats_dollar_array = []
+            self.gats_hourrate_array = []
+            for rec in query:
+                if not rec[2]:  # rec[2] is the award amount
+                    pass
+                elif "/" in rec[2]:  # if the award is an hour/rate
+                    self.hourrate_array.append(rec[2])
+                else:  # if the award is a dollar value
+                    self.dollar_array.append(rec[2])
+                if not rec[3]:  # rec[3] is the gats descrepancy
+                    pass
+                elif "/" in rec[3]:  # if the gats descrepancy is an hour/rate
+                    self.gats_hourrate_array.append(rec[3])
+                else:  # if the gats descrepancy is a dollar value
+                    self.gats_dollar_array.append(rec[3])
+            print(self.dollar_array, self.hourrate_array, self.gats_dollar_array, self.gats_hourrate_array)
+            
+        def get_totals(self):
+            """ get the totals from the dollar, hourrate, gats_dollar and gats_hourrate arrays. """
+            self.dollar_total = 0.0
+            self.hourrate_total = 0.0
+            self.gats_dollar_total = 0.0
+            self.gats_hourrate_total = 0.0
+            dollar_arrays = (self.dollar_array, self.gats_dollar_array)
+            hour_arrays = (self.hourrate_array, self.gats_hourrate_array)
+
+            for dollar in self.dollar_array:
+                if dollar:
+                    self.dollar_total += dollar
+            for g_dollar in self.gats_dollar_array:
+                if g_dollar:
+                    self.gats_dollar_total += g_dollar
+            
+
+        def build_stack(self):
+            """ this builds the awards stack, each row represents a grievance. """
+            sql = "SELECT DISTINCT(carrier_name) FROM informalc_awards2 WHERE grv_no='%s' ORDER BY carrier_name" \
+                  % self.grv_no
+            result = inquire(sql)  # get a distinct list of carriers with awards in the settlement
+            name_list = distinctresult_to_list(result)  # convert result from inquiry to a list.
+            i = 1
+            for name in name_list:
+                sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" % (name, self.grv_no)
+                query = inquire(sql)  # get all records of awards for that carrier.
+                self.get_arrays(query)
+
+            # for rec in query:
+            #     hour, rate, adj, amt = "---", "---", "---", "---"
+            #     carrier = rec[1]
+            #     if not rec[2]:
+            #         pass
+            #     elif "/" in rec[2]:  # if the award is an hour and rate
+            #         hour, rate = rec[2].split("/")[0], rec[2].split("/")[1]  # split the award by '/'
+            #         hour, rate = "{0:.2f}".format(float(hour)), "{0:.2f}".format(float(rate))
+            #         adj = "{0:.2f}".format(float(hour) * float(rate))  # add to total adjusted hours
+            #         awardxhour += float(hour) * float(rate)
+            #     else:  # if the award is a dollar value
+            #         amt = "{0:.2f}".format(float(rec[2]))
+            #         awardxamt += float(amt)  # add to total adjusted dollar amounts
+            #     row = '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(i), carrier, hour, rate, adj, amt)
+            #     award_stack.append(row)
+            #     i += 1
+            # if award_stack:  # if there is somthing in the award stack, write column headers and totals
+            #     totalhours = "{0:.2f}".format(float(awardxhour))
+            #     totaldollars = "{0:.2f}".format(float(awardxamt))
+            #     firstrow = ["    Carrier Name                Hours      Rate   Adjusted    Dollars\n", ]
+            #     line_row = ["    -----------------------------------------------------------------\n", ]
+            #     totalhoursrow = ["         {:<38}{:>10}\n".format("Awards adjusted to straight time", totalhours), ]
+            #     totaldollarsrow = ["         {:<38}{:>22}\n".format("Awards as flat dollar amount", totaldollars), ]
+            #     self.award_stack = firstrow + line_row + award_stack + line_row + totalhoursrow + totaldollarsrow
+            # else:
+            #     self.award_stack = ["    There are no awards entered for this settlement."]
+
+    class GrvAwardReports2:
         """ get the awards from the db for the grievance, format that information into rows stored in
         self.award_stack which can be unpacked for display inside a report. """
 

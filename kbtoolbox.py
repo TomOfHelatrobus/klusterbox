@@ -2230,14 +2230,18 @@ class AwardsChecker:
         self.frame = None
         self.carrier = None
         self.award = None  # input for awards
+        self.gats_array = None
         self.is_dollar = None  # if the award is a dollar amt - True. if award is hour/rate - False
 
     def check_all(self, frame, carrier, award, gats_array):
-        """ this method runs all checks for awards chekcker"""
+        """ this method runs all checks for awards chekcker.
+        accepts a string arg for awards and a list of stringvars for gats descrepancies.
+        returns True if the checks pass or False if the checks do no pass. """
         self.frame = frame
         self.carrier = carrier
         self.award = award
-        if not self.check_empty():  # make sure the award is not empty
+        self.gats_array = gats_array
+        if not self.check_empty_award():  # make sure the award is not empty
             return False
         self.find_type()  # define self.is_dollar. if the award is a dollar amt - True. if award is hour/rate - False
         if not self.check_list(self.award, "award"):  # run all checks on self.award
@@ -2247,14 +2251,17 @@ class AwardsChecker:
                 return False
         return True
 
-    def check_empty(self):
-        """ this checks if the awards field is empty """
-        if not self.award:
-            messagebox.showerror("Informal C Awards",
-                                 "The field for Awards for {} can not be blank. Use the delete button to delete "
-                                 "a record. ".format(self.carrier),
-                                 parent=self.frame)
-            return False
+    def check_empty_award(self):
+        """ this checks that there is not a gats descrepancy while the award field is empty. """
+        if not self.award:  # if there is nothing in the award field
+            for element in self.gats_array:  # break down the list of gats stringvars
+                if element.get():  # if one of those stringvars has an value
+                    messagebox.showerror("Informal C Awards",
+                                         "If there is a value for gats descrepancies, the field for awards "
+                                         "for {} can not be blank.\n\nEither insert an award or delete the value for "
+                                         "the gats descrepancy.".format(self.carrier),
+                                         parent=self.frame)
+                    return False
         return True
 
     def find_type(self):
@@ -2265,7 +2272,7 @@ class AwardsChecker:
 
     def check_list(self, check_this, value):
         """ a list of checks that must be passed before input can be entered into the database """
-        if not check_this:  # return True if the gats discrepancy is empty
+        if not check_this:  # return True if the award or gats discrepancy is empty
             return True
         if not self.count_characters(check_this, value):  # entries with more than 16 characters are not allowed
             return False
@@ -2371,25 +2378,43 @@ class AwardsChecker:
     def check_empty_hours(self, check_element, value, i):
         """ only run for hour/rate awards - if there is a backslash. Return False is either hour or rate is empty"""
         hour_rate = ("hour", "rate")
-        if not check_element or float(check_element) <= 0:
+
+        def error_msg():
             messagebox.showerror("Informal C Awards",
                                  "For Hour/Rate Awards, both fields must have a value. In the {} field for {} "
                                  "the {} does not have a value. \n"
                                  "Instead got {}"
                                  .format(value, self.carrier, hour_rate[i], check_element),
                                  parent=self.frame)
-            return False
+
+        if value == "award":
+            if not check_element or float(check_element) <= 0:
+                error_msg()
+                return False
+        if value == "gats discrepancies":
+            if not check_element or float(check_element) < 0:
+                error_msg()
+                return False
         return True
 
     def check_empty_dollars(self, check_this, value):
         """ only run for dollar awards. return false if there is no award or the award is less than/equal to zero. """
-        if float(check_this) <= 0:
+
+        def error_msg():
             messagebox.showerror("Informal C Awards",
                                  "Dollar awards must be greater than 0. In the {} field for {} "
                                  "the award value is not greater than 0. \n"
                                  "Instead got {}"
                                  .format(value, self.carrier, check_this), parent=self.frame)
-            return False
+
+        if value == "award":
+            if float(check_this) <= 0:
+                error_msg()
+                return False
+        if value == "gats discrepancies":
+            if float(check_this) < 0:
+                error_msg()
+                return False
         return True
 
     def count_decimals(self, check_this, value):
