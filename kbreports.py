@@ -1161,10 +1161,12 @@ class InformalCReports:
             self.hourrate_total = 0.0
             self.gats_dollar_total = 0.0
             self.gats_hourrate_total = 0.0
-            
             self.award_stack = []
-            self.awardxhour = 0.0
-            self.awardxamt = 0.0
+            self.substack = []  # index 0 is dollars, index 1 is hourrate
+            self.cum_dollar = 0.0  # cumulative dollar awards
+            self.cum_hourrate = 0.0  # cumulative hourrate awards
+            self.cum_gats_dollar = 0.0  # cumulative dollar gats descrepancies
+            self.cum_gats_hourrate = 0.0  # cumulative hourrate gats descrepancies
 
         def run(self, grv_no):
             """ a master method for controlling the other methods """
@@ -1192,24 +1194,100 @@ class InformalCReports:
                     self.gats_hourrate_array.append(rec[3])
                 else:  # if the gats descrepancy is a dollar value
                     self.gats_dollar_array.append(rec[3])
-            print(self.dollar_array, self.hourrate_array, self.gats_dollar_array, self.gats_hourrate_array)
             
         def get_totals(self):
             """ get the totals from the dollar, hourrate, gats_dollar and gats_hourrate arrays. """
+
+            def hourrate_adjuster(hourrate):
+                """ multiple hour by rate and return adjusted hours """
+                hourrate_array = hourrate.split("/")
+                return float(hourrate_array[0]) * float(hourrate_array[1])
+
             self.dollar_total = 0.0
             self.hourrate_total = 0.0
             self.gats_dollar_total = 0.0
             self.gats_hourrate_total = 0.0
-            dollar_arrays = (self.dollar_array, self.gats_dollar_array)
-            hour_arrays = (self.hourrate_array, self.gats_hourrate_array)
+            if not self.dollar_array:  # get totals for dollar awards
+                self.dollar_total = ""
+            else:
+                for dollar in self.dollar_array:
+                    if dollar:
+                        self.dollar_total += float(dollar)
+                self.cum_dollar += self.dollar_total
+            if not self.hourrate_array:  # get totals for hourrate awards
+                self.hourrate_total = ""
+            else:
+                for hour in self.hourrate_array:
+                    if hour:
+                        self.hourrate_total += hourrate_adjuster(hour)
+                self.cum_hourrate += self.hourrate_total
+            if not self.gats_dollar_array:  # get totals for dollar gats descrepancies
+                self.gats_dollar_total = "---"
+            else:
+                gats_dollar_total = 0.0
+                for g_dollar in self.gats_dollar_array:
+                    if g_dollar:
+                        gats_dollar_total += float(g_dollar)
+                self.gats_dollar_total = self.dollar_total - gats_dollar_total
+                if self.gats_dollar_total <= 0:
+                    self.gats_dollar_total = "good"
+                else:
+                    self.cum_gats_dollar += self.gats_dollar_total
+            if not self.gats_hourrate_array:  # get totals for hourrate gats descrepancies
+                self.gats_hourrate_total = "---"
+            else:
+                gats_hourrate_total = 0.0
+                for g_hour in self.gats_hourrate_array:
+                    if g_hour:
+                        gats_hourrate_total += hourrate_adjuster(g_hour)
+                self.gats_hourrate_total = self.hourrate_total - gats_hourrate_total
+                if self.gats_hourrate_total <= 0:
+                    self.gats_hourrate_total = "good"
+                else:
+                    self.cum_gats_hourrate += self.gats_hourrate_total
 
-            for dollar in self.dollar_array:
-                if dollar:
-                    self.dollar_total += dollar
-            for g_dollar in self.gats_dollar_array:
-                if g_dollar:
-                    self.gats_dollar_total += g_dollar
-            
+        def get_substack(self):
+            """ get the detailed breakdown to appear under the awards and/or gats descrepancy totals. """
+            self.substack = [[], []]  # this list contains a list for dollars and a list for hourrate
+            awards = (self.dollar_array, self.hourrate_array)
+            gats = (self.gats_dollar_array, self.gats_hourrate_array)
+            for i in range(2):  # 0 if for dollar awards, 1 is for hourrate awards.
+                greatest_count = max(len(awards[i]), len(gats[i]))
+                for ii in range(greatest_count):
+                    line = []
+                    try:
+                        if awards[i][ii]:  # if the index is valid
+                            if i == 0 and len(awards[i]) > 1:  # if there is more than one value for dollar awards
+                                line.append(awards[i][ii])  # add this to the line
+                            elif i == 1 and len(awards[i]) > 0:  # if there is one or more for hourrate awards
+                                line.append(awards[i][ii])  # add this to the line
+                            else:
+                                line.append("---")  # add '---' to the line to indicate no value
+                    except IndexError:
+                        line.append("---")  # add '---' to the line to indicate no value
+                    try:
+                        if gats[i][ii]:  # if the index is valid
+                            line.append(gats[i][ii])
+                    except IndexError:
+                        line.append("---")  # add '---' to the line to indicate no value
+                    if line != ["---", "---"]:
+                        self.substack[i].append(line)
+
+        @staticmethod
+        def convert_dollar_hourrate(value, _type):
+            """ convert the hourrate or dollars value to a floating value """
+            if value == "---":
+                return "   ---  "
+            if value == "good":
+                return "  good  "
+            if _type == "dollar":
+                return "  ${:.2f}  ".format(float(value))
+            if _type == "sub_dollar":
+                return "+ ${:.2f}  ".format(float(value))
+            if _type == "hourrate":
+                return "  {:.2f}  ".format(float(value))
+            if _type == "sub_hourrate":
+                return "+ {}  ".format(value)
 
         def build_stack(self):
             """ this builds the awards stack, each row represents a grievance. """
@@ -1217,38 +1295,90 @@ class InformalCReports:
                   % self.grv_no
             result = inquire(sql)  # get a distinct list of carriers with awards in the settlement
             name_list = distinctresult_to_list(result)  # convert result from inquiry to a list.
-            i = 1
+            noaward_count = 1
+            dollar_count = 1
+            hourrate_count = 1
+            noaward_stack = []
+            dollar_stack = []
+            hourrate_stack = []
             for name in name_list:
                 sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" % (name, self.grv_no)
                 query = inquire(sql)  # get all records of awards for that carrier.
                 self.get_arrays(query)
-
-            # for rec in query:
-            #     hour, rate, adj, amt = "---", "---", "---", "---"
-            #     carrier = rec[1]
-            #     if not rec[2]:
-            #         pass
-            #     elif "/" in rec[2]:  # if the award is an hour and rate
-            #         hour, rate = rec[2].split("/")[0], rec[2].split("/")[1]  # split the award by '/'
-            #         hour, rate = "{0:.2f}".format(float(hour)), "{0:.2f}".format(float(rate))
-            #         adj = "{0:.2f}".format(float(hour) * float(rate))  # add to total adjusted hours
-            #         awardxhour += float(hour) * float(rate)
-            #     else:  # if the award is a dollar value
-            #         amt = "{0:.2f}".format(float(rec[2]))
-            #         awardxamt += float(amt)  # add to total adjusted dollar amounts
-            #     row = '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(i), carrier, hour, rate, adj, amt)
-            #     award_stack.append(row)
-            #     i += 1
-            # if award_stack:  # if there is somthing in the award stack, write column headers and totals
-            #     totalhours = "{0:.2f}".format(float(awardxhour))
-            #     totaldollars = "{0:.2f}".format(float(awardxamt))
-            #     firstrow = ["    Carrier Name                Hours      Rate   Adjusted    Dollars\n", ]
-            #     line_row = ["    -----------------------------------------------------------------\n", ]
-            #     totalhoursrow = ["         {:<38}{:>10}\n".format("Awards adjusted to straight time", totalhours), ]
-            #     totaldollarsrow = ["         {:<38}{:>22}\n".format("Awards as flat dollar amount", totaldollars), ]
-            #     self.award_stack = firstrow + line_row + award_stack + line_row + totalhoursrow + totaldollarsrow
-            # else:
-            #     self.award_stack = ["    There are no awards entered for this settlement."]
+                self.get_totals()
+                self.get_substack()
+                # build the award stack, line by line.
+                if not self.dollar_array and not self.hourrate_array:  # if there is no award
+                    row = '    {:<5}{:<18}{:>12}{:>15}\n' \
+                        .format(str(noaward_count), name, "   ---  ", "   ---  ")
+                    noaward_stack.append(row)
+                    noaward_count += 1
+                if self.dollar_array:  # if there is a dollar award
+                    dollar_total_place = self.convert_dollar_hourrate(self.dollar_total, "dollar")
+                    gats_dollar_total_place = self.convert_dollar_hourrate(self.gats_dollar_total, "dollar")
+                    row = '    {:<5}{:<18}{:>12}{:>15}\n'\
+                        .format(str(dollar_count), name, dollar_total_place, gats_dollar_total_place)
+                    dollar_stack.append(row)
+                    for element in self.substack[0]:  # for each dollar element in substack
+                        awards_place = self.convert_dollar_hourrate(element[0], "sub_dollar")
+                        gats_place = self.convert_dollar_hourrate(element[1], "sub_dollar")
+                        row = '    {:<5}{:<18}{:>12}{:>15}\n'.format("", "", awards_place, gats_place)
+                        dollar_stack.append(row)
+                    dollar_count += 1
+                if self.hourrate_array:  # if there is an hour rate award
+                    hourrate_total_place = self.convert_dollar_hourrate(self.hourrate_total, "hourrate")
+                    gats_hourrate_total_place = self.convert_dollar_hourrate(self.gats_hourrate_total, "hourrate")
+                    row = '    {:<5}{:<18}{:>12}{:>15}\n' \
+                        .format(str(hourrate_count), name, hourrate_total_place, gats_hourrate_total_place)
+                    hourrate_stack.append(row)
+                    for element in self.substack[1]:  # for each hourrate element in substack
+                        awards_place = self.convert_dollar_hourrate(element[0], "sub_hourrate")
+                        gats_place = self.convert_dollar_hourrate(element[1], "sub_hourrate")
+                        row = '    {:<5}{:<5}{:>25}{:>15}\n'.format("", "", awards_place, gats_place)
+                        hourrate_stack.append(row)
+                    hourrate_count += 1
+            if dollar_stack or hourrate_stack:  # if there is somthing, write column headers and totals
+                totaldollars = "{0:.2f}".format(float(self.cum_dollar))
+                totalhours = "{0:.2f}".format(float(self.cum_hourrate))
+                totalgatsdollars = "{0:.2f}".format(float(self.cum_gats_dollar))
+                totalgatshours = "{0:.2f}".format(float(self.cum_gats_hourrate))
+                firstrow = ["         Carrier Name          Awards    Gats Descrepancies\n", ]
+                line_row = ["    --------------------------------------------------------------\n", ]
+                noaward_label = ["														  no award\n"]
+                dollars_label = ["														   dollars\n"]
+                hourrate_label = ["													     hour/rate\n"]
+                totalhoursrow = ["    {:<19}{:>14}\n".format("Cumulative dollars:", totaldollars), ]
+                totaldollarsrow = ["    {:<19}{:>14}\n".format("Cumulative hours:  ", totalhours), ]
+                totalgatsdollarsrow = \
+                    ["    {:<36}{:>12}\n".format("Cumulative gats dollar descepancies:", totalgatsdollars), ]
+                totalgatshoursrow = \
+                    ["    {:<36}{:>12}\n".format("Cumulative gats hour descepancies:  ", totalgatshours), ]
+                skip_line = ["\n"]
+                self.award_stack = firstrow + line_row
+                if noaward_stack:
+                    self.award_stack += noaward_label
+                    self.award_stack += noaward_stack
+                    self.award_stack += line_row
+                if dollar_stack:
+                    self.award_stack += dollars_label
+                    self.award_stack += dollar_stack
+                    self.award_stack += line_row
+                if hourrate_stack:
+                    self.award_stack += hourrate_label
+                    self.award_stack += hourrate_stack
+                    self.award_stack += line_row
+                if dollar_stack:
+                    self.award_stack += totaldollarsrow
+                if hourrate_stack:
+                    self.award_stack += totalhoursrow
+                if totalgatsdollars or totalgatshours:
+                    self.award_stack += skip_line
+                if totalgatsdollars:
+                    self.award_stack += totalgatsdollarsrow
+                if totalgatshours:
+                    self.award_stack += totalgatshoursrow
+            else:
+                self.award_stack = ["    There are no awards entered for this settlement."]
 
     class GrvAwardReports2:
         """ get the awards from the db for the grievance, format that information into rows stored in
