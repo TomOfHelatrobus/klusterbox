@@ -1769,7 +1769,7 @@ class InformalC:
                     unique_grv.append(grv[2])
             unique_carrier = []
             for each in unique_grv:
-                sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % each
+                sql = "SELECT * FROM informalc_awards2 WHERE grv_no='%s'" % each
                 results = inquire(sql)
                 for r in results:
                     if r[1] not in unique_carrier:
@@ -2543,7 +2543,7 @@ class InformalC:
                 return
             # use loops and arrays to commit changes to db
             tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gats", "informalc_gats",
-                      "informalc_awards", "informalc_settlements")
+                      "informalc_awards2", "informalc_settlements")
             fields = ("main", "sub", "grv_no", "gats_no",
                       "grv_no", "grv_no")
             for i in range(6):
@@ -2567,7 +2567,7 @@ class InformalC:
             # use loops and arrays to commit changes to db
             tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gats", "informalc_gats",
                       "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
-                      "informalc_remandindex", "informalc_awards", "informalc_settlements")
+                      "informalc_remandindex", "informalc_awards2", "informalc_settlements")
             fields = ("main", "sub", "grv_no", "gats_no", "grv_no", "overdue", "followup", "remanded", "refiling",
                       "grv_no", "grv_no")
             for i in range(11):
@@ -2592,7 +2592,7 @@ class InformalC:
             # use loops and arrays to commit changes to db
             tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gats", "informalc_gats",
                       "informalc_grievances", "informalc_noncindex", "informalc_noncindex", "informalc_remandindex",
-                      "informalc_remandindex", "informalc_awards", "informalc_settlements")
+                      "informalc_remandindex", "informalc_awards2", "informalc_settlements")
             fields = ("main", "sub", "grv_no", "gats_no", "grv_no", "followup", "overdue", "refiling", "remanded",
                       "grv_no", "grv_no")
             for i in range(11):
@@ -12804,7 +12804,7 @@ class CarrierInput:
                                       "Are you sure?".format(self.carrier, self.chg_name.get()),
                                       parent=self.win.topframe):
             return
-        tables = ("carriers", "informalc_awards", "informalc_payouts", "otdl_preference", "refusals", "rings3",
+        tables = ("carriers", "informalc_awards2", "informalc_payouts", "otdl_preference", "refusals", "rings3",
                   "seniority", "name_index")
         columns = ("carrier_name", "carrier_name", "carrier_name", "carrier_name", "carrier_name", "carrier_name",
                    "name", "kb_name")

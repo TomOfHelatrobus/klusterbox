@@ -1073,87 +1073,21 @@ class InformalCReports:
     def __init__(self, parent):
         self.parent = parent
 
-    class CarrierAwardsReports:
-        """ get the awards from the db for the carrier, format that information into rows stored in
-        self.award_stack which can be unpacked for display inside a report. """
+    class AwardReports:
+        """ this will create an awards report sorted by either a carrier - showing awards for  all grievances or
+        by grievance - showing awards for all carriers.  get the awards from the db for the carrier, format that
+        information into rows stored in self.award_stack which can be unpacked for display inside a report. """
 
         def __init__(self):
-            self.award_stack = []  # this stores rows of information on carrier awards.
+            # static variables for carrier award reports
             self.carrier = ""
             self.grv_list = []
-            self.total_adj = 0.0
-            self.total_amt = 0.0
-
-        def run(self, carrier, grv_list):
-            """ this is a master method for controlling other methods. """
-            self.carrier = carrier
-            self.grv_list = grv_list
-            self.build_stack()
-            return self.award_stack
-
-        def build_stack(self):
-            """ run through the list of grievances and send to self.get_recs to find any results. """
-            i = 1
-            award_stack = []
-            for grv_no in self.grv_list:
-                rec = self.get_recs(grv_no)  # get recs with sql
-                if rec:  # if there is a record, create a row of text
-                    hours, rate, adj, amt, docs, level = rec[1], rec[2], rec[3], rec[4], rec[5], rec[6]
-                    row = "    {:<4}{:<17}{:>8}{:>8}{:>12}{:>12}{:>11}{:>12}\n" \
-                        .format(str(i), grv_no, hours, rate, adj, amt, docs, level)
-                    award_stack.append(row)  # build the stack row by row
-                    i += 1
-            if award_stack:  # if there is somthing in the award stack, write column headers and totals
-                t_adj = "{0:.2f}".format(float(self.total_adj))
-                t_amt = "{0:.2f}".format(float(self.total_amt))
-                firstrow = ["        Grievance Number    Hours    Rate    Adjusted      Amount       docs       "
-                            "level\n", ]
-                line_row = ["    ----------------------------------------------------------------"
-                            "--------------------\n", ]
-                totalhoursrow = ["        {:<34}{:>11}\n".format("Total hours as straight time", t_adj), ]
-                totaldollarsrow = ["        {:<34}{:>23}\n".format("Total as flat dollar amount", t_amt), ]
-                # add all arrays together to get the full stack with header and totals included.
-                self.award_stack = firstrow + line_row + award_stack + line_row + totalhoursrow + totaldollarsrow
-            else:
-                self.award_stack = ["    There are no awards on record for this carrier.\n", ]
-
-        def get_recs(self, grv_no):
-            """ call recs from the db """
-            sql = "SELECT informalc_awards.grv_no, informalc_awards.hours, informalc_awards.rate, " \
-                  "informalc_awards.amount, informalc_settlements.docs, informalc_settlements.level " \
-                  "FROM informalc_awards, informalc_settlements " \
-                  "WHERE informalc_awards.grv_no = informalc_settlements.grv_no and " \
-                  "informalc_awards.carrier_name='%s'" \
-                  "and informalc_awards.grv_no = '%s' " \
-                  "ORDER BY informalc_settlements.date_signed" % (self.carrier, grv_no)
-            rec = inquire(sql)
-            if rec:
-                # default values
-                hours, rate, adj, amt, docs, level = "---", "---", "---", "---", "---", "---"
-                if rec[0][1]:
-                    hours = "{0:.2f}".format(float(rec[0][1]))
-                if rec[0][2]:
-                    rate = "{0:.2f}".format(float(rec[0][2]))
-                if rec[0][1] and rec[0][2]:
-                    adj = "{0:.2f}".format(float(rec[0][1]) * float(rec[0][2]))
-                    self.total_adj += float(rec[0][1]) * float(rec[0][2])
-                if rec[0][3]:
-                    amt = "{0:.2f}".format(float(rec[0][3]))
-                    self.total_amt += float(rec[0][3])
-                if rec[0][4]:
-                    docs = rec[0][4]
-                if rec[0][5]:
-                    level = rec[0][5]
-                return [grv_no, hours, rate, adj, amt, docs, level]
-
-    class GrvAwardReports:
-        """ get the awards from the db for the grievance, format that information into rows stored in
-        self.award_stack which can be unpacked for display inside a report. """
-
-        def __init__(self):
-            self.award_stack = []
+            # static variables for grievance award reports
             self.grv_no = ""
-            self.dollar_array = []
+            # static variables for both carrier and grievance award reports.
+            self.select_grv = False  # false = display carrier awards, true display grievance awards
+            self.award_stack = []  # this stores rows of information on carrier awards.
+            self.dollar_array = []  # re initialize arrays
             self.hourrate_array = []
             self.gats_dollar_array = []
             self.gats_hourrate_array = []
@@ -1161,16 +1095,24 @@ class InformalCReports:
             self.hourrate_total = 0.0
             self.gats_dollar_total = 0.0
             self.gats_hourrate_total = 0.0
-            self.award_stack = []
             self.substack = []  # index 0 is dollars, index 1 is hourrate
             self.cum_dollar = 0.0  # cumulative dollar awards
             self.cum_hourrate = 0.0  # cumulative hourrate awards
             self.cum_gats_dollar = 0.0  # cumulative dollar gats descrepancies
             self.cum_gats_hourrate = 0.0  # cumulative hourrate gats descrepancies
 
-        def run(self, grv_no):
+        def run_grievance(self, grv_no):
             """ a master method for controlling the other methods """
             self.grv_no = grv_no
+            self.select_grv = True
+            self.build_stack()
+            return self.award_stack
+
+        def run_carrier(self, carrier, grv_list):
+            """ this is a master method for controlling other methods. """
+            self.carrier = carrier
+            self.grv_list = grv_list
+            self.select_grv = False
             self.build_stack()
             return self.award_stack
 
@@ -1194,7 +1136,7 @@ class InformalCReports:
                     self.gats_hourrate_array.append(rec[3])
                 else:  # if the gats descrepancy is a dollar value
                     self.gats_dollar_array.append(rec[3])
-            
+
         def get_totals(self):
             """ get the totals from the dollar, hourrate, gats_dollar and gats_hourrate arrays. """
 
@@ -1291,33 +1233,48 @@ class InformalCReports:
 
         def build_stack(self):
             """ this builds the awards stack, each row represents a grievance. """
-            sql = "SELECT DISTINCT(carrier_name) FROM informalc_awards2 WHERE grv_no='%s' ORDER BY carrier_name" \
-                  % self.grv_no
-            result = inquire(sql)  # get a distinct list of carriers with awards in the settlement
-            name_list = distinctresult_to_list(result)  # convert result from inquiry to a list.
             noaward_count = 1
             dollar_count = 1
             hourrate_count = 1
             noaward_stack = []
             dollar_stack = []
             hourrate_stack = []
-            for name in name_list:
-                sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" % (name, self.grv_no)
-                query = inquire(sql)  # get all records of awards for that carrier.
+            if self.select_grv:  # find awards for grievances 
+                sql = "SELECT DISTINCT(carrier_name) FROM informalc_awards2 WHERE grv_no='%s' ORDER BY carrier_name" \
+                      % self.grv_no
+                result = inquire(sql)  # get a distinct list of carriers with awards in the settlement
+                selection_list = distinctresult_to_list(result)  # convert result from inquiry to a list.
+            else:  # find awards for carriers
+                sql = "SELECT DISTINCT(grv_no) FROM informalc_awards2 WHERE carrier_name='%s'" \
+                      % self.carrier
+                result = inquire(sql)  # get a distinct list of carriers with awards in the settlement
+                inclusive_list = distinctresult_to_list(result)  # convert result from inquiry to a list.
+                selection_list = [x for x in self.grv_list if x in inclusive_list]
+            # if self.select_grv is true: selection is grv_no. if false: selection is carrier_name
+            for selection in selection_list:
+                if self.select_grv:
+                    sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" \
+                          % (selection, self.grv_no)
+                    query = inquire(sql)  # get all records of awards for that carrier.
+                else:
+                    sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" \
+                          % (self.carrier, selection)
+                    query = inquire(sql)  # get all records of awards for that carrier for a specific grievance
+                
                 self.get_arrays(query)
                 self.get_totals()
                 self.get_substack()
                 # build the award stack, line by line.
                 if not self.dollar_array and not self.hourrate_array:  # if there is no award
                     row = '    {:<5}{:<18}{:>12}{:>15}\n' \
-                        .format(str(noaward_count), name, "   ---  ", "   ---  ")
+                        .format(str(noaward_count), selection, "   ---  ", "   ---  ")
                     noaward_stack.append(row)
                     noaward_count += 1
                 if self.dollar_array:  # if there is a dollar award
                     dollar_total_place = self.convert_dollar_hourrate(self.dollar_total, "dollar")
                     gats_dollar_total_place = self.convert_dollar_hourrate(self.gats_dollar_total, "dollar")
                     row = '    {:<5}{:<18}{:>12}{:>15}\n'\
-                        .format(str(dollar_count), name, dollar_total_place, gats_dollar_total_place)
+                        .format(str(dollar_count), selection, dollar_total_place, gats_dollar_total_place)
                     dollar_stack.append(row)
                     for element in self.substack[0]:  # for each dollar element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_dollar")
@@ -1329,7 +1286,7 @@ class InformalCReports:
                     hourrate_total_place = self.convert_dollar_hourrate(self.hourrate_total, "hourrate")
                     gats_hourrate_total_place = self.convert_dollar_hourrate(self.gats_hourrate_total, "hourrate")
                     row = '    {:<5}{:<18}{:>12}{:>15}\n' \
-                        .format(str(hourrate_count), name, hourrate_total_place, gats_hourrate_total_place)
+                        .format(str(hourrate_count), selection, hourrate_total_place, gats_hourrate_total_place)
                     hourrate_stack.append(row)
                     for element in self.substack[1]:  # for each hourrate element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_hourrate")
@@ -1342,13 +1299,16 @@ class InformalCReports:
                 totalhours = "{0:.2f}".format(float(self.cum_hourrate))
                 totalgatsdollars = "{0:.2f}".format(float(self.cum_gats_dollar))
                 totalgatshours = "{0:.2f}".format(float(self.cum_gats_hourrate))
-                firstrow = ["         Carrier Name          Awards    Gats Descrepancies\n", ]
+                if self.select_grv:
+                    firstrow = ["         Carrier Name          Awards    Gats Descrepancies\n", ]
+                else:
+                    firstrow = ["         Grievance Number      Awards    Gats Descrepancies\n", ]
                 line_row = ["    --------------------------------------------------------------\n", ]
                 noaward_label = ["														  no award\n"]
                 dollars_label = ["														   dollars\n"]
                 hourrate_label = ["													     hour/rate\n"]
-                totalhoursrow = ["    {:<19}{:>14}\n".format("Cumulative dollars:", totaldollars), ]
-                totaldollarsrow = ["    {:<19}{:>14}\n".format("Cumulative hours:  ", totalhours), ]
+                totaldollarsrow = ["    {:<19}{:>14}\n".format("Cumulative dollars:", totaldollars), ]
+                totalhoursrow = ["    {:<19}{:>14}\n".format("Cumulative hours:  ", totalhours), ]
                 totalgatsdollarsrow = \
                     ["    {:<36}{:>12}\n".format("Cumulative gats dollar descepancies:", totalgatsdollars), ]
                 totalgatshoursrow = \
@@ -1371,61 +1331,12 @@ class InformalCReports:
                     self.award_stack += totaldollarsrow
                 if hourrate_stack:
                     self.award_stack += totalhoursrow
-                if totalgatsdollars or totalgatshours:
+                if self.cum_gats_dollar or self.cum_gats_hourrate:
                     self.award_stack += skip_line
-                if totalgatsdollars:
+                if self.cum_gats_dollar:
                     self.award_stack += totalgatsdollarsrow
-                if totalgatshours:
+                if self.cum_gats_hourrate:
                     self.award_stack += totalgatshoursrow
-            else:
-                self.award_stack = ["    There are no awards entered for this settlement."]
-
-    class GrvAwardReports2:
-        """ get the awards from the db for the grievance, format that information into rows stored in
-        self.award_stack which can be unpacked for display inside a report. """
-
-        def __init__(self):
-            self.award_stack = []
-            self.grv_no = ""
-
-        def run(self, grv_no):
-            """ a master method for controlling the other methods """
-            self.grv_no = grv_no
-            self.build_stack()
-            return self.award_stack
-
-        def build_stack(self):
-            """ this builds the awards stack, each row represents a grievance. """
-            award_stack = []
-            awardxhour = 0.0
-            awardxamt = 0.0
-            sql = "SELECT * FROM informalc_awards2 WHERE grv_no='%s' ORDER BY carrier_name" % self.grv_no
-            query = inquire(sql)
-            i = 1
-            for rec in query:
-                hour, rate, adj, amt = "---", "---", "---", "---"
-                carrier = rec[1]
-                if not rec[2]:
-                    pass
-                elif "/" in rec[2]:  # if the award is an hour and rate
-                    hour, rate = rec[2].split("/")[0], rec[2].split("/")[1]  # split the award by '/'
-                    hour, rate = "{0:.2f}".format(float(hour)), "{0:.2f}".format(float(rate))
-                    adj = "{0:.2f}".format(float(hour) * float(rate))  # add to total adjusted hours
-                    awardxhour += float(hour) * float(rate)
-                else:  # if the award is a dollar value
-                    amt = "{0:.2f}".format(float(rec[2]))
-                    awardxamt += float(amt)  # add to total adjusted dollar amounts
-                row = '    {:<5}{:<22}{:>6}{:>10}{:>10}{:>12}\n'.format(str(i), carrier, hour, rate, adj, amt)
-                award_stack.append(row)
-                i += 1
-            if award_stack:  # if there is somthing in the award stack, write column headers and totals
-                totalhours = "{0:.2f}".format(float(awardxhour))
-                totaldollars = "{0:.2f}".format(float(awardxamt))
-                firstrow = ["    Carrier Name                Hours      Rate   Adjusted    Dollars\n", ]
-                line_row = ["    -----------------------------------------------------------------\n", ]
-                totalhoursrow = ["         {:<38}{:>10}\n".format("Awards adjusted to straight time", totalhours), ]
-                totaldollarsrow = ["         {:<38}{:>22}\n".format("Awards as flat dollar amount", totaldollars), ]
-                self.award_stack = firstrow + line_row + award_stack + line_row + totalhoursrow + totaldollarsrow
             else:
                 self.award_stack = ["    There are no awards entered for this settlement."]
 
@@ -1611,7 +1522,8 @@ class InformalCReports:
                 report.write("\n")
             # ------------------------------------------------------------------------------------- get awards stack
             if sett[11] in ("monetary remedy", "back pay"):  # skip if decision is not either.
-                grv_stack = self.GrvAwardReports().run(sett[2])
+                # grv_stack = self.GrvAwardReports().run(sett[2])
+                grv_stack = self.AwardReports().run_grievance(sett[2])
                 for row in grv_stack:
                     report.write(row)
                 report.write("\n")
@@ -1743,7 +1655,7 @@ class InformalCReports:
             pb.change_text("Writing report for {}".format(name))
             report.write("{:<30}\n\n".format(name))
             # --------------------------------------------------------------------------------------- call award stack
-            award_stack = self.CarrierAwardsReports().run(name, unique_grv)
+            award_stack = self.AwardReports().run_carrier(name, unique_grv)
             for award in award_stack:
                 report.write(award)
             report.write("\n\n\n")
@@ -1778,7 +1690,7 @@ class InformalCReports:
         report.write("Settlement Report By Carrier\n\n")
         report.write("{:<30}\n\n".format(name))
         # ----------------------------------------------------------------------------------------------- award stack
-        award_stack = self.CarrierAwardsReports().run(name, unique_grv)
+        award_stack = self.AwardReports().run_carrier(name, unique_grv)
         for row in award_stack:
             report.write(row)
         report.close()
@@ -2072,7 +1984,8 @@ class InformalCReports:
             report.write("\n")
         # ------------------------------------------------------------------------------------------ get awards stack
         if grv_info[11] in ("monetary remedy", "back pay"):  # only run if settlement is monetary or back pay
-            grv_stack = self.GrvAwardReports().run(grv_info[2])
+            # grv_stack = self.GrvAwardReports().run(grv_info[2])
+            grv_stack = self.AwardReports().run_grievance(grv_info[2])
             for row in grv_stack:
                 report.write(row)
         report.close()
