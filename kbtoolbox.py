@@ -1151,20 +1151,20 @@ class Convert:
     def hundredths(self):
         """ returns a number (as a string) into a number with 2 decimal places """
         number = float(self.data)  # convert the number to a float
-        return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+        return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
 
     def zero_or_hundredths(self):
         """ returns number strings for numbers """
         try:
             if float(self.data) == 0:
                 number = 0.00  # convert the number to a float
-                return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+                return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
             else:
                 number = float(self.data)  # convert the number to a float
-                return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+                return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
         except (ValueError, TypeError):
             number = 0.00  # convert the number to a float
-            return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+            return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
 
     def empty_or_hunredths(self):
         """ returns empty string for zero or converts the number to a float. """
@@ -1172,7 +1172,7 @@ class Convert:
             return ""
         else:
             number = float(self.data)  # convert the number to a float
-            return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+            return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
 
     def zero_not_empty(self):
         """ returns 0 for an empty string"""

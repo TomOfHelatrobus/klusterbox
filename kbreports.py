@@ -1223,13 +1223,16 @@ class InformalCReports:
             if value == "good":
                 return "  good  "
             if _type == "dollar":
-                return "  ${:.2f}  ".format(float(value))
+                return "  ${:.2f}  ".format(float(value)).lstrip('0')
             if _type == "sub_dollar":
-                return "+ ${:.2f}  ".format(float(value))
+                return "+ ${:.2f}  ".format(float(value)).lstrip('0')
             if _type == "hourrate":
-                return "  {:.2f}  ".format(float(value))
+                return "  {:.2f}  ".format(float(value)).lstrip('0')
             if _type == "sub_hourrate":
-                return "+ {}  ".format(value)
+                hourrate = value.split("/")
+                hourrate[1] = float(hourrate[1]) * 100
+                value_string = str(hourrate[0]) + " @ " + str(int(hourrate[1])) + "%"
+                return "+ {}  ".format(value_string)
 
         def build_stack(self):
             """ this builds the awards stack, each row represents a grievance. """
@@ -1558,62 +1561,75 @@ class InformalCReports:
             else:
                 return [""]
 
-        if not len(self.parent.parent.search_result):
+        if not len(self.parent.parent.search_result):  # if there are no search results
+            messagebox.showerror("Report Generator",
+                                 "There are no search results to display. The report was not generated.",
+                                 parent=self.parent.win.topframe)
             return
+        # ------------------------------------------------------------------------------------------ generate file name
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
         report = open(dir_path('infc_grv') + filename, "w")
+        # ------------------------------------------------------------------------------------------- generate document
         report.write("   Monetary Remedy Summary\n\n")
         report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
         report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
                      .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
         report.write(
             "      ----------------------------------------------------------------------------------\n")
+        # ----------------------------------------------------------------------------------------------- collect data
         total_hour = 0
-        total_amt = 0
+        total_dollar = 0
         i = 1
         monetary_remedies = []  # store all grievances where there is a monetary remedy settlement
         for sett in self.parent.parent.search_result:
             if sett[11] in ("monetary remedy", "back pay"):  # find decisions of monetary / back pay
                 monetary_remedies.append(sett)
-        for sett in monetary_remedies:
-            sql = "SELECT * FROM informalc_awards WHERE grv_no='%s'" % sett[2]
+        # ----------------------------------------------------------------------------------- loop for each settlement
+        for sett in monetary_remedies:  # for each settlement with monetary remedy.
+            sql = "SELECT * FROM informalc_awards2 WHERE grv_no='%s'" % sett[2]
             query = inquire(sql)
-            awardxhour = 0
-            awardxamt = 0
-            for rec in query:  # calculate total award amounts
-                hour = 0.0
-                rate = 0.0
-                amt = 0
-                if rec[2]:  # hours of pay for remedy
-                    hour = float(rec[2])
-                if rec[3]:  # the rate at which the hours are paid. 50%, 100%, 150%, etc
-                    rate = float(rec[3])
-                if rec[4]:  # a flat amount in dollars of the remedy
-                    amt = float(rec[4])
-                if hour and rate:  # combine rate and hours to get an adjusted hours of remedy.
-                    awardxhour += hour * rate  # the adjusted award for hours
-                if amt:
-                    awardxamt += amt  # the award for dollars
+            award_hour = 0
+            award_dollar = 0
+            # ------------------------------------------------------------------------------------ loop for each award
+            for rec in query:  # for each award in the given settlement
+                if not rec[2]:  # if there is no award
+                    pass
+                elif "/" in rec[2]:  # if the award is an hourrate type
+                    hourrate = rec[2].split("/")
+                    award_hour += float(hourrate[0]) * float(hourrate[1])
+                else:  # if none of the above apply, the award is a dollar type
+                    award_dollar += float(rec[2])
+            # --------------------------------------------------- after loop has sorted and added all of the awards...
+            total_hour += award_hour  # increment the total that will appear on the bottom of the report.
+            total_dollar += award_dollar
+            # next, format the awards to the format which will appear on the report.
+            award_hour = Convert(award_hour).empty_returns_str("   ----")  # if zero, convert to blank lines
+            if award_hour == "   ----":
+                pass
+            else:  # if award is not blank lines, then format the number
+                award_hour = "{:.2f}".format(float(award_hour)).lstrip('0')
+            award_dollar = Convert(award_dollar).empty_returns_str("   ----")  # if zero, convert to blank lines
+            if award_dollar == "   ----":
+                pass
+            else:  # if award is not blank lines, then format the number
+                award_dollar = "${:.2f}".format(float(award_dollar)).lstrip('0')
+            # get the signing date of the settlement
             if not DateTimeChecker().check_dtstring(sett[10]):  # if the date signed can not be made to dt
                 sign = ""
             else:
                 sign = dt_converter(sett[10]).strftime("%m/%d/%Y")  # convert date time to mm/dd/yyyy format
+            # get the level of the settlement
             if sett[9] is None or sett[9] == "unknown":  # format level to '---' or the level as a string.
                 lvl = "---"
             else:
                 lvl = sett[9]
             # impliment gats reports here later ...
             s_gats = get_gats(sett[2])  # get all gats information from informalc_gats table
-            # s_gats = sett[14].split(" ")  # if there is more than one gats number, use a list
             for gi in range(len(s_gats)):  # for gats_no in s_gats:
                 if gi == 0:  # for the first line
-                    total_hour += awardxhour  # tally hours totals for totals line at end of report
-                    total_amt += awardxamt  # tally amount of awards for totals line at end of report
                     report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
-                                 .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl,
-                                         "{0:.2f}".format(float(awardxhour)),
-                                         "{0:.2f}".format(float(awardxamt))))
+                                 .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl, award_hour, award_dollar))
                 if gi != 0:
                     report.write('{:<32}{:<12}\n'.format("", s_gats[gi]))
             if i % 3 == 0:
@@ -1621,15 +1637,21 @@ class InformalCReports:
                     "      ----------------------------------------------------------------------------------\n")
             i += 1
         report.write("      ----------------------------------------------------------------------------------\n")
-        report.write("{:<20}{:>58}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
-        report.write("{:<20}{:>70}\n".format("      Total Dollars", "{0:.2f}".format(total_amt)))
+        # --------------------------------------------------------------------------------------------- end of report
+        report.write("{:<20}{:>56}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
+        report.write("{:<20}{:>68}\n".format("      Total Dollars", "${0:.2f}".format(total_dollar)))
         report.close()
-        if sys.platform == "win32":
-            os.startfile(dir_path('infc_grv') + filename)
-        if sys.platform == "linux":
-            subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
-        if sys.platform == "darwin":
-            subprocess.call(["open", dir_path('infc_grv') + filename])
+        # --------------------------------------------------------------------------------------------- save and open
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.parent.win.topframe)
 
     def bycarriers(self):
         """ generates a text report for settlements by carriers. """
