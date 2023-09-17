@@ -1731,6 +1731,17 @@ class InformalC:
             Button(self.win.body, text="Monetary Awards", width=30,
                    command=lambda: InformalCReports(self).monetary_sum()).grid(row=row, column=0, pady=5)
             row += 1
+            Button(self.win.body, text="Gats Descrepancies", width=30,
+                   command=lambda: InformalCReports(self).gats_descrepancies()).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Only Descrepancies", width=30,
+                   command=lambda: InformalCReports(self).gats_descrepancies(fullreport=False)) \
+                .grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="All Adjustments", width=30,
+                   command=lambda: InformalCReports(self).adjustments())\
+                .grid(row=row, column=0, pady=5)
+            row += 1
             Button(self.win.body, text="Awards by Carriers", width=30,
                    command=lambda: InformalCReports(self).bycarriers()).grid(row=row, column=0, pady=5)
             row += 1

@@ -1133,9 +1133,13 @@ class InformalCReports:
                 if not rec[3]:  # rec[3] is the gats descrepancy
                     pass
                 elif "/" in rec[3]:  # if the gats descrepancy is an hour/rate
-                    self.gats_hourrate_array.append(rec[3])
+                    split_hourrate = rec[3].split(",")  # since the gats descrepancy can contain multiple values
+                    for element in split_hourrate:  # add each of those values to the array
+                        self.gats_hourrate_array.append(element)
                 else:  # if the gats descrepancy is a dollar value
-                    self.gats_dollar_array.append(rec[3])
+                    split_hourrate = rec[3].split(",")  # since the gats descrepancy can contain multiple values
+                    for element in split_hourrate:  # add each of those values to the array
+                        self.gats_dollar_array.append(element)
 
         def get_totals(self):
             """ get the totals from the dollar, hourrate, gats_dollar and gats_hourrate arrays. """
@@ -1223,11 +1227,11 @@ class InformalCReports:
             if value == "good":
                 return "  good  "
             if _type == "dollar":
-                return "  ${:.2f}  ".format(float(value)).lstrip('0')
+                return "  ${:,.2f}  ".format(float(value)).lstrip('0')
             if _type == "sub_dollar":
-                return "+ ${:.2f}  ".format(float(value)).lstrip('0')
+                return "+ ${:,.2f}  ".format(float(value)).lstrip('0')
             if _type == "hourrate":
-                return "  {:.2f}  ".format(float(value)).lstrip('0')
+                return "  {:,.2f}  ".format(float(value)).lstrip('0')
             if _type == "sub_hourrate":
                 hourrate = value.split("/")
                 hourrate[1] = float(hourrate[1]) * 100
@@ -1270,14 +1274,14 @@ class InformalCReports:
                 # build the award stack, line by line.
                 if not self.dollar_array and not self.hourrate_array:  # if there is no award
                     row = '    {:<5}{:<18}{:>12}{:>15}\n' \
-                        .format(str(noaward_count), selection, "   ---  ", "   ---  ")
+                        .format(str(noaward_count), selection.strip(), "   ---  ", "   ---  ")
                     noaward_stack.append(row)
                     noaward_count += 1
                 if self.dollar_array:  # if there is a dollar award
                     dollar_total_place = self.convert_dollar_hourrate(self.dollar_total, "dollar")
                     gats_dollar_total_place = self.convert_dollar_hourrate(self.gats_dollar_total, "dollar")
                     row = '    {:<5}{:<18}{:>12}{:>15}\n'\
-                        .format(str(dollar_count), selection, dollar_total_place, gats_dollar_total_place)
+                        .format(str(dollar_count), selection.strip(), dollar_total_place, gats_dollar_total_place)
                     dollar_stack.append(row)
                     for element in self.substack[0]:  # for each dollar element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_dollar")
@@ -1289,7 +1293,7 @@ class InformalCReports:
                     hourrate_total_place = self.convert_dollar_hourrate(self.hourrate_total, "hourrate")
                     gats_hourrate_total_place = self.convert_dollar_hourrate(self.gats_hourrate_total, "hourrate")
                     row = '    {:<5}{:<18}{:>12}{:>15}\n' \
-                        .format(str(hourrate_count), selection, hourrate_total_place, gats_hourrate_total_place)
+                        .format(str(hourrate_count), selection.strip(), hourrate_total_place, gats_hourrate_total_place)
                     hourrate_stack.append(row)
                     for element in self.substack[1]:  # for each hourrate element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_hourrate")
@@ -1298,10 +1302,10 @@ class InformalCReports:
                         hourrate_stack.append(row)
                     hourrate_count += 1
             if dollar_stack or hourrate_stack:  # if there is somthing, write column headers and totals
-                totaldollars = "{0:.2f}".format(float(self.cum_dollar))
-                totalhours = "{0:.2f}".format(float(self.cum_hourrate))
-                totalgatsdollars = "{0:.2f}".format(float(self.cum_gats_dollar))
-                totalgatshours = "{0:.2f}".format(float(self.cum_gats_hourrate))
+                totaldollars = "${:,.2f}".format(float(self.cum_dollar))
+                totalhours = "{:,.2f}".format(float(self.cum_hourrate))
+                totalgatsdollars = "${:,.2f}".format(float(self.cum_gats_dollar))
+                totalgatshours = "{:,.2f}".format(float(self.cum_gats_hourrate))
                 if self.select_grv:
                     firstrow = ["         Carrier Name          Awards    Gats Descrepancies\n", ]
                 else:
@@ -1512,7 +1516,12 @@ class InformalCReports:
         report.write("Grievance Everything Report\n\n")
         report.write("    Station:            " + self.parent.parent.station + "\n\n")
         i = 1
+        pb = ProgressBarDe(title="Informal C Reports", label="Generating Grievance Everything Report")
+        pb.max_count(len(result))
+        pb.start_up()
         for sett in result:
+            pb.change_text("Reading settlement: {}".format(sett[2]))  # update the text of the progress bar
+            pb.move_count(i)
             # ---------------------------------------------------------------------------------- get everything stack
             everything_stack = self.EverythingReport().run(sett, count=i)
             for row in everything_stack:
@@ -1533,6 +1542,7 @@ class InformalCReports:
             report.write("\n\n")
             i += 1
         report.close()
+        pb.stop()
         # --------------------------------------------------------------------------------------------- save and open
         try:
             if sys.platform == "win32":
@@ -1546,7 +1556,8 @@ class InformalCReports:
                                  "The report was not generated.", parent=self.parent.win.topframe)
 
     def monetary_sum(self):
-        """ generates text report for settlement list summary showing all grievance settlements. """
+        """ generates text report for settlement list summary showing all grievance settlements.
+        if gats_desc = True is passed, the report shows the gats descepancies. """
 
         def get_gats(grv_no):
             """ get all the gats numbers for the grievance number sent as an argument.
@@ -1597,7 +1608,7 @@ class InformalCReports:
                     pass
                 elif "/" in rec[2]:  # if the award is an hourrate type
                     hourrate = rec[2].split("/")
-                    award_hour += float(hourrate[0]) * float(hourrate[1])
+                    award_hour += float(hourrate[0]) * float(hourrate[1])  # get the adjusted hours
                 else:  # if none of the above apply, the award is a dollar type
                     award_dollar += float(rec[2])
             # --------------------------------------------------- after loop has sorted and added all of the awards...
@@ -1624,10 +1635,10 @@ class InformalCReports:
                 lvl = "---"
             else:
                 lvl = sett[9]
-            # impliment gats reports here later ...
             s_gats = get_gats(sett[2])  # get all gats information from informalc_gats table
             for gi in range(len(s_gats)):  # for gats_no in s_gats:
                 if gi == 0:  # for the first line
+                    # line #, Grievance #, Date Signed, GATS #, Docs?, Level, Hours, Dollars
                     report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
                                  .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl, award_hour, award_dollar))
                 if gi != 0:
@@ -1641,6 +1652,206 @@ class InformalCReports:
         report.write("{:<20}{:>56}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
         report.write("{:<20}{:>68}\n".format("      Total Dollars", "${0:.2f}".format(total_dollar)))
         report.close()
+        # --------------------------------------------------------------------------------------------- save and open
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.parent.win.topframe)
+
+    def gats_descrepancies(self, fullreport=True):
+        """ generates text report for settlement list summary showing all grievance settlements.
+        if fullreport = True is passed, show all settlements. If False, show only settlements with gats
+        descrepancies. """
+
+        def get_gats(grv_no):
+            """ get all the gats numbers for the grievance number sent as an argument.
+            return a list of gats numbers as an array or return an array with one empty string. """
+            sql_ = "SELECT gats_no FROM informalc_gats WHERE grv_no = '%s'" % grv_no
+            result = inquire(sql_)
+            gats_array = []
+            if result:
+                for gats in result:
+                    gats_array.append(*gats)
+                return gats_array
+            else:
+                return [""]
+
+        def hourrate_adjuster(hourrate):
+            """ multiple hour by rate and return adjusted hours """
+            hourrate_split = hourrate.split("/")
+            return float(hourrate_split[0]) * float(hourrate_split[1])
+
+        if not len(self.parent.parent.search_result):  # if there are no search results
+            messagebox.showerror("Report Generator",
+                                 "There are no search results to display. The report was not generated.",
+                                 parent=self.parent.win.topframe)
+            return
+        # ------------------------------------------------------------------------------------------ generate file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ------------------------------------------------------------------------------------------- generate document
+        report.write("   Monetary Remedy Summary with Gats Descrepanies\n\n")
+        report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
+        report.write('  {:<47}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Descrepancies"))
+        report.write('  {:<18}{:<12}{:<10}{:>12}{:>12}{:>12}{:>12}\n'
+                     .format("    Grievance #", "GATS #", "Docs?", "Hours", "Dollars", "Hours", "Dollars"))
+        report.write("      -----------------------------------------------------------------------------------\n")
+
+        # ----------------------------------------------------------------------------------------------- collect data
+        total_hour = 0.0
+        total_dollar = 0.0
+        total_gats_hour = 0.0
+        total_gats_dollar = 0.0
+        i = 1
+        monetary_remedies = []  # store all grievances where there is a monetary remedy settlement
+        for sett in self.parent.parent.search_result:
+            if sett[11] in ("monetary remedy", "back pay"):  # find decisions of monetary / back pay
+                monetary_remedies.append(sett)
+        # -------------------------------------------------------------------------------- loop for each settlement
+        # create progress bar
+        pb = ProgressBarDe(title="Informal C Reports", label="Generating Gats Descrepancies Report")
+        pb.max_count(len(monetary_remedies))  # get count of the progress bar
+        pb.start_up()  # start the progress bar
+        pb_counter = 1  # initialize the count of the progress bar
+        for sett in monetary_remedies:  # for each settlement with monetary remedy.
+            sql = "SELECT DISTINCT carrier_name FROM informalc_awards2 WHERE grv_no='%s'" % sett[2]
+            query = inquire(sql)
+            query = distinctresult_to_list(query)
+            query.sort()  # sort the names alphabetically
+            award_hour = 0.0
+            award_dollar = 0.0
+            gats_hour = 0.0
+            gats_dollar = 0.0
+            # --------------------------------------------------------------------------------- loop for each name
+            pb.move_count(pb_counter)  # increment the count of the progress bar
+            pb.change_text("Reading settlement: {}".format(sett[2]))  # update the text of the progress bar
+            for name in query:  # for each award in the given settlement
+                carrier_hourrate_total = 0.0
+                carrier_dollar_total = 0.0
+                carrier_gats_hourrate_total = 0.0
+                carrier_gats_dollar_total = 0.0
+                dollar_array = []  # re initialize arrays
+                hourrate_array = []
+                gats_dollar_array = []
+                gats_hourrate_array = []
+                # for each gats descrepancy in the given settlement
+                sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" \
+                      % (name, sett[2])
+                query = inquire(sql)  # get all records of awards for that carrier.
+                # sort awards/gats into list
+                # -------------------------------------------------------------------- loop for each award/ descrepancy
+                for rec in query:
+                    if not rec[2]:  # rec[2] is the award amount
+                        pass
+                    elif "/" in rec[2]:  # if the award is an hour/rate
+                        hourrate_array.append(rec[2])
+                    else:  # if the award is a dollar value
+                        dollar_array.append(rec[2])
+                    if not rec[3]:  # rec[3] is the gats descrepancy
+                        pass
+                    elif "/" in rec[3]:  # if the gats descrepancy is an hour/rate
+                        split_hourrate = rec[3].split(",")  # since the gats descrepancy can contain multiple values
+                        for element in split_hourrate:  # add each of those values to the array
+                            gats_hourrate_array.append(element)
+                    else:  # if the gats descrepancy is a dollar value
+                        split_hourrate = rec[3].split(",")  # since the gats descrepancy can contain multiple values
+                        for element in split_hourrate:  # add each of those values to the array
+                            gats_dollar_array.append(element)
+                # ------------------------------------------------------------------------ increment carrier totals
+                for dollar in dollar_array:
+                    carrier_dollar_total += float(dollar)
+                for hour in hourrate_array:
+                    carrier_hourrate_total += hourrate_adjuster(hour)
+                for g_dollar in gats_dollar_array:
+                    carrier_gats_dollar_total += float(g_dollar)
+                for g_hour in gats_hourrate_array:
+                    carrier_gats_hourrate_total += hourrate_adjuster(g_hour)
+                # --------------------------- subtract the gats total from the award total to get the true gats total
+                if gats_dollar_array:
+                    carrier_gats_dollar_total = max(carrier_dollar_total - carrier_gats_dollar_total, 0.0)
+                if gats_hourrate_array:
+                    carrier_gats_hourrate_total = max(carrier_hourrate_total - carrier_gats_hourrate_total, 0.0)
+                # ------------------------------ add carrier awards/ descrepancies to settlement awards/ descrepancies
+                award_hour += carrier_hourrate_total
+                award_dollar += carrier_dollar_total
+                gats_hour += carrier_gats_hourrate_total
+                gats_dollar += carrier_gats_dollar_total
+                # ----------------------------------------------- after loop has sorted and added all of the awards...
+                total_hour += carrier_hourrate_total  # increment the total to appear on the bottom of the report
+                total_dollar += carrier_dollar_total
+                total_gats_hour += carrier_gats_hourrate_total
+                total_gats_dollar += carrier_gats_dollar_total
+            # --------------------------------------- format the awards to the format which will appear on the report.
+            # if zero, convert to blank lines "   ---"
+            award_hour = Convert(award_hour).empty_returns_str("   ----")
+            if award_hour == "   ----":
+                pass
+            else:  # if award is not blank lines, then format the number
+                award_hour = "{:,.2f}".format(float(award_hour)).lstrip('0')
+            # if zero, convert to blank lines
+            award_dollar = Convert(award_dollar).empty_returns_str("   ----")
+            if award_dollar == "   ----":
+                pass
+            else:  # if award is not blank lines, then format the number
+                award_dollar = "${:,.2f}".format(float(award_dollar)).lstrip('0')
+            # if zero, convert to blank lines
+            gats_hour = Convert(gats_hour).empty_returns_str("   ----")
+            if gats_hour == "   ----":
+                pass
+            else:  # if award is not blank lines, then format the number
+                gats_hour = "{:,.2f}".format(float(gats_hour)).lstrip('0')
+            # if zero, convert to blank lines
+            gats_dollar = Convert(gats_dollar).empty_returns_str("   ----")
+            if gats_dollar == "   ----":
+                pass
+            else:  # if award is not blank lines, then format the number
+                gats_dollar = "${:,.2f}".format(float(gats_dollar)).lstrip('0')
+            s_gats = get_gats(sett[2])  # get all gats information from informalc_gats table
+            # ------------------------------------------------------------------------------- write lines to report
+            if fullreport:
+                for gi in range(len(s_gats)):  # for gats_no in s_gats:
+                    if gi == 0:  # for the first line
+                        report.write('{:>4}  {:<14}{:<12}{:<10}{:>11}{:>12}{:>12}{:>12}\n'
+                                     .format(str(i), sett[2], s_gats[gi], sett[13], award_hour, award_dollar,
+                                             gats_hour, gats_dollar))
+                    if gi != 0:  # if there is more than one gats number (s_gats), write them on their own line
+                        report.write('{:<20}{:<12}\n'.format("", s_gats[gi]))
+                    if i % 3 == 0:  # every third line, insert a line a for readability
+                        report.write(
+                            "      -------------------------------------------------------------------------------"
+                            "----\n")
+                i += 1
+            elif gats_dollar != "   ----" and gats_hour != "   ----":
+                for gi in range(len(s_gats)):  # for gats_no in s_gats:
+                    if gi == 0:  # for the first line
+                        report.write('{:>4}  {:<14}{:<12}{:<10}{:>11}{:>12}{:>12}{:>12}\n'
+                                     .format(str(i), sett[2], s_gats[gi], sett[13], award_hour, award_dollar,
+                                             gats_hour, gats_dollar))
+                    if gi != 0:  # if there is more than one gats number (s_gats), write them on their own line
+                        report.write('{:<20}{:<12}\n'.format("", s_gats[gi]))
+                    if i % 3 == 0:  # every third line, insert a line a for readability
+                        report.write("      ---------------------------------------------------------------------"
+                                     "-------------\n")
+                i += 1
+            pb_counter += 1  # increment the count of the progress bar
+        report.write(
+            "      -----------------------------------------------------------------------------------\n")
+        # --------------------------------------------------------------------------------------------- end of report
+        report.write("{:<21}{:>32}\n".format("      Total Hours", "{0:,.2f}".format(total_hour)))
+        report.write("{:<21}{:>44}\n".format("      Total Dollars", "${0:,.2f}".format(total_dollar)))
+        report.write("{:<46}{:>31}\n"
+                     .format("      Total Gats Descrepancies Hours", "{0:,.2f}".format(total_gats_hour)))
+        report.write("{:<46}{:>43}\n"
+                     .format("      Total Gats Descrepancies Dollars", "${0:,.2f}".format(total_gats_dollar)))
+        report.close()
+        pb.stop()  # stop and close the progress bar
         # --------------------------------------------------------------------------------------------- save and open
         try:
             if sys.platform == "win32":
@@ -1695,6 +1906,31 @@ class InformalCReports:
         except PermissionError:
             messagebox.showerror("Report Generator",
                                  "The report was not generated.", parent=self.parent.win.topframe)
+
+    def adjustments(self):
+        """ generates a report of settlements where the decision calls for an adjustment. """
+        adjust_sett = []
+        for s in self.parent.parent.search_result:  # loop through all results
+            if s[11] == "adjustment":
+                adjust_sett.append(s)
+        if len(adjust_sett) == 0:
+            msg = "There are no records matching your search results. "
+            messagebox.showwarning("Informal C Reports", msg, parent=self.parent.win.topframe)
+            return
+        # ---------------------------------------------------------------------------------------------- file name
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = "infc_grv_list" + "_" + stamp + ".txt"
+        report = open(dir_path('infc_grv') + filename, "w")
+        # ------------------------------------------------------------------------------------------------ headers
+        # report will display the elements (with indexes):
+        # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
+        report.write("   Adjustments \n\n")
+        report.write("   Showing all settlement where the decision requires an adjustment. \n\n")
+        report.write('{:>18}{:>14}  {:<20}{:<22}{:<10}\n'
+                     .format("    Grievance #", "Signing Date", "Grievant", "Issue", "Docs?"))
+        report.write("       --------------------------------------------------------------------------------"
+                     "----\n")
+        i = 0
 
     def bycarrier_apply(self, names, cursor):
         """ generates a text report for a specified carrier. """

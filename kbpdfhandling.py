@@ -604,7 +604,8 @@ class PdfConverter:
             """ look for the pay period using re"""
             try:
                 result = re.findall(r'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9]', self.parent.page)
-                self.parent.yyppwk = result[-1]  # select the last one
+                # self.parent.yyppwk = result[-1]  # select the last one
+                self.parent.yyppwk = result[0]  # select the first one
             except (AttributeError, IndexError):
                 return False
             return True
