@@ -1742,6 +1742,10 @@ class InformalC:
                    command=lambda: InformalCReports(self).adjustments())\
                 .grid(row=row, column=0, pady=5)
             row += 1
+            Button(self.win.body, text="No Adjustments", width=30,
+                   command=lambda: InformalCReports(self).adjustments(fullreport=False))\
+                .grid(row=row, column=0, pady=5)
+            row += 1
             Button(self.win.body, text="Awards by Carriers", width=30,
                    command=lambda: InformalCReports(self).bycarriers()).grid(row=row, column=0, pady=5)
             row += 1

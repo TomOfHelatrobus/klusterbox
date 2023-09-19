@@ -1273,32 +1273,32 @@ class InformalCReports:
                 self.get_substack()
                 # build the award stack, line by line.
                 if not self.dollar_array and not self.hourrate_array:  # if there is no award
-                    row = '    {:<5}{:<18}{:>12}{:>15}\n' \
-                        .format(str(noaward_count), selection.strip(), "   ---  ", "   ---  ")
+                    row = '    {:<5}{:<18}{:>15}{:>15}\n' \
+                        .format(str(noaward_count), selection, "   ---  ", "   ---  ")
                     noaward_stack.append(row)
                     noaward_count += 1
                 if self.dollar_array:  # if there is a dollar award
                     dollar_total_place = self.convert_dollar_hourrate(self.dollar_total, "dollar")
                     gats_dollar_total_place = self.convert_dollar_hourrate(self.gats_dollar_total, "dollar")
-                    row = '    {:<5}{:<18}{:>12}{:>15}\n'\
-                        .format(str(dollar_count), selection.strip(), dollar_total_place, gats_dollar_total_place)
+                    row = '    {:<5}{:<18}{:>15}{:>15}\n'\
+                        .format(str(dollar_count), selection, dollar_total_place, gats_dollar_total_place)
                     dollar_stack.append(row)
                     for element in self.substack[0]:  # for each dollar element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_dollar")
                         gats_place = self.convert_dollar_hourrate(element[1], "sub_dollar")
-                        row = '    {:<5}{:<18}{:>12}{:>15}\n'.format("", "", awards_place, gats_place)
+                        row = '    {:<5}{:<18}{:>15}{:>15}\n'.format("", "", awards_place, gats_place)
                         dollar_stack.append(row)
                     dollar_count += 1
                 if self.hourrate_array:  # if there is an hour rate award
                     hourrate_total_place = self.convert_dollar_hourrate(self.hourrate_total, "hourrate")
                     gats_hourrate_total_place = self.convert_dollar_hourrate(self.gats_hourrate_total, "hourrate")
-                    row = '    {:<5}{:<18}{:>12}{:>15}\n' \
-                        .format(str(hourrate_count), selection.strip(), hourrate_total_place, gats_hourrate_total_place)
+                    row = '    {:<5}{:<18}{:>15}{:>15}\n' \
+                        .format(str(hourrate_count), selection, hourrate_total_place, gats_hourrate_total_place)
                     hourrate_stack.append(row)
                     for element in self.substack[1]:  # for each hourrate element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_hourrate")
                         gats_place = self.convert_dollar_hourrate(element[1], "sub_hourrate")
-                        row = '    {:<5}{:<5}{:>25}{:>15}\n'.format("", "", awards_place, gats_place)
+                        row = '    {:<5}{:<5}{:>28}{:>15}\n'.format("", "", awards_place, gats_place)
                         hourrate_stack.append(row)
                     hourrate_count += 1
             if dollar_stack or hourrate_stack:  # if there is somthing, write column headers and totals
@@ -1307,19 +1307,19 @@ class InformalCReports:
                 totalgatsdollars = "${:,.2f}".format(float(self.cum_gats_dollar))
                 totalgatshours = "{:,.2f}".format(float(self.cum_gats_hourrate))
                 if self.select_grv:
-                    firstrow = ["         Carrier Name          Awards    Gats Descrepancies\n", ]
+                    firstrow = ["         Carrier Name             Awards    Gats Descrepancies\n", ]
                 else:
-                    firstrow = ["         Grievance Number      Awards    Gats Descrepancies\n", ]
+                    firstrow = ["         Grievance Number         Awards    Gats Descrepancies\n", ]
                 line_row = ["    --------------------------------------------------------------\n", ]
                 noaward_label = ["														  no award\n"]
                 dollars_label = ["														   dollars\n"]
                 hourrate_label = ["													     hour/rate\n"]
-                totaldollarsrow = ["    {:<19}{:>14}\n".format("Cumulative dollars:", totaldollars), ]
-                totalhoursrow = ["    {:<19}{:>14}\n".format("Cumulative hours:  ", totalhours), ]
+                totaldollarsrow = ["    {:<19}{:>17}\n".format("Cumulative dollars:", totaldollars), ]
+                totalhoursrow = ["    {:<19}{:>17}\n".format("Cumulative hours:  ", totalhours), ]
                 totalgatsdollarsrow = \
-                    ["    {:<36}{:>12}\n".format("Cumulative gats dollar descepancies:", totalgatsdollars), ]
+                    ["    {:<36}{:>15}\n".format("Cumulative gats dollar descepancies:", totalgatsdollars), ]
                 totalgatshoursrow = \
-                    ["    {:<36}{:>12}\n".format("Cumulative gats hour descepancies:  ", totalgatshours), ]
+                    ["    {:<36}{:>15}\n".format("Cumulative gats hour descepancies:  ", totalgatshours), ]
                 skip_line = ["\n"]
                 self.award_stack = firstrow + line_row
                 if noaward_stack:
@@ -1698,8 +1698,10 @@ class InformalCReports:
         report = open(dir_path('infc_grv') + filename, "w")
         # ------------------------------------------------------------------------------------------- generate document
         report.write("   Monetary Remedy Summary with Gats Descrepanies\n\n")
-        report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
-        report.write('  {:<47}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Descrepancies"))
+        report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n")
+        if not fullreport:
+            report.write("   Only settlements where gats descrepancies are noted are displayed \n")
+        report.write('\n  {:<47}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Descrepancies"))
         report.write('  {:<18}{:<12}{:<10}{:>12}{:>12}{:>12}{:>12}\n'
                      .format("    Grievance #", "GATS #", "Docs?", "Hours", "Dollars", "Hours", "Dollars"))
         report.write("      -----------------------------------------------------------------------------------\n")
@@ -1907,12 +1909,17 @@ class InformalCReports:
             messagebox.showerror("Report Generator",
                                  "The report was not generated.", parent=self.parent.win.topframe)
 
-    def adjustments(self):
+    def adjustments(self, fullreport=True):
         """ generates a report of settlements where the decision calls for an adjustment. """
         adjust_sett = []
-        for s in self.parent.parent.search_result:  # loop through all results
-            if s[11] == "adjustment":
-                adjust_sett.append(s)
+        if fullreport:
+            for s in self.parent.parent.search_result:  # loop through all results
+                if s[11] == "adjustment":
+                    adjust_sett.append(s)
+        else:
+            for s in self.parent.parent.search_result:  # loop through all results
+                if s[11] == "adjustment" and s[13] in ("no", "no status"):
+                    adjust_sett.append(s)
         if len(adjust_sett) == 0:
             msg = "There are no records matching your search results. "
             messagebox.showwarning("Informal C Reports", msg, parent=self.parent.win.topframe)
@@ -1925,12 +1932,34 @@ class InformalCReports:
         # report will display the elements (with indexes):
         # Grievance Number(2), date (determined by sort index), grievant (0), issue (6)
         report.write("   Adjustments \n\n")
-        report.write("   Showing all settlement where the decision requires an adjustment. \n\n")
-        report.write('{:>18}{:>14}  {:<20}{:<22}{:<10}\n'
-                     .format("    Grievance #", "Signing Date", "Grievant", "Issue", "Docs?"))
-        report.write("       --------------------------------------------------------------------------------"
+        if fullreport:
+            report.write("   Showing all settlements within search criteria where the decision requires \n"
+                         "   an adjustment. \n\n")
+        else:
+            report.write("   Showing settlements within search criteria where the decision requires an adjustment \n"
+                         "   and document status is \"no\" or \"no status\". \n\n")
+        report.write('     {:<18}{:<20}{:<14}{:<22}{:<12}\n'
+                     .format("    Grievance #", "Grievant", "Signing Date", "Issue", "Docs?"))
+        report.write("       -----------------------------------------------------------------------------"
                      "----\n")
         i = 0
+        for s in adjust_sett:
+            sign = Convert(s[10]).dtstr_to_backslashstr()  # format date signed
+            report.write('{:<5}{:<4}{:<14}{:<20}{:<14}{:<22}{:<12}\n'
+                         .format("", str(i), s[2], s[0], sign, s[6], s[13]))
+            i += 1
+        report.close()
+        # ---------------------------------------------------------------------------------------------- save and open
+        try:
+            if sys.platform == "win32":
+                os.startfile(dir_path('infc_grv') + filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + filename])
+        except PermissionError:
+            messagebox.showerror("Report Generator",
+                                 "The report was not generated.", parent=self.parent.win.topframe)
 
     def bycarrier_apply(self, names, cursor):
         """ generates a text report for a specified carrier. """
