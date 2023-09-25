@@ -821,6 +821,7 @@ class EnterRings:
     def addrecs(self):
         """ add records to database """
         sql = ""
+        permitted_codes = ("no call", "annual", "sick", "excused")
         for i in range(len(self.dates)):
             # convert the daily moves from an array into a string.
             self.addrings[i][5] = Convert(self.addrings[i][5]).array_to_string()
@@ -828,10 +829,10 @@ class EnterRings:
             empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", None, "", ""]
             if self.addrings[i] == self.daily_ringrecs[i]:
                 sql = ""  # if new and old are a match, take no action
-            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call" \
+            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] not in permitted_codes \
                     and self.daily_ringrecs[i] == empty_rec:
                 sql = ""  # if old is empty and new is not qualified as a legit record, take no action
-            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call":
+            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] not in permitted_codes:
                 # if new record has no total or lvtime
                 sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
                       % (self.dates[i], self.carrier)

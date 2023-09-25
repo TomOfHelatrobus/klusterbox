@@ -354,7 +354,7 @@ class DataBase:
             ("13", "art 16", "expunged", True),
             ("14", "art 16", "discussion", True),
             ("15", "art 16", "limited retention", True),
-            ("16", "art 16", "time served", True),
+            ("16", "art 16", "time in file", True),
             ("17", "art 16", "back pay", True),
             ("18", "art 16", "sustained", True)  # 18 count
         )

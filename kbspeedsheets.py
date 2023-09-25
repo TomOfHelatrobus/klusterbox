@@ -1073,7 +1073,7 @@ class SpeedCarrierCheck:
 
     def generate_report(self):
         """ generate a report """
-        self.parent.fatal_rpt += len(self.error_array)+3
+        self.parent.fatal_rpt += len(self.error_array)
         self.parent.add_rpt += len(self.add_array)
         self.parent.fyi_rpt += len(self.fyi_array)
         if not self.parent.interject:
@@ -1205,9 +1205,10 @@ class SpeedRingCheck:
 
     def check_empty(self):
         """ determine conditions where existing record is deleted """
+        permitted_codes = ("no call", "annual", "sick", "excused")
         if not self.hours:
             if not self.lv_time:
-                if self.codes != "no call":
+                if self.codes not in permitted_codes:
                     if self.onrec_date:  # if there is an existing record to delete
                         self.delete_recs()  # delete any pre existing record
                     return True
@@ -1634,9 +1635,10 @@ class SpeedRingCheck:
         if not self.allowaddrings:
             return
         # determine conditions where existing record is deleted
+        permitted_codes = ("no call", "annual", "sick", "excused")
         if not self.hours:
             if not self.lv_time:
-                if self.codes != "no call":
+                if self.codes not in permitted_codes:
                     if self.onrec_date:  # if there is an existing record to delete
                         self.delete_recs()  # delete any pre existing record
                         return

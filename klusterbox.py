@@ -1229,8 +1229,11 @@ class InformalC:
             for r in result:
                 self.search_gat_result.append(r[0])  # build list of grievances with gats numbers
         if not self.search_grv_result and not self.search_set_result:
-            msg = "There is no record for any grievances in the database matching the search criteria. "
-            messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
+            try:
+                msg = "There is no record for any grievances in the database matching the search criteria. "
+                messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
+            except TclError:  # if the frame has been destroyed, by pass the messagebox.
+                pass
             self.build_search_screen()
         else:
             self.merge_search_results(frame, showtime=False)
