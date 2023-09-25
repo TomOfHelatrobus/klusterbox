@@ -198,9 +198,6 @@ class InformalC:
         # vars for add awards
         self.var_id = None  # vars for addawards_screen()
         self.var_name = None  # vars for addawards_screen()
-        # self.var_hours = None  # vars for addawards_screen()
-        # self.var_rate = None  # vars for addawards_screen()
-        # self.var_amount = None  # vars for addawards_screen()
         self.var_award = None  # vars for addawards_screen()
         self.var_gats = None  # an array of stringvars for addawards_screen() gats discrepancies.
         self.award_gats_entry = []  # an array for holding entry widgets for gats discrepancies
@@ -1176,7 +1173,7 @@ class InformalC:
             self.search_all_apply(frame)  # go to search all
         else:
             if not self.search_grv_result and not self.search_set_result:  # no results
-                msg = "There is no record for any grievances in the database"
+                msg = "There is no record for any grievances in the database matching the search criteria."
                 messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
                 return
             self.merge_search_results(frame)
@@ -1217,7 +1214,7 @@ class InformalC:
             return
         self.merge_search_results(frame)
 
-    def refresh_search(self, frame):
+    def refresh_search(self, frame, reroute=True):
         """ when changes are made the the db, it is necessary to update the search results, as some things
         might have changed."""
         self.search_result = []  # empty and reinitialize search results
@@ -1229,12 +1226,10 @@ class InformalC:
             for r in result:
                 self.search_gat_result.append(r[0])  # build list of grievances with gats numbers
         if not self.search_grv_result and not self.search_set_result:
-            try:
+            if reroute:
                 msg = "There is no record for any grievances in the database matching the search criteria. "
-                messagebox.showerror("Records Not Found", msg, parent=self.win.topframe)
-            except TclError:  # if the frame has been destroyed, by pass the messagebox.
-                pass
-            self.build_search_screen()
+                messagebox.showerror("Records Not Found", msg, parent=frame)
+                self.master_search(frame)  # return to the search criteria screen
         else:
             self.merge_search_results(frame, showtime=False)
 
@@ -2685,10 +2680,10 @@ class InformalC:
                     self.informalc_new(self.win.topframe, msg=self.report())
                 else:
                     self.parent.informalc(self.win.topframe)
-            else:
-                if self.grv_changesmade or self.set_changesmade:
+            else:  # if coming from the Edit Grievance screen
+                if self.grv_changesmade or self.set_changesmade:  # if changes have been made
                     self.grv_changesmade, self.set_changesmade = False, False  # re initialize
-                    self.parent.refresh_search(self.win.topframe)  # refresh search results
+                    self.parent.refresh_search(self.win.topframe, reroute=False)  # refresh search results
                 if not goback:
                     self.informalc_edit(self.win.topframe, self.edit_grv_no, msg=self.report())
                 else:
@@ -2996,7 +2991,7 @@ class InformalC:
 
         def insert_grv(self):
             """ insert a record into the grievance table """
-            sql = "INSERT INTO informalc_grievance (grievant, station, grv_no, startdate, enddate, " \
+            sql = "INSERT INTO informalc_grievances (grievant, station, grv_no, startdate, enddate, " \
                   "meetingdate, issue, article) " \
                   "VALUES('%s','%s','%s','%s','%s','%s','%s','%s')" % \
                   (self.check_grievant, self.parent.station, self.check_grv_no, self.check_dates[0],
