@@ -200,7 +200,7 @@ class V5008Fix:
 
     def get_transfer_array(self):
         """ get an array of information to be moved to new tables. """
-        sql = "SELECT * FROM informalc_grv"
+        sql = "SELECT * FROM informalc_grv"  # if the table does not exist - abort transfer
         self.transfer_array = inquire(sql, returnerror=True)  # use kwarg to check for operational error
         if self.transfer_array == "OperationalError":  # if operational error is returned - return False
             return False
@@ -259,7 +259,7 @@ class V5008Fix:
 
     def get_awards_transfer_array(self):
         """ get an array of information to be moved to new tables. """
-        sql = "SELECT * FROM informalc_awards"
+        sql = "SELECT * FROM informalc_awards"  # if informalc_awards does not exist - abort transfer
         self.awards_transfer_array = inquire(sql, returnerror=True)  # use kwarg to check for operational error
         if self.awards_transfer_array == "OperationalError":  # if operational error is returned - return False
             return False
@@ -298,4 +298,3 @@ class V5008Fix:
             i += 1
         sql = "DROP TABLE informalc_awards"
         commit(sql)
-

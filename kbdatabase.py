@@ -19,7 +19,7 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(137)
+        self.pbar.max_count(136)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
@@ -30,7 +30,6 @@ class DataBase:
         self.ns_config()  # pb increment: 6
         self.mousewheel()  # pb increment: 1
         self.list_of_stations()  # pb increment: 1
-        self.informalc()  # pb increment: 1
         self.informalc_issues()  # pb increment 35
         self.informalc_decisions()  # pb increment 18
         self.dov()  # pb increment: 1
@@ -67,8 +66,6 @@ class DataBase:
             'refusal_time varchar)',
             'CREATE table IF NOT EXISTS dov(eff_date date, station varchar, day varchar, dov_time varchar, '
             'temp varchar)',
-            'CREATE table IF NOT EXISTS informalc_awards (grv_no varchar,carrier_name varchar, hours varchar, '
-            'rate varchar, amount varchar, gatsverified varchar, payoutverified varchar)',
             'CREATE table IF NOT EXISTS informalc_awards2 (grv_no varchar,carrier_name varchar, award varchar, '
             'gats_discrepancy varchar)',
             'CREATE table IF NOT EXISTS informalc_payouts(year varchar, pp varchar, payday varchar, '
@@ -99,20 +96,17 @@ class DataBase:
             "Setting up: Tables - Tolerances...",
             "Setting up: Tables - OTDL Preference",
             "Setting up: Tables - Refusals",
-            "Setting up: Tables - Informal C",
+            "Setting up: Tables - DOV",
             "Setting up: Tables - Informal C Awards",
             "Setting up: Tables - Informal C Payouts",
             "Setting up: Tables - Informal C Grievances",
             "Setting up: Tables - Informal C Settlements",
-            "Setting up: Tables - Informal C Remedies",
             "Setting up: Tables - Informal C Batch Index",
-            "Setting up: Tables - Informal C Gats Reports",
+            "Setting up: Tables - Informal C Gats",
             "Setting up: Tables - Informal C Noncompliance Index",
             "Setting up: Tables - Informal C Remand Index",
             "Setting up: Tables - Informal C Issue Categories",
-            "Setting up: Tables - Informal C Decision Categories",
-            "Setting up: Tables - Informal C Payout",
-            "Setting up: Tables - DOV"
+            "Setting up: Tables - Informal C Decision Categories"
         )
         for i in range(len(tables_sql)):
             self.pbar_counter += 1
@@ -261,30 +255,6 @@ class DataBase:
         projvar.list_of_stations = []
         for stat in results:
             projvar.list_of_stations.append(stat[0])
-
-    def informalc(self):
-        """ check the informalc table and make changes if needed"""
-        self.pbar_counter += 1
-        self.pbar.move_count(self.pbar_counter)
-        self.pbar.change_text("Setting up: Tables - Informal C > update ")
-        # modify table for v5.08 to add gatsverified for informalc_awards.
-        sql = 'PRAGMA table_info(informalc_awards)'  # get table info. returns an array of columns.
-        result = inquire(sql)
-        if len(result) <= 5:  # if there are not enough columns add gatsverified column
-            sql = 'ALTER table informalc_awards ADD COLUMN gatsverified varchar'
-            commit(sql)
-            sql = "UPDATE informalc_awards SET gatsverified = ''"
-            commit(sql)  # replace all the null values in gatsverified with empty strings
-        # modify table for v5.08 to add payoutverified for informalc_awards.
-        sql = 'PRAGMA table_info(informalc_awards)'  # get table info. returns an array of columns.
-        result = inquire(sql)
-        if len(result) <= 6:  # if there are not enough columns add payoutverified column
-            sql = 'ALTER table informalc_awards ADD COLUMN payoutverified varchar'
-            commit(sql)
-            sql = "UPDATE informalc_awards SET payoutverified = ''"
-            commit(sql)  # replace all the null values in payoutverified with empty strings
-        sql = "UPDATE informalc_awards SET gatsverified = '', payoutverified = ''"
-        commit(sql)
 
     def informalc_issues(self):
         """  set up the standard issues for informal c issue categories

@@ -1282,8 +1282,8 @@ class OvermaxSpreadsheet:
             "   so fill those in.\n" \
             "6. The gray fields will fill automatically. Do not enter an information in " \
             "these fields as it will delete the formulas.\n" \
-            "7. Field O will show the violation in hours which you should seek a remedy for. \n"\
-                .format(Convert(self.wal_12hour).bool_to_onoff())
+            "7. Field O will show the violation in hours which you should seek a remedy " \
+            "for. \n".format(Convert(self.wal_12hour).bool_to_onoff())
         self.instructions['A3'].alignment = Alignment(wrap_text=True, vertical='top')
         for x in range(4, 20):
             self.instructions.row_dimensions[x].height = 10  # adjust all row height

@@ -62,7 +62,7 @@ __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
 version = 5.08  # version number must be convertable to a float and should increase for Fixes()
-release_date = "undetermined"  # format is Jan 1, 2022
+release_date = "Sep 26, 2023"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -2566,7 +2566,7 @@ class InformalC:
             self.parent.showtime(self.win.topframe)
 
         def grvchange(self, old_number, new_stringvar):
-            """ change the grievance number. check grv number and input it into the informalc_grv table. """
+            """ change the grievance number. check grv number and input it into the informalc tables. """
             new_number = new_stringvar.get()
             if not messagebox.\
                     askokcancel("Grievance Number Change",

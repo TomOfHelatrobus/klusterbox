@@ -228,6 +228,7 @@ class PdfConverter:
         """
         run the process to get settings, create the csv, error report and check the text
         """
+
         def __init__(self, parent):
             self.parent = parent
 
@@ -486,8 +487,7 @@ class PdfConverter:
             """ split the document into pages. The character which indicates a new page often
             appears as an up arrow in the text. """
             self.parent.text = self.parent.text.replace("", "")
-            # split the document into pages
-            self.parent.pages = self.parent.text.split("")
+            self.parent.pages = self.parent.text.split("")  # split the document into pages
 
         def validate_text(self, field):
             """ search for key terms Restricted USPS T&A Information and Employee Everything Report make sure
