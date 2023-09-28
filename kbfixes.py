@@ -88,9 +88,12 @@ class V5000Fix:
 
     def delete_null_names(self):
         """ delete all the records where the name is null """
-        for i in range(self.iterations):
+        for i in range(self.iterations):  # loop for each table
             sql = "SELECT DISTINCT {} from {}".format(self.name_convention[i], self.tablelist[i])
-            results = inquire(sql)
+            results = inquire(sql, returnerror=True)  # use kwarg to check for operational error
+            # check that the table exist, if it does not then use 'continue' to skip iteration.
+            if results == "OperationalError":  # if operational error is returned - return False
+                continue
             if results:
                 for carrier in results:
                     if carrier[0] is None:
@@ -99,9 +102,12 @@ class V5000Fix:
 
     def get_carriers(self):
         """ get a list of distinct names from the carriers table. """
-        for i in range(self.iterations):
+        for i in range(self.iterations):  # loop for each table
             sql = "SELECT DISTINCT {} from {}".format(self.name_convention[i], self.tablelist[i])
-            results = inquire(sql)
+            results = inquire(sql, returnerror=True)  # use kwarg to check for operational error
+            # check that the table exist, if it does not then use 'continue' to skip iteration.
+            if results == "OperationalError":  # if operational error is returned - return False
+                continue
             if results:
                 for carrier in results:
                     if not carrier[0].islower():
@@ -109,11 +115,16 @@ class V5000Fix:
 
     def fix_carriers(self):
         """ check if the name is all lower, if not, update the record. """
-        for i in range(self.iterations):
+        for i in range(self.iterations):  # loop for each table
             for carrier in self.name_array[i]:
                 if not carrier.islower():
+                    sql = "SELECT * FROM {} WHERE {} = %s".format(self.tablelist[i], self.name_convention[i]) % carrier
+                    results = inquire(sql, returnerror=True)  # use kwarg to check for operational error
+                    # check that the table exist, if it does not then use 'continue' to skip iteration.
+                    if results == "OperationalError":  # if operational error is returned - return False
+                        continue
                     sql = "UPDATE {} SET {} = '%s' WHERE {} = '%s'"\
-                              .format(self.tablelist[i], self.name_convention[i], self.name_convention[i]) \
+                        .format(self.tablelist[i], self.name_convention[i], self.name_convention[i]) \
                           % (carrier.lower(), carrier)
                     commit(sql)
 

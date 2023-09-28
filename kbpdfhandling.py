@@ -1150,7 +1150,7 @@ class PdfConverter:
         def find_fi(self, e):
             """ look for first initial """
             if self.parent.lookforfi:
-                if re.fullmatch("[A-Z]s[A-Z]", e) or re.fullmatch("([A-Z])", e):
+                if re.fullmatch("[A-Z] [A-Z]", e) or re.fullmatch("([A-Z])", e):
                     if self.parent.gen_error_report:
                         datainput = "FI: {}\n".format(e)
                         self.parent.kbpc_rpt.write(datainput)

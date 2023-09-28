@@ -23,7 +23,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import NamedStyle, Font, Border, Side, Alignment
 # define globals
 global root  # used to hold the Tk() root for the new window used by all Informal C windows.
-global pb_flag  #
+global pb_flag
 
 
 def informalc_gen_clist(start, end, station):
@@ -75,7 +75,6 @@ class InfcSpeedSheetGen:
         self.station = station
         self.titles = []
         self.filename = ""
-        # self.ws_titles = ["grievances", "settlements", "non compliance", "batch settlements", "remanded"]
         self.ws_titles = ["grievances", "settlements", "non compliance", "remanded", "batch settlements",
                           "gats reports"]
         # get sql results from the tables.
@@ -299,9 +298,6 @@ class InfcSpeedSheetGen:
         cell = self.ws_list[1].cell(column=6, row=5)
         cell.value = "docs"
         cell.style = self.col_header
-        # cell = self.ws_list[1].cell(column=7, row=5)
-        # cell.value = "gats number"
-        # cell.style = self.col_header
         cell = self.ws_list[1].cell(column=7, row=5)
         cell.value = "action"
         cell.style = self.col_header
@@ -379,9 +375,6 @@ class InfcSpeedSheetGen:
         col = self.ws_list[1].column_dimensions["F"]  # docs
         col.width = 15
         col.font = Font(size=9, name="Arial")
-        # col = self.ws_list[1].column_dimensions["G"]  # gats_number
-        # col.width = 12
-        # col.font = Font(size=9, name="Arial")
         col = self.ws_list[1].column_dimensions["G"]  # action
         col.width = 9
         col.font = Font(size=9, name="Arial")
@@ -1260,7 +1253,6 @@ class SpeedSetCheck:
         self.proofdue = proofdue
         self.input_date = []  # array to hold datesigned and proofdue - form in check_dates()
         self.docs = docs
-        # self.gatsnumber = gatsnumber
         self.action = action
         self.onrec = False  # this value is True if a sql search shows that there is a rec of the grv_no in the db.
         self.onrec_grv_no = None
@@ -1276,7 +1268,6 @@ class SpeedSetCheck:
         self.addproofdue = "empty"
         self.adddate = [self.adddatesigned, self.addproofdue]  # holds date values for self.add_date() loop
         self.adddocs = "empty"
-        # self.addgatsnumber = "empty"
         self.error_array = []  # gives a report of failed checks
         self.attn_array = []  # gives a report of issues to bring to the attention of users
         self.add_array = []  # gives a report of records to add to the database
@@ -1296,7 +1287,6 @@ class SpeedSetCheck:
                 self.check_dates()
                 self.check_decision()
                 self.check_docs()
-                # self.check_gatsnumber()
                 self.add_recs()
         self.generate_report()
 
@@ -1566,30 +1556,6 @@ class SpeedSetCheck:
             fyi = "     FYI: New or updated docs: {}\n".format(self.docs)
             self.fyi_array.append(fyi)
             self.adddocs = self.docs
-    #
-    # def check_gatsnumber(self):
-    #     """ check the article input - this is an open field that takes almost anything with no limits or indexes. """
-    #     self.gatsnumber = self.gatsnumber.strip()
-    #     self.gatsnumber = self.gatsnumber.lower()
-    #     if not self.gatsnumber:
-    #         pass
-    #     if len(self.gatsnumber) < 30:
-    #         pass
-    #     else:
-    #         error = "     ERROR: The gats number must not be longer than 30 characters.  \n"
-    #         self.error_array.append(error)
-    #         self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
-    #         return False
-    #     self.add_gatsnumber()
-    #
-    # def add_gatsnumber(self):
-    #     """ add gats number to the self.addgatsnumber var """
-    #     if self.gatsnumber == self.onrec_gatsnumber:
-    #         pass
-    #     else:
-    #         fyi = "     FYI: New or updated gats number: {}\n".format(self.gatsnumber)
-    #         self.fyi_array.append(fyi)
-    #         self.addgatsnumber = self.gatsnumber
 
     def add_recs(self):
         """ add records using the add___ vars. """
@@ -1643,14 +1609,6 @@ class SpeedSetCheck:
             docs_place = self.adddocs
         else:
             docs_place = self.onrec_docs
-        # get gats place
-        # if self.addgatsnumber != "empty":
-        #     add = "     INPUT: Gats Number added or updated to database >>{}\n".format(self.addgatsnumber)  # report
-        #     self.add_array.append(add)
-        #     chg_these.append("gatsnumber")
-        #     gats_place = self.addgatsnumber
-        # else:
-        #     gats_place = self.onrec_gatsnumber
         # if any values have changed - form sql statements using _place vars and commit to db.
         if len(chg_these) != 0:  # if change these is empty, then there is no need to insert/update records
             if not self.onrec:  # if there is no rec on file for the grievance, insert the first rec
