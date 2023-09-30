@@ -1303,7 +1303,6 @@ class SpeedSetCheck:
             self.onrec_decision = results[0][3]
             self.onrec_proofdue = results[0][4]
             self.onrec_docs = results[0][5]
-            self.onrec_gatsnumber = results[0][6]
 
     def check_delete(self):
         """ check the input for the third column and delete if that action is indicated. """

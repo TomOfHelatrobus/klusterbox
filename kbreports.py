@@ -1584,10 +1584,10 @@ class InformalCReports:
         # ------------------------------------------------------------------------------------------- generate document
         report.write("   Monetary Remedy Summary\n\n")
         report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n\n")
-        report.write('  {:<18}{:<12}{:>9}{:>11}{:>12}{:>12}{:>12}\n'
+        report.write('  {:<18}{:<12}{:<10}{:<13}{:<12}{:>12}{:>12}\n'
                      .format("    Grievance #", "Date Signed", "GATS #", "Docs?", "Level", "Hours", "Dollars"))
         report.write(
-            "      ----------------------------------------------------------------------------------\n")
+            "      -------------------------------------------------------------------------------------\n")
         # ----------------------------------------------------------------------------------------------- collect data
         total_hour = 0
         total_dollar = 0
@@ -1639,18 +1639,18 @@ class InformalCReports:
             for gi in range(len(s_gats)):  # for gats_no in s_gats:
                 if gi == 0:  # for the first line
                     # line #, Grievance #, Date Signed, GATS #, Docs?, Level, Hours, Dollars
-                    report.write('{:>4}  {:<14}{:<12}{:<9}{:>11}{:>12}{:>12}{:>12}\n'
+                    report.write('{:>4}  {:<14}{:<12}{:<10}{:<13}{:<12}{:>12}{:>12}\n'
                                  .format(str(i), sett[2], sign, s_gats[gi], sett[13], lvl, award_hour, award_dollar))
                 if gi != 0:
                     report.write('{:<32}{:<12}\n'.format("", s_gats[gi]))
             if i % 3 == 0:
                 report.write(
-                    "      ----------------------------------------------------------------------------------\n")
+                    "      -------------------------------------------------------------------------------------\n")
             i += 1
-        report.write("      ----------------------------------------------------------------------------------\n")
+        report.write("      -------------------------------------------------------------------------------------\n")
         # --------------------------------------------------------------------------------------------- end of report
-        report.write("{:<20}{:>56}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
-        report.write("{:<20}{:>68}\n".format("      Total Dollars", "${0:.2f}".format(total_dollar)))
+        report.write("{:<23}{:>56}\n".format("      Total Hours", "{0:.2f}".format(total_hour)))
+        report.write("{:<23}{:>68}\n".format("      Total Dollars", "${0:.2f}".format(total_dollar)))
         report.close()
         # --------------------------------------------------------------------------------------------- save and open
         try:
@@ -1702,7 +1702,7 @@ class InformalCReports:
         if not fullreport:
             report.write("   Only settlements where gats descrepancies are noted are displayed \n")
         report.write('\n  {:<47}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Descrepancies"))
-        report.write('  {:<18}{:<12}{:<10}{:>12}{:>12}{:>12}{:>12}\n'
+        report.write('  {:<18}{:<10}{:<12}{:>12}{:>12}{:>12}{:>12}\n'
                      .format("    Grievance #", "GATS #", "Docs?", "Hours", "Dollars", "Hours", "Dollars"))
         report.write("      -----------------------------------------------------------------------------------\n")
 
@@ -1820,7 +1820,7 @@ class InformalCReports:
             if fullreport:
                 for gi in range(len(s_gats)):  # for gats_no in s_gats:
                     if gi == 0:  # for the first line
-                        report.write('{:>4}  {:<14}{:<12}{:<10}{:>11}{:>12}{:>12}{:>12}\n'
+                        report.write('{:>4}  {:<14}{:<10}{:<12}{:>11}{:>12}{:>12}{:>12}\n'
                                      .format(str(i), sett[2], s_gats[gi], sett[13], award_hour, award_dollar,
                                              gats_hour, gats_dollar))
                     if gi != 0:  # if there is more than one gats number (s_gats), write them on their own line
@@ -1833,7 +1833,7 @@ class InformalCReports:
             elif gats_dollar != "   ----" and gats_hour != "   ----":
                 for gi in range(len(s_gats)):  # for gats_no in s_gats:
                     if gi == 0:  # for the first line
-                        report.write('{:>4}  {:<14}{:<12}{:<10}{:>11}{:>12}{:>12}{:>12}\n'
+                        report.write('{:>4}  {:<14}{:<10}{:<12}{:>11}{:>12}{:>12}{:>12}\n'
                                      .format(str(i), sett[2], s_gats[gi], sett[13], award_hour, award_dollar,
                                              gats_hour, gats_dollar))
                     if gi != 0:  # if there is more than one gats number (s_gats), write them on their own line
@@ -2137,7 +2137,7 @@ class InformalCReports:
         needawards = []
         for r in self.parent.parent.search_result:  # loop through all results
             if r[11] in ("monetary remedy", "backpay"):  # if the grievance requires proof
-                sql = "SELECT * FROM informalc_awards WHERE grv_no = '%s'" % r[2]  # search by grievance number
+                sql = "SELECT * FROM informalc_awards2 WHERE grv_no = '%s'" % r[2]  # search by grievance number
                 result = inquire(sql)
                 if not result:  # if there is no result from the sql search
                     needawards.append(r[2])  # all settlement to the list of those missing awards.

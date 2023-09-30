@@ -299,9 +299,9 @@ class InformalC:
                                command=lambda: Archive().remove_file_var(self.win.topframe, 'informalc_speedsheets'))
         speed_menu.add_command(label="Generate New Grievances",
                                command=lambda: InfcSpeedSheetGen(self.win.topframe, self.station, "new").new())
-        speed_menu.add_command(label="Generate Selected Grievances",
-                               command=lambda: InfcSpeedSheetGen(self.win.topframe, self.station, "selected")
-                               .selected())
+        # speed_menu.add_command(label="Generate Selected Grievances",
+        #                        command=lambda: InfcSpeedSheetGen(self.win.topframe, self.station, "selected")
+        #                        .selected())
         speed_menu.add_command(label="Generate All Grievances",
                                command=lambda: InfcSpeedSheetGen(self.win.topframe, self.station, "all").all())
         speed_menu.add_command(label="Pre-check",
@@ -312,8 +312,6 @@ class InformalC:
                                command=lambda: InformalCIndex().speedsheet_guide())
         speed_menu.add_command(label="Grievant Guide",
                                command=lambda: InformalCIndex().grievant_guide(self.station))
-        #  reports_menu.entryconfig(2, state=DISABLED)
-        speed_menu.entryconfig(3, state=DISABLED)
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         projvar.root.config(menu=menubar)
 
@@ -1852,7 +1850,6 @@ class InformalC:
             self.decision = None  # 12 the decision of the settlement
             self.proof_due = None  # 13 the date that the prooof of the remedy is due, if applicable
             self.docs = None  # 14 the status of any documentation needed for proof of compliance
-            self.gats_no = None  # 15 the gats  number of the proof of compliance
             self.batset = None  # 16 is the settlement part of a batch settlement?
             self.batgat = None  # 17  is the settlement part of a gats reports?
 
@@ -1872,7 +1869,6 @@ class InformalC:
             self.onrec_decision = ""  # 12 the decision of the settlement
             self.onrec_proof_due = ""  # 13 the date that the prooof of the remedy is due, if applicable
             self.onrec_docs = ""  # 14 the status of any documentation needed for proof of compliance
-            self.onrec_gats_no = ""  # 15 the gats  number of the proof of compliance
 
             # store widgets for display and deletion
             self.nonc_entry = []  # this array store the entry fields of the non compliance indexes
@@ -1902,7 +1898,6 @@ class InformalC:
             self.check_decision = None  # 12 the decision of the settlement
             self.check_proofdue = None  # 13 the date that the prooof of the remedy is due, if applicable
             self.check_docs = None  # 14 the status of any documentation needed for proof of compliance
-            self.check_gats_no = None  # 15 the gats  number of the proof of compliance
             self.check_indexes = []  # multidimensional list to store indexes - nonc, remanded, batch set, gats reports
             self.add_indexes = []
             self.del_indexes = []
@@ -1915,6 +1910,8 @@ class InformalC:
 
         def informalc_new(self, frame, msg=""):
             """ master method for running other methods in proper order."""
+            if msg:  # if this being reloaded after apply
+                self.__init__(self.parent)  # re initialize the class
             self.newentry = True  # this is a new entry
             self.msg = msg
             self.win = MakeWindow()
@@ -1925,6 +1922,8 @@ class InformalC:
 
         def informalc_edit(self, frame, grv_no, msg=""):
             """ master method for running other methods in proper order."""
+            if msg:  # if this being reloaded after apply
+                self.__init__(self.parent)  # re initialize the class
             self.newentry = False  # this is not a new entry
             self.edit_grv_no = grv_no  # the grievance to be edited
             self.msg = msg
@@ -1953,7 +1952,6 @@ class InformalC:
             self.decision = StringVar(self.win.body)
             self.proof_due = StringVar(self.win.body)
             self.docs = StringVar(self.win.body)
-            self.gats_no = StringVar(self.win.body)
             self.batset = [StringVar(self.win.body), ]
             self.batgat = [StringVar(self.win.body), ]
 
@@ -1990,7 +1988,6 @@ class InformalC:
                 self.onrec_decision = results[0][3]
                 self.onrec_proof_due = results[0][4]
                 self.onrec_docs = results[0][5]
-                self.onrec_gats_no = results[0][6]
             # use arrays and loops to get search results for all the grievances in the grv_list array.
             # search these tables
             tables_array = ("informalc_noncindex", "informalc_remandindex",
@@ -2035,7 +2032,6 @@ class InformalC:
                 self.decision.set("")  # 12 the decision of the settlement
                 self.proof_due.set("")  # 13 the date that the prooof of the remedy is due
                 self.docs.set("")  # 14 the status of any documentation needed for proof of compliance
-                self.gats_no.set("")  # 15 the gats  number of the proof of compliance
             else:
                 self.grievant.set(self.onrec_grievant)  # 1
                 self.grv_no.set(self.edit_grv_no)  # 2
@@ -2058,7 +2054,6 @@ class InformalC:
                     self.docs.set(self.onrec_docs)
                 else:
                     self.docs.set("no status")
-                self.gats_no.set(self.onrec_gats_no)  # 15 the gats  number of the proof of compliance
 
         def build_screen(self):
             """ screen for entering in settlements. before leaving the frame, attempt to destroy self.companion_root
@@ -2633,7 +2628,6 @@ class InformalC:
             self.check_decision = self.decision.get()  # 12 the decision of the settlement
             self.check_proofdue = self.proof_due.get()  # 13 the date that the prooof of the remedy is due
             self.check_docs = self.docs.get()  # 14 the status of any documentation needed for proof of compliance
-            self.check_gats_no = self.gats_no.get()  # 15 the gats  number of the proof of compliance
             # get stringvar values for indexes and place them in a multidimentional list
             # - non compliance, remanded, batch settlements and gats reports
             if self.newentry:  # get onrecs to ensure that existing grievances aren't added to db.
@@ -2950,8 +2944,6 @@ class InformalC:
                 chg_these.append("decision")
             if self.check_docs != self.onrec_docs:  # check docs
                 chg_these.append("docs")
-            if self.check_gats_no != self.onrec_gats_no:  # check docs
-                chg_these.append("gats")
             if len(chg_these):  # if change these is not empty
                 self.set_changesmade = True  # then update status is True.
 
@@ -3020,19 +3012,19 @@ class InformalC:
         def insert_set(self):
             """ insert a record into the settlement table """
             sql = "INSERT INTO informalc_settlements (grv_no, level, date_signed, decision, proofdue, " \
-                  "docs, gats_number) " \
-                  "VALUES('%s','%s','%s','%s','%s','%s','%s')" % \
+                  "docs) " \
+                  "VALUES('%s','%s','%s','%s','%s','%s')" % \
                   (self.check_grv_no, self.check_lvl, self.check_dates[3], self.check_decision,
-                   self.check_dates[4], self.check_docs, self.check_gats_no)
+                   self.check_dates[4], self.check_docs)
             commit(sql)
             self.reporter_set = True
 
         def update_set(self):
             """ update a record in the settlement table """
             sql = "UPDATE informalc_settlements SET level = '%s', date_signed = '%s', decision = '%s', " \
-                  "proofdue = '%s', docs = '%s', gats_number = '%s' WHERE grv_no = '%s'" % \
+                  "proofdue = '%s', docs = '%s' WHERE grv_no = '%s'" % \
                   (self.check_lvl, self.check_dates[3], self.check_decision, self.check_dates[4],
-                   self.check_docs, self.check_gats_no, self.check_grv_no)
+                   self.check_docs, self.check_grv_no)
             commit(sql)
             self.reporter_set = True
 

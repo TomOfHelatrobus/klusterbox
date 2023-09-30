@@ -202,7 +202,7 @@ class V5008Fix:
         """ a run a progress bar and the transfer for informalc grv records to grievances and settlements """
         if not self.get_transfer_array():
             return
-        self.pb = ProgressBarDe(title="Informal C Data Transfer")
+        self.pb = ProgressBarDe(title="Informal C Data Transfer", label="transfer all grievance/settlement data")
         self.pb.max_count(len(self.transfer_array))
         self.pb.start_up()
         self.get_distinct()
@@ -262,7 +262,7 @@ class V5008Fix:
         """ a run a progress bar and transfer recs from informalc awards to informalc awards2 """
         if not self.get_awards_transfer_array():
             return
-        self.pb = ProgressBarDe(title="Informal C Data Transfer")
+        self.pb = ProgressBarDe(title="Informal C Data Transfer", label="Transfer all monetary awards data")
         self.pb.max_count(len(self.awards_transfer_array))
         self.pb.start_up()
         self.transfer_award_recs()
