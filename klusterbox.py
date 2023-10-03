@@ -62,7 +62,7 @@ __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
 version = 5.08  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Sep 30, 2023"  # format is Jan 1, 2022
+release_date = "Oct 3, 2023"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -477,7 +477,7 @@ class InformalC:
             .grid(row=0, column=0, columnspan=4, sticky="w")
         Entry(grvframe, textvariable=self.src_grievance, width=macadj(27, 22), justify='right') \
             .grid(row=0, column=5)
-        Button(grvframe, text="Search", width=macadj(23,23), anchor="center",
+        Button(grvframe, text="Search", width=macadj(23, 23), anchor="center",
                command=lambda: self.search_grv_apply(self.win.topframe)).grid(row=1, column=5, pady=3)
         row += 1
         # separator
@@ -648,7 +648,7 @@ class InformalC:
         om.grid(row=0, column=4, columnspan=2, sticky="e")
         self.option_level.set("include all")
         self.option_level.trace("w", callback_level)
-        self.level_listbox = Listbox(levelframe, height=len(self.level_options), width=macadj(28,23),
+        self.level_listbox = Listbox(levelframe, height=len(self.level_options), width=macadj(28, 23),
                                      selectmode="multiple", exportselection=False)
         self.level_listbox.grid_remove()
         for i in range(len(self.level_options)):
@@ -797,7 +797,7 @@ class InformalC:
         om.grid(row=0, column=4, columnspan=2, sticky="e")
         self.option_docs.set("include all")
         self.option_docs.trace("w", callback_docs)
-        self.docs_listbox = Listbox(docsframe, height=len(self.doc_options), width=macadj(28,23),
+        self.docs_listbox = Listbox(docsframe, height=len(self.doc_options), width=macadj(28, 23),
                                     selectmode="multiple", exportselection=False)
         self.docs_listbox.grid_remove()
         for i in range(len(self.doc_options)):
@@ -848,9 +848,9 @@ class InformalC:
         self.sort_order.set(1)
         # ------------------------------------------------------------------------------- buttons bottom of the screen
         button_alignment = macadj("w", "center")
-        Button(self.win.buttons, text="Go Back", width=macadj(20,27), anchor=button_alignment,
+        Button(self.win.buttons, text="Go Back", width=macadj(20, 27), anchor=button_alignment,
                command=lambda: (self.destroy_companion(), self.informalc(self.win.topframe))).grid(row=0, column=0)
-        Button(self.win.buttons, text="Search", width=macadj(20,26), anchor=button_alignment,
+        Button(self.win.buttons, text="Search", width=macadj(20, 26), anchor=button_alignment,
                command=lambda: (self.destroy_companion(), self.search_apply(self.win.topframe))).grid(row=0, column=1)
 
     def add_grvent_field(self, childframe, carrier=None):
@@ -1309,12 +1309,12 @@ class InformalC:
                 color = "white"
             # Show search results. loop once for each settlement.
             # the count at the right margin
-            Label(self.win.body, text=str(ii + 1), anchor="w", width=macadj(4, 2), bg=macadj(color,"white"))\
+            Label(self.win.body, text=str(ii + 1), anchor="w", width=macadj(4, 2), bg=macadj(color, "white"))\
                 .grid(row=row, column=column)
             column += 1
             # the grievance number
             Button(self.win.body, text=" " + self.search_result[i][2], anchor="w", width=macadj(14, 12),
-                   relief=RIDGE, bg=macadj(color,"white")).grid(row=row, column=column)
+                   relief=RIDGE, bg=macadj(color, "white")).grid(row=row, column=column)
             column += 1
             # "Start Incident Date", "End Incident Date", "Meeting Date", "Signed Date", "Proof Due"
             sortby = (3, 4, 5, 10, 12)
@@ -1323,23 +1323,23 @@ class InformalC:
             selecteddate = Convert(self.search_result[i][sort_index]).dtstr_to_backslashstr()
             # the date
             Button(self.win.body, text=selecteddate, width=macadj(11, 10),
-                   anchor="w", relief=RIDGE, bg=macadj(color,"white")).grid(row=row, column=column)
+                   anchor="w", relief=RIDGE, bg=macadj(color, "white")).grid(row=row, column=column)
             column += 1
             # the settlement
             Button(self.win.body, text=self.search_result[i][11], width=macadj(25, 20), anchor="w",
-                   relief=RIDGE, bg=macadj(color,"white")).grid(row=row, column=column)
+                   relief=RIDGE, bg=macadj(color, "white")).grid(row=row, column=column)
             column += 1
-            Button(self.win.body, text="Edit", width=macadj(7, 6), relief=RIDGE, bg=macadj(color,"white"),
+            Button(self.win.body, text="Edit", width=macadj(7, 6), relief=RIDGE, bg=macadj(color, "white"),
                    command=lambda x=self.search_result[i][2]:
                    self.GrievanceInput(self).informalc_edit(self.win.topframe, x))\
                 .grid(row=row, column=column)
             column += 1
-            Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE, bg=macadj(color,"white"),
+            Button(self.win.body, text="Report", width=macadj(6, 5), relief=RIDGE, bg=macadj(color, "white"),
                    command=lambda x=self.search_result[i]: InformalCReports(self).everything_report(x))\
                 .grid(row=row, column=column)
             column += 1
             Button(self.win.body, text=macadj("Enter Awards", "Awards"), width=macadj(10, 6), relief=RIDGE,
-                   bg=macadj(color,"white"),
+                   bg=macadj(color, "white"),
                    command=lambda x=self.search_result[i][2]: self.addawards_screen(self.win.topframe, x)) \
                 .grid(row=row, column=column)
             row += 1
@@ -1533,24 +1533,24 @@ class InformalC:
         scrollbar.pack(side=RIGHT, fill=Y)
         listbox.pack(side=LEFT, expand=1)
         if mode == 'selectcarrier':
-            Button(buttons, text="Add Carriers", width=macadj(10,10),
+            Button(buttons, text="Add Carriers", width=macadj(10, 10),
                    command=lambda: addnames()).pack(side=LEFT, anchor="w")
         if mode == 'award':
-            Button(buttons, text="Add Carriers", width=macadj(10,10),
+            Button(buttons, text="Add Carriers", width=macadj(10, 10),
                    command=lambda: (add_awardnames(),
                                     self.addawards_screen(topframe, grv_no))).pack(side=LEFT, anchor="w")
         if mode == "selectissue":
-            Button(buttons, text="Add Issue", width=macadj(10,10),
+            Button(buttons, text="Add Issue", width=macadj(10, 10),
                    command=lambda: addissue()).pack(side=LEFT, anchor="w")
         if mode == "selectdecision":
-            Button(buttons, text="Add Decision", width=macadj(10,10),
+            Button(buttons, text="Add Decision", width=macadj(10, 10),
                    command=lambda: adddecision()).pack(side=LEFT, anchor="w")
         # to destroy and re create itself.
-        Button(buttons, text="Clear", width=macadj(10,5),
+        Button(buttons, text="Clear", width=macadj(10, 5),
                command=lambda: (self.destroy_companion(),
                                 self.informalc_root(mode, topframe=topframe, grv_no=grv_no, childframe=childframe)))\
             .pack(side=LEFT, anchor="w")
-        Button(buttons, text="Close", width=macadj(10,9),
+        Button(buttons, text="Close", width=macadj(10, 9),
                command=lambda: (self.destroy_companion())).pack(side=LEFT, anchor="w")
 
     def destroy_companion(self):
@@ -1605,7 +1605,7 @@ class InformalC:
         Label(self.win.body, text="   Grievance Number: {}".format(grv_no), fg="blue") \
             .grid(row=1, column=0, sticky="w", columnspan=4)
         Label(self.win.body, text="Instructions/ Help ").grid(row=2, column=1, columnspan=2, sticky="e")
-        Button(self.win.body, text=" read ", width=macadj(8,4),
+        Button(self.win.body, text=" read ", width=macadj(8, 4),
                command=lambda: Awards().award_instructions(self.win.topframe)).grid(row=2, column=3, sticky="w")
         sql = "SELECT grv_no,rowid,carrier_name,award,gats_discrepancy FROM informalc_awards2 WHERE grv_no ='%s' " \
               "ORDER BY carrier_name" % grv_no
@@ -1618,11 +1618,11 @@ class InformalC:
         if len(result) == 0:
             Label(self.win.body, text="No records in database").grid(row=3)
         else:
-            Label(self.win.body, text="Carrier", fg="grey", anchor="w", width=macadj(17,15))\
+            Label(self.win.body, text="Carrier", fg="grey", anchor="w", width=macadj(17, 15))\
                 .grid(row=3, column=0, sticky="w")
-            Label(self.win.body, text="Award", fg="grey", anchor="w", width=macadj(14,12))\
+            Label(self.win.body, text="Award", fg="grey", anchor="w", width=macadj(14, 12))\
                 .grid(row=3, column=1, sticky="w")
-            Label(self.win.body, text="Gats discrepancy", fg="grey", anchor="w", width=macadj(13,12))\
+            Label(self.win.body, text="Gats discrepancy", fg="grey", anchor="w", width=macadj(13, 12))\
                 .grid(row=3, column=2, sticky="w")
             Label(self.win.body, text="", fg="grey", anchor="w", width=9).grid(row=3, column=3, sticky="w")
             i = 0
@@ -1636,12 +1636,12 @@ class InformalC:
                 self.var_id[i].set(res[1])  # set the textvariables
                 # ----------------------------------------------------------------------------------------------- name
                 self.var_name.append(StringVar(self.win.topframe))
-                Label(award_frame[i], text=res[2], anchor="w", width=macadj(16,14)) \
+                Label(award_frame[i], text=res[2], anchor="w", width=macadj(16, 14)) \
                     .grid(row=0, column=0, sticky="w", padx=2)  # display name widget
                 self.var_name[i].set(res[2])
                 # ---------------------------------------------------------------------------------------------- award
                 self.var_award.append(StringVar(self.win.topframe))
-                Entry(award_frame[i], textvariable=self.var_award[i], width=macadj(16,11)) \
+                Entry(award_frame[i], textvariable=self.var_award[i], width=macadj(16, 11)) \
                     .grid(row=0, column=3, padx=2)  # display award widget
                 self.var_award[i].set(res[3])
                 # ------------------------------------------------------------------------------------ gats discrepancy
@@ -2490,19 +2490,19 @@ class InformalC:
             scrollbar.pack(side=RIGHT, fill=Y)
             listbox.pack(side=LEFT, expand=1)
             if mode == 'selectcarrier':
-                Button(buttons, text="Add Carrier", width=macadj(10,10),
+                Button(buttons, text="Add Carrier", width=macadj(10, 10),
                        command=lambda: (self.addnames(listbox.curselection()))).pack(side=LEFT, anchor="w")
             if mode == 'selectissue':
-                Button(buttons, text="Add Issue", width=macadj(10,10),
+                Button(buttons, text="Add Issue", width=macadj(10, 10),
                        command=lambda: (self.addissue(listbox.curselection()))).pack(side=LEFT, anchor="w")
             if mode == 'selectdecision':
-                Button(buttons, text="Add Decision", width=macadj(10,10),
+                Button(buttons, text="Add Decision", width=macadj(10, 10),
                        command=lambda: (self.adddecision(listbox.curselection()))).pack(side=LEFT, anchor="w")
             # to destroy and re create itself.
-            Button(buttons, text="Clear", width=macadj(10,5),
+            Button(buttons, text="Clear", width=macadj(10, 5),
                    command=lambda: (self.destroy_companion(), self.informalc_root(mode, grv_no))) \
                 .pack(side=LEFT, anchor="w")
-            Button(buttons, text="Close", width=macadj(10,9),
+            Button(buttons, text="Close", width=macadj(10, 9),
                    command=lambda: (self.destroy_companion())).pack(side=LEFT, anchor="w")
 
         def get_listbox_carrriers(self):
@@ -3656,7 +3656,7 @@ class InformalCSettings:
         """ build the screens """
         self.row = 0
         Label(self.win.body, text="Informal C Settings", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, sticky="w", columnspan=macadj(14,15))
+            .grid(row=self.row, sticky="w", columnspan=macadj(14, 15))
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
@@ -3664,15 +3664,15 @@ class InformalCSettings:
         text = macadj("Search Results __________________________________",
                       "Search Results ______________________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=self.row, column=0, columnspan=macadj(14,15), sticky="w")
+              fg="blue").grid(row=self.row, column=0, columnspan=macadj(14, 15), sticky="w")
         self.row += 1
         Label(self.win.body, text="Results Per Page:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         e = Entry(self.win.body, width=macadj(6, 5), textvariable=self.result_limit)
-        e.grid(row=self.row, column=macadj(13,13), sticky=macadj("e","e"), pady=3)
+        e.grid(row=self.row, column=macadj(13, 13), sticky=macadj("e", "e"), pady=3)
         self.row += 1
-        b = Button(self.win.body, width=5, anchor=macadj("e","e"), text="ENTER",
+        b = Button(self.win.body, width=5, anchor=macadj("e", "e"), text="ENTER",
                    command=lambda: self.update_result_limit())
-        b.grid(row=self.row, column=macadj(13,13), sticky=macadj("e","e"))
+        b.grid(row=self.row, column=macadj(13, 13), sticky=macadj("e", "e"))
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)  # blank line for reabability
         self.row += 1
@@ -3680,10 +3680,10 @@ class InformalCSettings:
         text = macadj("Issue Options ___________________________________",
                       "Issue Options _______________________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=self.row, column=0, columnspan=macadj(14,15), sticky="w")
+              fg="blue").grid(row=self.row, column=0, columnspan=macadj(14, 15), sticky="w")
         self.row += 1
         Label(self.win.body, text="Available Issue Options:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
-        Button(self.win.body, width=5, anchor=macadj("w","center"), text="list",
+        Button(self.win.body, width=5, anchor=macadj("w", "center"), text="list",
                command=lambda: InformalCOptions().issue_options(self.win.topframe)). \
             grid(row=self.row, column=13, sticky="e")
         self.row += 1
@@ -3691,7 +3691,7 @@ class InformalCSettings:
         self.row += 1
         # -------------------------------------------------------------------------------------------- add custom issue
         addissueframe = Frame(self.win.body)
-        addissueframe.grid(row=self.row, column=0, columnspan=macadj(14,15), sticky="w")
+        addissueframe.grid(row=self.row, column=0, columnspan=macadj(14, 15), sticky="w")
         self.addcustomindex.set(str(self.max_issue_index))
         self.addcustomarticle.set("")
         self.addcustomissue.set("")  # assign stringvars an empty value
@@ -3705,7 +3705,7 @@ class InformalCSettings:
         e.grid(row=2, column=1, sticky="w", pady=3)
         e = Entry(addissueframe, width=macadj(30, 28), textvariable=self.addcustomissue)
         e.grid(row=2, column=2, sticky="w", pady=3)
-        Button(addissueframe, width=5, anchor=macadj("w","center"), text="add",
+        Button(addissueframe, width=5, anchor=macadj("w", "center"), text="add",
                command=lambda: self.add_customissue()). \
             grid(row=3, column=2, sticky="e")
         self.row += 1
@@ -3713,7 +3713,7 @@ class InformalCSettings:
         self.row += 1
         # -------------------------------------------------------------------------------- show / delete custom issues
         customissueframe = Frame(self.win.body)
-        customissueframe.grid(row=self.row, column=0, columnspan=macadj(14,15), sticky="w")
+        customissueframe.grid(row=self.row, column=0, columnspan=macadj(14, 15), sticky="w")
         if not self.custom_issue:
             text = "There are no custom issue options to show."
             Label(customissueframe, text=text).grid(row=0, column=0, sticky="w")
@@ -3725,11 +3725,11 @@ class InformalCSettings:
             Label(customissueframe, text="Issue", fg="grey").grid(row=1, column=2, sticky="w")
         row = 2
         for ci in self.custom_issue:
-            Label(customissueframe, text=ci[0], width=macadj(4,5), anchor="w", borderwidth=1,
+            Label(customissueframe, text=ci[0], width=macadj(4, 5), anchor="w", borderwidth=1,
                   relief="groove", pady=3).grid(row=row, column=0, sticky="w")  # index
-            Label(customissueframe, text=ci[1], width=macadj(5,7), anchor="w", borderwidth=1,
+            Label(customissueframe, text=ci[1], width=macadj(5, 7), anchor="w", borderwidth=1,
                   relief="groove", pady=3).grid(row=row, column=1, sticky="w")  # article
-            Label(customissueframe, text=ci[2], width=macadj(19,23), anchor="w", borderwidth=1,
+            Label(customissueframe, text=ci[2], width=macadj(19, 23), anchor="w", borderwidth=1,
                   relief="groove", pady=3).grid(row=row, column=2, sticky="w")  # issue
             Button(customissueframe, text="delete",  # button x
                    command=lambda delete_issue=ci[2]: (self.delete_customissue(delete_issue)))\
@@ -3742,10 +3742,10 @@ class InformalCSettings:
         text = macadj("Decision Options ________________________________",
                       "Decision Options ____________________________________")
         Label(self.win.body, text=text, anchor="w",
-              fg="blue").grid(row=self.row, column=0, columnspan=macadj(14,15), sticky="w")
+              fg="blue").grid(row=self.row, column=0, columnspan=macadj(14, 15), sticky="w")
         self.row += 1
         Label(self.win.body, text="Available Decision Options: ", anchor="w").grid(row=self.row, column=0, sticky="w")
-        Button(self.win.body, width=5, anchor=macadj("w","center"), text="list",
+        Button(self.win.body, width=5, anchor=macadj("w", "center"), text="list",
                command=lambda: InformalCOptions().decision_options(self.win.topframe)). \
             grid(row=self.row, column=13, sticky="e")
         self.row += 1
@@ -3753,7 +3753,7 @@ class InformalCSettings:
         self.row += 1
         # ----------------------------------------------------------------------------------------- add custom decision
         adddecisionframe = Frame(self.win.body)
-        adddecisionframe.grid(row=self.row, column=0, columnspan=macadj(14,15), sticky="w")
+        adddecisionframe.grid(row=self.row, column=0, columnspan=macadj(14, 15), sticky="w")
         self.addcustomdecision.set("")  # assign stringvars an empty value
         self.adddecindex.set(str(self.max_decision_index))
         self.adddectype.set("general")
@@ -3767,14 +3767,14 @@ class InformalCSettings:
         e.grid(row=2, column=1, sticky="w", pady=3)
         e = Entry(adddecisionframe, width=macadj(27, 26), textvariable=self.addcustomdecision)
         e.grid(row=2, column=2, sticky="w", pady=3)
-        Button(adddecisionframe, width=5, anchor=macadj("w","center"), text="add",
+        Button(adddecisionframe, width=5, anchor=macadj("w", "center"), text="add",
                command=lambda: self.add_customdecision()).grid(row=3, column=2, sticky="e")
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row)  # blank line for reabability
         self.row += 1
         # ----------------------------------------------------------------------------- show / delete custom decisions
         customdecisionframe = Frame(self.win.body)
-        customdecisionframe.grid(row=self.row, column=0, columnspan=macadj(14,15), sticky="w")
+        customdecisionframe.grid(row=self.row, column=0, columnspan=macadj(14, 15), sticky="w")
         if not self.custom_decision:
             text = "There are no custom decision options to show."
             Label(customdecisionframe, text=text).grid(row=0, column=0, sticky="w")
@@ -3786,11 +3786,11 @@ class InformalCSettings:
             Label(customdecisionframe, text="Decision", fg="grey").grid(row=1, column=2, sticky="w")
         row = 2
         for cd in self.custom_decision:
-            Label(customdecisionframe, text=cd[0], width=macadj(4,5), anchor="w", borderwidth=1,
+            Label(customdecisionframe, text=cd[0], width=macadj(4, 5), anchor="w", borderwidth=1,
                   relief="groove", pady=3).grid(row=row, column=0, sticky="w")
-            Label(customdecisionframe, text=cd[1], width=macadj(6,7), anchor="w", borderwidth=1,
+            Label(customdecisionframe, text=cd[1], width=macadj(6, 7), anchor="w", borderwidth=1,
                   relief="groove", pady=3).grid(row=row, column=1, sticky="w")
-            Label(customdecisionframe, text=cd[2], width=macadj(18,23), anchor="w", borderwidth=1,
+            Label(customdecisionframe, text=cd[2], width=macadj(18, 23), anchor="w", borderwidth=1,
                   relief="groove", pady=3).grid(row=row, column=2, sticky="w")
             Button(customdecisionframe, text="delete",
                    command=lambda delete_decision=cd[2]: (self.delete_customdecision(delete_decision)))\
