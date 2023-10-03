@@ -367,18 +367,16 @@ class MaxHr:
                         tabs = 24 - (len(self.adjustment[i][1]))
                         period = "."
                         period += tabs * "."
-                        self.report.write(self.adjustment[i][0] + "   " +
-                                     self.adjustment[i][1] + ", "
-                                     + self.adjustment[i][2] + period +
-                                     "{0:.2f}".format(float(self.adjustment[i][3])) + "\n")
+                        self.report.write(self.adjustment[i][0] + "   " + self.adjustment[i][1] + ", " +
+                                          self.adjustment[i][2] + period + "{0:.2f}"
+                                          .format(float(self.adjustment[i][3])) + "\n")
                 if jump == "no":
                     tabs = 24 - (len(self.adjustment[i][1]))
                     period = "."
                     period += tabs * "."
                     self.report.write(self.adjustment[i][0] + "   " + self.adjustment[i][1] + ", "
-                                 + self.adjustment[i][2] + period + "{0:.2f}".format(float(self.adjustment[i][3]))
-                                 + "     " + "{0:.2f}".format(float(adj_sum))
-                                 + "\n")
+                                      + self.adjustment[i][2] + period + "{0:.2f}".format(float(self.adjustment[i][3]))
+                                      + "     " + "{0:.2f}".format(float(adj_sum)) + "\n")
                     adj_add = [self.adjustment[i][1], self.adjustment[i][2], adj_sum]
                     adj_sum = 0
                     adj_total.append(adj_add)  # catch sum of adjustments for the week

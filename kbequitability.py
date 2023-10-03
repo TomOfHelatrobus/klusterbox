@@ -108,7 +108,7 @@ class OTEquitSpreadsheet:
         self.week = ["w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13",
                      "w14", "w15"]
         self.week_label = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
-                     "13", "14", "15"]
+                           "13", "14", "15"]
         self.triad_week_index = 0
         self.triad_column = 0
         self.triad_row = 0
@@ -198,9 +198,9 @@ class OTEquitSpreadsheet:
     def get_dates(self):
         """ gets the start and end of the quarter. """
         self.startdate_index = (datetime(self.year, 1, 1), datetime(self.year, 4, 1), datetime(self.year, 7, 1),
-                     datetime(self.year, 10, 1))
+                                datetime(self.year, 10, 1))
         self.enddate_index = (datetime(self.year, 3, 31), datetime(self.year, 6, 30), datetime(self.year, 9, 30),
-                   datetime(self.year, 12, 31))
+                              datetime(self.year, 12, 31))
         self.startdate = self.startdate_index[int(self.quarter) - 1]
         self.enddate = self.enddate_index[int(self.quarter) - 1]
 
@@ -486,42 +486,42 @@ class OTEquitSpreadsheet:
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
         self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
-                                    alignment=Alignment(horizontal='right'))
+                                         alignment=Alignment(horizontal='right'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8))
         self.col_center_header = NamedStyle(name="col_center_header", font=Font(bold=True, name='Arial', size=8),
-                                       alignment=Alignment(horizontal='center'))
+                                            alignment=Alignment(horizontal='center'))
         self.col_header_instructions = \
             NamedStyle(name="col_header_instructions", font=Font(bold=True, name='Arial', size=10))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                alignment=Alignment(horizontal='left'))
+                                     border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                     alignment=Alignment(horizontal='left'))
         self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
-                             border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                             alignment=Alignment(horizontal='right'))
-        self.input_blue = NamedStyle(name="input_blue", font=Font(name='Arial', size=8),
                                   border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                  fill=PatternFill(fgColor='e1f7f3', fill_type='solid'),
                                   alignment=Alignment(horizontal='right'))
+        self.input_blue = NamedStyle(name="input_blue", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                     fill=PatternFill(fgColor='e1f7f3', fill_type='solid'),
+                                     alignment=Alignment(horizontal='right'))
         """fill_type: Value must be one of {'darkTrellis', 'darkGrid', 'lightVertical', 'darkDown', 'solid', 'lightUp', 
         'lightHorizontal', 'mediumGray', 'lightTrellis', 'darkHorizontal', 'darkGray', 'lightGray', 'darkVertical', 
         'gray125', 'darkUp', 'gray0625', 'lightDown', 'lightGrid'"""
         self.input_center = NamedStyle(name="input_center", font=Font(name='Arial', size=8),
-                                  border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                  alignment=Alignment(horizontal='center'))
+                                       border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                       alignment=Alignment(horizontal='center'))
         self.calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
-                           border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                           fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                           alignment=Alignment(horizontal='right'))
+                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                alignment=Alignment(horizontal='right'))
         self.ws_name = NamedStyle(name="ws_name", font=Font(name='Arial', size=8),
-                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                                alignment=Alignment(horizontal='left'))
+                                  border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                  fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                  alignment=Alignment(horizontal='left'))
         self.ref_ot = NamedStyle(name="ref_ot", font=Font(name='Arial', size=8),
-                                border=Border(left=bd, right=bd, top=bd, bottom=bd),
-                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
-                                alignment=Alignment(horizontal='center'))
+                                 border=Border(left=bd, right=bd, top=bd, bottom=bd),
+                                 fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                 alignment=Alignment(horizontal='center'))
         self.instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=10),
-                                   alignment=Alignment(horizontal='left', vertical='top'))
+                                        alignment=Alignment(horizontal='left', vertical='top'))
 
     def build_header_overview(self):
         """ build the header for overview worksheet """
@@ -534,7 +534,7 @@ class OTEquitSpreadsheet:
         cell.style = self.date_dov_title
         cell = self.overview.cell(row=2, column=2)  # fill in dates
         date = self.startdate_index[self.quarter - 1].strftime("%m/%d/%Y") + " through " + \
-               self.enddate_index[self.quarter - 1].strftime("%m/%d/%Y")
+            self.enddate_index[self.quarter - 1].strftime("%m/%d/%Y")
         cell.value = date
         cell.style = self.date_dov
         self.overview.merge_cells('B2:E2')
@@ -956,45 +956,45 @@ class OTEquitSpreadsheet:
         cell = self.instructions.cell(row=5, column=1)
         text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in " \
                "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
-                "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages " \
+               "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages " \
                "will import the name so that you don’t have to write it 15 times.\n\n" \
-                "2. STATUS:  Enter the status on the first page only. Again formulas will do the work " \
-                "and copy it to other pages. Enter “12” (for 12 hour preference), “10” (10 hour " \
-                "preference), “off” (if the carrier has gotten off the list) or “track” (if the carrier " \
+               "2. STATUS:  Enter the status on the first page only. Again formulas will do the work " \
+               "and copy it to other pages. Enter “12” (for 12 hour preference), “10” (10 hour " \
+               "preference), “off” (if the carrier has gotten off the list) or “track” (if the carrier " \
                "is off the list, but you want to continue tracking their equitability). Leave the field " \
                "blank if there is no carrier. If a carrier name is in the “name” column and the “status” " \
                "field is blank, the default status is “off”. If the status is “off”, the carrier's rings " \
                "and refusals will not be calculated and the carrier will not be figured into the average." \
                "\n\n" \
-                "3.  MAKE UP:  This applies to make up opportunities from grievance settlements. " \
+               "3.  MAKE UP:  This applies to make up opportunities from grievance settlements. " \
                "See JCAM Article 8.5.C.2 Remedies. This value is given in hours and clicks e.g. " \
                "5.32 or 14.00.\n\n" \
-                "4. REFUSALS/OVERTIME: This displays refusals and overtime worked.\n\n" \
-                "5. OPPORTUNITIES:   This displays total opportunities for overtime. This is all " \
+               "4. REFUSALS/OVERTIME: This displays refusals and overtime worked.\n\n" \
+               "5. OPPORTUNITIES:   This displays total opportunities for overtime. This is all " \
                "refusals + overtime.\n\n" \
-                "6. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average " \
+               "6. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average " \
                "overtime of all carriers and the individual carrier’s difference from that. If they have " \
                "more than average, the number will be positive otherwise it will be negative. This will " \
                "be the core of your case in your grievance for OTDL equitability violations. " \
-                "There are 15 worksheets. Each on represents a service week. Start with the first " \
-                "week and proceed day by day.\n\n" \
-                "7. For each day and each carrier there are are groups of three cells.\n\n" \
-                "TOP LEFT (smaller) CELL:  This is a one letter explanation for any refusal: You can " \
-                "use your own system, but my suggestions are: “p” for preference (the carrier " \
-                "refused on the grounds that they are on the 10 hour list), “a” for annual " \
-                "(the carrier missed overtime opportunities due to being on annual leave), “s” for sick " \
-                "leave, for non scheduled day (the carrier worked on their nonscheduled day – see JCAM " \
-                "Article 8.5.C.2.d Not Counted Toward “Equitability), “x” for exceptional " \
-                "circumstances (see JCAM Article 8.5.E - Exceptional Situations May Excuse " \
-                "Mandatory Overtime) and “r” for refusal (the carrier tells the supervisor to go jump " \
-                "in a lake).\n\n" \
-                "TOP RIGHT CELL: This is the amount of overtime that the carrier refused or was " \
-                "unable to work.\n\n" \
-                "BOTTOM CELL: This is overtime worked. Normally these is overtime worked off " \
-                "the carrier’s own route, but it could mean any overtime depending on any local " \
-                "agreements with management (LMOUs).\n\n" \
-                "At the very bottom , there are totals and averages for the day. These are for your " \
-                "information.\n\n\n\n\n\n\n"
+               "There are 15 worksheets. Each on represents a service week. Start with the first " \
+               "week and proceed day by day.\n\n" \
+               "7. For each day and each carrier there are are groups of three cells.\n\n" \
+               "TOP LEFT (smaller) CELL:  This is a one letter explanation for any refusal: You can " \
+               "use your own system, but my suggestions are: “p” for preference (the carrier " \
+               "refused on the grounds that they are on the 10 hour list), “a” for annual " \
+               "(the carrier missed overtime opportunities due to being on annual leave), “s” for sick " \
+               "leave, for non scheduled day (the carrier worked on their nonscheduled day – see JCAM " \
+               "Article 8.5.C.2.d Not Counted Toward “Equitability), “x” for exceptional " \
+               "circumstances (see JCAM Article 8.5.E - Exceptional Situations May Excuse " \
+               "Mandatory Overtime) and “r” for refusal (the carrier tells the supervisor to go jump " \
+               "in a lake).\n\n" \
+               "TOP RIGHT CELL: This is the amount of overtime that the carrier refused or was " \
+               "unable to work.\n\n" \
+               "BOTTOM CELL: This is overtime worked. Normally these is overtime worked off " \
+               "the carrier’s own route, but it could mean any overtime depending on any local " \
+               "agreements with management (LMOUs).\n\n" \
+               "At the very bottom , there are totals and averages for the day. These are for your " \
+               "information.\n\n\n\n\n\n\n"
         cell.value = text
         cell.style = self.instruct_text
         cell.alignment = Alignment(wrap_text=True, vertical='top')
@@ -1163,9 +1163,9 @@ class OTDistriSpreadsheet:
     def get_dates(self):
         """ get the dates of the quarter. """
         self.startdate_index = (datetime(self.year, 1, 1), datetime(self.year, 4, 1), datetime(self.year, 7, 1),
-                     datetime(self.year, 10, 1))
+                                datetime(self.year, 10, 1))
         self.enddate_index = (datetime(self.year, 3, 31), datetime(self.year, 6, 30), datetime(self.year, 9, 30),
-                   datetime(self.year, 12, 31))
+                              datetime(self.year, 12, 31))
         self.startdate = self.startdate_index[int(self.quarter) - 1]  # if investigation range is quarterly
         self.enddate = self.enddate_index[int(self.quarter) - 1]
         if self.rangeopt == "weekly":  # if investigation range is weekly
@@ -1462,7 +1462,7 @@ class OTDistriSpreadsheet:
         cell.style = self.date_dov_title
         cell = self.overview.cell(row=2, column=2)  # fill in dates
         date = self.startdate.strftime("%m/%d/%Y") + " through " + \
-               self.enddate.strftime("%m/%d/%Y")
+            self.enddate.strftime("%m/%d/%Y")
         cell.value = date
         cell.style = self.date_dov
         self.overview.merge_cells('B2:D2')
@@ -1782,15 +1782,15 @@ class OTDistriSpreadsheet:
         cell = self.instructions.cell(row=5, column=1)
         text = "CAUTION: Do not write in grayed out cells. These cells have formulas. Writing in " \
                "them will delete those formulas. If this happens, do a CTRL Z to undo.\n\n" \
-                "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages " \
+               "1. NAME:  Enter the carrier names on the first page only. Formulas on other pages " \
                "will import the name so that you don’t have to repeat it.\n\n" \
-                "2. LIST:  Enter the status on the first page only. Again formulas will do the work " \
-                "and copy it to other pages. Options are \"otdl\", \"wal\", \"nl\", \"aux\" or \"ptf\". " \
+               "2. LIST:  Enter the status on the first page only. Again formulas will do the work " \
+               "and copy it to other pages. Options are \"otdl\", \"wal\", \"nl\", \"aux\" or \"ptf\". " \
                "A \"+\" indicates that the carrier was on additional list during the investigation period. " \
                "Leave the field blank if there is no carrier. This field does not affect any formulas " \
                "and is for the user\'s information only. " \
                "\n\n" \
-                "3. MEDICAL: This field shows if the carrier has medical restrictions. If the carrier has " \
+               "3. MEDICAL: This field shows if the carrier has medical restrictions. If the carrier has " \
                "medical restrictions, enter \"yes\" into the cell, although any word or character will work. " \
                "Although the column in titled \"medical\" you can use it for any situation where you want the " \
                "carrier\'s times to be removed from the totals and averages. This column does not pull data from " \
@@ -1798,25 +1798,25 @@ class OTDistriSpreadsheet:
                "medical restrictions. " \
                "Entering anything into this cell will cause formulas to change the average number of carriers, " \
                "zero out the overtime cell and will put \"restrictions\" into the \"diff from avg\" cell. \n\n" \
-                "4. OVERTIME: This displays refusals and overtime worked. Information is pulled from the following " \
+               "4. OVERTIME: This displays refusals and overtime worked. Information is pulled from the following " \
                "weekly worksheets. \n\n" \
-                "5. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average " \
+               "5. DIFF FROM AVERAGE:  This cell uses formulas to calculate the average " \
                "overtime for individual carriers. It pulls the total average overtime from the bottom of the " \
                "page and calculates the difference for each individual carrier. If the carrier has " \
                "more than average, the number will be positive otherwise it will be negative. \n\n" \
-                "6. WEEKLY WORKSHEETS: There are 15 worksheets for quarterly investigations and one worksheet " \
+               "6. WEEKLY WORKSHEETS: There are 15 worksheets for quarterly investigations and one worksheet " \
                "for weekly investigations. Each worksheet represents a service week. Start with the first week " \
                "and proceed day by day. If generated by Klusterbox, carrier clock rings will be pulled from " \
                "the database to calculate the carrier\'s overtime.\n\n" \
-                "7. INPUT CELLS IN WEEKLY WORKSHEETS: Check the top of the page for \"ot type\", this will either " \
+               "7. INPUT CELLS IN WEEKLY WORKSHEETS: Check the top of the page for \"ot type\", this will either " \
                "be \"off_route\" (the default), or \"all\" when the spreadsheet is generated by Klusterbox. " \
                "For each day and each carrier there are is one cell. This cell shows the amount of overtime " \
                "worked. If the overtime calculations preference is \"off route\" then only overtime worked off the " \
                "carrier\'s route will be shown, if the preference is \"all\" then all of the carrier\'s overtime " \
                "both off and on their own route will be shown. If the carrier has no route, the calculation will " \
                "default to \"all\" during the time the carrier is unassigned.\n\n" \
-                "At the very bottom , there are totals and averages for the day. These are for your " \
-                "information.\n"
+               "At the very bottom , there are totals and averages for the day. These are for your " \
+               "information.\n"
         cell.value = text
         cell.style = self.instruct_text
         cell.alignment = Alignment(wrap_text=True, vertical='top')

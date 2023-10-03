@@ -370,7 +370,7 @@ class EnterRings:
                 # Moves
                 # build three entry widgets and a button for more moves.
                 self.get_now_moves(i)  # converts onrec_moves to a daily array
-                self.more_moves(i, ww, widgetlist)
+                self.more_moves(i, ww, widgetlist, self.frame[i])
                 # More Moves Button
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
                     colcount += 3
@@ -378,7 +378,7 @@ class EnterRings:
                 if "tourrings" in widgetlist:  # move moves button text is conditional on if tourrings
                     mactext = "+mv"  # if tourrings use a shorter version
                 mv_button = Button(self.frame[i], text=macadj("more moves", mactext), fg=macadj("black", "grey"),
-                                   command=lambda x=i: self.more_moves(x, ww, widgetlist))
+                                   command=lambda x=i: self.more_moves(x, ww, widgetlist, self.frame[i]))
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
                     mv_button.grid(row=grid_i, column=colcount)
                     colcount += 1
@@ -423,7 +423,6 @@ class EnterRings:
             frame_i += 1
         f7 = Frame(self.win.body)
         f7.grid(row=frame_i)
-        Label(f7, height=50).grid(row=1, column=0)  # extra white space on bottom of form to facilitate moves
 
     @staticmethod
     def triad_row_finder(index):
@@ -451,7 +450,7 @@ class EnterRings:
             return 2
         return 1
 
-    def more_moves(self, i, ww, widgetlist):
+    def more_moves(self, i, ww, widgetlist, frame):
         """" this executes if the user presses the more moves button. it will generate more move triad entry
         widgets. """
         mm = []
@@ -488,6 +487,8 @@ class EnterRings:
             if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
                 mv_widget.grid(column=self.triad_col_finder(ii + mwc) + mci, row=self.triad_row_finder(ii + mwc) + 2)
         self.now_moves = []  # zero out self.now_moves so more moves button works properly
+        frame.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
+        self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
 
     def write_report(self):
         """ build the report to appear on bottom of screen """
@@ -820,6 +821,7 @@ class EnterRings:
     def addrecs(self):
         """ add records to database """
         sql = ""
+        permitted_codes = ("no call", "annual", "sick", "excused")
         for i in range(len(self.dates)):
             # convert the daily moves from an array into a string.
             self.addrings[i][5] = Convert(self.addrings[i][5]).array_to_string()
@@ -827,10 +829,10 @@ class EnterRings:
             empty_rec = [self.dates[i], self.carrier, "", "", "none", "", "none", "", None, "", ""]
             if self.addrings[i] == self.daily_ringrecs[i]:
                 sql = ""  # if new and old are a match, take no action
-            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call" \
+            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] not in permitted_codes \
                     and self.daily_ringrecs[i] == empty_rec:
                 sql = ""  # if old is empty and new is not qualified as a legit record, take no action
-            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] != "no call":
+            elif not self.addrings[i][2] and not self.addrings[i][7] and self.addrings[i][4] not in permitted_codes:
                 # if new record has no total or lvtime
                 sql = "DELETE FROM rings3 WHERE rings_date = '%s' and carrier_name = '%s'" \
                       % (self.dates[i], self.carrier)

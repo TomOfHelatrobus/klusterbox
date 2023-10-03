@@ -24,7 +24,7 @@ class CountLines:
         """ get a list of all files in the directory. put all names into a list. """
         for file in os.listdir():
             if file.endswith(".py"):
-                if file != "countlines.py":  # do not include the countlines.py file
+                if file not in ("countlines.py", "merge_tables.py"):  # do not include the countlines.py file
                     self.all_files.append(file)
 
     def count_lines(self, file):

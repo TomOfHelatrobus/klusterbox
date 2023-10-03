@@ -6,6 +6,7 @@ It is called by all klusterbox modules in whole or in part with the exeption of 
 from tkinter import Tk, ttk, Frame, Scrollbar, Canvas, BOTH, LEFT, BOTTOM, RIGHT, NW, Label, mainloop, \
     messagebox, TclError, PhotoImage
 import projvar
+from operator import itemgetter
 import os
 import sys
 import sqlite3
@@ -13,7 +14,7 @@ import csv
 from datetime import datetime, timedelta
 
 
-def inquire(sql):
+def inquire(sql, returnerror=False):
     """
     query the database
     """
@@ -32,9 +33,10 @@ def inquire(sql):
         results = cursor.fetchall()
         return results
     except sqlite3.OperationalError:
-        messagebox.showerror("Database Error",
-                             "Unable to access database.\n"
-                             "\n Attempted Query: {}".format(sql))
+        if returnerror:
+            return "OperationalError"
+        else:
+            messagebox.showerror("Database Error", "Unable to access database.\n\n Attempted Query: {}".format(sql))
     db.close()
 
 
@@ -107,9 +109,23 @@ def macadj(win, mac):
     return arg
 
 
+def distinctresult_to_list(results):
+    """ this will take distinct sql results from an inquiry and convert it to a list then return that list. """
+    array = []
+    if results:
+        for r in results:
+            for rr in r:
+                if rr:
+                    array.append(rr)
+    return array
+
+
 class MakeWindow:
     """
     creates a window with a scrollbar and a frame for buttons on the bottom
+    use win (or self.win) = MakeWindow() to call the object
+    use win.create(frame) to build screen
+    call win.finish() at the end of the widgets
     """
     def __init__(self):
         self.topframe = Frame(projvar.root)
@@ -117,6 +133,7 @@ class MakeWindow:
         self.c = Canvas(self.topframe, width=1600)
         self.body = Frame(self.c)
         self.buttons = Canvas(self.topframe)  # button bar
+        self.move_mousewheel = True
 
     def __repr__(self):
         """ call with print(repr(MakeWindow())) """
@@ -131,39 +148,55 @@ class MakeWindow:
         """ call this method to build the window. If a frame is passed, it will be destroyed """
         if frame is not None:
             frame.destroy()  # close out the previous frame
-        self.topframe.pack(fill=BOTH, side=LEFT)
-        self.buttons.pack(fill=BOTH, side=BOTTOM)
-        # link up the canvas and scrollbar
-        self.s.pack(side=RIGHT, fill=BOTH)
-        self.c.pack(side=LEFT, fill=BOTH)
-        self.s.configure(command=self.c.yview, orient="vertical")
-        self.c.configure(yscrollcommand=self.s.set)
-        # link the mousewheel - implementation varies by platform
-        if sys.platform == "win32":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-        elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-        elif sys.platform == "linux":
-            self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
-            self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+            # frame.quit()
+        self.topframe.pack(fill=BOTH, side=LEFT)  # pack topframe on the root
+        self.buttons.pack(fill=BOTH, side=BOTTOM)  # pack buttons on the topframe
+        self.s.pack(side=RIGHT, fill=BOTH)  # pack scrollbar on topframe
+        self.c.pack(side=LEFT, fill=BOTH)  # pack canvas on topframe
+        self.s.configure(command=self.c.yview, orient="vertical")  # link up the canvas and scrollbar
+        self.c.configure(yscrollcommand=self.s.set)  # link up the canvas and the scrollbar
+        self.topframe.bind("<Configure>", self.detect_resize)  # track when the window changes size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
 
+    def detect_resize(self, event):
+        """ compare the height of the window (event.height) against the height of the body and buttons frame
+         if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
+        if event.height - 30 >= self.body.winfo_height() + self.buttons.winfo_height():
+            self.mousewheel(False)
+        else:
+            self.mousewheel(True)
+
+    def mousewheel(self, move):
+        """ enable the scrolling for the mousewheel if the event.height greater than the height of self.body. """
+        if move:
+            # enable the scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
+            elif sys.platform == "darwin":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * event.delta), "units"))
+            elif sys.platform == "linux":
+                self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
+                self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        else:
+            # disable scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "darwin":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "linux":
+                self.c.unbind_all('<Button-4>')
+                self.c.unbind_all('<Button-5>')
+
     def finish(self):
-        """ This closes the window created by front_window() """
+        """ This closes the window created by create() """
         projvar.root.update()
         self.c.config(scrollregion=self.c.bbox("all"))
         try:
             mainloop()
         except KeyboardInterrupt:
             projvar.root.destroy()
-
-    def fill(self, last, count):
-        """ fill bottom of screen to for scrolling. """
-        for i in range(count):
-            Label(self.body, text="").grid(row=last + i)
-        Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
 class NewWindow:
@@ -202,17 +235,39 @@ class NewWindow:
         self.c.pack(side=LEFT, fill=BOTH)
         self.s.configure(command=self.c.yview, orient="vertical")
         self.c.configure(yscrollcommand=self.s.set)
-        # link the mousewheel - implementation varies by platform
-        if sys.platform == "win32":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
-        elif sys.platform == "darwin":
-            self.c.bind_all('<MouseWheel>', lambda event: self.c.
-                            yview_scroll(int(projvar.mousewheel * event.delta), "units"))
-        elif sys.platform == "linux":
-            self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
-            self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        self.topframe.bind("<Configure>", self.detect_resize)  # track when the window changes size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
+
+    def detect_resize(self, event):
+        """ compare the height of the window (event.height) against the height of the body and buttons frame
+         if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
+        if event.height - 30 >= self.body.winfo_height() + self.buttons.winfo_height():
+            self.mousewheel(False)
+        else:
+            self.mousewheel(True)
+
+    def mousewheel(self, move):
+        """ enable the scrolling for the mousewheel if the event.height greater than the height of self.body. """
+        if move:
+            # enable the scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * (event.delta / 120)), "units"))
+            elif sys.platform == "darwin":
+                self.c.bind_all('<MouseWheel>', lambda event: self.c.
+                                yview_scroll(int(projvar.mousewheel * event.delta), "units"))
+            elif sys.platform == "linux":
+                self.c.bind_all('<Button-4>', lambda event: self.c.yview('scroll', -1, 'units'))
+                self.c.bind_all('<Button-5>', lambda event: self.c.yview('scroll', 1, 'units'))
+        else:
+            # disable scrolling for the mousewheel - syntax differs for the platform
+            if sys.platform == "win32":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "darwin":
+                self.c.unbind_all('<MouseWheel>')
+            elif sys.platform == "linux":
+                self.c.unbind_all('<Button-4>')
+                self.c.unbind_all('<Button-5>')
 
     def finish(self):
         """ This closes the window created by front_window() """
@@ -226,12 +281,6 @@ class NewWindow:
                     self.root.destroy()  # destroy it.
             except TclError:
                 pass  # else do no nothing.
-
-    def fill(self, last, count):
-        """ fill bottom of screen to for scrolling. """
-        for i in range(count):
-            Label(self.body, text="").grid(row=last + i)
-        Label(self.body, text="kb", fg="lightgrey", anchor="w").grid(row=last + count + 1, sticky="w")
 
 
 class Globals:
@@ -616,7 +665,7 @@ class NsDayDict:
 
     @staticmethod
     def custom_config():
-        """ shows custom ns day configurations for  printout / reports """
+        """ shows custom ns day configurations for reports """
         sql = "SELECT * FROM ns_configuration"
         ns_results = inquire(sql)
         custom_ns_dict = {}  # build dictionary for ns days
@@ -929,6 +978,19 @@ class Convert:
         dt = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
         return dt
 
+    def dt_converter_or_empty(self):
+        if not self.data:
+            return ""
+        else:
+            return datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')
+
+    def dtstr_to_backslashstr(self):
+        """ converts a string of a datetime object to a string of a backslash date e.g. 01/01/2000 """
+        if not self.data:  # if it is empty, return an empty string
+            return ""
+        dtstr = datetime.strptime(self.data, '%Y-%m-%d %H:%M:%S')  # first convert it to an actual datetime object
+        return dtstr.strftime("%m/%d/%Y")  # convert that dt object to a string formatted as a date.
+
     def dt_to_backslash_str(self):
         """ converts a datetime object to a string of a backslash date e.g. 01/01/2000 """
         return self.data.strftime("%m/%d/%Y")
@@ -969,11 +1031,25 @@ class Convert:
             return True
         return False
 
-    def backslashdate_to_datetime(self):
-        """ convert a date with backslashes into a datetime """
+    def backslashdate_to_datetime_or_empty(self):
+        """ convert a date with backslashes into a datetime object or returns empty string that are argued. """
+        if not self.data:
+            return ""
         date = self.data.split("/")
         string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
         return dt_converter(string)
+
+    def backslashdate_to_datetime(self):
+        """ convert a date with backslashes into a datetime object"""
+        date = self.data.split("/")
+        string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
+        return dt_converter(string)
+
+    def backslashdate_to_dtstring(self):
+        """ convert a date with backslashes into a string of a datetime"""
+        date = self.data.split("/")
+        string = date[2] + "-" + date[0] + "-" + date[1] + " 00:00:00"
+        return str(dt_converter(string))
 
     def dtstring_to_backslashdate(self):
         """ converts a datetime string into a backslash date """
@@ -1075,20 +1151,20 @@ class Convert:
     def hundredths(self):
         """ returns a number (as a string) into a number with 2 decimal places """
         number = float(self.data)  # convert the number to a float
-        return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+        return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
 
     def zero_or_hundredths(self):
         """ returns number strings for numbers """
         try:
             if float(self.data) == 0:
                 number = 0.00  # convert the number to a float
-                return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+                return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
             else:
                 number = float(self.data)  # convert the number to a float
-                return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+                return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
         except (ValueError, TypeError):
             number = 0.00  # convert the number to a float
-            return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+            return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
 
     def empty_or_hunredths(self):
         """ returns empty string for zero or converts the number to a float. """
@@ -1096,13 +1172,38 @@ class Convert:
             return ""
         else:
             number = float(self.data)  # convert the number to a float
-            return "{:.2f}".format(number)  # return the number as a string with 2 decimal places
+            return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
 
     def zero_not_empty(self):
         """ returns 0 for an empty string"""
         if self.data == "":
             return 0
         return self.data
+
+    def empty_not_nonetype(self):
+        """ returns an empty string for None """
+        if type(self.data) is None:
+            return ""
+        return self.data
+
+    def empty_returns_str(self, fill_in):
+        """ if an empty string is received, return the fill_in argument """
+        if not self.data:
+            return fill_in
+        return self.data
+
+    def strvarlist_to_string(self):
+        """ converts a list of stringvars (self.data) to a string. return the string.  """
+        string = ""
+        array = []
+        for strvar in self.data:
+            if strvar.get():  # do not add empty values
+                array.append(strvar.get())
+        for i in range(len(array)):
+            string += array[i]
+            if i+1 != len(array):
+                string += ", "
+        return string
 
 
 class Handler:
@@ -1195,6 +1296,17 @@ class Handler:
             return ""  # return empty string
         return self.data
 
+    def make_ordinal(self):
+        """ makes integers ordinal. accepts integers or number strings and returns ordinals """
+        number = str(self.data)
+        if number == "1":
+            return "1st"
+        if number == "2":
+            return "2nd"
+        if number == "3":
+            return "3rd"
+        return number + "th"
+
 
 def isfloat(value):
     """ returns True if arg is a float """
@@ -1212,6 +1324,30 @@ def isint(value):
         return True
     except (ValueError, TypeError):
         return False
+
+
+def good_character(data):
+    """ checks that the arguement is contains only valid letters, numbers or special characters """
+    for char in data:
+        if char in ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q",
+                    "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "-", "0", "1", "2", "3", "4", "5",
+                    "6", "7", "8", "9"):
+            pass
+        else:
+            return False
+    return True
+
+
+def issuedecisionresult_sorter(result):
+    """ this sorts the sql results so that they appear in the order of the ssindex. first convert ssindex
+    to an int, then sort, then return the results """
+    mod_result = []
+    for r in result:
+        r = [int(r[0]), r[1], r[2], r[3]]  # convert the first column to an int
+        mod_result.append(r)  # add to the array, line by line
+    if mod_result:
+        mod_result.sort(key=itemgetter(0))  # sort by the first column
+    return mod_result
 
 
 def dir_path_check(dirr):
@@ -1256,6 +1392,30 @@ class Quarter:
             return 3
         if int(self.data) in (10, 11, 12):
             return 4
+
+
+class AwardsFormatting:
+    """ class for formatting awards for input into database. """
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def format_for_db(input_):
+        """ format the arg for input into the database. accepts strings of dollars, hour/rate """
+        output_array = []
+        if not input_:
+            return ""
+        array = input_.split(",")
+        for award in array:
+            if "/" in award:  # if the award is the hour/rate type
+                hour_rate_array = award.split("/")
+                for i in range(0, len(hour_rate_array), 2):
+                    add_this = Convert(hour_rate_array[i]).hundredths() + "/" + \
+                               Convert(hour_rate_array[i+1]).hundredths()
+                    output_array.append(add_this)
+            else:  # if the award is the dollar amount type.
+                output_array.append(Convert(award).hundredths())
+        return Convert(output_array).array_to_string()
 
 
 class Rings:
@@ -1467,6 +1627,23 @@ class DateChecker:
             messagebox.showerror("Invalid Date",
                                  "The date entered is not a valid date.",
                                  parent=self.frame)
+            return False
+
+
+class DateTimeChecker:
+    """
+    class for checking datetime objects and strings of datetime objects
+    """
+    def __init__(self):
+        self.dt_obj = None
+        self.dt_str = ""
+
+    def check_dtstring(self, dtstring):
+        """ checks a string to ensure it can be converted into a datetime object. """
+        try:
+            self.dt_obj = dt_converter(dtstring)
+            return True
+        except ValueError:
             return False
 
 
@@ -1805,9 +1982,9 @@ class BackSlashDateChecker:
     def breaker(self):
         """ this will fully create the instance of the object """
         self.breakdown = self.data.split("/")
-        self.month = self.breakdown[0]
-        self.day = self.breakdown[1]
-        self.year = self.breakdown[2]
+        self.month = self.breakdown[0].strip()
+        self.day = self.breakdown[1].strip()
+        self.year = self.breakdown[2].strip()
 
     def check_numeric(self):
         """ check each element in the date to ensure they are numeric """
@@ -1989,39 +2166,485 @@ class SeniorityChecker:
         return True
 
 
-def informalc_date_checker(frame, date, typee):
-    """ checks the date """
-    d = date.get().split("/")
+class GrievanceChecker:
+    """ checks input to see that they are valid grievance numbers. nation wide, grievance numbers vary greatly,
+     but they are all generally alpha numeric. The checker will allow dashes, although the dashes, whitespace and
+      uppercases of letters will be removed in other methods. """
+
+    def __init__(self, data, frame=None):
+        self.data = data.lower().strip()
+        self.frame = frame
+
+    def has_value(self):
+        """ the grievance number must not be empty"""
+        if self.data == "":
+            if self.frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "You must enter a grievance number",
+                                     parent=self.frame)
+            return False
+        return True
+
+    def check_characters(self):
+        """ check to verify that no disallowed characters are in the grievance number string.
+        dashes are allowed, but will be removed later"""
+        allowed_characters = ('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e',
+                              'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+                              'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
+                              'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                              'Y', 'Z', '-', ' ', ':')
+        for char in self.data:
+            if char not in allowed_characters:
+                if self.frame:
+                    messagebox.showerror("Invalid Data Entry",
+                                         "The grievance number can only contain numbers and letters. No other "
+                                         "characters are allowed",
+                                         parent=self.frame)
+                return False
+        return True
+
+    def min_lenght(self):
+        """ check to verify that the grievance number string is at least four characters long. """
+        if len(self.data) < 4:
+            if self.frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The grievance number must be at least four characters long",
+                                     parent=self.frame)
+            return False
+        return True
+
+    def max_lenght(self):
+        """ check to verify that the grievance number string is not over 20 characters in lenght. """
+        if len(self.data) > 20:
+            if self.frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The grievance number must not exceed 20 characters in length.",
+                                     parent=self.frame)
+            return False
+        return True
+
+
+class AwardsChecker:
+    """ this class deals with awards for grievance settlements. """
+    def __init__(self):
+        self.frame = None
+        self.carrier = None
+        self.award = None  # input for awards
+        self.gats_array = None
+        self.is_dollar = None  # if the award is a dollar amt - True. if award is hour/rate - False
+
+    def check_all(self, frame, carrier, award, gats_array):
+        """ this method runs all checks for awards chekcker.
+        accepts a string arg for awards and a list of stringvars for gats descrepancies.
+        returns True if the checks pass or False if the checks do no pass. """
+        self.frame = frame
+        self.carrier = carrier
+        self.award = award
+        self.gats_array = gats_array
+        if not self.check_empty_award():  # make sure the award is not empty
+            return False
+        self.find_type()  # define self.is_dollar. if the award is a dollar amt - True. if award is hour/rate - False
+        if not self.check_list(self.award, "award"):  # run all checks on self.award
+            return False
+        for element in gats_array:  # run all checks on gats_array - is a list of stringvars, so break it down
+            if not self.check_list(element.get(), "gats discrepancies"):
+                return False
+        return True
+
+    def check_empty_award(self):
+        """ this checks that there is not a gats descrepancy while the award field is empty. """
+        if not self.award:  # if there is nothing in the award field
+            for element in self.gats_array:  # break down the list of gats stringvars
+                if element.get():  # if one of those stringvars has an value
+                    messagebox.showerror("Informal C Awards",
+                                         "If there is a value for gats descrepancies, the field for awards "
+                                         "for {} can not be blank.\n\nEither insert an award or delete the value for "
+                                         "the gats descrepancy.".format(self.carrier),
+                                         parent=self.frame)
+                    return False
+        return True
+
+    def find_type(self):
+        """ define self.is_dollar. if the award is a dollar amt - True. if award is hour/rate - False"""
+        self.is_dollar = True  # default - the award is a dollar amount
+        if "/" in self.award:  # if the award contains a '/' then it is an hour/rate award
+            self.is_dollar = False  # change is_dollar to false.
+
+    def check_list(self, check_this, value):
+        """ a list of checks that must be passed before input can be entered into the database """
+        if not check_this:  # return True if the award or gats discrepancy is empty
+            return True
+        if not self.count_characters(check_this, value):  # entries with more than 16 characters are not allowed
+            return False
+        if not self.check_raw(check_this, value):  # if unallowed characters are found
+            return False
+        if not self.count_slashes(check_this, value):  # if award contains more than one '/'
+            return False
+        if not self.check_award_type(check_this, value):  # check that award type for award/gats match.
+            return False
+        check_array = (check_this, )  # for dollar awards, only one item needs to be in the check array.
+        if "/" in check_this:  # for hour/rate awards, split the award by the '/' and check each element
+            check_array = check_this.split("/")
+        i = 0  # count iterations. The second check_element is the rate.
+        for check_element in check_array:
+            if not self.count_decimals(check_element, value):  # only one decimal point is allowed
+                return False
+            if not self.two_decimals_places(check_element, value):  # if any number has more than two decimal places
+                return False
+            if self.is_dollar:
+                if not self.check_empty_dollars(check_element, value):  # check that dollar amount is > zero.
+                    return False
+            else:
+                if not self.check_empty_hours(check_element, value, i):  # check that dollar amount is > zero.
+                    return False
+            if i == 1:
+                if not self.check_rate(check_element, value):
+                    return False
+            i += 1
+        return True
+
+    def check_raw(self, check_this, value):
+        """ this checks raw input for awards by checking each charcter and returning False if unallowed
+        characters are found """
+        allowed_characters = (".", " ", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+        for char in check_this:
+            if char not in allowed_characters:
+                messagebox.showerror("Informal C Awards",
+                                     "Only numbers and certain special characters ( '/' and '.') are allowed in "
+                                     "the {} field for {}. Instead got '{}'".format(value, self.carrier, check_this),
+                                     parent=self.frame)
+                return False
+        return True
+
+    def count_characters(self, check_this, value):
+        """ count the length of check this, return as false if it is longer than 13"""
+        if len(check_this) > 13:
+            messagebox.showerror("Informal C Awards",
+                                 "Entries longer than 13 characters are not allowed. The {} field for {} contains {} "
+                                 "characters.".format(value, self.carrier, len(check_this)),
+                                 parent=self.frame)
+            return False
+        return True
+
+    def count_slashes(self, check_this, value):
+        """ this counts the number of slashes and returns false if there is more than one. """
+        if check_this.count("/") > 1:
+            messagebox.showerror("Informal C Awards",
+                                 "The {} for {} may only contain one backslash ('/') to indicate an hour and rate."
+                                 .format(value, self.carrier),
+                                 parent=self.frame)
+            return False
+        return True
+
+    def check_award_type(self, check_this, value):
+        """ this checks that the award type (self.is_dollar) matches with the gats discrepancy type. """
+
+        def error_msg():
+            """ show error messagebox, kill progress bar """
+            messagebox.showerror("Informal C Awards", msg, parent=self.frame)
+
+        if value == "gats discrepancies":
+            if self.is_dollar and "/" in check_this:
+                msg = "The award type and gats discrepancies type do not match for {}. \n" \
+                      "The award type is a dollar amount but the gats discrepancy type is an hour/rate."\
+                    .format(self.carrier)
+                error_msg()
+                return False
+            if not self.is_dollar and "/" not in check_this:
+                msg = "The award type and gats discrepancies type do not match for {}. \n" \
+                      "The award type is an hour/rate but the gats discrepancy type is a dollar amount." \
+                    .format(self.carrier)
+                error_msg()
+                return False
+        return True
+
+    def check_rate(self, check_this, value):
+        """ check that the rate is acceptable. If not return False. """
+        if float(check_this) > 10:
+            messagebox.showerror("Data Input Error",
+                                 "Input error for {} in {} field. \n"
+                                 "Rates greater than 10 are not accepted. \n"
+                                 "Note the following rates would be expressed as: \n"
+                                 "{:<30} .50 or just .5\n"
+                                 "{:<30} 1.00 or just 1\n"
+                                 "{:<32} 1.50 or just 1.5\n"
+                                 "{:<33} 2.00 or just 2"
+                                 .format(self.carrier, value, "additional %50:", "straight time rate:",
+                                         "overtime rate:", "penalty rate:"),
+                                 parent=self.frame)
+            return False
+        return True
+
+    def check_empty_hours(self, check_element, value, i):
+        """ only run for hour/rate awards - if there is a backslash. Return False is either hour or rate is empty"""
+        hour_rate = ("hour", "rate")
+
+        def error_msg():
+            messagebox.showerror("Informal C Awards",
+                                 "For Hour/Rate Awards, both fields must have a value. In the {} field for {} "
+                                 "the {} does not have a value. \n"
+                                 "Instead got {}"
+                                 .format(value, self.carrier, hour_rate[i], check_element),
+                                 parent=self.frame)
+
+        if value == "award":
+            if not check_element or float(check_element) <= 0:
+                error_msg()
+                return False
+        if value == "gats discrepancies":
+            if not check_element or float(check_element) < 0:
+                error_msg()
+                return False
+        return True
+
+    def check_empty_dollars(self, check_this, value):
+        """ only run for dollar awards. return false if there is no award or the award is less than/equal to zero. """
+
+        def error_msg():
+            messagebox.showerror("Informal C Awards",
+                                 "Dollar awards must be greater than 0. In the {} field for {} "
+                                 "the award value is not greater than 0. \n"
+                                 "Instead got {}"
+                                 .format(value, self.carrier, check_this), parent=self.frame)
+
+        if value == "award":
+            if float(check_this) <= 0:
+                error_msg()
+                return False
+        if value == "gats discrepancies":
+            if float(check_this) < 0:
+                error_msg()
+                return False
+        return True
+
+    def count_decimals(self, check_this, value):
+        """ count the number of decimals. return False is there is more than one. """
+        if check_this.count(".") > 1:
+            messagebox.showerror("Informal C Awards",
+                                 "The {} for {} can have only one decimal points. Instead got: {}."
+                                 .format(value, self.carrier, check_this),
+                                 parent=self.frame)
+            return False
+        return True
+
+    def two_decimals_places(self, check_this, value):
+        """ how many decimal places? if more than 2, return false """
+        if "." in check_this:
+            if len(str(check_this).split(".")[1]) > 2:
+                messagebox.showerror("Informal C Awards",
+                                     "The {} for {} can not have more than 2 decimal places. Instead got: {}."
+                                     .format(value, self.carrier, check_this),
+                                     parent=self.frame)
+                return False
+        return True
+
+
+class IssueDecisionChecker:
+    """ this class will check 'issue' and 'decision' input for informal c issue and decision options. """
+    def __init__(self):
+        self.frame = None
+        self.data = None
+        self._type = ""  # is either 'issue' or 'decision'
+
+    def check_all(self, frame, data, _type):
+        """ this is a controller method running all other methods in the class """
+        self.frame = frame
+        self.data = data.strip()
+        self._type = _type  # is either 'article' or 'index'
+        if not self.not_empty():
+            return False
+        if not self.numeric():
+            return False
+        if not self.length():
+            return False
+        if not self.already_used():
+            return False
+        return True
+
+    def not_empty(self):
+        """ check to make sure that the input is not empty """
+        if not self.data:
+            msg = "The {} can not be blank. Please enter a the name of the {}. ".format(self._type, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def numeric(self):
+        """ this checks that that input is not numeric. """
+        if self.data.isnumeric():
+            msg = "The {} must not be a number. Instead got {}".format(self._type, self.data)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def length(self):
+        """ this checks that the length is not longer than 20 characters. """
+        if len(self.data) > 20:
+            msg = "The {} must not be longer than 20 characters. Instead got {}".format(self._type, self.data)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def already_used(self):
+        """ check the issue or decision to make sure that it is not already in use """
+        sql = ""
+        if self._type == "issue":
+            sql = "SELECT DISTINCT issue FROM informalc_issuescategories"
+        if self._type == "decision":
+            sql = "SELECT DISTINCT decision FROM informalc_decisioncategories"
+        usedoptions = inquire(sql)
+        usedoptions = distinctresult_to_list(usedoptions)
+        if self.data in usedoptions:
+            msg = "The value {} entered for {} is already in use. Consult the list of {} options to " \
+                  "select an option not already in use.".format(self.data, self._type, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+
+class IndexArticleChecker:
+    """ this class will check articles and indexes for informal c issue options """
+    def __init__(self):
+        self.frame = None
+        self.data = None
+        self._type = ""  # is either 'article', 'issue index' or 'decision index'
+
+    def check_all(self, frame, data, _type):
+        """ this is a controller method running all other methods in the class """
+        self.frame = frame
+        self.data = data
+        self._type = _type  # is either 'article', 'issue index' or 'decision index'
+        if not self.not_empty():
+            return False
+        if not self.number():
+            return False
+        self.data = int(self.data)  # convert the string to an integer.
+        if not self.range():
+            return False
+        if not self.already_used():
+            return False
+        return True
+
+    def not_empty(self):
+        """ check to make sure that the input is not empty """
+        if not self.data:
+            msg = "The {} can not be blank. Please enter a number for the {}. ".format(self._type, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def number(self):
+        """ returns False if the the data is not a number. """
+        if not isint(self.data):
+            msg = "The {} must be a number. Instead got {}".format(self._type, self.data)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def range(self):
+        """ returns False is the data is not between 0 and 1000 """
+        if 0 < self.data < 1000:
+            return True
+        msg = "The {} must be a value between 0 and 1000. Instead got {}".format(self._type, self.data)
+        messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+        return False
+
+    def already_used(self):
+        """ check the index to make sure that it is not already in use """
+        self.data = str(int(self.data))  # convert from string to int to string to eliminate leading zeros.
+        sql = ""
+        if self._type == "article":  # if checking article, duplicates are allowed
+            return True
+        if self._type == "issue index":
+            sql = "SELECT DISTINCT ssindex FROM informalc_issuescategories"
+        if self._type == "decision index":
+            sql = "SELECT DISTINCT ssindex FROM informalc_decisioncategories"
+        usedindexes = inquire(sql)
+        usedindexes = distinctresult_to_list(usedindexes)
+        if self.data in usedindexes:
+            msg = "The value {} entered for {} is already in use. Consult the list of issue options to " \
+                  "select a number not already in use.".format(self.data, self._type)
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+
+class DecisionTypeChecker:
+    """ this class will check types for informal c decision options """
+    def __init__(self):
+        self.frame = None
+        self.data = None
+
+    def check_all(self, frame, data):
+        """ this is a controller method running all other methods in the class """
+        self.frame = frame
+        self.data = data.lower().strip()
+        if not self.check_length():
+            return False
+        if not self.isalphanumeric():
+            return False
+        return True
+
+    def check_length(self):
+        """ returns false if the input is greater than 7 characters long"""
+        if len(self.data) > 7:
+            msg = f"The value given for decision type {self.data} exceeds 7 characters. " \
+                  f"Please enter a value with less than 8 characters. "
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+    def isalphanumeric(self):
+        """ returns false if the input is not alpha numeric """
+        if not good_character(self.data):
+            msg = f"The value given for decision type \'{self.data}\' contains special characters. " \
+                  f"Please enter a value with only numbers/letters (spaces and hyphens are also acceptable). "
+            messagebox.showerror("Informal C Settings", msg, parent=self.frame)
+            return False
+        return True
+
+
+def informalc_date_checker(frame, date, _type):
+    """ checks the date.
+    to skip the message box show error, pass None to the frame arg. """
+    try:
+        d = date.get().split("/")  # if the passed variable is a stringvar
+    except AttributeError:
+        d = date.split("/")  # if the passed variable is a string
     if len(d) != 3:
-        messagebox.showerror("Invalid Data Entry",
-                             "The date for the {} is not properly formatted.".format(typee),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The date for the {} is not properly formatted.".format(_type),
+                                 parent=frame)
+        return False
     for num in d:
         if not num.isnumeric():
-            messagebox.showerror("Invalid Data Entry",
-                                 "The month, day and year for the {} "
-                                 "must be numeric.".format(type),
-                                 parent=frame)
-            return "fail"
+            if frame:
+                messagebox.showerror("Invalid Data Entry",
+                                     "The month, day and year for the {} must be numeric.".format(_type),
+                                     parent=frame)
+            return False
     if len(d[0]) > 2:
-        messagebox.showerror("Invalid Data Entry",
-                             "The month for the {} must be no more than two digits"
-                             " long.".format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The month for the {} must be no more than two digits"
+                                 " long.".format(_type),
+                                 parent=frame)
+        return False
     if len(d[1]) > 2:
-        messagebox.showerror("Invalid Data Entry",
-                             "The day for the {} must be no more than two digits"
-                             " long.".format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The day for the {} must be no more than two digits"
+                                 " long.".format(_type),
+                                 parent=frame)
+        return False
     if len(d[2]) != 4:
-        messagebox.showerror("Invalid Data Entry",
-                             "The year for the {} must be four digits long."
-                             .format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The year for the {} must be four digits long."
+                                 .format(_type),
+                                 parent=frame)
+        return False
     try:
         date = datetime(int(d[2]), int(d[0]), int(d[1]))
         valid_date = True
@@ -2030,11 +2653,13 @@ def informalc_date_checker(frame, date, typee):
     except ValueError:
         valid_date = False
     if not valid_date:
-        messagebox.showerror("Invalid Data Entry",
-                             "The date entered for {} is not a valid date."
-                             .format(type),
-                             parent=frame)
-        return "fail"
+        if frame:
+            messagebox.showerror("Invalid Data Entry",
+                                 "The date entered for {} is not a valid date."
+                                 .format(_type),
+                                 parent=frame)
+        return False
+    return True
 
 
 class CarrierRecFilter:
@@ -2187,7 +2812,6 @@ class ProgressBarDe:
         """ changes the text of the progress bar """
         self.pb_text.config(text="{}".format(text))
         self.pb_root.update()
-        # projvar.root.update()
 
     def stop(self):
         """ stop and destroy the progress bar """
