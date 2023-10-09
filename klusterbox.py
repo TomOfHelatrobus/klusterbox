@@ -22,7 +22,8 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker, DateTimeChecker, GrievanceChecker, \
     IndexArticleChecker, IssueDecisionChecker, DecisionTypeChecker, distinctresult_to_list, \
     issuedecisionresult_sorter, AwardsChecker, AwardsFormatting
-from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet
+from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet, \
+    OtAvailSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase, DataBaseFix
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
@@ -13217,6 +13218,8 @@ class MainFrame:
         basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda: OTDistriSpreadsheet()
                                .create(self.win.topframe, projvar.invran_date_week[0], self.station.get(),
                                        "weekly", self.listoptions))
+        basic_menu.add_command(label="Availability Spreadsheet",
+                               command=lambda: OtAvailSpreadsheet().create(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
         basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
@@ -13243,7 +13246,8 @@ class MainFrame:
             basic_menu.entryconfig(7, state=DISABLED)
             basic_menu.entryconfig(8, state=DISABLED)
             basic_menu.entryconfig(9, state=DISABLED)
-            basic_menu.entryconfig(12, state=DISABLED)
+            basic_menu.entryconfig(10, state=DISABLED)
+            basic_menu.entryconfig(13, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)

@@ -3489,3 +3489,397 @@ class OffbidSpreadsheet:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
+
+
+class OtAvailSpreadsheet:
+    """ this will generate a spreadsheet that will display the hours and paid leave an otdl carrier has worked, 
+    and use this to tally how much availability that carrier has day to day. """
+    def __init__(self):
+        self.frame = None
+        self.pb = None  # progress bar object
+        self.pbi = 0  # progress bar count index
+        self.carrier_list = []  # build a carrier list
+        self.ot_carrier = None
+        self.wb = None  # workbook object
+        self.availability = None  # workbook object sheet
+        self.startdate = None  # start of the investigation range
+        self.enddate = None  # ending day of the investigation range
+        self.dates = []  # all the dates of the investigation range
+        self.rings = []  # all rings for all carriers in the carrier list
+        self.ws_header = None  # style
+        self.date_dov = None  # style
+        self.date_dov_title = None  # style
+        self.name_header = None  # style
+        self.col_header = None  # style
+        self.input_name = None  # style
+        self.input_s = None  # style
+        self.calcs = None  # style
+        self.list_header = None  # style
+        self.violation_recsets = []  # carrier info, daily hours, leavetypes and leavetimes
+        self.row = 1
+
+    def create(self, frame):
+        """ master method for calling methods"""
+        self.frame = frame
+        if not self.ask_ok():
+            return
+        self.get_dates()
+        self.get_carrierlist()
+        self.pb = ProgressBarDe(label="OTDL Weekly Availability Spreadsheet")
+        self.pb.max_count(len(self.carrier_list))  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
+        self.build_workbook()
+        self.get_styles()
+        self.set_dimensions()
+        self.build_headers()
+        self.carrierloop()
+        self.save_open()
+
+    def ask_ok(self):
+        """ continue if user selects ok. """
+        if messagebox.askokcancel("Spreadsheet generator",
+                                  "Do you want to generate a spreadsheet for OTDL availability?",
+                                  parent=self.frame):
+            return True
+        return False
+        
+    def get_dates(self):
+        """ get the dates of the investigation range from the project variables. """
+        date = projvar.invran_date_week[0]
+        self.startdate = projvar.invran_date_week[0]
+        self.enddate = projvar.invran_date_week[6]
+        for _ in range(7):
+            self.dates.append(date)
+            date += timedelta(days=1)
+
+    def get_carrierlist(self):
+        """ call the carrierlist class from kbtoolbox module to get the carrier list """
+        carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
+        for carrier in carrierlist:
+            for rec in carrier:
+                if rec[2] == "otdl":
+                    self.carrier_list.append(carrier[0])  # add record for each otdl carrier in carrier list
+                    break
+
+    def get_styles(self):
+        """ Named styles for workbook """
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                         alignment=Alignment(horizontal='right'))
+        self.name_header = NamedStyle(name="name_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
+                                      alignment=Alignment(horizontal='right'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
+                                     alignment=Alignment(horizontal='center'),
+                                     border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        self.input_name = NamedStyle(name="input_name", font=Font(bold=True, name='Arial', size=10),
+                                     alignment=Alignment(horizontal='left'))
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
+        self.calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
+                                border=Border(top=bd, right=bd, bottom=bd, left=bd),
+                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                alignment=Alignment(horizontal='right'))
+        self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+
+    def build_headers(self):
+        """ self.availability worksheet header - format cells """
+        self.pb.change_text("Building Availability...")
+        self.availability.merge_cells('A1:O1')
+        self.availability['A1'] = "OTDL Weekly Availability Worksheet"
+        self.availability['A1'].style = self.ws_header
+        self.availability['A3'] = "Date:"  # date label
+        self.availability['A3'].style = self.date_dov_title
+        self.availability.merge_cells('B3:H3')  # blank field for date
+        self.availability['B3'] = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
+        self.availability['B3'].style = self.date_dov
+        self.availability.merge_cells('I3:L3')  # pay period label
+        self.availability['I3'] = "Pay Period:"
+        self.availability['I3'].style = self.date_dov_title  # blank field for pay period
+        self.availability.merge_cells('M3:O3')
+        self.availability['M3'] = projvar.pay_period
+        self.availability['M3'].style = self.date_dov
+        self.availability['A4'] = "Station:"  # station label
+        self.availability['A4'].style = self.date_dov_title
+        self.availability.merge_cells('B4:O4')  # blank field for station
+        self.availability['B4'] = projvar.invran_station
+        self.availability['B4'].style = self.date_dov
+
+    def build_workbook(self):
+        """ creates the workbook object """
+        self.pb.change_text("Building workbook...")
+        self.wb = Workbook()  # define the workbook
+        self.availability = self.wb.active  # create first worksheet
+        self.availability.title = "availability"  # title first worksheet
+        self.availability.oddFooter.center.text = "&A"
+        
+    def set_dimensions(self):
+        """ adjust the height and width on the violations/ instructions page """
+        for x in range(2, 4):
+            self.availability.row_dimensions[x].height = 10  # adjust all row height
+        sheets = (self.availability, )
+        for sheet in sheets:
+            sheet.column_dimensions["A"].width = 16
+            sheet.column_dimensions["B"].width = 6
+            sheet.column_dimensions["C"].width = 2
+            sheet.column_dimensions["D"].width = 6
+            sheet.column_dimensions["E"].width = 2
+            sheet.column_dimensions["F"].width = 6
+            sheet.column_dimensions["G"].width = 2
+            sheet.column_dimensions["H"].width = 6
+            sheet.column_dimensions["I"].width = 2
+            sheet.column_dimensions["J"].width = 6
+            sheet.column_dimensions["K"].width = 2
+            sheet.column_dimensions["L"].width = 6
+            sheet.column_dimensions["M"].width = 2
+            sheet.column_dimensions["N"].width = 6
+            sheet.column_dimensions["O"].width = 2
+
+    def carrierloop(self):
+        """ loop for each carrier """
+        self.row = 6  # allow space for headers
+        first_page = True
+        carriers_displayed = 0
+        for carrier in self.carrier_list:
+            self.pbi += 1
+            self.pb.move_count(self.pbi)  # increment progress bar
+            self.pb.change_text("Checking: {}".format(self.ot_carrier))
+            if carrier[2] == "otdl":
+                self.ot_carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
+                self.display_recs()
+                carriers_displayed += 1
+            if first_page and carriers_displayed == 5:  # allow only five carriers per page.
+                self.make_pagebreak()  # insert a page break
+                carriers_displayed = 0  # reinitialize the counter
+                first_page = False
+            if not first_page and carriers_displayed == 6:
+                self.make_pagebreak()  # insert a page break
+                carriers_displayed = 0  # reinitialize the counter
+
+    def display_recs(self):
+        """ build the carrier and ring recs into the spreadsheet. """
+        merge_first = ("B", "D", "F", "H", "J", "L", "N")
+        merge_second = ("C", "E", "G", "I", "K", "M", "O")
+        col_increment = 2
+        cell = self.availability.cell(row=self.row, column=1)  # carrier label
+        cell.value = "carrier:  "
+        cell.style = self.name_header
+        cell = self.availability.cell(row=self.row, column=2)  # carrier name input
+        cell.value = self.ot_carrier
+        cell.style = self.input_name
+        self.availability.merge_cells('B' + str(self.row) + ':O' + str(self.row))
+        self.row += 1
+        # row headers
+        cell = self.availability.cell(column=1, row=self.row + 1)  # paid leave label
+        cell.value = "paid leave: "
+        cell.style = self.name_header
+        self.availability.row_dimensions[self.row + 1].height = 12  # adjust all row height
+        cell = self.availability.cell(column=1, row=self.row + 2)  # hours worked label
+        cell.value = "hours worked: "
+        cell.style = self.name_header
+        self.availability.row_dimensions[self.row + 2].height = 12  # adjust all row height
+        cell = self.availability.cell(column=1, row=self.row + 3)  # cumulative hours label
+        cell.value = "cumulative hours: "
+        cell.style = self.name_header
+        self.availability.row_dimensions[self.row + 3].height = 12  # adjust all row height
+        cell = self.availability.cell(column=1, row=self.row + 4)  # cumulative hours label
+        cell.value = "available weekly: "
+        cell.style = self.name_header
+        self.availability.row_dimensions[self.row + 4].height = 12  # adjust all row height
+        cell = self.availability.cell(column=1, row=self.row + 5)  # cumulative hours label
+        cell.value = "available daily: "
+        cell.style = self.name_header
+        self.availability.row_dimensions[self.row + 5].height = 12  # adjust all row height
+        # use loops and an array to build the column headers
+        column_headers = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        for i in range(7):
+            # ------------------------------------------------------------------------------------- column headers row
+            cell = self.availability.cell(column=i + col_increment, row=self.row)
+            cell.value = column_headers[i]
+            cell.style = self.col_header
+            self.availability.merge_cells(str(merge_first[i]) + str(self.row) + ":" +
+                                          str(merge_second[i]) + str(self.row))
+            # ----------------------------------------------------------------------------------------- paid leave row
+            rings = self.get_rings(self.dates[i])  # get the total hours, leave type and leave hours for the carrier
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 1)  # column headers row
+            cell.value = self.format_time(rings[2])  # format and display leave time
+            cell.style = self.input_s
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            cell = self.availability.cell(column=i + 1 + col_increment, row=self.row + 1)  # column headers row
+            cell.value = self.leave_code(rings[1])  # format and display leave code
+            cell.style = self.col_header
+            # ---------------------------------------------------------------------------------------- total hours row
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 2)  # column headers row
+            cell.value = self.format_time(rings[0])
+            cell.style = self.input_s
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.availability.merge_cells(str(merge_first[i]) + str(self.row + 2) + ":" +
+                                          str(merge_second[i]) + str(self.row + 2))
+            # --------------------------------------------------------------------------------------- cumulative hours
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 3)
+            cell.value = self.cum_formula(i, self.row)
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.availability.merge_cells(str(merge_first[i]) + str(self.row + 3) + ":" +
+                                          str(merge_second[i]) + str(self.row + 3))
+            # -------------------------------------------------------------------------------------------- availability
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 4)
+            cell.value = self.avail_formula(i, self.row)
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.availability.merge_cells(str(merge_first[i]) + str(self.row + 4) + ":" +
+                                          str(merge_second[i]) + str(self.row + 4))
+            # --------------------------------------------------------------------------------------daily availability
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 5)
+            cell.value = self.avail_daily(i, self.row)
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.availability.merge_cells(str(merge_first[i]) + str(self.row + 5) + ":" +
+                                          str(merge_second[i]) + str(self.row + 5))
+            col_increment += 1  # move over two columns
+        self.row += 7
+
+    def get_rings(self, date):
+        """ get individual carrier rings for the day - define self.rings"""
+        sql = "SELECT total, leave_type, leave_time FROM rings3 WHERE carrier_name = '%s' AND rings_date = '%s' " \
+              "ORDER BY rings_date, carrier_name" % (self.ot_carrier, date)
+        rings = inquire(sql)
+        totalhours = 0.0  # set default as an empty string
+        lv_type = ""
+        lv_hours = ""
+        if rings:  # if rings record is not blank
+            totalhours = float(Convert(rings[0][0]).zero_not_empty())
+            lv_type = rings[0][1]
+            lv_hours = rings[0][2]
+        return [totalhours, lv_type, lv_hours]
+
+    @staticmethod
+    def leave_code(leave):
+        """ converts the leave type to a one letter code. """
+        if leave == "annual":
+            return "A"
+        elif leave == "sick":
+            return "S"
+        elif leave == "holiday":
+            return "H"
+        elif leave == "other":
+            return "O"
+        elif leave == "combo":
+            return "C"
+        elif leave == "none":
+            return ""
+        else:
+            return ""
+
+    @staticmethod
+    def format_time(time):
+        """ format the time for leave time and total time """
+        if time == "0.0" or time == "0":
+            return ""
+        elif isfloat(time):
+            return float(time)
+        else:
+            return time
+
+    @staticmethod
+    def cum_formula(day, row):
+        """ return a formula for cumulative hours """
+        if day == 0:  # if the day is saturday
+            return "=SUM(%s!B%s+B%s)" % ('availability', str(row + 1), str(row + 2))
+        if day == 1:  # if the day is sunday
+            return "=SUM(%s!B%s+D%s+D%s)" % ('availability', str(row + 3), str(row + 1), str(row + 2))
+        if day == 2:  # if the day is monday
+            return "=SUM(%s!D%s+F%s+F%s)" % ('availability', str(row + 3), str(row + 1), str(row + 2))
+        if day == 3:  # if the day is tuesday
+            return "=SUM(%s!F%s+H%s+H%s)" % ('availability', str(row + 3), str(row + 1), str(row + 2))
+        if day == 4:  # if the day is wednesday
+            return "=SUM(%s!H%s+J%s+J%s)" % ('availability', str(row + 3), str(row + 1), str(row + 2))
+        if day == 5:  # if the day is thursday
+            return "=SUM(%s!J%s+L%s+L%s)" % ('availability', str(row + 3), str(row + 1), str(row + 2))
+        if day == 6:  # if the day is friday
+            return "=SUM(%s!L%s+N%s+N%s)" % ('availability', str(row + 3), str(row + 1), str(row + 2))
+
+    @staticmethod
+    def avail_formula(day, row):
+        """ return a formula for cumulative hours """
+        if day == 0:  # if the day is saturday
+            return "=MAX(%s-%s!B%s, 0)" % (str(60), 'availability', str(row + 3))
+        if day == 1:  # if the day is sunday
+            return "=MAX(%s-%s!D%s, 0)" % (str(60), 'availability', str(row + 3))
+        if day == 2:  # if the day is monday
+            return "=MAX(%s-%s!F%s, 0)" % (str(60), 'availability', str(row + 3))
+        if day == 3:  # if the day is tuesday
+            return "=MAX(%s-%s!H%s, 0)" % (str(60), 'availability', str(row + 3))
+        if day == 4:  # if the day is wednesday
+            return "=MAX(%s-%s!J%s, 0)" % (str(60), 'availability', str(row + 3))
+        if day == 5:  # if the day is thursday
+            return "=MAX(%s-%s!L%s, 0)" % (str(60), 'availability', str(row + 3))
+        if day == 6:  # if the day is friday
+            return "=MAX(%s-%s!N%s, 0)" % (str(60), 'availability', str(row + 3))
+
+    @staticmethod
+    def avail_daily(day, row):
+        """ return a formula for cumulative hours """
+        if day == 0:  # if the day is saturday
+            return "=MIN(MAX(%s-%s!B%s, 0), %s!B%s)" % \
+                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+        if day == 1:  # if the day is sunday
+            return "=MIN(MAX(%s-%s!D%s, 0), %s!D%s)" % \
+                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+        if day == 2:  # if the day is monday
+            return "=MIN(MAX(%s-%s!F%s, 0), %s!F%s)" % \
+                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+        if day == 3:  # if the day is tuesday
+            return "=MIN(MAX(%s-%s!H%s, 0), %s!H%s)" % \
+                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+        if day == 4:  # if the day is wednesday
+            return "=MIN(MAX(%s-%s!J%s, 0), %s!J%s)" % \
+                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+        if day == 5:  # if the day is thursday
+            return "=MIN(MAX(%s-%s!L%s, 0), %s!L%s)" % \
+                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+        if day == 6:  # if the day is friday
+            return "=MIN(MAX(%s-%s!N%s, 0), %s!N%s)" % \
+                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+
+    def make_pagebreak(self):
+        """ create a page break """
+        try:
+            self.availability.page_breaks.append(Break(id=self.row))
+            self.row += 1
+        except AttributeError:
+            self.availability.row_breaks.append(Break(id=self.row))  # effective for windows
+            self.row += 1
+
+    def save_open(self):
+        """ save the spreadsheet and open """
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving...")
+        self.pb.stop()
+        xl_filename = "kb_wa" + str(format(projvar.invran_date_week[0], "_%y_%m_%d")) + ".xlsx"
+        try:
+            self.wb.save(dir_path('weekly_availability') + xl_filename)
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.frame)
+            if sys.platform == "win32":  # open the text document
+                os.startfile(dir_path('weekly_availability') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/weekly_availability/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('weekly_availability') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not generated. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=self.frame)
+    
