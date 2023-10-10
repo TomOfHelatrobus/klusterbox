@@ -62,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 5.08  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Oct 3, 2023"  # format is Jan 1, 2022
+version = 6.00  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Oct 9, 2023"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -1411,7 +1411,7 @@ class InformalC:
             results = inquire(sql)
             unique_carrier = []
             for carrier in results:
-                if carrier[0] not in unique_carrier and carrier[0] is not "class action":
+                if carrier[0] not in unique_carrier and carrier[0] != "class action":
                     if carrier[0]:
                         unique_carrier.append(carrier[0])
             unique_carrier.sort()

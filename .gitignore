@@ -43,11 +43,6 @@ playground
 env
 .vs
 
-# ignore pip files
-
-Pipfile
-Pipfile.lock
-
 # ignore all DS Store files
 
 .DS_Store
