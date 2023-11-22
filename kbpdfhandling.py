@@ -1193,11 +1193,12 @@ class PdfConverter:
                 self.parent.lookforroute = False
 
         def find_secondlevel(self, e):
-            """ intercept the second level """
+            """ intercept the second level. extra elements can be pulled into the level array. these should be
+             harmless. the goal is to capture the first two"""
             if self.parent.lookfor2level:
                 if re.match(r"[0-9]{2}$", e):
                     self.parent.level.append(e)
-                self.parent.lookfor2level = False
+                    self.parent.lookfor2level = False
 
         def trap_route(self, e):
             """ set trap to catch route # on the next line """
@@ -1317,6 +1318,7 @@ class PdfConverter:
                 # if the route count is less than the jobs count, fill the route count
                 self.parent.routes = PdfConverterFix(self.parent.routes).route_filler(len(self.parent.jobs))
                 for i in range(len(self.parent.jobs)):
+                    print(self.parent.lastname, i, self.parent.level, self.parent.routes)
                     base_line = [self.parent.base_temp[i],
                                  '"{}"'.format(self.parent.jobs[i].replace("-", "").strip()),
                                  '"0000"', '"7220-10"',

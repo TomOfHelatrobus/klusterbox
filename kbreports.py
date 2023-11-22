@@ -1306,22 +1306,23 @@ class InformalCReports:
                 totalhours = "{:,.2f}".format(float(self.cum_hourrate))
                 totalgatsdollars = "${:,.2f}".format(float(self.cum_gats_dollar))
                 totalgatshours = "{:,.2f}".format(float(self.cum_gats_hourrate))
+                title_row = ["	Settlement Awards:\n", ]
                 if self.select_grv:
-                    firstrow = ["         Carrier Name             Awards    Gats Descrepancies\n", ]
+                    firstrow = ["        Carrier Name              Awards    Gats Descrepancies\n", ]
                 else:
-                    firstrow = ["         Grievance Number         Awards    Gats Descrepancies\n", ]
+                    firstrow = ["        Grievance Number          Awards    Gats Descrepancies\n", ]
                 line_row = ["    --------------------------------------------------------------\n", ]
                 noaward_label = ["														  no award\n"]
                 dollars_label = ["														   dollars\n"]
                 hourrate_label = ["													     hour/rate\n"]
-                totaldollarsrow = ["    {:<19}{:>17}\n".format("Cumulative dollars:", totaldollars), ]
-                totalhoursrow = ["    {:<19}{:>17}\n".format("Cumulative hours:  ", totalhours), ]
+                totaldollarsrow = ["    {:<23}{:>13}\n".format("    Cumulative dollars:", totaldollars), ]
+                totalhoursrow = ["    {:<23}{:>13}\n".format("    Cumulative hours:  ", totalhours), ]
                 totalgatsdollarsrow = \
-                    ["    {:<36}{:>15}\n".format("Cumulative gats dollar descepancies:", totalgatsdollars), ]
+                    ["    {:<40}{:>11}\n".format("    Cumulative gats dollar descepancies:", totalgatsdollars), ]
                 totalgatshoursrow = \
-                    ["    {:<36}{:>15}\n".format("Cumulative gats hour descepancies:  ", totalgatshours), ]
+                    ["    {:<40}{:>11}\n".format("    Cumulative gats hour descepancies:  ", totalgatshours), ]
                 skip_line = ["\n"]
-                self.award_stack = firstrow + line_row
+                self.award_stack = title_row + firstrow + line_row  # build the award stack line by line
                 if noaward_stack:
                     self.award_stack += noaward_label
                     self.award_stack += noaward_stack
@@ -1345,7 +1346,7 @@ class InformalCReports:
                 if self.cum_gats_hourrate:
                     self.award_stack += totalgatshoursrow
             else:
-                self.award_stack = ["    There are no awards entered for this settlement."]
+                self.award_stack = ["    There are no awards entered for this settlement.\n"]
 
     class IndexReports:
         """ get index data from db, sort the data into 'first array' and 'second array' for each index, 
@@ -1409,7 +1410,7 @@ class InformalCReports:
                 "    The settlement for this grievance is included in the batch settlement for: \n",
                 "    Gats reports (this text generated in error): \n"
             )
-            line_text = "    -----------------------------------------------------------------------\n"
+            line_text = "    -------------------------------------------------------------------------\n"
             for i in range(4):
                 is_gats = False  # detect is the gats report index is being read.
                 if i == 3:  # since the gats report is the fourth index
@@ -1421,21 +1422,21 @@ class InformalCReports:
                     for r in self.first_array[i]:
                         if not is_gats:  # if the gats report is being read
                             rec = self.get_recforindex(r)  # get the grv/set info for the grievance
-                            text = "    {:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
+                            text = "    {:<4} {:<16} {:<23} {:<10}  {:<20}\n".format(count, r, rec[0], rec[1], rec[2])
                         else:  # use alternate format for gats reports
                             text = "    {:<4}{:<20}\n".format(count, r)
                         self.reports_array.append(text)  # add this to text to be displayed
                         count += 1
+                    self.reports_array.append("\n")  # add blank line for formatting to be displayed
                 if self.second_array[i]:  # if there is something in the second array
                     self.reports_array.append(second_message[i])
                     self.reports_array.append(line_text)
                     count = 1
                     for r in self.second_array[i]:
                         rec = self.get_recforindex(r)  # get the grv/set info for the grievance
-                        text = "    {:<4} {:<16}{:<20}{:<15}{:<20}\n".format(count, r, rec[0], rec[1], rec[2])
+                        text = "    {:<4} {:<16}{:<23} {:<10}  {:<20}\n".format(count, r, rec[0], rec[1], rec[2])
                         self.reports_array.append(text)  # add this to text to be displayed
                         count += 1
-                if self.first_array[i] or self.second_array[i]:
                     self.reports_array.append("\n")  # add blank line for formatting to be displayed
 
         @staticmethod
@@ -1449,12 +1450,18 @@ class InformalCReports:
             meetingdate = "no date"
             if grv_result[0][1]:
                 meetingdate = Convert(grv_result[0][1]).dtstring_to_backslashdate()
+            # search for any decisions
             sql = "SELECT decision FROM informalc_settlements WHERE grv_no = '%s'" % sub_grv_no
             set_result = inquire(sql)
-            decision = "pending"
-            if set_result:
+            # search for any batch settlements
+            sql = "SELECT main FROM informalc_batchindex WHERE sub = '%s'" % sub_grv_no
+            batch_result = inquire(sql)
+            decision = "pending"  # the default value is pending if there is no decision or batch settlement
+            if set_result:  # if there is a decision, use it.
                 if set_result[0][0]:
                     decision = set_result[0][0]
+            if batch_result:  # if there is a batch settlement, use 'batch settlement' as the decision
+                decision = "batch settlement"
             return [issue, meetingdate, decision]
 
     class EverythingReport:
@@ -1466,7 +1473,7 @@ class InformalCReports:
             The count is the line number. If the line number is over 99, a new line is created to avoid
             the line number exceeding it's column. """
             everything_stack = []
-            # ------------------------------------------------------------------------------------configure first line
+            # ---------------------------------------------------------------------------------- configure first lines
             if count:
                 num_space = 3 - (len(str(count)))  # number of spaces for number
                 space = " "
@@ -1498,10 +1505,11 @@ class InformalCReports:
                 # only display proof due and documentation if decision is monetary remedy, back pay or adjustment.
                 if rec[11] in ("monetary remedy", "back pay", "adjustment"):
                     everything_stack.append("    Proof Due:          " + proof + "\n")
-                    everything_stack.append("    Documentation:      " + rec[13] + "\n\n")
+                    everything_stack.append("    Documentation:      " + rec[13] + "\n")
+                    pass
             else:  # if there is no settlement record...
                 everything_stack.append("\n")
-                everything_stack.append("    There is no settlement entered for this grievance. \n\n")
+                everything_stack.append("    There is no settlement entered for this grievance. \n")
             return everything_stack
 
     def everything_all_report(self):
@@ -1522,24 +1530,31 @@ class InformalCReports:
         for sett in result:
             pb.change_text("Reading settlement: {}".format(sett[2]))  # update the text of the progress bar
             pb.move_count(i)
-            # ---------------------------------------------------------------------------------- get everything stack
+            # ---------------------------------------------------------------------------------------- get all stacks
+            award_stack = None
             everything_stack = self.EverythingReport().run(sett, count=i)
+            index_reports = self.IndexReports().run(sett[2])
+            if sett[11] in ("monetary remedy", "back pay"):  # skip if decision is not either.
+                award_stack = self.AwardReports().run_grievance(sett[2])
+            if i != 1:
+                report.write("\n\n")
+            # --------------------------------------------------------------------------------- write everything stack
             for row in everything_stack:
                 report.write(row)
-            # ------------------------------------------------------------------------- get index/associations report
-            index_reports = self.IndexReports().run(sett[2])
+            if index_reports or award_stack:
+                report.write("\n")
+            # ----------------------------------------------------------------------- write index/associations report
             for ir in index_reports:
                 report.write(ir)  # write index/associations line by line
-            if index_reports:
-                report.write("\n")
-            # ------------------------------------------------------------------------------------- get awards stack
-            if sett[11] in ("monetary remedy", "back pay"):  # skip if decision is not either.
-                # grv_stack = self.GrvAwardReports().run(sett[2])
-                grv_stack = self.AwardReports().run_grievance(sett[2])
-                for row in grv_stack:
+            # ----------------------------------------------------------------------------------- white awards stack
+            if award_stack:
+                for row in award_stack:
                     report.write(row)
+            # --------------------------------------------------------------------------------------- bottom padding
+            if not index_reports or award_stack:  # new lines for readability
+                report.write("\n\n")
+            else:
                 report.write("\n")
-            report.write("\n\n")
             i += 1
         report.close()
         pb.stop()
@@ -1825,10 +1840,10 @@ class InformalCReports:
                                              gats_hour, gats_dollar))
                     if gi != 0:  # if there is more than one gats number (s_gats), write them on their own line
                         report.write('{:<20}{:<12}\n'.format("", s_gats[gi]))
-                    if i % 3 == 0:  # every third line, insert a line a for readability
-                        report.write(
-                            "      -------------------------------------------------------------------------------"
-                            "----\n")
+                if i % 3 == 0:  # every third line, insert a line a for readability
+                    report.write(
+                        "      -------------------------------------------------------------------------------"
+                        "----\n")
                 i += 1
             elif gats_dollar != "   ----" and gats_hour != "   ----":
                 for gi in range(len(s_gats)):  # for gats_no in s_gats:
@@ -1838,9 +1853,9 @@ class InformalCReports:
                                              gats_hour, gats_dollar))
                     if gi != 0:  # if there is more than one gats number (s_gats), write them on their own line
                         report.write('{:<20}{:<12}\n'.format("", s_gats[gi]))
-                    if i % 3 == 0:  # every third line, insert a line a for readability
-                        report.write("      ---------------------------------------------------------------------"
-                                     "-------------\n")
+                if i % 3 == 0:  # every third line, insert a line a for readability
+                    report.write("      ---------------------------------------------------------------------"
+                                 "-------------\n")
                 i += 1
             pb_counter += 1  # increment the count of the progress bar
         report.write(
@@ -1996,7 +2011,7 @@ class InformalCReports:
         """ this a summary of all grievances which do not have settlement records. """
         no_settlement = []
         for s in self.parent.parent.search_result:  # loop through all results
-            if not s[8]:  # if there is no grievance number in the settlement portion of the array
+            if not s[8] and not s[11]:  # if there is no grievance number in the settlement portion of the array
                 no_settlement.append(s)  # add to a list of grvs with no settlement
         if len(no_settlement) == 0:
             msg = "There are no records matching your search results. "
@@ -2259,24 +2274,26 @@ class InformalCReports:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = "infc_grv_list" + "_" + stamp + ".txt"
         report = open(dir_path('infc_grv') + filename, "w")
-        # --------------------------------------------------------------------------------------- get everything stack
+        # ---------------------------------------------------------------------------------------- get all stacks
+        award_stack = None
         everything_stack = self.EverythingReport().run(grv_info)
+        index_reports = self.IndexReports().run(grv_info[2])
+        if grv_info[11] in ("monetary remedy", "back pay"):  # only run if settlement is monetary or back pay
+            award_stack = self.AwardReports().run_grievance(grv_info[2])
+        # --------------------------------------------------------------------------------- write everything stack
         for row in everything_stack:
             report.write(row)
-        # ------------------------------------------------------------------------------- get index/associations report
-        index_reports = self.IndexReports().run(grv_info[2])
+        if index_reports or award_stack:
+            report.write("\n")
+        # ----------------------------------------------------------------------- write index/associations report
         for ir in index_reports:
             report.write(ir)  # write index/associations line by line
-        if index_reports:
-            report.write("\n")
-        # ------------------------------------------------------------------------------------------ get awards stack
-        if grv_info[11] in ("monetary remedy", "back pay"):  # only run if settlement is monetary or back pay
-            # grv_stack = self.GrvAwardReports().run(grv_info[2])
-            grv_stack = self.AwardReports().run_grievance(grv_info[2])
-            for row in grv_stack:
+        # ----------------------------------------------------------------------------------- white awards stack
+        if award_stack:
+            for row in award_stack:
                 report.write(row)
-        report.close()
         # ------------------------------------------------------------------------------------------- save and open
+        report.close()
         try:
             if sys.platform == "win32":
                 os.startfile(dir_path('infc_grv') + filename)

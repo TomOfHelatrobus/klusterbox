@@ -1540,8 +1540,8 @@ class SpeedSetCheck:
             pass
         else:
             error = "     ERROR: The docs input must be either 'non-applicable', 'no', 'yes', 'unknown', \n" \
-                    "            'yes - not paid', 'yes - in part', 'yes - verified', 'no - moot' or \n" \
-                    "            'no - ignore'. No other values are allowed. Got: {}\n".format(self.docs)
+                    "            'yes-not paid', 'yes-in part', 'yes-verified', 'no-moot' or \n" \
+                    "            'no-ignore'. No other values are allowed. Got: {}\n".format(self.docs)
             self.error_array.append(error)
             self.parent.allowaddrecs = False  # do not allow this speedcell be be input into database
             return False

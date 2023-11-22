@@ -1,0 +1,62 @@
+how to delete a virtual environment in mac os:
+
+- Open finder.
+- use Command + ^ to navigate up to Macintosh HD.
+- use Shift + Command + . to show all hidden folders.
+
+- Follow the path: /Users/thomasweeks/.local/virtualenvs.
+- Right click + Remove to Trash on the offending venv (virtual environment). 
+
+- Navigate to the python project folder. 
+- Right click + Remove to Trash on the venv folder. 
+
+how to set up a pipenv (virtual environment) 
+
+- Open terminal
+- at the prompt enter: python3 -m pip list
+- if the list does not show pipenv, then install it
+	- at the prompt enter: pip install pipenv
+		or: python3 -m pip install pipenv
+- recheck pip list to confirm that pipenv is installed.
+
+- Navigate to python project folder.
+- at the prompt enter: pipenv shell
+- if you want to create a virtual environment with a specific version of python:
+	- ensure that the version of python is in the applications folder
+	- at the prompt enter: pipenv install --python 
+
+how to install project requirements
+
+- ensure the requirements file from the klusterbox project folder is present.
+- enter: pip install -r requirements.txt
+
+- to upgrade a package enter: pip install <package_name> --upgrade
+
+
+How to remove python in mac os
+
+- Open finder.
+- use Command + ^ to navigate up to Macintosh HD.
+- use Shift + Command + . to show all hidden folders.
+
+- Follow the path: /Applications/Python <version>.
+- Right click + Remove to Trash on the offending python version.
+
+- Follow the path: /Library/Frameworks/Python.framework.
+- Right click + Remove to Trash on Python alias and "Current" Folder.
+- expand Versions Folder.
+- Right click + Remove to Trash on the offending pythonversion/s.
+- (optional) Right click + Remove to Trash on the entire Python.framework folder
+
+- Follow the path: /usr/local/bin/python.
+- Right click + Remove to Trash on Python<version> alias
+
+To install python using brew
+- at the prompt enter: brew install python-gdbm@3.11
+
+To display the PATH in terminal:
+- enter: echo $PATH
+
+To put a directory in PATH:
+- enter: export PATH=</PATH/TO/PYTHON>$PATH
+		for example: export PATH=/Library/Frameworks/Python.framework/Versions/3.11/bin:$PATH

@@ -315,6 +315,7 @@ class InformalC:
                                command=lambda: InformalCIndex().grievant_guide(self.station))
         menubar.add_cascade(label="Speedsheet", menu=speed_menu)
         projvar.root.config(menu=menubar)
+        projvar.root.update()  # root update
 
     def station_screen(self, frame):
         """ this allows the user to change/ select the station """
@@ -642,6 +643,7 @@ class InformalC:
             levelframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
             self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
             projvar.root.update()
+
         Label(levelframe, text="Search by level:", width=29, anchor="w") \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         om = OptionMenu(levelframe, self.option_level, "include all", "selection")
@@ -681,6 +683,7 @@ class InformalC:
             signedframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
             self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
             projvar.root.update()
+
         Label(signedframe, text="Search by signed date:", width=29, anchor="w") \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         om = OptionMenu(signedframe, self.option_signeddate, *self.date_options)
@@ -752,6 +755,7 @@ class InformalC:
             proofdueframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
             self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
             projvar.root.update()
+
         Label(proofdueframe, text="Search by proofdue date:", width=29, anchor="w") \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         om = OptionMenu(proofdueframe, self.option_proofduedate, *self.date_options)
@@ -791,6 +795,7 @@ class InformalC:
             docsframe.bind('<Configure>', lambda e: self.win.c.configure(scrollregion=self.win.c.bbox("all")))
             self.win.topframe.bind("<Configure>", self.win.detect_resize)  # track when the window changes size
             projvar.root.update()
+
         Label(docsframe, text="Search by docs:", width=29, anchor="w") \
             .grid(row=0, column=0, columnspan=4, sticky="w")
         om = OptionMenu(docsframe, self.option_docs, "include all", "selection")
@@ -1112,7 +1117,10 @@ class InformalC:
         if self.option_docs.get() == "selection":  # shows all options in list
             docs_selections = []
             for index in self.docs_listbox.curselection():
-                docs_selections.append(self.doc_options[index])
+                if self.doc_options[index] == 'no status':  # replace 'no status' with an empty string
+                    docs_selections.append('')
+                else:
+                    docs_selections.append(self.doc_options[index])
             if docs_selections:  # if not empty, write the sql 'where' statement
                 docs_sql = "("  # start the sql statment
                 i = 0
@@ -1151,7 +1159,6 @@ class InformalC:
             self.search_grv_result = inquire(self.grv_sql)
         else:
             self.search_grv_result = []
-
         # ----------------------------------------------------------------------------------------- ---- settlement sql
         where = ""  # initialize the sql statement builder
         where_array = []
@@ -1232,19 +1239,49 @@ class InformalC:
         else:
             self.merge_search_results(frame, showtime=False)
 
+    def join_list(self, grvrecs, setrecs):
+        """ this method works for the merge search results to combine the recs from the grievance table and
+        recs from the settlement table. """
+        if self.blank_criteria:  # if there is no search criteria
+            return grvrecs  # return all grievance records
+        elif not grvrecs and not setrecs:  # if there are no grv records not settlement records
+            return []
+        elif grvrecs and not setrecs:  # if there are grv recs but not set recs
+            return grvrecs
+        elif setrecs and not grvrecs:  # if there are set recs but no grv recs
+            return setrecs
+        else:  # if there are both grv AND set recs, make joint array where elements are in both arrays.
+            return [x for x in grvrecs if x in setrecs]
+
     def merge_search_results(self, frame, showtime=True):
         """ search results for grievances and settlements need to be combined to show grievance recs and
         settlement recs as one record. showtime=False is passed from self.refresh_search,
-        so that self.showtime() isn't run """
-        #  get a list of grievances with no corrosponding settlement
-        joint = []  # merge both list of distinct grievence/settlement grv numbers into one joint list
+        so that self.showtime() isn't run .
+        the search_result index is formatted as follows:
+                    [0]grievant - grievance records
+                    [1]station
+                    [2] grv_no
+                    [3] startdate
+                    [4] enddate
+                    [5] meetingdate
+                    [6] issue
+                    [7] article
+                    [8] grv_no - settlement records
+                    [9] level
+                    [10] date_signed
+                    [11] decision (change to 'in batch') if a part of a batch settlement
+                    [12] proofdue
+                    [13] docs """
+        grvrecs = []
+        setrecs = []
         if self.search_grv_result:
             for grv in self.search_grv_result:
-                joint.append(grv[0])
+                grvrecs.append(grv[0])
         if self.search_set_result:
             for sett in self.search_set_result:
-                if sett[0] not in joint:  # avoid duplicates
-                    joint.append(sett[0])
+                setrecs.append(sett[0])
+        # merge both list of distinct grievence/settlement grv numbers into one joint list
+        joint = self.join_list(grvrecs, setrecs)
         if self.gats.get() == "yes":  # if self.gats is 'yes' revise list to show only those with gats reports
             joint = [x for x in joint if x in self.search_gat_result]
         if self.gats.get() == "no":  # if self.gats is 'no' revise list to show only those with no gats reports
@@ -1259,8 +1296,15 @@ class InformalC:
             set_results = [list(x) for x in results_raw]
             if set_results:  # merge the records of those searches into one record then add it to search results.
                 self.search_result.append(results[0] + set_results[0])
-            else:
-                self.search_result.append(results[0] + default_set)
+            else:  # if there are is no record for a settlement.
+                sql = "SELECT main FROM informalc_batchindex WHERE sub = '%s'" % number  # search if batch settlement
+                results_raw = inquire(sql)
+                batch_results = [list(x) for x in results_raw]
+                if batch_results:  # if there is a record in the batch index
+                    batch_set = ['', '', '', 'in batch: ' + str(batch_results[0][0]), '', '', '']  # if there is a rec
+                    self.search_result.append(results[0] + batch_set)
+                else:  # if there is no record in the batch index, go with empty strings
+                    self.search_result.append(results[0] + default_set)
         sortby = (3, 4, 5, 10, 12)  # startdate: 3, enddate: 4, meetingdate: 5, date_signed: 10, proofdue:12
         # recent to earliest: 0, earliest to recent: 1 (True or False)
         # sort by selected date (self.sortby) in selected order (self.sort_order)
@@ -2552,11 +2596,9 @@ class InformalC:
                                 parent=self.win.topframe):
                 return
             # use loops and arrays to commit changes to db
-            tables = ("informalc_batchindex", "informalc_batchindex", "informalc_gats", "informalc_gats",
-                      "informalc_awards2", "informalc_settlements")
-            fields = ("main", "sub", "grv_no", "gats_no",
-                      "grv_no", "grv_no")
-            for i in range(6):
+            tables = ("informalc_batchindex", "informalc_gats", "informalc_awards2", "informalc_settlements")
+            fields = ("main", "grv_no", "grv_no", "grv_no")
+            for i in range(4):
                 sql = "DELETE FROM %s WHERE %s='%s'" % (tables[i], fields[i], self.edit_grv_no)
                 commit(sql)
             self.parent.refresh_search(self.win.topframe)
@@ -13416,6 +13458,7 @@ class MainFrame:
                                     command=lambda: StationIndex().station_index_mgmt(self.win.topframe))
         menubar.add_cascade(label="Management", menu=management_menu)
         projvar.root.config(menu=menubar)
+        projvar.root.update()  # root update
 
     def define_spreadsheet_button(self):
         """ determine what happens when the spreadsheet button on the bottom of the page is pressed. """

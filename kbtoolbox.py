@@ -148,25 +148,25 @@ class MakeWindow:
         """ call this method to build the window. If a frame is passed, it will be destroyed """
         if frame is not None:
             frame.destroy()  # close out the previous frame
-            # frame.quit()
         self.topframe.pack(fill=BOTH, side=LEFT)  # pack topframe on the root
         self.buttons.pack(fill=BOTH, side=BOTTOM)  # pack buttons on the topframe
         self.s.pack(side=RIGHT, fill=BOTH)  # pack scrollbar on topframe
         self.c.pack(side=LEFT, fill=BOTH)  # pack canvas on topframe
         self.s.configure(command=self.c.yview, orient="vertical")  # link up the canvas and scrollbar
         self.c.configure(yscrollcommand=self.s.set)  # link up the canvas and the scrollbar
-        self.topframe.bind("<Configure>", self.detect_resize)  # track when the window changes size
+        projvar.root.bind("<Configure>", self.__detect_resize)  # enable/disable mousewheel pending root vs body size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
 
-    def detect_resize(self, event):
+    def __detect_resize(self, event):
         """ compare the height of the window (event.height) against the height of the body and buttons frame
          if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
-        if event.height - 30 >= self.body.winfo_height() + self.buttons.winfo_height():
-            self.mousewheel(False)
-        else:
-            self.mousewheel(True)
+        if event:
+            if self.body.winfo_height() + self.buttons.winfo_height() < projvar.root.winfo_height():
+                self.__mousewheel(False)  # disable the mousewheel bind
+            else:
+                self.__mousewheel(True)  # enable the mousewheel bind
 
-    def mousewheel(self, move):
+    def __mousewheel(self, move):
         """ enable the scrolling for the mousewheel if the event.height greater than the height of self.body. """
         if move:
             # enable the scrolling for the mousewheel - syntax differs for the platform
@@ -190,7 +190,7 @@ class MakeWindow:
                 self.c.unbind_all('<Button-5>')
 
     def finish(self):
-        """ This closes the window created by create() """
+        """ This closes the window created by create().  """
         projvar.root.update()
         self.c.config(scrollregion=self.c.bbox("all"))
         try:
@@ -235,18 +235,18 @@ class NewWindow:
         self.c.pack(side=LEFT, fill=BOTH)
         self.s.configure(command=self.c.yview, orient="vertical")
         self.c.configure(yscrollcommand=self.s.set)
-        self.topframe.bind("<Configure>", self.detect_resize)  # track when the window changes size
+        self.topframe.bind("<Configure>", self.__detect_resize)  # track when the window changes size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
 
-    def detect_resize(self, event):
+    def __detect_resize(self, event):
         """ compare the height of the window (event.height) against the height of the body and buttons frame
          if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
         if event.height - 30 >= self.body.winfo_height() + self.buttons.winfo_height():
-            self.mousewheel(False)
+            self.__mousewheel(False)
         else:
-            self.mousewheel(True)
+            self.__mousewheel(True)
 
-    def mousewheel(self, move):
+    def __mousewheel(self, move):
         """ enable the scrolling for the mousewheel if the event.height greater than the height of self.body. """
         if move:
             # enable the scrolling for the mousewheel - syntax differs for the platform
