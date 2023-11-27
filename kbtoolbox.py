@@ -124,7 +124,7 @@ class MakeWindow:
     """
     creates a window with a scrollbar and a frame for buttons on the bottom
     use win (or self.win) = MakeWindow() to call the object
-    use win.create(frame) to build screen
+    use win.create(frame) to build screen. frame arg is for previous frame to be destroyed
     call win.finish() at the end of the widgets
     """
     def __init__(self):
@@ -154,10 +154,10 @@ class MakeWindow:
         self.c.pack(side=LEFT, fill=BOTH)  # pack canvas on topframe
         self.s.configure(command=self.c.yview, orient="vertical")  # link up the canvas and scrollbar
         self.c.configure(yscrollcommand=self.s.set)  # link up the canvas and the scrollbar
-        projvar.root.bind("<Configure>", self.__detect_resize)  # enable/disable mousewheel pending root vs body size
+        projvar.root.bind("<Configure>", self.detect_resize)  # enable/disable mousewheel pending root vs body size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
 
-    def __detect_resize(self, event):
+    def detect_resize(self, event):
         """ compare the height of the window (event.height) against the height of the body and buttons frame
          if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
         if event:
@@ -235,10 +235,10 @@ class NewWindow:
         self.c.pack(side=LEFT, fill=BOTH)
         self.s.configure(command=self.c.yview, orient="vertical")
         self.c.configure(yscrollcommand=self.s.set)
-        self.topframe.bind("<Configure>", self.__detect_resize)  # track when the window changes size
+        self.topframe.bind("<Configure>", self.detect_resize)  # track when the window changes size
         self.c.create_window((0, 0), window=self.body, anchor=NW)
 
-    def __detect_resize(self, event):
+    def detect_resize(self, event):
         """ compare the height of the window (event.height) against the height of the body and buttons frame
          if the window is smaller enable mouse scrolling, else disable mouse scrolling. """
         if event.height - 30 >= self.body.winfo_height() + self.buttons.winfo_height():

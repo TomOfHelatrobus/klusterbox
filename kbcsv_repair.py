@@ -54,6 +54,7 @@ class CsvRepair:
     def delete_filepath(self):
         """ delete the filepath if it exist to avoid permission error """
         if exists(self.new_filepath):
+            print(self.new_filepath)
             try:
                 os.remove(self.new_filepath)
             except PermissionError:
