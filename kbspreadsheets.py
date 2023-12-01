@@ -3722,21 +3722,21 @@ class OtAvailSpreadsheet:
                                           str(merge_second[i]) + str(self.row + 2))
             # --------------------------------------------------------------------------------------- cumulative hours
             cell = self.availability.cell(column=i + col_increment, row=self.row + 3)
-            cell.value = self.cum_formula(i, self.row)
+            cell.value = self.cum_formula(i, self.row)  # get the formula for the cell
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.availability.merge_cells(str(merge_first[i]) + str(self.row + 3) + ":" +
                                           str(merge_second[i]) + str(self.row + 3))
             # -------------------------------------------------------------------------------------------- availability
             cell = self.availability.cell(column=i + col_increment, row=self.row + 4)
-            cell.value = self.avail_formula(i, self.row)
+            cell.value = self.avail_formula(i, self.row)  # get the formula for the cell
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.availability.merge_cells(str(merge_first[i]) + str(self.row + 4) + ":" +
                                           str(merge_second[i]) + str(self.row + 4))
             # --------------------------------------------------------------------------------------daily availability
             cell = self.availability.cell(column=i + col_increment, row=self.row + 5)
-            cell.value = self.avail_daily(i, self.row)
+            cell.value = self.avail_daily(i, self.row)  # get the formula for the cell
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.availability.merge_cells(str(merge_first[i]) + str(self.row + 5) + ":" +
@@ -3826,26 +3826,26 @@ class OtAvailSpreadsheet:
     def avail_daily(day, row):
         """ return a formula for cumulative hours """
         if day == 0:  # if the day is saturday
-            return "=MIN(MAX(%s-%s!B%s, 0), %s!B%s)" % \
-                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            return "=IF(%s!C%s=\"\",MIN(MAX(%s-%s!B%s, 0), %s!B%s),0)" % \
+                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
         if day == 1:  # if the day is sunday
-            return "=MIN(MAX(%s-%s!D%s, 0), %s!D%s)" % \
-                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            return "=IF(%s!E%s=\"\",MIN(MAX(%s-%s!D%s, 0), %s!D%s),0)" % \
+                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
         if day == 2:  # if the day is monday
-            return "=MIN(MAX(%s-%s!F%s, 0), %s!F%s)" % \
-                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            return "=IF(%s!G%s=\"\",MIN(MAX(%s-%s!F%s, 0), %s!F%s),0)" % \
+                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
         if day == 3:  # if the day is tuesday
-            return "=MIN(MAX(%s-%s!H%s, 0), %s!H%s)" % \
-                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            return "=IF(%s!I%s=\"\",MIN(MAX(%s-%s!H%s, 0), %s!H%s),0)" % \
+                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
         if day == 4:  # if the day is wednesday
-            return "=MIN(MAX(%s-%s!J%s, 0), %s!J%s)" % \
-                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            return "=IF(%s!K%s=\"\",MIN(MAX(%s-%s!J%s, 0), %s!J%s),0)" % \
+                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
         if day == 5:  # if the day is thursday
-            return "=MIN(MAX(%s-%s!L%s, 0), %s!L%s)" % \
-                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            return "=IF(%s!M%s=\"\",MIN(MAX(%s-%s!L%s, 0), %s!L%s),0)" % \
+                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
         if day == 6:  # if the day is friday
-            return "=MIN(MAX(%s-%s!N%s, 0), %s!N%s)" % \
-                   (str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            return "=IF(%s!O%s=\"\",MIN(MAX(%s-%s!N%s, 0), %s!N%s),0)" % \
+                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
 
     def make_pagebreak(self):
         """ create a page break """
