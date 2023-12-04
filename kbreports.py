@@ -1318,9 +1318,9 @@ class InformalCReports:
                 totaldollarsrow = ["    {:<23}{:>13}\n".format("    Cumulative dollars:", totaldollars), ]
                 totalhoursrow = ["    {:<23}{:>13}\n".format("    Cumulative hours:  ", totalhours), ]
                 totalgatsdollarsrow = \
-                    ["    {:<40}{:>11}\n".format("    Cumulative gats dollar descepancies:", totalgatsdollars), ]
+                    ["    {:<41}{:>10}\n".format("    Cumulative gats dollar discrepancies:", totalgatsdollars), ]
                 totalgatshoursrow = \
-                    ["    {:<40}{:>11}\n".format("    Cumulative gats hour descepancies:  ", totalgatshours), ]
+                    ["    {:<41}{:>10}\n".format("    Cumulative gats hour discrepancies:  ", totalgatshours), ]
                 skip_line = ["\n"]
                 self.award_stack = title_row + firstrow + line_row  # build the award stack line by line
                 if noaward_stack:
@@ -1572,7 +1572,7 @@ class InformalCReports:
 
     def monetary_sum(self):
         """ generates text report for settlement list summary showing all grievance settlements.
-        if gats_desc = True is passed, the report shows the gats descepancies. """
+        if gats_desc = True is passed, the report shows the gats discrepancies. """
 
         def get_gats(grv_no):
             """ get all the gats numbers for the grievance number sent as an argument.
