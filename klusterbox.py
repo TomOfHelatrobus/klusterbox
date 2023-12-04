@@ -5645,7 +5645,7 @@ class DatabaseAdmin:
         table_options = ("carriers + index", "carriers", "name index", "seniority", "clock rings", "all")
         om1_table = OptionMenu(cleaner_frame2, clean1_table, *table_options)
         clean1_table.set(table_options[-1])
-        if sys.platform != "darwin":
+        if sys.platform != "darwin":  # if the platform is not darwin
             om1_table.config(width=20, anchor="w")
         else:
             om1_table.config(width=20)
@@ -5656,7 +5656,7 @@ class DatabaseAdmin:
         Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
         om1_station = OptionMenu(cleaner_frame2, clean1_station, *station_options)
         clean1_station.set(station_options[-1])
-        if sys.platform != "darwin":
+        if sys.platform != "darwin":  # if the platform is not darwin
             om1_station.config(width=20, anchor="w")
         else:
             om1_station.config(width=20)
@@ -5689,7 +5689,7 @@ class DatabaseAdmin:
         Label(cleaner_frame2, text="         table", anchor="e").grid(row=rrr, column=2, sticky="e")
         om2_table = OptionMenu(cleaner_frame2, clean2_table, *table_options)
         clean2_table.set(table_options[-1])
-        if sys.platform != "darwin":
+        if sys.platform != "darwin":  # if the platform is not darwin
             om2_table.config(width=20, anchor="w")
         else:
             om2_table.config(width=20)
@@ -5701,7 +5701,7 @@ class DatabaseAdmin:
         Label(cleaner_frame2, text="stations", anchor="e").grid(row=rrr, column=2, sticky="e")
         om2_station = OptionMenu(cleaner_frame2, clean2_station, *station_options)
         clean2_station.set(station_options[-1])
-        if sys.platform != "darwin":
+        if sys.platform != "darwin":  # if the platform is not darwin
             om2_station.config(width=20, anchor="w")
         else:
             om2_station.config(width=20)
@@ -6470,7 +6470,7 @@ class CarrierHistory:
         Label(self.win.body, text="Select Station: ", anchor="w").grid(row=4, column=0, sticky="w")
         station_selection = StringVar(self.win.body)
         om_station = OptionMenu(self.win.body, station_selection, *projvar.list_of_stations)
-        if sys.platform != "darwin":
+        if sys.platform != "darwin":  # if the platform is not darwin
             om_station.config(width=30, anchor="w")
         else:
             om_station.config(width=30)
@@ -8355,7 +8355,7 @@ class AutoDataEntry:
             """ creates the labels to be used as column headers. """
             Label(self.win.body, text="Name", fg="Grey").grid(row=self.y, column=0, sticky="w")
             Label(self.win.body, text=macadj("List Status", "List"), fg="Grey").grid(row=self.y, column=1, sticky="w")
-            if sys.platform != "darwin":
+            if sys.platform != "darwin":  # if the platform is not darwin
                 Label(self.win.body, text="Route_s", fg="Grey").grid(row=self.y, column=2, sticky="w")
             Label(self.win.body, text="Station", fg="Grey").grid(row=self.y, column=3, sticky="w")
             Label(self.win.body, text="             ", fg="Grey").grid(row=self.y, column=4, sticky="w")
@@ -8380,7 +8380,7 @@ class AutoDataEntry:
                 self.ns_day[self.cc].set(result[0][3])
                 self.route.append(StringVar(self.win.body))  # store route
                 self.route[self.cc].set(result[0][4])
-                if sys.platform != "darwin":
+                if sys.platform != "darwin":  # if the platform is not darwin
                     Button(self.win.body, text=result[0][4], relief=RIDGE, width=20, anchor="w") \
                         .grid(row=self.y, column=2, sticky="w")  # route
                 self.station.append(StringVar(self.win.body))  # store station
@@ -8388,7 +8388,7 @@ class AutoDataEntry:
                 self.new_station.append(StringVar(self.win.body))
                 self.new_station[self.cc].set("out of station")
                 stat_om = OptionMenu(self.win.body, self.new_station[self.cc], *projvar.list_of_stations)  # station
-                if sys.platform != "darwin":
+                if sys.platform != "darwin":  # if the platform is not darwin
                     stat_om.config(width=25, anchor="w")
                 else:
                     stat_om.config(width=25)
@@ -13104,7 +13104,7 @@ class MainFrame:
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=0, column=0, columnspan=2, sticky=W)
         nav_button = Button(self.invest_frame, text="Navigation", width=macadj(12, 14),
                             command=lambda: Navigation().run(self.win.topframe))
-        if projvar.dev_condition:  # if the platform is darwin
+        if sys.platform == "darwin":  # if the platform is darwin
             nav_button.grid(row=0, column=3, columnspan=2, padx=2)  # only show nav button for mac platform
         if self.invran_result != "no labels":  # create a label row
             Label(self.invest_frame, text="Date: ", fg="grey").grid(row=1, column=0, sticky=W)
@@ -13131,7 +13131,7 @@ class MainFrame:
 
         nav_button = Button(self.invest_frame, text="Navigation", width=macadj(18, 20),
                             command=lambda: Navigation().run(self.win.topframe))
-        if projvar.dev_condition:  # if the platform is darwin
+        if sys.platform == "darwin":  # if the platform is darwin
             nav_button.grid(row=0, column=6, columnspan=2, padx=2)  # only show nav button for mac plaform
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=0, columnspan=2)
         om_month = OptionMenu(self.invest_frame, self.start_month, "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -13322,7 +13322,7 @@ class MainFrame:
         basic_menu = Menu(menubar, tearoff=0)
         basic_menu.add_command(label="Save All", command=lambda: self.save_all())
         basic_menu.add_separator()
-        if not projvar.dev_condition:
+        if sys.platform != "darwin":  # if the platform is not darwin
             basic_menu.add_command(label="New Carrier", command=lambda: CarrierInput().new_carriers(self.win.topframe))
             basic_menu.add_command(label="Multiple Input",
                                    command=lambda dd="Sat", ss="name":
@@ -13344,14 +13344,14 @@ class MainFrame:
         basic_menu.add_command(label="Availability Spreadsheet",
                                command=lambda: OtAvailSpreadsheet().create(self.win.topframe))
         basic_menu.add_separator()
-        if not projvar.dev_condition:  # if the platform is not darwin
+        if sys.platform != "darwin":  # if the platform is not darwin
             basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
             basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
             basic_menu.add_separator()
         basic_menu.add_command(label="Informal C", command=lambda: InformalC().informalc(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="Location", command=lambda: Messenger(self.win.topframe).location_klusterbox())
-        if not projvar.dev_condition:  # if the platform is not darwin
+        if sys.platform != "darwin":  # if the platform is not darwin
             basic_menu.add_command(label="About Klusterbox",
                                    command=lambda: AboutKlusterbox().start(self.win.topframe))
         basic_menu.add_separator()
@@ -13370,7 +13370,7 @@ class MainFrame:
             basic_menu.entryconfig(6, state=DISABLED)
             basic_menu.entryconfig(7, state=DISABLED)
             basic_menu.entryconfig(8, state=DISABLED)
-            if not projvar.dev_condition:
+            if sys.platform != "darwin":  # if the platform is not darwin
                 basic_menu.entryconfig(9, state=DISABLED)
                 basic_menu.entryconfig(10, state=DISABLED)
                 basic_menu.entryconfig(13, state=DISABLED)
@@ -13384,7 +13384,7 @@ class MainFrame:
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: PdfConverter().run(self.win.topframe))
-        if not projvar.dev_condition:
+        if sys.platform != "darwin":  # if the platform is not darwin
             automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
         menubar.add_cascade(label="Readers", menu=automated_menu)
         # reports menu
@@ -13400,7 +13400,7 @@ class MainFrame:
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_nsday())
         reports_menu.add_command(label="Carrier by List",
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_by_list())
-        if not projvar.dev_condition:
+        if sys.platform != "darwin":  # if the platform is not darwin
             reports_menu.add_command(label="Carrier History",
                                      command=lambda: CarrierHistory().create(self.win.topframe, projvar.invran_station))
         reports_menu.add_command(label="Carrier Seniority",
@@ -13421,7 +13421,7 @@ class MainFrame:
             reports_menu.entryconfig(5, state=DISABLED)
             reports_menu.entryconfig(6, state=DISABLED)
             reports_menu.entryconfig(7, state=DISABLED)
-            if not projvar.dev_condition:  # if the platform is not darwin
+            if sys.platform != "darwin":  # if the platform is not darwin
                 reports_menu.entryconfig(8, state=DISABLED)
                 reports_menu.entryconfig(10, state=DISABLED)
         menubar.add_cascade(label="Reports", menu=reports_menu)
@@ -13502,7 +13502,7 @@ class MainFrame:
                                         command=lambda: Archive().clear_all(self.win.topframe))
         # management menu
         management_menu = Menu(menubar, tearoff=0)
-        if not projvar.dev_condition:  # if the platform is not darwin
+        if sys.platform != "darwin":  # if the platform is not darwin
             management_menu.add_command(label="General Configurations",
                                         command=lambda: GenConfig(self.win.topframe).create())
             management_menu.add_separator()
@@ -13536,7 +13536,7 @@ class MainFrame:
                                         (self.win.topframe, projvar.invran_station))
         management_menu.add_command(label="Clean Carrier List",
                                     command=lambda: DatabaseAdmin().carrier_list_cleaning(self.win.topframe))
-        if not projvar.dev_condition:  # if the platform is not darwin
+        if sys.platform != "darwin":  # if the platform is not darwin
             management_menu.add_separator()
             management_menu.add_command(label="Name Index",
                                         command=lambda: NameIndex().name_index_screen(self.win.topframe))

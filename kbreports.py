@@ -1312,9 +1312,9 @@ class InformalCReports:
                 else:
                     firstrow = ["        Grievance Number          Awards    Gats Descrepancies\n", ]
                 line_row = ["    --------------------------------------------------------------\n", ]
-                noaward_label = ["														  no award\n"]
-                dollars_label = ["														   dollars\n"]
-                hourrate_label = ["													     hour/rate\n"]
+                noaward_label = ["                                                          no award\n"]
+                dollars_label = ["                                                           dollars\n"]
+                hourrate_label = ["                                                         hour/rate\n"]
                 totaldollarsrow = ["    {:<23}{:>13}\n".format("    Cumulative dollars:", totaldollars), ]
                 totalhoursrow = ["    {:<23}{:>13}\n".format("    Cumulative hours:  ", totalhours), ]
                 totalgatsdollarsrow = \
