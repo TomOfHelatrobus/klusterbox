@@ -1843,11 +1843,11 @@ class InformalC:
             Button(self.win.body, text="Monetary Awards", width=30,
                    command=lambda: InformalCReports(self).monetary_sum()).grid(row=row, column=0, pady=5)
             row += 1
-            Button(self.win.body, text="Gats Descrepancies", width=30,
-                   command=lambda: InformalCReports(self).gats_descrepancies()).grid(row=row, column=0, pady=5)
+            Button(self.win.body, text="Gats Discrepancies", width=30,
+                   command=lambda: InformalCReports(self).gats_discrepancies()).grid(row=row, column=0, pady=5)
             row += 1
-            Button(self.win.body, text="Only Descrepancies", width=30,
-                   command=lambda: InformalCReports(self).gats_descrepancies(fullreport=False)) \
+            Button(self.win.body, text="Only Discrepancies", width=30,
+                   command=lambda: InformalCReports(self).gats_discrepancies(fullreport=False)) \
                 .grid(row=row, column=0, pady=5)
             row += 1
             Button(self.win.body, text="All Adjustments", width=30,

@@ -1098,8 +1098,8 @@ class InformalCReports:
             self.substack = []  # index 0 is dollars, index 1 is hourrate
             self.cum_dollar = 0.0  # cumulative dollar awards
             self.cum_hourrate = 0.0  # cumulative hourrate awards
-            self.cum_gats_dollar = 0.0  # cumulative dollar gats descrepancies
-            self.cum_gats_hourrate = 0.0  # cumulative hourrate gats descrepancies
+            self.cum_gats_dollar = 0.0  # cumulative dollar gats discrepancies
+            self.cum_gats_hourrate = 0.0  # cumulative hourrate gats discrepancies
 
         def run_grievance(self, grv_no):
             """ a master method for controlling the other methods """
@@ -1167,7 +1167,7 @@ class InformalCReports:
                     if hour:
                         self.hourrate_total += hourrate_adjuster(hour)
                 self.cum_hourrate += self.hourrate_total
-            if not self.gats_dollar_array:  # get totals for dollar gats descrepancies
+            if not self.gats_dollar_array:  # get totals for dollar gats discrepancies
                 self.gats_dollar_total = "---"
             else:
                 gats_dollar_total = 0.0
@@ -1179,7 +1179,7 @@ class InformalCReports:
                     self.gats_dollar_total = "good"
                 else:
                     self.cum_gats_dollar += self.gats_dollar_total
-            if not self.gats_hourrate_array:  # get totals for hourrate gats descrepancies
+            if not self.gats_hourrate_array:  # get totals for hourrate gats discrepancies
                 self.gats_hourrate_total = "---"
             else:
                 gats_hourrate_total = 0.0
@@ -1308,9 +1308,9 @@ class InformalCReports:
                 totalgatshours = "{:,.2f}".format(float(self.cum_gats_hourrate))
                 title_row = ["	Settlement Awards:\n", ]
                 if self.select_grv:
-                    firstrow = ["        Carrier Name              Awards    Gats Descrepancies\n", ]
+                    firstrow = ["        Carrier Name              Awards    Gats Discrepancies\n", ]
                 else:
-                    firstrow = ["        Grievance Number          Awards    Gats Descrepancies\n", ]
+                    firstrow = ["        Grievance Number          Awards    Gats Discrepancies\n", ]
                 line_row = ["    --------------------------------------------------------------\n", ]
                 noaward_label = ["                                                          no award\n"]
                 dollars_label = ["                                                           dollars\n"]
@@ -1679,10 +1679,10 @@ class InformalCReports:
             messagebox.showerror("Report Generator",
                                  "The report was not generated.", parent=self.parent.win.topframe)
 
-    def gats_descrepancies(self, fullreport=True):
+    def gats_discrepancies(self, fullreport=True):
         """ generates text report for settlement list summary showing all grievance settlements.
         if fullreport = True is passed, show all settlements. If False, show only settlements with gats
-        descrepancies. """
+        discrepancies. """
 
         def get_gats(grv_no):
             """ get all the gats numbers for the grievance number sent as an argument.
@@ -1715,8 +1715,8 @@ class InformalCReports:
         report.write("   Monetary Remedy Summary with Gats Descrepanies\n\n")
         report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n")
         if not fullreport:
-            report.write("   Only settlements where gats descrepancies are noted are displayed \n")
-        report.write('\n  {:<47}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Descrepancies"))
+            report.write("   Only settlements where gats discrepancies are noted are displayed \n")
+        report.write('\n  {:<47}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Discrepancies"))
         report.write('  {:<18}{:<10}{:<12}{:>12}{:>12}{:>12}{:>12}\n'
                      .format("    Grievance #", "GATS #", "Docs?", "Hours", "Dollars", "Hours", "Dollars"))
         report.write("      -----------------------------------------------------------------------------------\n")
@@ -1733,7 +1733,7 @@ class InformalCReports:
                 monetary_remedies.append(sett)
         # -------------------------------------------------------------------------------- loop for each settlement
         # create progress bar
-        pb = ProgressBarDe(title="Informal C Reports", label="Generating Gats Descrepancies Report")
+        pb = ProgressBarDe(title="Informal C Reports", label="Generating Gats Discrepancies Report")
         pb.max_count(len(monetary_remedies))  # get count of the progress bar
         pb.start_up()  # start the progress bar
         pb_counter = 1  # initialize the count of the progress bar
@@ -1795,7 +1795,7 @@ class InformalCReports:
                     carrier_gats_dollar_total = max(carrier_dollar_total - carrier_gats_dollar_total, 0.0)
                 if gats_hourrate_array:
                     carrier_gats_hourrate_total = max(carrier_hourrate_total - carrier_gats_hourrate_total, 0.0)
-                # ------------------------------ add carrier awards/ descrepancies to settlement awards/ descrepancies
+                # ------------------------------ add carrier awards/ discrepancies to settlement awards/ discrepancies
                 award_hour += carrier_hourrate_total
                 award_dollar += carrier_dollar_total
                 gats_hour += carrier_gats_hourrate_total
@@ -1864,9 +1864,9 @@ class InformalCReports:
         report.write("{:<21}{:>32}\n".format("      Total Hours", "{0:,.2f}".format(total_hour)))
         report.write("{:<21}{:>44}\n".format("      Total Dollars", "${0:,.2f}".format(total_dollar)))
         report.write("{:<46}{:>31}\n"
-                     .format("      Total Gats Descrepancies Hours", "{0:,.2f}".format(total_gats_hour)))
+                     .format("      Total Gats Discrepancies Hours", "{0:,.2f}".format(total_gats_hour)))
         report.write("{:<46}{:>43}\n"
-                     .format("      Total Gats Descrepancies Dollars", "${0:,.2f}".format(total_gats_dollar)))
+                     .format("      Total Gats Discrepancies Dollars", "${0:,.2f}".format(total_gats_dollar)))
         report.close()
         pb.stop()  # stop and close the progress bar
         # --------------------------------------------------------------------------------------------- save and open
