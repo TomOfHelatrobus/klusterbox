@@ -102,6 +102,7 @@ class PdfConverter:
         self.salih_rpt = []
         self.unruh_rpt = []
         self.mcgrath_rpt = []
+        self.levelindexerror_rpt = []
         # denton error - employee id not showing up till end of page causes error with found days.
         self.denton_rpt = []
         self.unresolved = []
@@ -651,8 +652,8 @@ class PdfConverter:
             if self.parent.gen_error_report:
                 datainput = "Page: {}\n".format(self.parent.page_num)
                 self.parent.kbpc_rpt.write(datainput)
-            self.parent.GroupAnalysis(self.parent).run()
-            self.parent.WriteReport(self.parent).run()
+            self.parent.GroupAnalysis(self.parent).run()  # analysis groups of text on a page
+            self.parent.WriteCSV(self.parent).run()
             return True
 
         def new_csv(self):
@@ -781,15 +782,15 @@ class PdfConverter:
                 # build the daily array
                 self.get_routeholder(e)  # get the route following the chain
                 self.get_movecode(e)  # get the move code following the chain
-                self.get_financeholder(e)
+                self.get_financeholder(e)  # get the finance number following the chain
                 self.get_timeholder(e)  # look for the time zone following chain
                 self.get_dateholder(e)  # look for time following date/mv desig
                 self.find_franklin(e)  # look for items in franklin array to solve for franklin problem
                 self.fix_rodriguez(e)  # solve for rodriguez problem / multiple consecutive mv desigs
                 self.get_dateholder2(e)  # look for date following move desig
-                self.fix_franklin(e)
-                self.find_movedesig(e)
-                self.find_rose(e)
+                self.fix_franklin(e)  # solve for franklin problem: two mv desigs appear consecutively
+                self.find_movedesig(e)  # look for move desig and add to mv_holder
+                self.find_rose(e)  # solve for rose problem: mv desig and date appearing on same line
                 self.find_days(e)  # find and record all days on the report
                 if e == "Processed Clock Rings":
                     self.parent.eid_count = 0
@@ -955,8 +956,12 @@ class PdfConverter:
                     datainput = "Routes: {}\n".format(self.parent.routes)
                     self.parent.kbpc_rpt.write(datainput)
                 if len(self.parent.level) > 0:
-                    datainput = "Levels: {}\n".format(self.parent.level)
+                    datainput = "Levels: {}".format(self.parent.level)
                     self.parent.kbpc_rpt.write(datainput)
+                    if len(self.parent.jobs) != len(self.parent.level):  # if there are not enough level elements
+                        datainput = "   LEVEL INDEXERROR DETECTED!!!"  # report the index error
+                        self.parent.kbpc_rpt.write(datainput)
+                    self.parent.kbpc_rpt.write("\n")  # insert new line after Levels:
                 if len(self.parent.base_time) > 0:
                     self.parent.kbpc_rpt.write("Base / Times:")
                     for bt in self.parent.base_time:
@@ -1198,7 +1203,7 @@ class PdfConverter:
             if self.parent.lookfor2level:
                 if re.match(r"[0-9]{2}$", e):
                     self.parent.level.append(e)
-                    self.parent.lookfor2level = False
+                self.parent.lookfor2level = False
 
         def trap_route(self, e):
             """ set trap to catch route # on the next line """
@@ -1260,7 +1265,7 @@ class PdfConverter:
                         if self.parent.gen_error_report:
                             self.parent.kbpc_rpt.write("NEW PAGE!!!\n")
 
-    class WriteReport:
+    class WriteCSV:
         """
         This class writes the error report. This is called in PageAnalysis and runs at the end of each page. It
         adds information about the page to the error report.
@@ -1297,8 +1302,12 @@ class PdfConverter:
                     datainput = "Routes: {}\n".format(self.parent.routes)
                     self.parent.kbpc_rpt.write(datainput)
                 if len(self.parent.level) > 0:
-                    datainput = "Levels: {}\n".format(self.parent.level)
+                    datainput = "Levels: {}".format(self.parent.level)
                     self.parent.kbpc_rpt.write(datainput)
+                    if len(self.parent.jobs) != len(self.parent.level):  # detect any levelindex errors
+                        datainput = "   LEVEL INDEXERROR DETECTED!!!"
+                        self.parent.kbpc_rpt.write(datainput)
+                    self.parent.kbpc_rpt.write("\n")
 
         def write_baseline(self):
             """ write the base line """
@@ -1318,7 +1327,7 @@ class PdfConverter:
                 # if the route count is less than the jobs count, fill the route count
                 self.parent.routes = PdfConverterFix(self.parent.routes).route_filler(len(self.parent.jobs))
                 for i in range(len(self.parent.jobs)):
-                    print(self.parent.lastname, i, self.parent.level, self.parent.routes)
+                    self.__solve_level_indexerror(i)
                     base_line = [self.parent.base_temp[i],
                                  '"{}"'.format(self.parent.jobs[i].replace("-", "").strip()),
                                  '"0000"', '"7220-10"',
@@ -1329,6 +1338,16 @@ class PdfConverter:
                     whole_line = self.parent.prime_info + base_line
                     self.parent.writer = csv.writer(self.parent.csv_doc, dialect='myDialect')
                     self.parent.writer.writerow(whole_line)
+
+        def __solve_level_indexerror(self, i):
+            """ this will handle rare cases were length of the jobs array is longer than the level array by
+            adding to the level array. """
+            try:
+                if self.parent.level[i]:  # if there is an index for the level array
+                    pass  # no nothing
+            except IndexError:  # if there is not an index for the level array
+                self.parent.levelindexerror_rpt.append(self.parent.lastname)
+                self.parent.level.append(self.parent.level[0])  # use the first element of the level array
 
         def reorder_days(self):
             """ make sure the days are in the correct order"""
@@ -1589,22 +1608,27 @@ class PdfConverter:
                 self.parent.kbpc_rpt.write("Unruh Problem: Underscore dash cut off in unprecessed rings.\n")
                 datainput = "\t>>> {}\n".format(self.parent.unruh_rpt)
                 self.parent.kbpc_rpt.write(datainput)
-                self.parent.kbpc_rpt.write(
+                self.parent.kbpc_rpt.write(  # display salih problem
                     "Salih Problem: Unprocessed rings are missing a timezone, so that unprocessed rings counter is not"
                     " incremented.\n")
                 datainput = "\t>>> {}\n".format(self.parent.salih_rpt)
                 self.parent.kbpc_rpt.write(datainput)
-                self.parent.kbpc_rpt.write("McGrath Problem: \n")
+                self.parent.kbpc_rpt.write("McGrath Problem: \n")  # display mcgrath problem
                 datainput = " \t>>> {}\n".format(self.parent.mcgrath_rpt)
                 self.parent.kbpc_rpt.write(datainput)
                 # denton error - employee id not showing up till end of page causes error with found days.
                 self.parent.kbpc_rpt.write("Denton Problem: \n")
                 datainput = " \t>>> {}\n".format(self.parent.denton_rpt)
                 self.parent.kbpc_rpt.write(datainput)
+                # display level index error
+                self.parent.kbpc_rpt.write("LevelIndex Error: length of level array does not match jobs array\n")
+                datainput = "\t>>> {}\n".format(self.parent.levelindexerror_rpt)
+                self.parent.kbpc_rpt.write(datainput)
                 datainput = "Unresolved: {}\n".format(self.parent.unresolved)
                 self.parent.kbpc_rpt.write(datainput)
                 datainput = "Base Counter Error: {}\n".format(self.parent.basecounter_error)
                 self.parent.kbpc_rpt.write(datainput)
+
 
         def error_messagebox(self):
             """ show any failures in a messagebox at the end of the conversion process. """

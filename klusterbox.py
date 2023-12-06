@@ -63,7 +63,7 @@ __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
 version = 6.00  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Oct 9, 2023"  # format is Jan 1, 2022
+release_date = "Dec 6, 2023"  # format is Jan 1, 2022
 
 
 class Navigation:
@@ -587,7 +587,7 @@ class InformalC:
         incidentframe.grid(row=row, column=0, columnspan=6, sticky="w")
 
         def callback_incident(*args):
-            # """ watch the incident date option menu for changes using trace. """
+            """ watch the incident date option menu for changes using trace. """
             if args:  # do something with args to prevent an error with pycharm
                 projvar.try_absorber = False
             if self.option_incidentdate.get() == "within specified range":
@@ -1257,6 +1257,7 @@ class InformalC:
     def search_grv_apply(self, frame):
         """ search for the grievance number from self.build_search_screen() """
         def check_grievance_number():
+            """ check the grievance number for empty value or invalid characters. """
             if not GrievanceChecker(grievance_number).has_value():
                 msgg = "The grievance number must not be blank."
                 messagebox.showerror("Invalid Data Entry", msgg, parent=self.win.topframe)
