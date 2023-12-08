@@ -109,18 +109,18 @@ ___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_su
 
 ___ ___  3. (in powershell) enter the following in the command line:
 
-if you have a klusterleg.spec file:
-	___  a. (in explorer) copy/paste klusterleg.spec into the kb_install folder
-	___  b. (in powershell) enter "pyinstaller klusterleg.spec"
+			if you have a klusterleg.spec file:
+				___  a. (in explorer) copy/paste klusterleg.spec into the kb_install folder
+				___  b. (in powershell) enter "pyinstaller klusterleg.spec"
 
-else if you do not have a klusterleg.spec file:	
-	___  a. enter 
-	"pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py"
-	___  b. after pyinstaller runs, you can rename the klusterbox.spec file to klusterleg.spec and move it into the project file for later use. 
+			else if you do not have a klusterleg.spec file:	
+				___  a. enter 
+				"pyinstaller -w -F --icon kb_sub/kb_images/kb_icon2.ico klusterbox.py"
+				___  b. after pyinstaller runs, you can rename the klusterbox.spec file to klusterleg.spec and move it into the project file for later use. 
 
 ___ ___  4. (in explorer) enter into the dist folder and copy the klusterbox.exe file and paste it into the kb_install folder. 
 
-6. (in explorer) delete the following folders/files from the kb_install folder:
+___ ___  5. (in explorer) delete the following folders/files from the kb_install folder:
 	___ ___  a. build
 	___ ___  b. dist
 	___ ___  c. klusterbox.spec or klusterwin.spec or klusterleg.spec 
@@ -138,11 +138,11 @@ ___ ___  4. (in explorer) enter into the dist folder and copy the klusterbox.exe
 	___ ___  p. kbfixes.py
 	___ ___  q. kbinformalc.py
 
-___ ___  7.(in explorer)  you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
+___ ___  6.(in explorer)  you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 
-___ ___  8. (in explorer) select tnew zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v..._..bit' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003_64bit'.  
+___ ___  7. (in explorer) select tnew zip folder and rename it by right clicking and selecting "Rename". Use the naming convention of 'klusterbox_v..._..bit' putting the version number where the ellipse is; e.g. 'klusterbox_v3.003_64bit'.  
 
-___ ___  9. The compressed folder is ready for distribution. 
+___ ___  8. The compressed folder is ready for distribution. 
 
 ----------------------------------------------------------------------
 
