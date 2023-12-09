@@ -4,7 +4,7 @@ This module is an collection of useful classes, methods and functions used widel
 It is called by all klusterbox modules in whole or in part with the exeption of projvar.py.
 """
 from tkinter import Tk, ttk, Frame, Scrollbar, Canvas, BOTH, LEFT, BOTTOM, RIGHT, NW, Label, mainloop, \
-    messagebox, TclError, PhotoImage
+    messagebox, TclError, PhotoImage, Menu
 import projvar
 from operator import itemgetter
 import os
@@ -148,6 +148,9 @@ class MakeWindow:
         """ call this method to build the window. If a frame is passed, it will be destroyed """
         if frame is not None:
             frame.destroy()  # close out the previous frame
+        # menubar = Menu(self.topframe)
+        # projvar.root.config(menu=menubar)
+        # projvar.root.update()  # root update
         self.topframe.pack(fill=BOTH, side=LEFT)  # pack topframe on the root
         self.buttons.pack(fill=BOTH, side=BOTTOM)  # pack buttons on the topframe
         self.s.pack(side=RIGHT, fill=BOTH)  # pack scrollbar on topframe
@@ -2820,3 +2823,11 @@ class ProgressBarDe:
         self.pb_label.destroy()  # destroy the label for the progress bar
         self.pb.destroy()
         self.pb_root.destroy()
+
+def save_all(frame):
+    """ this creates a message when someone selects the 'save' menu option. """
+    messagebox.showinfo("For Your Information ",
+                        "All data has already been saved. Data is saved to the\n"
+                        "database whenever an apply or submit button is pressed.\n"
+                        "This button does nothing. :)",
+                        parent=frame)

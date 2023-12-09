@@ -21,7 +21,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     SpeedSettings, titlebar_icon, RefusalTypeChecker, ReportName, DateChecker, NameChecker, \
     RouteChecker, BuildPath, EmpIdChecker, SeniorityChecker, DateTimeChecker, GrievanceChecker, \
     IndexArticleChecker, IssueDecisionChecker, DecisionTypeChecker, distinctresult_to_list, \
-    issuedecisionresult_sorter, AwardsChecker, AwardsFormatting
+    issuedecisionresult_sorter, AwardsChecker, AwardsFormatting, save_all
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet, \
     OtAvailSpreadsheet
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase, DataBaseFix
@@ -64,76 +64,6 @@ __author_email__ = "tomweeks@klusterbox.com"
 # version variables
 version = 6.00  # version number must be convertable to a float and should increase for Fixes()
 release_date = "Dec 6, 2023"  # format is Jan 1, 2022
-
-
-class Navigation:
-    """ create a window for navigation for use with Mac """
-    def __init__(self):
-        self.win = None
-        pass
-
-    def run(self, frame):
-        """ a master method to run other methods """
-        self.win = MakeWindow()
-        self.win.create(frame)
-        self.options()
-        self.bottom_of_frame()
-        self.win.finish()
-
-    def options(self):
-        """ create the body of the page.
-        options with a first value of 1 will be disabled if the investigation range is not set.
-        options with a second value of 2 are labels."""
-        options = (
-            (2, "Basic Operations", ""),
-            (0, "Go Back", lambda: MainFrame().start(frame=self.win.topframe)),
-            (1, "New Carrier", lambda: CarrierInput().new_carriers(self.win.topframe)),  # if invran set
-            (1, "Multiple Input", lambda dd="Sat", ss="name": MassInput().mass_input(self.win.topframe, dd, ss)),
-            (0, "OT Preferences", lambda: OtEquitability().create(self.win.topframe)),
-            (1, "OT Distribution", lambda: OtDistribution().create(self.win.topframe)),
-            (0, "Informal C", lambda: InformalC().informalc(self.win.topframe)),
-            (0, "About Klusterbox", lambda: AboutKlusterbox().start(self.win.topframe)),
-            (0, "Quit", lambda: projvar.root.destroy()),
-            (2, "Reader Operations", ""),
-            (0, "PDF Splitter", lambda: PdfSplitter().run(self.win.topframe)),
-            (2, "Report Operations", ""),
-            (1, "Carrier History", lambda: CarrierHistory().create(self.win.topframe, projvar.invran_station)),
-            (2, "Management Operations", ""),
-            (0, "General Configurations", lambda: GenConfig(self.win.topframe).create()),
-            (0, "List of Stations", lambda: StationList().station_list(self.win.topframe)),
-            (1, "Set Dispatch of Value", lambda: SetDov().run(self.win.topframe)),
-            (0, "Tolerances", lambda: Tolerances().tolerances(self.win.topframe)),
-            (0, "Spreadsheet Settings", lambda: SpreadsheetConfig().start(self.win.topframe)),
-            (1, "NS Day Configurations", lambda: NsConfig().ns_config(self.win.topframe)),
-            (0, "Speedsheet Settings", lambda: SpeedConfig(self.win.topframe).create()),
-            (0, "Informal C Settings", lambda: InformalCSettings().create(self.win.topframe)),
-            (0, "Auto Data Entry Settings", lambda: AdeSettings().start(self.win.topframe)),
-            (0, "PDF Converter Settings", lambda: PdfConvertConfig().start(self.win.topframe)),
-            (0, "Database", lambda: (self.win.topframe.destroy(), DatabaseAdmin().run(self.win.topframe))),
-            (0, "Delete Carriers",
-             lambda: DatabaseAdmin().database_delete_carriers(self.win.topframe, projvar.invran_station)),
-            (0, "Name Index", lambda: NameIndex().name_index_screen(self.win.topframe)),
-            (0, "Station Index", lambda: StationIndex().station_index_mgmt(self.win.topframe)),
-        )
-        i = 0
-        for _ in range(len(options)):
-            if options[i][0] == 2:
-                label = Label(self.win.body, text=options[i][1], fg="blue", width=25, anchor="w")
-                label.grid(row=i, column=1, pady=5)
-            else:
-                button = Button(self.win.body, text=options[i][1], width=25, anchor="w", padx=5,
-                                activebackground="grey", highlightcolor="red", command=options[i][2])
-                button.grid(row=i, column=1)
-                if not projvar.invran_day and options[i][0]:
-                    button.config(state=DISABLED)
-            i += 1
-
-    def bottom_of_frame(self):
-        """ configure buttons on the bottom of the frame """
-
-        Button(self.win.buttons, text="Quit", width=macadj(13, 13), command=projvar.root.destroy).pack(side=LEFT)
-        Button(self.win.buttons, text="Go Back", width=15,
-               command=lambda: MainFrame().start(frame=self.win.topframe)).pack(side=LEFT)
 
 
 class ProgressBarIn:
@@ -359,6 +289,49 @@ class InformalC:
             else:
                 self.menu_screen(frame)  # this fills the screen with widgets.
 
+    def mac_navigation(self):
+        """ create a screen for navigation to be used instead of the pulldown menu for macOS """
+        self.nav = MakeWindow()
+        self.nav.create(self.win.topframe)
+        # options with a first value of 0 are enabled buttons.
+        # options with a first value of 1 will be disabled if the investigation range is not set.
+        # options with a first value of 2 are labels."""
+
+        options = (
+            (2, "Informal C Operations ______________________"),
+            (0, "Open Archive", lambda: Archive().file_dialogue(dir_path('informalc_speedsheets'))),
+            (0, "Clear Archive", lambda: Archive().remove_file_var(self.nav.topframe, 'informalc_speedsheets')),
+            (0, "Generate New Grievances", lambda: InfcSpeedSheetGen(self.nav.topframe, self.station, "new").new()),
+            (0, "Generate All Grievances", lambda: InfcSpeedSheetGen(self.nav.topframe, self.station, "all").all()),
+            (0, "Pre-check", lambda: InfcSpeedWorkBookGet().open_file(self.nav.topframe, False)),
+            (0, "Input to Database", lambda: InfcSpeedWorkBookGet().open_file(self.nav.topframe, True)),
+            (0, "Speedsheet Guide", lambda: InformalCIndex().speedsheet_guide()),
+            (0, "Grievant Guide",lambda: InformalCIndex().grievant_guide(self.station)),
+        )
+        i = 0
+        row = 0
+        for _ in range(len(options)):
+            if options[i][0] == 3:  # if the option is a delete button
+                button = Button(self.nav.body, text=options[i][1], width=5, anchor="w", padx=5,
+                                activebackground="grey", highlightcolor="red", command=options[i][2])
+                button.grid(row=row - 1, column=2, sticky="w")
+            elif options[i][0] == 2:  # if the option is a header
+                label = Label(self.nav.body, text=options[i][1], fg="blue", width=26, anchor="w")
+                label.grid(row=row, column=1, pady=5, sticky="w", columnspan=3)
+                row += 1
+            else:  # the option is a button
+                button = Button(self.nav.body, text=options[i][1], width=21, anchor="w", padx=5,
+                                activebackground="grey", highlightcolor="red", command=options[i][2])
+                button.grid(row=row, column=1, sticky="w")
+                if not projvar.invran_day and options[i][0]:  # disable the button until invran is set.
+                    button.config(state=DISABLED)
+                row += 1
+            i += 1
+        Button(self.nav.buttons, text="Quit", width=macadj(13, 13), command=projvar.root.destroy).pack(side=LEFT)
+        Button(self.nav.buttons, text="Go Back", width=15,
+               command=lambda: self.informalc(frame=self.nav.topframe)).pack(side=LEFT)
+        self.nav.finish()
+
     def pulldown_menu(self):
         """ create a pulldown menu, and add it to the menu bar """
         menubar = Menu(self.win.topframe)
@@ -439,11 +412,15 @@ class InformalC:
         """ the main screen for informal c. """
         self.win = MakeWindow()
         self.win.create(frame)  # creates the screen object
-        self.pulldown_menu()
+        if sys.platform != "darwin":
+            self.pulldown_menu()
         Label(self.win.body, text="Informal C", font=macadj("bold", "Helvetica 18")).grid(row=0, sticky="w")
         Label(self.win.body, text="The C is for Compliance").grid(row=1, sticky="w")
         Label(self.win.body, text="").grid(row=2)
         row = 3
+        Button(self.win.body, text="Navigation", width=30,
+               command=lambda: self.mac_navigation()).grid(row=row, pady=5)
+        row += 1
         Button(self.win.body, text=" Enter New Grievance", width=30,
                command=lambda: self.GrievanceInput(self).informalc_new(self.win.topframe)).grid(row=row, pady=5)
         row += 1
@@ -526,11 +503,16 @@ class InformalC:
         re_initialize_search_vars()  # in the event that a search is run more than once, re initialize
         button_alignment = macadj("w", "center")
         row = 0
-        self.pulldown_menu()
+        if sys.platform != "darwin":
+            self.pulldown_menu()
         Label(self.win.body, text="Grievance Search Criteria", font=macadj("bold", "Helvetica 18")) \
             .grid(row=row, columnspan=6, sticky="w")
         row += 1
         Label(self.win.body, text="").grid(row=row, columnspan=6)
+        row += 1
+        # ---------------------------------------------------------------------------------------------- mac navigation
+        Button(self.win.body, text="Navigation", width=23, anchor="center",
+               command=lambda: self.mac_navigation()).grid(row=row, column=5, pady=3)
         row += 1
         # ---------------------------------------------------------------------------------------------- search for all
         Label(self.win.body, width=29, anchor="w", text="Search for all in {}".format(self.station))\
@@ -961,7 +943,7 @@ class InformalC:
         if issue:
             add_stringvar.set(issue)
         self.src_issue.append(add_stringvar)  # add this to an array of stringvars for non compliance
-        src_issue = Entry(childframe, textvariable=self.src_issue[len(self.src_issue)-1],
+        src_issue = Entry(childframe, textvariable=self.src_issue[len(self.src_issue) - 1],
                           justify='right', width=macadj(20, 15))
         src_issue.grid(row=len(self.src_issue)-1, column=4, sticky="w")
         self.src_issue_entry.append(src_issue)  # add this to an array of entry widgets for non compliance
@@ -12974,6 +12956,7 @@ class MainFrame:
 
     def __init__(self):
         self.win = None
+        self.nav =None  # an window for the optional mac navigation method
         self.invest_frame = None
         self.main_frame = None
         self.start_year = None
@@ -13004,7 +12987,8 @@ class MainFrame:
         self.set_dates()
         self.make_stringvars()
         self.get_carrierlist()  # call CarrierList to get Carrier Rec Set
-        self.pulldown_menu()  # create a pulldown menu, and add it to the menu bar
+        if sys.platform != "darwin":  # do not show pulldown menu on macOS.
+            self.pulldown_menu()  # create a pulldown menu, and add it to the menu bar
         self.set_investigation_vars()  # set the stringvars for the investigation range
         self.get_stations_list()  # get a list of stations for station optionmenu
         self.get_invran_mode()  # get the investigation range mode. alternate widget layouts for investigation range
@@ -13104,7 +13088,7 @@ class MainFrame:
         """ executes if the investigation range is configured to simple or no labels in gui configution """
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=0, column=0, columnspan=2, sticky=W)
         nav_button = Button(self.invest_frame, text="Navigation", width=macadj(12, 14),
-                            command=lambda: Navigation().run(self.win.topframe))
+                            command=lambda: self.mac_navigation())
         if sys.platform == "darwin":  # if the platform is darwin
             nav_button.grid(row=0, column=3, columnspan=2, padx=2)  # only show nav button for mac platform
         if self.invran_result != "no labels":  # create a label row
@@ -13129,11 +13113,10 @@ class MainFrame:
 
     def investigation_range(self):
         """ configure widgets for setting investigation range """
-
         nav_button = Button(self.invest_frame, text="Navigation", width=macadj(18, 20),
-                            command=lambda: Navigation().run(self.win.topframe))
+                            command=lambda: self.mac_navigation())
         if sys.platform == "darwin":  # if the platform is darwin
-            nav_button.grid(row=0, column=6, columnspan=2, padx=2)  # only show nav button for mac plaform
+            nav_button.grid(row=0, column=6, columnspan=2, padx=2)  # only show nav button for mac platform
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=0, columnspan=2)
         om_month = OptionMenu(self.invest_frame, self.start_month, "1", "2", "3", "4", "5", "6", "7", "8", "9",
                               "10", "11", "12")
@@ -13316,18 +13299,149 @@ class MainFrame:
             i += 1
             r += 1
 
+    def mac_navigation(self):
+        """ create a screen for navigation to be used instead of the pulldown menu for macOS """
+        self.nav = MakeWindow()
+        self.nav.create(self.win.topframe)
+        # options with a first value of 0 are enabled buttons.
+        # options with a first value of 1 will be disabled if the investigation range is not set.
+        # options with a first value of 2 are labels."""
+
+        options = (
+            # ---------------------------------------------------------------------------------------------- basic
+            (2, "Basic Operations __________________________", ""),
+            (0, "Go Back", lambda: MainFrame().start(frame=self.nav.topframe)),
+            (0, "Save All", lambda: save_all(self.nav.topframe)),
+            (1, "New Carrier", lambda: CarrierInput().new_carriers(self.nav.topframe)),  # if invran set
+            (1, "Multiple Input", lambda dd="Sat", ss="name": MassInput().mass_input(self.nav.topframe, dd, ss)),
+            (1, "Mandates Spreadsheet", lambda: ImpManSpreadsheet().create(self.nav.topframe)),
+            (1, "Mandates No.4 Spreadsheet", lambda: ImpManSpreadsheet4().create(self.nav.topframe)),
+            (1, "Over Max Spreadsheet", lambda: OvermaxSpreadsheet().create(self.nav.topframe)),
+            (1, "Off Bid Spreadsheet", lambda: OffbidSpreadsheet().create(self.nav.topframe)),
+            (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
+             .create(self.nav.topframe, self.ot_date, projvar.invran_station)),
+            (1, "OT Distribution Spreadsheet", lambda: OTDistriSpreadsheet()
+             .create(self.nav.topframe, projvar.invran_date_week[0],
+                     projvar.invran_station, "weekly", self.listoptions)),
+            (1, "Availability Spreadsheet", lambda: OtAvailSpreadsheet().create(self.nav.topframe)),
+            (0, "OT Preferences", lambda: OtEquitability().create(self.nav.topframe)),
+            (1, "OT Distribution", lambda: OtDistribution().create(self.nav.topframe)),
+            (0, "Informal C", lambda: InformalC().informalc(self.nav.topframe)),
+            (0, "Location", lambda: Messenger(self.nav.topframe).location_klusterbox()),
+            (0, "About Klusterbox", lambda: AboutKlusterbox().start(self.nav.topframe)),
+            (0, "View Out of Station", lambda:
+            self.make_globals(self.start_year.get(), self.start_month.get(), self.start_day.get(), self.i_range.get(),
+                              "out of station", self.nav.topframe)),
+            (0, "Quit", lambda: projvar.root.destroy()),
+            # ------------------------------------------------------------------------------------------ reader
+            (2, "Reader Operations __________________________", ""),
+            (0, "Automatic Data Entry", lambda: AutoDataEntry().run(self.nav.topframe)),
+            (0, "Auto Over Max Finder", lambda: MaxHr().run(self.nav.topframe)),
+            (0, "Everything Report Reader", lambda: ee_skimmer(self.nav.topframe)),
+            (0, "PDF Converter", lambda: PdfConverter().run(self.nav.topframe)),
+            (0, "PDF Splitter", lambda: PdfSplitter().run(self.nav.topframe)),
+            # ------------------------------------------------------------------------------------------- report
+            (2, "Report Operations __________________________", ""),
+            (0, "TACS Cheat Sheet", lambda: CheatSheet().tacs_cheatsheet()),
+            (1, "Carrier Route and NS Day", lambda: Reports(self.nav.topframe).rpt_carrier()),
+            (1, "Carrier Route", lambda: Reports(self.nav.topframe).rpt_carrier_route()),
+            (1, "Carrier NS Day", lambda: Reports(self.nav.topframe).rpt_carrier_nsday()),
+            (1, "Carrier by List", lambda: Reports(self.nav.topframe).rpt_carrier_by_list()),
+            (1, "Carrier History", lambda: CarrierHistory().create(self.nav.topframe, projvar.invran_station)),
+            (1, "Carrier Seniority", lambda: Reports(self.nav.topframe).rpt_carrier_seniority()),
+            (1, "Carrier Seniority and ID", lambda: Reports(self.nav.topframe).rpt_carrier_seniority_id()),
+            (1, "Clock Rings Summary", lambda:
+            DatabaseAdmin().database_rings_report(self.nav.topframe, projvar.invran_station)),
+            (0, "Pay Period Guide Generator", lambda: Reports(self.nav.topframe).pay_period_guide()),
+            # --------------------------------------------------------------------------------------- speedsheets
+            (2, "Speedsheet Operations __________________________", ""),
+            (1, "Generate All Inclusive", lambda: SpeedSheetGen(self.nav.topframe, True).gen()),
+            (1, "Generate Carrier", lambda: SpeedSheetGen(self.nav.topframe, False).gen()),
+            (0, "Pre-check", lambda: SpeedWorkBookGet().open_file(self.nav.topframe, False)),
+            (0, "Input to Database", lambda: SpeedWorkBookGet().open_file(self.nav.topframe, True)),
+            (0, "Cheatsheet", lambda: CheatSheet().spdsht_cheatsheet()),
+            (0, "Instructions", lambda: OpenText().open_docs(self.nav.body, 'speedsheet_instructions.txt')),
+            (0, "Speedsheet Archive", lambda: Archive().file_dialogue(dir_path('speedsheets'))),
+            (0, "Clear Archive", lambda: Archive().remove_file_var(self.nav.topframe, 'speedsheets')),
+            # ----------------------------------------------------------------------------------------- archive
+            (2, "Archive Operations __________________________", ""),
+            (0, "Mandates Spreadsheet", lambda: Archive().file_dialogue(dir_path('spreadsheets'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'spreadsheets')),
+            (0, "Mandates No. 4", lambda: Archive().file_dialogue(dir_path('mandates_4'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'mandates_4')),
+            (0, "Over Max Spreadsheet", lambda: Archive().file_dialogue(dir_path('over_max_spreadsheet'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'over_max_spreadsheet')),
+            (0, "Speedsheets", lambda: Archive().file_dialogue(dir_path('speedsheets'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'speedsheets')),
+            (0, "Over Max Finder", lambda: Archive().file_dialogue(dir_path('over_max'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'over_max')),
+            (0, "Off Bid Assignment", lambda: Archive().file_dialogue(dir_path('off_bid'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'off_bid')),
+            (0, "OT Equitability", lambda: Archive().file_dialogue(dir_path('ot_equitability'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'ot_equitability')),
+            (0, "OT Distribution", lambda: Archive().file_dialogue(dir_path('ot_distribution'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'ot_distribution')),
+            (0, "Everything Report", lambda: Archive().file_dialogue(dir_path('ee_reader'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'ee_reader')),
+            (0, "Weekly Availability", lambda: Archive().file_dialogue(dir_path('weekly_availability'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'weekly_availability')),
+            (0, "Pay Period Guide", lambda: Archive().file_dialogue(dir_path('pp_guide'))),
+            (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'pp_guide')),
+            (0, "Clear All Archives", lambda: Archive().clear_all(self.nav.topframe)),
+            # ---------------------------------------------------------------------------------------- management
+            (2, "Management Operations __________________________", ""),
+            (0, "General Configurations", lambda: GenConfig(self.nav.topframe).create()),
+            (0, "List of Stations", lambda: StationList().station_list(self.nav.topframe)),
+            (1, "Set Dispatch of Value", lambda: SetDov().run(self.nav.topframe)),
+            (0, "Tolerances", lambda: Tolerances().tolerances(self.nav.topframe)),
+            (0, "Spreadsheet Settings", lambda: SpreadsheetConfig().start(self.nav.topframe)),
+            (1, "NS Day Configurations", lambda: NsConfig().ns_config(self.nav.topframe)),
+            (0, "Speedsheet Settings", lambda: SpeedConfig(self.nav.topframe).create()),
+            (0, "Informal C Settings", lambda: InformalCSettings().create(self.nav.topframe)),
+            (0, "Auto Data Entry Settings", lambda: AdeSettings().start(self.nav.topframe)),
+            (0, "PDF Converter Settings", lambda: PdfConvertConfig().start(self.nav.topframe)),
+            (0, "Database", lambda: (self.nav.topframe.destroy(), DatabaseAdmin().run(self.nav.topframe))),
+            (0, "Delete Carriers",
+             lambda: DatabaseAdmin().database_delete_carriers(self.nav.topframe, projvar.invran_station)),
+            (0, "Clean Carrier List", lambda: DatabaseAdmin().carrier_list_cleaning(self.nav.topframe)),
+            (0, "Name Index", lambda: NameIndex().name_index_screen(self.nav.topframe)),
+            (0, "Station Index", lambda: StationIndex().station_index_mgmt(self.nav.topframe)),
+        )
+        i = 0
+        row = 0
+        for _ in range(len(options)):
+            if options[i][0] == 3:  # if the option is a delete button
+                button = Button(self.nav.body, text=options[i][1], width=5, anchor="w", padx=5,
+                                activebackground="grey", highlightcolor="red", command=options[i][2])
+                button.grid(row=row - 1, column=2, sticky="w")
+            elif options[i][0] == 2:  # if the option is a header
+                label = Label(self.nav.body, text=options[i][1], fg="blue", width=26, anchor="w")
+                label.grid(row=row, column=1, pady=5, sticky="w", columnspan=3)
+                row += 1
+            else:  # the option is a button
+                button = Button(self.nav.body, text=options[i][1], width=21, anchor="w", padx=5,
+                                activebackground="grey", highlightcolor="red", command=options[i][2])
+                button.grid(row=row, column=1, sticky="w")
+                if not projvar.invran_day and options[i][0]:  # disable the button until invran is set.
+                    button.config(state=DISABLED)
+                row += 1
+            i += 1
+        Button(self.nav.buttons, text="Quit", width=macadj(13, 13), command=projvar.root.destroy).pack(side=LEFT)
+        Button(self.nav.buttons, text="Go Back", width=15,
+               command=lambda: MainFrame().start(frame=self.nav.topframe)).pack(side=LEFT)
+        self.nav.finish()
+
     def pulldown_menu(self):
         """ create a pulldown menu, and add it to the menu bar """
         menubar = Menu(self.win.topframe)
         # file menu
         basic_menu = Menu(menubar, tearoff=0)
-        basic_menu.add_command(label="Save All", command=lambda: self.save_all())
+        basic_menu.add_command(label="Save All", command=lambda: save_all(self.win.topframe))
         basic_menu.add_separator()
-        if sys.platform != "darwin":  # if the platform is not darwin
-            basic_menu.add_command(label="New Carrier", command=lambda: CarrierInput().new_carriers(self.win.topframe))
-            basic_menu.add_command(label="Multiple Input",
-                                   command=lambda dd="Sat", ss="name":
-                                   MassInput().mass_input(self.win.topframe, dd, ss))
+        basic_menu.add_command(label="New Carrier", command=lambda: CarrierInput().new_carriers(self.win.topframe))
+        basic_menu.add_command(label="Multiple Input",
+                               command=lambda dd="Sat", ss="name":
+                               MassInput().mass_input(self.win.topframe, dd, ss))
         basic_menu.add_command(label="Mandates Spreadsheet",
                                command=lambda: ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Mandates No.4 Spreadsheet",
@@ -13345,16 +13459,14 @@ class MainFrame:
         basic_menu.add_command(label="Availability Spreadsheet",
                                command=lambda: OtAvailSpreadsheet().create(self.win.topframe))
         basic_menu.add_separator()
-        if sys.platform != "darwin":  # if the platform is not darwin
-            basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
-            basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
-            basic_menu.add_separator()
+        basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
+        basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
+        basic_menu.add_separator()
         basic_menu.add_command(label="Informal C", command=lambda: InformalC().informalc(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="Location", command=lambda: Messenger(self.win.topframe).location_klusterbox())
-        if sys.platform != "darwin":  # if the platform is not darwin
-            basic_menu.add_command(label="About Klusterbox",
-                                   command=lambda: AboutKlusterbox().start(self.win.topframe))
+        basic_menu.add_command(label="About Klusterbox",
+                               command=lambda: AboutKlusterbox().start(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="View Out of Station",
                                command=lambda: self.make_globals(self.start_year.get(), self.start_month.get(),
@@ -13371,10 +13483,6 @@ class MainFrame:
             basic_menu.entryconfig(6, state=DISABLED)
             basic_menu.entryconfig(7, state=DISABLED)
             basic_menu.entryconfig(8, state=DISABLED)
-            if sys.platform != "darwin":  # if the platform is not darwin
-                basic_menu.entryconfig(9, state=DISABLED)
-                basic_menu.entryconfig(10, state=DISABLED)
-                basic_menu.entryconfig(13, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
@@ -13385,8 +13493,7 @@ class MainFrame:
         automated_menu.add_command(label="Everything Report Reader", command=lambda: ee_skimmer(self.win.topframe))
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: PdfConverter().run(self.win.topframe))
-        if sys.platform != "darwin":  # if the platform is not darwin
-            automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
+        automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
         menubar.add_cascade(label="Readers", menu=automated_menu)
         # reports menu
         reports_menu = Menu(menubar, tearoff=0)
@@ -13401,9 +13508,8 @@ class MainFrame:
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_nsday())
         reports_menu.add_command(label="Carrier by List",
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_by_list())
-        if sys.platform != "darwin":  # if the platform is not darwin
-            reports_menu.add_command(label="Carrier History",
-                                     command=lambda: CarrierHistory().create(self.win.topframe, projvar.invran_station))
+        reports_menu.add_command(label="Carrier History",
+                                 command=lambda: CarrierHistory().create(self.win.topframe, projvar.invran_station))
         reports_menu.add_command(label="Carrier Seniority",
                                  command=lambda: Reports(self.win.topframe).rpt_carrier_seniority())
         reports_menu.add_command(label="Carrier Seniority and ID",
@@ -13422,9 +13528,6 @@ class MainFrame:
             reports_menu.entryconfig(5, state=DISABLED)
             reports_menu.entryconfig(6, state=DISABLED)
             reports_menu.entryconfig(7, state=DISABLED)
-            if sys.platform != "darwin":  # if the platform is not darwin
-                reports_menu.entryconfig(8, state=DISABLED)
-                reports_menu.entryconfig(10, state=DISABLED)
         menubar.add_cascade(label="Reports", menu=reports_menu)
         # speedsheeet menu
         speed_menu = Menu(menubar, tearoff=0)
@@ -13503,46 +13606,44 @@ class MainFrame:
                                         command=lambda: Archive().clear_all(self.win.topframe))
         # management menu
         management_menu = Menu(menubar, tearoff=0)
-        if sys.platform != "darwin":  # if the platform is not darwin
-            management_menu.add_command(label="General Configurations",
-                                        command=lambda: GenConfig(self.win.topframe).create())
-            management_menu.add_separator()
-            management_menu.add_command(label="List of Stations",
-                                        command=lambda: StationList().station_list(self.win.topframe))
-            management_menu.add_command(label="Set Dispatch of Value",
-                                        command=lambda: SetDov().run(self.win.topframe))
-            management_menu.add_command(label="Tolerances", command=lambda: Tolerances().tolerances(self.win.topframe))
-            management_menu.add_command(label="Spreadsheet Settings",
-                                        command=lambda: SpreadsheetConfig().start(self.win.topframe))
-            management_menu.add_command(label="NS Day Configurations",
-                                        command=lambda: NsConfig().ns_config(self.win.topframe))
-            if projvar.invran_day is None:
-                management_menu.entryconfig(3, state=DISABLED)  # disable the Set DOV if invran is not set.
-                management_menu.entryconfig(6, state=DISABLED)  # disable ns day configurations if invran is not set.
-            management_menu.add_command(label="Speedsheet Settings",
-                                        command=lambda: SpeedConfig(self.win.topframe).create())
-            management_menu.add_command(label="Informal C Settings",
-                                        command=lambda: InformalCSettings().create(self.win.topframe))
-            management_menu.add_separator()
-            management_menu.add_command(label="Auto Data Entry Settings",
-                                        command=lambda: AdeSettings().start(self.win.topframe))
-            management_menu.add_command(label="PDF Converter Settings",
-                                        command=lambda: PdfConvertConfig().start(self.win.topframe))
-            management_menu.add_separator()
-            management_menu.add_command(label="Database",
-                                        command=lambda: (self.win.topframe.destroy(),
-                                                         DatabaseAdmin().run(self.win.topframe)))
-            management_menu.add_command(label="Delete Carriers",
-                                        command=lambda: DatabaseAdmin().database_delete_carriers
-                                        (self.win.topframe, projvar.invran_station))
+        management_menu.add_command(label="General Configurations",
+                                    command=lambda: GenConfig(self.win.topframe).create())
+        management_menu.add_separator()
+        management_menu.add_command(label="List of Stations",
+                                    command=lambda: StationList().station_list(self.win.topframe))
+        management_menu.add_command(label="Set Dispatch of Value",
+                                    command=lambda: SetDov().run(self.win.topframe))
+        management_menu.add_command(label="Tolerances", command=lambda: Tolerances().tolerances(self.win.topframe))
+        management_menu.add_command(label="Spreadsheet Settings",
+                                    command=lambda: SpreadsheetConfig().start(self.win.topframe))
+        management_menu.add_command(label="NS Day Configurations",
+                                    command=lambda: NsConfig().ns_config(self.win.topframe))
+        if projvar.invran_day is None:
+            management_menu.entryconfig(3, state=DISABLED)  # disable the Set DOV if invran is not set.
+            management_menu.entryconfig(6, state=DISABLED)  # disable ns day configurations if invran is not set.
+        management_menu.add_command(label="Speedsheet Settings",
+                                    command=lambda: SpeedConfig(self.win.topframe).create())
+        management_menu.add_command(label="Informal C Settings",
+                                    command=lambda: InformalCSettings().create(self.win.topframe))
+        management_menu.add_separator()
+        management_menu.add_command(label="Auto Data Entry Settings",
+                                    command=lambda: AdeSettings().start(self.win.topframe))
+        management_menu.add_command(label="PDF Converter Settings",
+                                    command=lambda: PdfConvertConfig().start(self.win.topframe))
+        management_menu.add_separator()
+        management_menu.add_command(label="Database",
+                                    command=lambda: (self.win.topframe.destroy(),
+                                                     DatabaseAdmin().run(self.win.topframe)))
+        management_menu.add_command(label="Delete Carriers",
+                                    command=lambda: DatabaseAdmin().database_delete_carriers
+                                (self.win.topframe, projvar.invran_station))
         management_menu.add_command(label="Clean Carrier List",
                                     command=lambda: DatabaseAdmin().carrier_list_cleaning(self.win.topframe))
-        if sys.platform != "darwin":  # if the platform is not darwin
-            management_menu.add_separator()
-            management_menu.add_command(label="Name Index",
-                                        command=lambda: NameIndex().name_index_screen(self.win.topframe))
-            management_menu.add_command(label="Station Index",
-                                        command=lambda: StationIndex().station_index_mgmt(self.win.topframe))
+        management_menu.add_separator()
+        management_menu.add_command(label="Name Index",
+                                    command=lambda: NameIndex().name_index_screen(self.win.topframe))
+        management_menu.add_command(label="Station Index",
+                                    command=lambda: StationIndex().station_index_mgmt(self.win.topframe))
         menubar.add_cascade(label="Management", menu=management_menu)
         projvar.root.config(menu=menubar)
         projvar.root.update()  # root update
@@ -13586,14 +13687,6 @@ class MainFrame:
         quit_button = Button(self.win.buttons, text="Quit", width=macadj(13, 13),
                              command=projvar.root.destroy)
         quit_button.pack(side=LEFT)
-
-    def save_all(self):
-        """ this creates a message when someone selects the 'save' menu option. """
-        messagebox.showinfo("For Your Information ",
-                            "All data has already been saved. Data is saved to the\n"
-                            "database whenever an apply or submit button is pressed.\n"
-                            "This button does nothing. :)",
-                            parent=self.win.topframe)
 
 
 if __name__ == "__main__":
