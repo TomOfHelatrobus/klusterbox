@@ -6,6 +6,7 @@ either in the hidden .klusterbox folder in documents or in th kb_sub folder.
 import projvar
 from kbtoolbox import inquire, commit, ProgressBarDe
 import os
+from sys import platform
 from tkinter import messagebox
 from kbtoolbox import Handler
 
@@ -19,7 +20,7 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(136)
+        self.pbar.max_count(138)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
@@ -29,6 +30,7 @@ class DataBase:
         self.skippers()  # pb increment: 1
         self.ns_config()  # pb increment: 6
         self.mousewheel()  # pb increment: 1
+        self.navigation()  # pb increment: 1
         self.list_of_stations()  # pb increment: 1
         self.informalc_issues()  # pb increment 35
         self.informalc_decisions()  # pb increment 18
@@ -171,15 +173,20 @@ class DataBase:
             (43, "triad_routefirst", "False"),  # when False, the route is displayed at the end of the route triad
             (44, "wal_12_hour", "True"),  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
             (45, "wal_dec_exempt", "False"),
-            (46, "informalc_result_limit", 50)  # limits the number of rows in InformalC().showtime()
+            (46, "informalc_result_limit", 50),  # limits the number of rows in InformalC().showtime()
+            (47, "mac_navigation", 0)  # True(1) is for pulldown menu preferance, False(0) is for navigation button
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:
             self.pbar_counter += 1
             self.pbar.move_count(self.pbar_counter)
             self.pbar.change_text("Setting up: Tables - Tolerances {}".format(tol[1]))
+            # the default is used unless it is changed below...
             sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) ' \
                   'VALUES ("%s", "%s", "%s")' % (tol[0], tol[1], tol[2])
+            if tol[0] in (47, ) and platform == "darwin":  # for record 47, change record if running on mac platform
+                sql = 'INSERT OR IGNORE INTO tolerances (row_id, category, tolerance) ' \
+                      'VALUES ("%s", "%s", "%s")' % (tol[0], tol[1], 1)
             commit(sql)
 
     def rings(self):
@@ -243,6 +250,16 @@ class DataBase:
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
         results = inquire(sql)
         projvar.mousewheel = int(results[0][0])
+
+    def navigation(self):
+        """ initialize navigation - either a pulldown menu or a button which creates a screen of menu options
+        True(1) creates a button based navigation, False(0) creates a pulldown menu navigation. """
+        self.pbar_counter += 1
+        self.pbar.move_count(self.pbar_counter)
+        self.pbar.change_text("Setting up: Navigation")
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mac_navigation"
+        results = inquire(sql)
+        projvar.mac_navigation = int(results[0][0])
 
     def list_of_stations(self):
         """ sets up the list of stations project variable. """

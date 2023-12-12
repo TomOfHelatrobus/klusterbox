@@ -104,7 +104,8 @@ class InformalC:
     This is the home page of the Informal C program.
     """
     def __init__(self):
-        self.win = None  # tkinter root object
+        self.win = None  # tkinter frame object for the main window
+        self.nav = None  # tkinter frame object for the mac navigation button.
         # station
         self.stationvar = None  # this is the stringvar for the station
         self.station_options = []  # the list of stations.
@@ -306,7 +307,7 @@ class InformalC:
             (0, "Pre-check", lambda: InfcSpeedWorkBookGet().open_file(self.nav.topframe, False)),
             (0, "Input to Database", lambda: InfcSpeedWorkBookGet().open_file(self.nav.topframe, True)),
             (0, "Speedsheet Guide", lambda: InformalCIndex().speedsheet_guide()),
-            (0, "Grievant Guide",lambda: InformalCIndex().grievant_guide(self.station)),
+            (0, "Grievant Guide", lambda: InformalCIndex().grievant_guide(self.station)),
         )
         i = 0
         row = 0
@@ -412,15 +413,16 @@ class InformalC:
         """ the main screen for informal c. """
         self.win = MakeWindow()
         self.win.create(frame)  # creates the screen object
-        if sys.platform != "darwin":
-            self.pulldown_menu()
+        if not projvar.mac_navigation:
+            self.pulldown_menu()  # create a pulldown menu, and add it to the menu bar
         Label(self.win.body, text="Informal C", font=macadj("bold", "Helvetica 18")).grid(row=0, sticky="w")
         Label(self.win.body, text="The C is for Compliance").grid(row=1, sticky="w")
         Label(self.win.body, text="").grid(row=2)
         row = 3
-        Button(self.win.body, text="Navigation", width=30,
-               command=lambda: self.mac_navigation()).grid(row=row, pady=5)
-        row += 1
+        if projvar.mac_navigation:  # conditional on user preference for navigation
+            Button(self.win.body, text="Navigation", width=30,
+                   command=lambda: self.mac_navigation()).grid(row=row, pady=5)
+            row += 1
         Button(self.win.body, text=" Enter New Grievance", width=30,
                command=lambda: self.GrievanceInput(self).informalc_new(self.win.topframe)).grid(row=row, pady=5)
         row += 1
@@ -503,17 +505,19 @@ class InformalC:
         re_initialize_search_vars()  # in the event that a search is run more than once, re initialize
         button_alignment = macadj("w", "center")
         row = 0
-        if sys.platform != "darwin":
-            self.pulldown_menu()
+        if not projvar.mac_navigation:
+            self.pulldown_menu()  # create a pulldown menu, and add it to the menu bar
         Label(self.win.body, text="Grievance Search Criteria", font=macadj("bold", "Helvetica 18")) \
             .grid(row=row, columnspan=6, sticky="w")
         row += 1
         Label(self.win.body, text="").grid(row=row, columnspan=6)
         row += 1
         # ---------------------------------------------------------------------------------------------- mac navigation
-        Button(self.win.body, text="Navigation", width=23, anchor="center",
-               command=lambda: self.mac_navigation()).grid(row=row, column=5, pady=3)
-        row += 1
+        nav_button = Button(self.win.body, text="Navigation", width=23, anchor="center",
+                            command=lambda: self.mac_navigation())
+        if projvar.mac_navigation:  # conditional on user preference for navigation
+            nav_button.grid(row=row, column=5, pady=3)  # display the navigation button
+            row += 1
         # ---------------------------------------------------------------------------------------------- search for all
         Label(self.win.body, width=29, anchor="w", text="Search for all in {}".format(self.station))\
             .grid(row=row, column=0, columnspan=5, sticky="w")
@@ -9081,10 +9085,12 @@ class GenConfig:
         self.frame = frame
         self.win = None
         self.wheel_selection = None  # stringvar
+        self.nav_selection = None  # stringvar
         self.invran_mode = None  # stringvar
         self.ot_rings_limiter = None  # stringvar
         self.tourrings_var = None  # stringvar
         self.spreadsheet_pref = None  # stringvar
+        self.nav_result = None  # True (1) for button - mac navigation, False (0) for pulldown menu
         self.tourrings = None  # True to show BT/ET rings, False to hide
         self.rings_limiter = None  # ot rings limiter status from tolerance table
         self.invran_result = None  # investigation range mode from tolerance table
@@ -9106,6 +9112,9 @@ class GenConfig:
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mousewheel"
         results = inquire(sql)
         projvar.mousewheel = int(results[0][0])
+        sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "mac_navigation"
+        results = inquire(sql)
+        self.nav_result = int(results[0][0])
         sql = "SELECT tolerance FROM tolerances WHERE category = '%s'" % "invran_mode"
         results = inquire(sql)
         self.invran_result = results[0][0]
@@ -9129,6 +9138,7 @@ class GenConfig:
     def get_stringvars(self):
         """ create the stringvars """
         self.wheel_selection = StringVar(self.win.body)
+        self.nav_selection = StringVar(self.win.body)
         self.invran_mode = StringVar(self.win.body)
         self.spreadsheet_pref = StringVar(self.win.body)
         self.ot_rings_limiter = StringVar(self.win.body)
@@ -9159,6 +9169,20 @@ class GenConfig:
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
+        # pulldown or navigation button
+        Label(self.win.body, text="Navigation Preference:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
+        om_wheel = OptionMenu(self.win.body, self.nav_selection, "pulldown", "button")  # option menu config
+        om_wheel.config(width=7)
+        om_wheel.grid(row=self.row, column=1)
+        if self.nav_result:
+            self.nav_selection.set("button")
+        else:
+            self.nav_selection.set("pulldown")
+        Button(self.win.body, text="set", width=7, command=lambda: self.__apply_navigation())\
+            .grid(row=self.row, column=2)
+        self.row += 1
+        Label(self.win.body, text=" ").grid(row=self.row, column=0)
+        self.row += 1
         # investigation range mode
         Label(self.win.body, text="Investigation Range Mode:  ", anchor="w").grid(row=self.row, column=0, sticky="w")
         om_invran_mode = OptionMenu(self.win.body, self.invran_mode, "original", "simple", "no labels")
@@ -9170,7 +9194,7 @@ class GenConfig:
         self.row += 1
         Label(self.win.body, text=" ").grid(row=self.row, column=0)
         self.row += 1
-        """ spreadsheet preference - any new options must be added to MainFrame().define_spreadsheet_button(). """
+        # spreadsheet preference - any new options must be added to MainFrame().define_spreadsheet_button().
         pref_options = (
             "Mandates",
             "Over Max",
@@ -9263,6 +9287,21 @@ class GenConfig:
         sql = "UPDATE tolerances SET tolerance='%s' WHERE category='%s'" % (wheel_multiple, "mousewheel")
         commit(sql)
         msg = "Mousescroll direction updated: {}".format(self.wheel_selection.get())
+        self.status_update.config(text="{}".format(msg))
+
+    def __apply_navigation(self):
+        """ apply the navigation method - either a pulldown menu or a button.
+        the button method is prefered for the mac, as pulldown menus cause the program to crash.
+        True (1) will create a navigation button and page, False (0) will use the pulldown menu. """
+        if self.nav_selection.get() == "pulldown":
+            nav_value = 0
+            projvar.mac_navigation = 0
+        else:  # if the self.nav_selection.get() == "pulldown"
+            nav_value = 1
+            projvar.mac_navigation = 1
+        sql = "UPDATE tolerances SET tolerance='%s' WHERE category='%s'" % (nav_value, "mac_navigation")
+        commit(sql)
+        msg = "Navigation preference updated: {}".format(self.nav_selection.get())
         self.status_update.config(text="{}".format(msg))
 
     def apply_tourrings(self):
@@ -12956,7 +12995,7 @@ class MainFrame:
 
     def __init__(self):
         self.win = None
-        self.nav =None  # an window for the optional mac navigation method
+        self.nav = None  # an window for the optional mac navigation method
         self.invest_frame = None
         self.main_frame = None
         self.start_year = None
@@ -12987,7 +13026,7 @@ class MainFrame:
         self.set_dates()
         self.make_stringvars()
         self.get_carrierlist()  # call CarrierList to get Carrier Rec Set
-        if sys.platform != "darwin":  # do not show pulldown menu on macOS.
+        if not projvar.mac_navigation:
             self.pulldown_menu()  # create a pulldown menu, and add it to the menu bar
         self.set_investigation_vars()  # set the stringvars for the investigation range
         self.get_stations_list()  # get a list of stations for station optionmenu
@@ -13089,7 +13128,7 @@ class MainFrame:
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=0, column=0, columnspan=2, sticky=W)
         nav_button = Button(self.invest_frame, text="Navigation", width=macadj(12, 14),
                             command=lambda: self.mac_navigation())
-        if sys.platform == "darwin":  # if the platform is darwin
+        if projvar.mac_navigation:  # conditional on user preference for navigation
             nav_button.grid(row=0, column=3, columnspan=2, padx=2)  # only show nav button for mac platform
         if self.invran_result != "no labels":  # create a label row
             Label(self.invest_frame, text="Date: ", fg="grey").grid(row=1, column=0, sticky=W)
@@ -13115,7 +13154,7 @@ class MainFrame:
         """ configure widgets for setting investigation range """
         nav_button = Button(self.invest_frame, text="Navigation", width=macadj(18, 20),
                             command=lambda: self.mac_navigation())
-        if sys.platform == "darwin":  # if the platform is darwin
+        if projvar.mac_navigation:
             nav_button.grid(row=0, column=6, columnspan=2, padx=2)  # only show nav button for mac platform
         Label(self.invest_frame, text="INVESTIGATION RANGE").grid(row=1, column=0, columnspan=2)
         om_month = OptionMenu(self.invest_frame, self.start_month, "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -13329,9 +13368,12 @@ class MainFrame:
             (0, "Informal C", lambda: InformalC().informalc(self.nav.topframe)),
             (0, "Location", lambda: Messenger(self.nav.topframe).location_klusterbox()),
             (0, "About Klusterbox", lambda: AboutKlusterbox().start(self.nav.topframe)),
-            (0, "View Out of Station", lambda:
-            self.make_globals(self.start_year.get(), self.start_month.get(), self.start_day.get(), self.i_range.get(),
-                              "out of station", self.nav.topframe)),
+            (0, "View Out of Station", lambda: self.make_globals(self.start_year.get(),
+                                                                 self.start_month.get(),
+                                                                 self.start_day.get(),
+                                                                 self.i_range.get(),
+                                                                 "out of station",
+                                                                 self.nav.topframe)),
             (0, "Quit", lambda: projvar.root.destroy()),
             # ------------------------------------------------------------------------------------------ reader
             (2, "Reader Operations __________________________", ""),
@@ -13350,8 +13392,8 @@ class MainFrame:
             (1, "Carrier History", lambda: CarrierHistory().create(self.nav.topframe, projvar.invran_station)),
             (1, "Carrier Seniority", lambda: Reports(self.nav.topframe).rpt_carrier_seniority()),
             (1, "Carrier Seniority and ID", lambda: Reports(self.nav.topframe).rpt_carrier_seniority_id()),
-            (1, "Clock Rings Summary", lambda:
-            DatabaseAdmin().database_rings_report(self.nav.topframe, projvar.invran_station)),
+            (1, "Clock Rings Summary", lambda: DatabaseAdmin().database_rings_report(self.nav.topframe,
+                                                                                     projvar.invran_station)),
             (0, "Pay Period Guide Generator", lambda: Reports(self.nav.topframe).pay_period_guide()),
             # --------------------------------------------------------------------------------------- speedsheets
             (2, "Speedsheet Operations __________________________", ""),
@@ -13635,8 +13677,8 @@ class MainFrame:
                                     command=lambda: (self.win.topframe.destroy(),
                                                      DatabaseAdmin().run(self.win.topframe)))
         management_menu.add_command(label="Delete Carriers",
-                                    command=lambda: DatabaseAdmin().database_delete_carriers
-                                (self.win.topframe, projvar.invran_station))
+                                    command=lambda: DatabaseAdmin().database_delete_carriers(self.win.topframe,
+                                                                                             projvar.invran_station))
         management_menu.add_command(label="Clean Carrier List",
                                     command=lambda: DatabaseAdmin().carrier_list_cleaning(self.win.topframe))
         management_menu.add_separator()

@@ -19,5 +19,6 @@ ns_code = {}  # dictionary of ns days
 pay_period = None  # the pay period
 platform = "py"  # the platform that klusterbox is running on
 mousewheel = -1  # configure the mousewheel for natural - "1" or reverse - "-1" scrolling
+mac_navigation = False  # use either a pulldown menu or a button for navigation - button is prefered for macOS.
 try_absorber = False  # a variable that absorbs errors in try/except statements.
 dev_condition = True  # a variable that could might be used for development
