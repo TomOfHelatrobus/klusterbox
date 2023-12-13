@@ -519,7 +519,7 @@ class InformalC:
             nav_button.grid(row=row, column=5, pady=3)  # display the navigation button
             row += 1
         # ---------------------------------------------------------------------------------------------- search for all
-        Label(self.win.body, width=29, anchor="w", text="Search for all in {}".format(self.station))\
+        Label(self.win.body, width=29, anchor="w", text="Search for all in {}".format(self.station)) \
             .grid(row=row, column=0, columnspan=5, sticky="w")
         Button(self.win.body, text="Search All", width=23, anchor="center",
                command=lambda: self.search_all_apply(self.win.topframe)).grid(row=row, column=5, pady=3)

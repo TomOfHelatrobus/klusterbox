@@ -4,7 +4,7 @@ This module is an collection of useful classes, methods and functions used widel
 It is called by all klusterbox modules in whole or in part with the exeption of projvar.py.
 """
 from tkinter import Tk, ttk, Frame, Scrollbar, Canvas, BOTH, LEFT, BOTTOM, RIGHT, NW, Label, mainloop, \
-    messagebox, TclError, PhotoImage, Menu
+    messagebox, TclError, PhotoImage
 import projvar
 from operator import itemgetter
 import os
@@ -982,6 +982,7 @@ class Convert:
         return dt
 
     def dt_converter_or_empty(self):
+        """ convert string of datetime to datetime object. if a date time is not provided, return empty string.  """
         if not self.data:
             return ""
         else:
@@ -2383,6 +2384,7 @@ class AwardsChecker:
         hour_rate = ("hour", "rate")
 
         def error_msg():
+            """ create an error message """
             messagebox.showerror("Informal C Awards",
                                  "For Hour/Rate Awards, both fields must have a value. In the {} field for {} "
                                  "the {} does not have a value. \n"
@@ -2404,6 +2406,7 @@ class AwardsChecker:
         """ only run for dollar awards. return false if there is no award or the award is less than/equal to zero. """
 
         def error_msg():
+            """ create an error message. """
             messagebox.showerror("Informal C Awards",
                                  "Dollar awards must be greater than 0. In the {} field for {} "
                                  "the award value is not greater than 0. \n"

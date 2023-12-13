@@ -99,9 +99,6 @@ class InfcSpeedSheetGen:
             ["grievance number", "gats number"]  # gats reports index
         ]
 
-    def run(self):
-        pass
-
     def new(self):
         """ this generates a blank speedsheet for new greivances"""
         self.name_styles()

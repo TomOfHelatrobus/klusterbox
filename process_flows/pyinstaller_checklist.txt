@@ -42,13 +42,13 @@ ___ ___ ___  6. if the listed modules do not match those in the requirements lis
 	___ ___ ___  a. ensure the requirements file from the klusterbox project folder is present.
 	___ ___ ___  a. enter: pipenv install -r requirements.txt
 
-7. (in terminal/ powershell) make sure that pyinstaller is installed inside the virtual environment (pyinstaller should be included in requirements.txt). 
+___ ___ ___  7. (in terminal/ powershell) make sure that pyinstaller is installed inside the virtual environment (pyinstaller should be included in requirements.txt). 
 	___ ___ ___  a type: pyinstaller --version
 	___ ___ ___  b. if pyinstaller is not installed use:
 		type: pip install pyinstaller 
 		or type pip3 install pyinstaller. 
 
-8. (in terminal/ powershell) navigate to the kb_install folder
+___ ___ ___  8. (in terminal/ powershell) navigate to the kb_install folder
 
 ----------------------------------------------------------------------
 
