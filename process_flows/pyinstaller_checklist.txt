@@ -153,7 +153,8 @@ if you are creating an app bundle to be installed by a NSIS installer for window
 w64 w32
 ___ ___  1. (in powershell) make sure you are in the kb_install folder.
 
-___ ___  2. (in explorer) make sure the python source files are in the kb_install folder:
+___ ___  2. (in explorer) make sure the python source files are in the kb_install folder
+			or use command 'ls' in powershell:
 
 	___ ___  1. klusterbox.py
 	___ ___  2. projvar.py
@@ -266,7 +267,6 @@ ___  2. (in finder) make sure the python source files are in the kb_install fold
 	___ 14. kbinformalc.py
 
 ___  2. (in finder) make sure the spec file is also in the kb_install folder:
-
 
 	___ 1. klustermac.spec
 

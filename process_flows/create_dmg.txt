@@ -21,7 +21,7 @@ ___  5. In the prompt, enter the following.
 	
 ___  6. Close out the disk utility and any other windows on the desktop.
 
-___  7. On the desktop, double click to open "klusterbox_install". A large empty window should appear. 
+___  7. On the desktop, double click to open "klusterbox_install". A large empty window should appear. If you have 'view hidden files' selected, then you will see a hidden file in the window. Use 'shift + command + .' to hide hidden folders.
 
 ___  8. right click in the 'klusterbox_install' window and select 'show view options' from the menu. 
 
@@ -37,13 +37,25 @@ ___  11. drag and drop the kb_install.png from the klusterbox install window int
 
 ___  12. resize the klusterbox_install window to match the background image by clicking the bottom right corner dragging to match the bottom right corner of the background image. 
 
-___  13. open terminal and enter: 
+___  13. make the kb_install.png icon a hidden file. pick an option below:
+
+		Option 1. open terminal and enter: 
 
 	___  a. cd /Volumes/klusterbox_install # navigate to the klusterbox install 
 	___  b. mv kb_install.png .kb_install.png # change the file name to a hidden file
 	___  c. ls -a # will show hidden files in terminal 
 	
-___  14. close terminal
+		Option 2. open in the klusterbox install window: 
+
+	___  a. right click on the kb_install.png icon 
+	___  b. select 'rename' # change the file name to a hidden file
+	___  c. change the name of the file so that a period is the first character, i.e. '.kb_install.png'.
+
+	you can verify that the file is hidden by toggling 'shift + command + .' (period) in the klusterbox_install window. this should show the files appearing and disappearing. 
+	
+	___ d. move the hidden icons off the background image for the eventuality that the user has view hidden folders selected. 
+	
+___  14. close terminal if you used Option 1. 
 
 ___  15. close view options window.
 
