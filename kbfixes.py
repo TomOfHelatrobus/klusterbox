@@ -56,18 +56,19 @@ class V5000Fix:
     def __init__(self):
         self.carrier_list = []
         self.infc_awards = []
+        self.infc_grvs = []
         self.infc_payouts = []
         self.name_index = []
         self.otdl_pref = []
         self.refuse_list = []
         self.rings_list = []
         # ensure that the tableslist, name_convention and name_array all have the same number of elements.
-        self.tablelist = ["carriers", "informalc_awards", "informalc_payouts", "name_index", "otdl_preference",
-                          "refusals", "rings3"]
-        self.name_convention = ["carrier_name", "carrier_name", "carrier_name", "kb_name", "carrier_name",
+        self.tablelist = ["carriers", "informalc_awards2", "informalc_grievances", "informalc_payouts", "name_index",
+                          "otdl_preference", "refusals", "rings3"]
+        self.name_convention = ["carrier_name", "carrier_name", "grievant", "carrier_name", "kb_name", "carrier_name",
                                 "carrier_name", "carrier_name"]
-        self.name_array = [self.carrier_list, self.infc_awards, self.infc_payouts, self.name_index, self.otdl_pref,
-                           self.refuse_list, self.rings_list]
+        self.name_array = [self.carrier_list, self.infc_awards, self.infc_grvs, self.infc_payouts, self.name_index,
+                           self.otdl_pref, self.refuse_list, self.rings_list]
         self.iterations = 0
 
     def run(self):
@@ -118,7 +119,8 @@ class V5000Fix:
         for i in range(self.iterations):  # loop for each table
             for carrier in self.name_array[i]:
                 if not carrier.islower():
-                    sql = "SELECT * FROM {} WHERE {} = %s".format(self.tablelist[i], self.name_convention[i]) % carrier
+                    sql = "SELECT * FROM {} WHERE {} = '%s'"\
+                              .format(self.tablelist[i], self.name_convention[i]) % carrier
                     results = inquire(sql, returnerror=True)  # use kwarg to check for operational error
                     # check that the table exist, if it does not then use 'continue' to skip iteration.
                     if results == "OperationalError":  # if operational error is returned - return False

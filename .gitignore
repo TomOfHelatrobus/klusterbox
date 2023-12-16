@@ -2,7 +2,7 @@
 
 *.sqlite
 
-# ignore all exe and dmg setup files
+# ignore all exe, dmg and zip files
 
 *.exe
 *.dmg

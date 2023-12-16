@@ -23,7 +23,8 @@ how to set up a pipenv (virtual environment)
 - at the prompt enter: pipenv shell
 - if you want to create a virtual environment with a specific version of python:
 	- ensure that the version of python is in the applications folder
-	- at the prompt enter: pipenv install --python 
+	- at the prompt enter: pipenv install --python 3.6 (for example)
+
 
 how to install project requirements
 

@@ -5,19 +5,17 @@ name = "pypi"
 
 [packages]
 chardet = "==3.0.4"
-colorama = "==0.4.6"
 et-xmlfile = "==1.0.1"
 jdcal = "==1.4.1"
 openpyxl = "==3.0.7"
 "pdfminer.six" = "==20181108"
-pillow = "==10.0.1"
 pycryptodome = "==3.9.7"
 pypdf2 = "==1.26.0"
 six = "==1.14.0"
 sortedcontainers = "==2.1.0"
-tqdm = "==4.64.1"
+pillow = "==9.0.0"
 
 [dev-packages]
 
 [requires]
-python_version = "3.11"
+python_version = "3.7"
