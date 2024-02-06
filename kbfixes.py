@@ -40,6 +40,8 @@ class Fixes:
             V5000FixA().run()
         if self.version >= 5.08:
             V5008Fix().run()
+        if self.version >= 6.01:
+            V601Fix().run()
         return True
 
     def update_lastfix(self):
@@ -310,4 +312,17 @@ class V5008Fix:
                     commit(sql)
             i += 1
         sql = "DROP TABLE informalc_awards"
+        commit(sql)
+
+
+class V601Fix:
+    """ This is a fix to delete records with a Nonetype value in the senior_date column of the senority table. """
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def run():
+        """search the seniority table. delete any records where the value for senior_date is blank."""
+        sql = "DELETE FROM seniority WHERE senior_date = ''"
         commit(sql)

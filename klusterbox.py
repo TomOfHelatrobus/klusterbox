@@ -11672,13 +11672,13 @@ class AboutKlusterbox:
         r += 1
         Label(self.win.body, text="").grid(row=r)
         r += 1
-        Label(self.win.body, text="version: {}".format(version), anchor=W) \
+        Label(self.win.body, text="Version: {}".format(version), anchor=W) \
             .grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
-        Label(self.win.body, text="release date: {}".format(release_date), anchor=W) \
+        Label(self.win.body, text="Release date: {}".format(release_date), anchor=W) \
             .grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
-        Label(self.win.body, text="created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w",
+        Label(self.win.body, text="Created by Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w",
                                                                             columnspan=6)
         r += 1
         Label(self.win.body, text="Original release: October 2018", anchor=W) \
@@ -11686,12 +11686,12 @@ class AboutKlusterbox:
         r += 1
         Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
-        Label(self.win.body, text="comments and criticisms are welcome", anchor=W, fg="red") \
+        Label(self.win.body, text="Comments and criticisms are welcome", anchor=W, fg="red") \
             .grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
         Label(self.win.body, text=" ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
-        Label(self.win.body, text="contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
+        Label(self.win.body, text="Contact information: ", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
         Label(self.win.body, text="Thomas Weeks", anchor=W).grid(row=r, column=0, sticky="w", columnspan=6)
         r += 1
@@ -11715,7 +11715,7 @@ class AboutKlusterbox:
         Label(self.win.body, text="For the lastest updates on Klusterbox check out the official Klusterbox") \
             .grid(row=r, columnspan=6, sticky="w")
         r += 1
-        Label(self.win.body, text="website at:").grid(row=r, columnspan=6, sticky="w")
+        Label(self.win.body, text="Website at:").grid(row=r, columnspan=6, sticky="w")
         r += 1
         kb_link = Label(self.win.body, text="    www.klusterbox.com", fg="blue", cursor="hand2")
         kb_link.grid(row=r, columnspan=6, sticky="w")
@@ -13580,6 +13580,8 @@ class MainFrame:
             reports_menu.entryconfig(5, state=DISABLED)
             reports_menu.entryconfig(6, state=DISABLED)
             reports_menu.entryconfig(7, state=DISABLED)
+            reports_menu.entryconfig(8, state=DISABLED)
+            reports_menu.entryconfig(10, state=DISABLED)
         menubar.add_cascade(label="Reports", menu=reports_menu)
         # speedsheeet menu
         speed_menu = Menu(menubar, tearoff=0)
