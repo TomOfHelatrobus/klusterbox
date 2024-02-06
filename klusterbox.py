@@ -62,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.00  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Dec 6, 2023"  # format is Jan 1, 2022
+version = 6.01  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Feb 6, 2024"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -8853,7 +8853,7 @@ class AutoDataEntry:
                             self.skim_daily_leavetime()  # fill day leave type and time variables
                         self.skim_get_code()  # detects annual or sick leave for day_code variable
                     # get the RETURN TO OFFICE time
-                    if self.daily_line[19] == "MV" and self.daily_line[23][:3] == "722":
+                    if self.daily_line[19] == "MV" and self.daily_line[23][:3] in ("722", "744"):
                         self.skim_get_returntostation()  # get return to station time and fill day_rs variable
                     if self.daily_line[19] in self.mv_codes:  # get the MOVES
                         self.skim_get_moves()  # build an array of moves for the day
@@ -12874,17 +12874,20 @@ class CarrierInput:
         if not SeniorityChecker().run_manual(new_senior_date, self.win.body):  # run all checks
             self.seniority.set(self.onrecs_seniority)  # revert field to semiority in dbase or empty string.
             return  # will give error messages and return if False
-        self.input_seniority()  # if all checks pass, input into database
+        input_seniority = self.input_seniority()  # if all checks pass, input into database
         if self.input_type == "edit":
+            date_ = ""  # the default is an empty string
             sql = "SELECT senior_date FROM seniority WHERE name = '%s'" % self.carrier
             result = inquire(sql)  # retrieve the seniority date you just created/ modified
-            senior_date = result[0][0]
-            date_ = ""  # the default is an empty string
-            if senior_date:  # if the result inquiry is not an empty string
+            if result:  # if the result inquiry is not an empty string
+                senior_date = result[0][0]
                 date_ = Convert(senior_date).dtstring_to_backslashdate()  # convert the datetime to a backslash date
             self.onrecs_seniority = date_  # update the seniority date on record
             self.seniority.set(date_)  # update the seniority date field
-            self.status = "Seniority Date updated"  # update the status label on bottom of the screen
+            if input_seniority:
+                self.status = "Seniority Date updated"  # update the status label on bottom of the screen
+            else:
+                self.status = "No Seniority Date Provided"  # update the status label on bottom of the screen
             self.status_label.config(text=self.status)
             projvar.root.update()  # root update
 
@@ -12899,12 +12902,19 @@ class CarrierInput:
         sql = "SELECT senior_date FROM seniority WHERE name = '%s'" % self.carrier
         result = inquire(sql)  # the seniordate on record
         if not result:  # if there is no record in the seniority table
-            sql = "INSERT INTO seniority (name, senior_date) " \
-                  "VALUES('%s', '%s')" % (self.carrier, date_)
-            commit(sql)  # since no record exist - create it
+            if date_:
+                sql = "INSERT INTO seniority (name, senior_date) " \
+                      "VALUES('%s', '%s')" % (self.carrier, date_)
+                commit(sql)  # since no record exist - create it
+            else:
+                return False
         else:
-            sql = "UPDATE seniority SET senior_date = '%s' WHERE name = '%s'" % (date_, self.carrier)
+            if date_:
+                sql = "UPDATE seniority SET senior_date = '%s' WHERE name = '%s'" % (date_, self.carrier)
+            else:
+                sql = "DELETE FROM seniority WHERE name='%s'" % self.carrier
             commit(sql)  # since a record does exist - modify it
+        return True
 
     def name_change(self):
         """ change the name of the carrier in the Edit input type """

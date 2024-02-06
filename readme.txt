@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 6.00		
-released: Dec 6, 2023
+most recent version: 6.01		
+released: Feb 6, 2024
 
 Caution: 
 
@@ -25,7 +25,7 @@ For tutorials and help with using Klusterbox, visit www.klusterbox.com. Click on
 
 Python and source code:
 
-For the newest version of Klusterbox, visit www.klusterbox.com/download. The source code is also available there. The Windows 64bit version uses python 3.11 and the MacOS version uses python version 3.7. The Klusterbox executable is created with pyinstaller and the Windows installer is created with NSIS. The SPEC and NSIS files are located in the project folder and will have to be modified or recreated to work with other computers. 
+For the newest version of Klusterbox, visit www.klusterbox.com/download. The source code is also available there. Klusterbox uses python version 3.7.9 The Klusterbox executable is created with pyinstaller and the Windows installer is created with NSIS. The SPEC and NSIS files are located in the project folder and will have to be modified or recreated to work with other computers. 
 
 Contact:
 

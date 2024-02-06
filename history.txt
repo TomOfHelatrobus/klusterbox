@@ -98,5 +98,9 @@ Version 6.00 (12/06/2023)
 	There was also a modification to the MakeWindow() method in kbtoolbox.py which was a fix for the mousewheel binding. 
 	I modified the navigation for the MacOS distribution since any swapping of frames in the Tkinter root would quickly result in crashes if those commands originated from a Tkinter menubar (this bug was only present in MacOS). I replaced any such navigation with a Navigation button which would go to a screen showing buttons navigating the app. This makes the MacOS app stable. 
 	There was also a fix for the automatic data entry as it relates to collecting data for the level (either 1 or 2). The method find_secondlevel() was modified so as to not close until a value was found. 	
+	I created a python module called AliasMaker.py. This is not a dependancy for Klusterbox, but instead it is used to alter the names in the mandates.sql file so that tutorials can be run showing carrier data where the names have been changed. 
 	
-	
+Version 6.01 (02/06/2024)
+	For Automatic Data Entry, I updated kbcsv_repair so that duplicate first lines containing "TAC500R3" or "Employee Everything Report" do not appear in the fixed proxy csv file. Duplicate header lines were causing the Automatic Data Entry to crash. 
+	Updated the automatic data entry so that moves to "722" or "744" could be identified as 'return to station' values. 
+	Updated CarrierInput class so that blank seniority values delete the record in the database records with no seniority date in the db were causing reports containing seniority dates to fail to open. For informalc reports, I modified the awardstack to show the 'docs?' status along side the awards and gats descrepancies. 

@@ -54,7 +54,6 @@ class CsvRepair:
     def delete_filepath(self):
         """ delete the filepath if it exist to avoid permission error """
         if exists(self.new_filepath):
-            print(self.new_filepath)
             try:
                 os.remove(self.new_filepath)
             except PermissionError:
@@ -85,7 +84,7 @@ class CsvRepair:
         pb.max_count(rowcount)  # set length of progress bar
         pb.start_up()
         firstline = True
-        i = 0  # index - used for undating the process bar
+        i = 0  # index - used for updating the process bar
         for line in self.a_file:
             pb.move_count(i)  # increment progress bar
             update = "row: " + str(i) + "/" + str(rowcount)  # build string for status message update
@@ -94,6 +93,8 @@ class CsvRepair:
             if firstline:  # do not subject the first line to any test
                 self.build_csv(line)
                 firstline = False
+            elif self.testfordupfirstline(line):  # returns True if this is a duplicate first line
+                pass
             elif self.testforblank(line):  # returns True if the line is blank
                 pass
             elif self.testforempties(line):  # returns True if an array in the multidimensional array is not empty
@@ -158,13 +159,22 @@ class CsvRepair:
         self.write_it = True  # reset the write_it variable so the cache is not appended.
 
     @staticmethod
-    def testforblank(line):  # returns True if the line is blank
+    def testfordupfirstline(line):
+        """ check if there is a duplicate first line"""
+        if "TAC500R3" in line[0] or "Employee Everything Report" in line[0]:
+            return True
+        return False
+
+    @staticmethod
+    def testforblank(line):
+        """ returns True if the line is blank """
         if line:
             return False
         return True
 
     @staticmethod
-    def testforempties(line):  # returns True if an array in the multidimensional array is not empty
+    def testforempties(line):
+        """ returns True if an array in the multidimensional array is not empty"""
         try:
             for i in range(len(line)):  # check each array in the multidimensional array
                 if line[i]:

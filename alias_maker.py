@@ -1,5 +1,7 @@
 """ this module is not for general release. it takes existing data from the db and makes aliases for all the names that
-appear in the database. """
+appear in the database. in order for the program to work properly, there must be a text document named 'aliases.txt'
+the same folder. That document should have alias names on each line. There should be enough aliases to provide new
+names to all the carriers in the klustebox database. """
 
 from kbtoolbox import inquire, commit
 from tqdm import tqdm
@@ -36,6 +38,7 @@ class AliasMaker:
                            self.otdl_pref, self.refuse_list, self.rings_list]
         self.station_iterations = 0
         self.iterations = 0
+        self.update_counter = 0
         self.station_aliases = [  # a list of station aliases
             "kluster park",
             "kluster oaks",
@@ -65,6 +68,7 @@ class AliasMaker:
         self.create_name_dict()
         self.alias_stations()
         self.alias_carriers()
+        self.goodbye()
 
     @staticmethod
     def areyousure():
@@ -106,7 +110,7 @@ class AliasMaker:
         for station in self.all_stations:  # loop though each distinct name
             self.station_dict[station] = self.station_aliases[i]
             i += 1
-        print("SUCCESS: There are {} stations aliases ready for use".format(len(self.station_aliases)))
+        print("Requirements satisfied: There are {} stations aliases ready for use".format(len(self.station_aliases)))
         return True
 
     def check_arrays(self):
@@ -134,10 +138,10 @@ class AliasMaker:
             name = name.lower()
             self.random_name_array.append(name)
         if not self.random_name_array:
-            print("WARNING: There were no names in aliases.txt document. Alias Maker will terminate. ")
+            print("ERROR: There were no names in aliases.txt document. Alias Maker will terminate. ")
             return False
         else:
-            print("SUCCESS: There are {} aliases ready for use... ".format(len(self.random_name_array)))
+            print("Requirements satisfied: There are {} aliases ready for use... ".format(len(self.random_name_array)))
         file.close()
         return True
 
@@ -194,17 +198,15 @@ class AliasMaker:
             sleep(.5)
             for ii in tqdm(range(len(self.all_stations)), colour="#00ffff",
                            desc="station aliases {}: ".format(self.stationtables[i])):
-                # print(self.stationtables[i] + "/////////////////////////////////////////////////////")
                 sql = "UPDATE {} SET {} = '%s' WHERE {} = '%s'"\
                       .format(self.stationtables[i], self.station_convention[i], self.station_convention[i]) \
                       % (self.station_dict[self.all_stations[ii]], self.all_stations[ii])
-                # print(sql)
                 commit(sql)
+                self.update_counter += 1
 
     def alias_carriers(self):
         """ check if the name is all lower, if not, update the record. """
         for i in range(self.iterations):  # loop for each table
-            # print(self.tablelist[i] + "/////////////////////////////////////////////////////")
             sleep(.5)
             for ii in tqdm(range(len(self.name_array[i])), colour="#00ffff",
                            desc="carrier aliases {}: ".format(self.tablelist[i])):
@@ -216,8 +218,13 @@ class AliasMaker:
                 sql = "UPDATE {} SET {} = '%s' WHERE {} = '%s'"\
                     .format(self.tablelist[i], self.name_convention[i], self.name_convention[i]) \
                       % (alias, self.name_array[i][ii])
-                # print(sql)
                 commit(sql)
+                self.update_counter += 1
+
+    def goodbye(self):
+        """ generate an ending message to show the user that the update was successful """
+        print("Alias Maker has successfully completed. \n"
+              "{} updates were made to the klusterbox database.".format(self.update_counter))
 
 
 if __name__ == "__main__":

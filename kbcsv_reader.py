@@ -470,6 +470,7 @@ def ee_skimmer(frame):
         cc = 0
         good_id = "no"
         for line in a_file:
+            # print(cc, line)
             if cc == 0:
                 if line[0][:8] != "TAC500R3":
                     messagebox.showwarning("File Selection Error",

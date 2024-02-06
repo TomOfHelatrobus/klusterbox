@@ -1087,10 +1087,11 @@ class InformalCReports:
             # static variables for both carrier and grievance award reports.
             self.select_grv = False  # false = display carrier awards, true display grievance awards
             self.award_stack = []  # this stores rows of information on carrier awards.
-            self.dollar_array = []  # re initialize arrays
-            self.hourrate_array = []
-            self.gats_dollar_array = []
-            self.gats_hourrate_array = []
+            self.dollar_array = []  # hold info on dollar awards for award stack
+            self.hourrate_array = []  # holds info on hour/rate awards for award stack
+            self.gats_dollar_array = []  # holds info on dollar gats discrepancies
+            self.gats_hourrate_array = []  # holds info on hour/rate gats discrepancies
+            self.docs_status = ""  # holds info on documentation for awards stack
             self.dollar_total = 0.0
             self.hourrate_total = 0.0
             self.gats_dollar_total = 0.0
@@ -1117,12 +1118,16 @@ class InformalCReports:
             return self.award_stack
 
         def get_arrays(self, query):
-            """ build the dollar, hourrate, gats_dollar and gats_hourrate arrays.
+            """ build the dollar, hourrate, gats_dollar and gats_hourrate arrays for each grievance/carrier.
             accept the search results for informalc_awards2. """
             self.dollar_array = []  # re initialize arrays
             self.hourrate_array = []
             self.gats_dollar_array = []
             self.gats_hourrate_array = []
+            self.docs_status = ""
+            first_rec = False  # enables assignmnent of self.docs_status - not needed if searching by grievance
+            if not self.select_grv:  # if getting information for carriers, assign self.docs_status
+                first_rec = True  # once self.doc_status is assigned, don't reassign it
             for rec in query:
                 if not rec[2]:  # rec[2] is the award amount
                     pass
@@ -1140,6 +1145,15 @@ class InformalCReports:
                     split_hourrate = rec[3].split(",")  # since the gats descrepancy can contain multiple values
                     for element in split_hourrate:  # add each of those values to the array
                         self.gats_dollar_array.append(element)
+                if first_rec:  # only assign self.docs_status once.
+                    # for each record, check if the documents status - will show if the settlement was complied with
+                    sql = "SELECT docs FROM informalc_settlements WHERE grv_no = '%s'" % rec[0]
+                    result = inquire(sql)
+                    if result:  # if the search yields a result
+                        self.docs_status = result[0][0]  # add the docs status to the array
+                    else:  # if the search yields no result
+                        self.docs_status = ""  # add an empty string to the array
+                    first_rec = False
 
         def get_totals(self):
             """ get the totals from the dollar, hourrate, gats_dollar and gats_hourrate arrays. """
@@ -1259,15 +1273,14 @@ class InformalCReports:
                 selection_list = [x for x in self.grv_list if x in inclusive_list]
             # if self.select_grv is true: selection is grv_no. if false: selection is carrier_name
             for selection in selection_list:
-                if self.select_grv:
+                if self.select_grv:  # if finding awards for grievances
                     sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" \
                           % (selection, self.grv_no)
                     query = inquire(sql)  # get all records of awards for that carrier.
-                else:
+                else:  # if finding awards for carriers
                     sql = "SELECT * FROM informalc_awards2 WHERE carrier_name='%s' AND grv_no='%s'" \
                           % (self.carrier, selection)
                     query = inquire(sql)  # get all records of awards for that carrier for a specific grievance
-                
                 self.get_arrays(query)
                 self.get_totals()
                 self.get_substack()
@@ -1275,6 +1288,9 @@ class InformalCReports:
                 if not self.dollar_array and not self.hourrate_array:  # if there is no award
                     row = '    {:<5}{:<18}{:>15}{:>15}\n' \
                         .format(str(noaward_count), selection, "   ---  ", "   ---  ")
+                    if not self.select_grv:  # overwrite to show docs if displaying awards for carriers
+                        row = '    {:<5}{:<18}{:>15}{:>15}{:>15}\n' \
+                            .format(str(noaward_count), selection, "   ---  ", "   ---  ", "   ---  ")
                     noaward_stack.append(row)
                     noaward_count += 1
                 if self.dollar_array:  # if there is a dollar award
@@ -1282,6 +1298,10 @@ class InformalCReports:
                     gats_dollar_total_place = self.convert_dollar_hourrate(self.gats_dollar_total, "dollar")
                     row = '    {:<5}{:<18}{:>15}{:>15}\n'\
                         .format(str(dollar_count), selection, dollar_total_place, gats_dollar_total_place)
+                    if not self.select_grv:  # overwrite to show docs if displaying awards for carriers
+                        row = '    {:<5}{:<18}{:>15}{:>15}{:>15}\n' \
+                            .format(str(dollar_count), selection, dollar_total_place, gats_dollar_total_place,
+                                    self.docs_status)
                     dollar_stack.append(row)
                     for element in self.substack[0]:  # for each dollar element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_dollar")
@@ -1294,6 +1314,10 @@ class InformalCReports:
                     gats_hourrate_total_place = self.convert_dollar_hourrate(self.gats_hourrate_total, "hourrate")
                     row = '    {:<5}{:<18}{:>15}{:>15}\n' \
                         .format(str(hourrate_count), selection, hourrate_total_place, gats_hourrate_total_place)
+                    if not self.select_grv:  # overwrite to show docs if displaying awards for carriers
+                        row = '    {:<5}{:<18}{:>15}{:>15}{:>15}\n' \
+                            .format(str(hourrate_count), selection, hourrate_total_place, gats_hourrate_total_place,
+                                    self.docs_status)
                     hourrate_stack.append(row)
                     for element in self.substack[1]:  # for each hourrate element in substack
                         awards_place = self.convert_dollar_hourrate(element[0], "sub_hourrate")
@@ -1307,14 +1331,29 @@ class InformalCReports:
                 totalgatsdollars = "${:,.2f}".format(float(self.cum_gats_dollar))
                 totalgatshours = "{:,.2f}".format(float(self.cum_gats_hourrate))
                 title_row = ["	Settlement Awards:\n", ]
-                if self.select_grv:
+                if self.select_grv:  # if displaying awards by grievance
                     firstrow = ["        Carrier Name              Awards    Gats Discrepancies\n", ]
-                else:
-                    firstrow = ["        Grievance Number          Awards    Gats Discrepancies\n", ]
-                line_row = ["    --------------------------------------------------------------\n", ]
-                noaward_label = ["                                                          no award\n"]
-                dollars_label = ["                                                           dollars\n"]
-                hourrate_label = ["                                                         hour/rate\n"]
+                else:  # if displaying awards by carrier/s
+                    firstrow = ["        Grievance Number          Awards    Gats Discrepancies     Docs?\n", ]
+                if self.select_grv:  # if displaying awards by grievance
+                    line_row = ["    --------------------------------------------------------------\n", ]
+                else:  # if displaying awards by carrier/s
+                    line_row = ["    -----------------------------------------------------------------------------\n", ]
+                if self.select_grv:  # if displaying awards by grievance
+                    noaward_label = ["                                                          no award\n"]
+                else:  # if displaying awards by carrier/s
+                    noaward_label = ["                                                                         "
+                                     "no award\n"]
+                if self.select_grv:  # if displaying awards by grievance
+                    dollars_label = ["                                                           dollars\n"]
+                else:  # if displaying awards by carrier/s
+                    dollars_label = ["                                                                          "
+                                     "dollars\n"]
+                if self.select_grv:  # if displaying awards by grievance
+                    hourrate_label = ["                                                         hour/rate\n"]
+                else:  # if displaying awards by carrier/s
+                    hourrate_label = ["                                                                        "
+                                      "hour/rate\n"]
                 totaldollarsrow = ["    {:<23}{:>13}\n".format("    Cumulative dollars:", totaldollars), ]
                 totalhoursrow = ["    {:<23}{:>13}\n".format("    Cumulative hours:  ", totalhours), ]
                 totalgatsdollarsrow = \
