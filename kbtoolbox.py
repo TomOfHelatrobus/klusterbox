@@ -1839,6 +1839,12 @@ class RingTimeChecker:
             return False
         return True
 
+    def over_100(self):
+        """ is the time greater than 24 hours """
+        if float(self.ring) > 100:
+            return False
+        return True
+
     def over_8(self):
         """ is the time greater than 8 hours """
         if float(self.ring) > 8:

@@ -786,7 +786,6 @@ class Messenger:
             text = "Creates a page break between the OT Desired List " \
                    " and the Auxiliary List on the spreadsheet \n\n" \
                    "Select ON or OFF"
-
         if switch == "pb_wal_aux":
             text = "Creates a page break between the Work Assignment List " \
                    " and the Auxiliary List on the spreadsheet \n\n" \
@@ -795,6 +794,15 @@ class Messenger:
             text = "Creates a page break between the Auxiliary List \n" \
                    "and the OT Desired List on the spreadsheet \n\n" \
                    "Select ON or OFF"
+        if switch == "show_remedy":
+            text = "Will display a column for to show the flat rate " \
+                   "dollar amount remedy based on a specified hourly " \
+                   "rate. \n\n" \
+                   "Select ON or OFF"
+        if switch == "remedy_rate":
+            text = "Sets the hourly rate of the remedy column. The " \
+                   "rate can also be changed on the spreadsheet. \n\n" \
+                   "Enter a value between 1 and 100"
         if switch == "man4_dis_limit":
             text = "Limits what is displayed in the Improper Mandates No.4 \n" \
                    "Spreadsheet for no-list and work assignment carriers \n" \

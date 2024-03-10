@@ -952,6 +952,8 @@ class OvermaxSpreadsheet:
         self.wal_12hr_mod = ""  # text inserted into formulas which varies depending on wal_12hour setting
         self.wal_dec_exempt = None  # work assignment list december exemption - true or false
         self.wal_dec_exempt_mod = ""  # text inserted into formulas which varies depending on wal_dec_exempt setting
+        self.show_remedy = ""  # show the remedy on the summary sheet
+        self.remedy_rate = ""  # the hourly pay rate of the remedy.
         self.ws_header = None  # style
         self.date_dov = None  # style
         self.date_dov_title = None  # style
@@ -1024,7 +1026,7 @@ class OvermaxSpreadsheet:
         self.rings = inquire(sql)
 
     def get_minrows(self):
-        """ get minimum rows """
+        """ get minimum rows and other settings. """
         sql = "SELECT tolerance FROM tolerances"
         result = inquire(sql)
         self.min_rows = int(result[14][0])
@@ -1035,6 +1037,8 @@ class OvermaxSpreadsheet:
         #  get the work assignment list december exemption setting -
         #  if True: treat wal carriers same as otdl carriers for december exemption.
         self.wal_dec_exempt = Convert(result[45][0]).str_to_bool()
+        self.show_remedy = Convert(result[45][0]).str_to_bool()
+        self.remedy_rate = Convert(result[45][0]).hundredths()
 
     def set_wal12hrmod(self):
         """ if the wal_12hour setting is True, don't include 'wal' in formula"""
@@ -1999,6 +2003,14 @@ class OvermaxSpreadsheet:
             self.summary['B' + str(summary_i)].style = self.input_s
             self.summary['B' + str(summary_i)].number_format = "#,###.00"
             self.summary.row_dimensions[summary_i].height = 10  # adjust all row height
+
+            # optional Super remedy solution
+            formula_k = "=%s!B%s*%s!G4" % ("summary", str(summary_i),"summary")
+            self.summary['C' + str(summary_i)] = formula_k
+            self.summary['C' + str(summary_i)].style = self.input_s
+            self.summary['C' + str(summary_i)].number_format = "#,###.00"
+            self.summary.row_dimensions[summary_i].height = 10  # adjust all row height
+
             i += 2
             summary_i += 1
         i += 1

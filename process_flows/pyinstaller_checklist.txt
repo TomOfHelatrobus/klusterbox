@@ -85,7 +85,6 @@ ___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_su
 	___ ___  13. kbfixes.py
 	___ ___  14. kbinformalc.py
 	
-	
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
 
 		w64 w32 mac

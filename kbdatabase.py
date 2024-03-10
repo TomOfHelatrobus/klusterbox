@@ -20,12 +20,12 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(138)
+        self.pbar.max_count(144)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
         self.stations()  # pb increment: 1
-        self.tolerances()  # pb increment: 46
+        self.tolerances()  # pb increment: 52
         self.rings()  # pb increment: 1
         self.skippers()  # pb increment: 1
         self.ns_config()  # pb increment: 6
@@ -174,7 +174,13 @@ class DataBase:
             (44, "wal_12_hour", "True"),  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
             (45, "wal_dec_exempt", "False"),
             (46, "informalc_result_limit", 50),  # limits the number of rows in InformalC().showtime()
-            (47, "mac_navigation", 0)  # True(1) is for pulldown menu preferance, False(0) is for navigation button
+            (47, "mac_navigation", 0),  # True(1) is for pulldown menu preferance, False(0) is for navigation button
+            (48, "impman_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
+            (49, "impman_remedy", 0),  # the hourly pay rate for improper mandate violations.
+            (50, "overmax_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
+            (51, "overmax_remedy", 0),  # the hourly pay rate for 12 and 60 hour violations.
+            (52, "offbid_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
+            (53, "offbid_remedy", 0)  # the hourly pay rate for off bid violations.
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:
