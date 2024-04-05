@@ -106,3 +106,7 @@ Version 6.01 (02/06/2024)
 	Updated CarrierInput class so that blank seniority values delete the record in the database records with no seniority date in the db were causing reports containing seniority dates to fail to open. For informalc reports, I modified the awardstack to show the 'docs?' status along side the awards and gats descrepancies. 
 	Created a fix for the this version in kbfixes where all blank senior_date values in the seniority table where deleted. 
 	
+Version 6.02 (04/04/2024)
+	I added remedy functionality for three spreadsheets - the improper mandates spreadsheet, the 12 and 60 hour violations spreadsheet (also called overmax) and the off bid violations spreadsheet. This includes new settings options in under the spreadsheet settings menu which allows the user to toggle off/on the remedy option and also allows the user to enter an hourly remedy rate - a flat dollar amount used to calculate the correct monetary remedy. The hourly remedy rate can also be updated on the spreadsheet itself. 
+	I also fixed a bug to display the settlements with gats descrepancies in the only descrepancies report in informalc. 
+	

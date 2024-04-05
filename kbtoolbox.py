@@ -2833,6 +2833,7 @@ class ProgressBarDe:
         self.pb.destroy()
         self.pb_root.destroy()
 
+
 def save_all(frame):
     """ this creates a message when someone selects the 'save' menu option. """
     messagebox.showinfo("For Your Information ",
