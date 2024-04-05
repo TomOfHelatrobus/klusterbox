@@ -37,6 +37,7 @@ class ImpManSpreadsheet:
         self.ws_header = None  # style
         self.list_header = None  # style
         self.date_dov = None  # style
+        self.remedy_style = None  # style
         self.date_dov_title = None  # style
         self.col_header = None  # style
         self.input_name = None  # style
@@ -206,6 +207,8 @@ class ImpManSpreadsheet:
         self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                          alignment=Alignment(horizontal='right'))
+        self.remedy_style = NamedStyle(name="remedy_style", font=Font(name='Arial', size=8),
+                                       alignment=Alignment(horizontal='left'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
                                      alignment=Alignment(horizontal='right'))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
@@ -284,8 +287,8 @@ class ImpManSpreadsheet:
             self.remedy.column_dimensions["F"].width = 6
             self.remedy.column_dimensions["G"].width = 6
             self.remedy.column_dimensions["H"].width = 6
-            self.remedy.column_dimensions["I"].width = 8
-            self.remedy.column_dimensions["J"].width = 8
+            self.remedy.column_dimensions["I"].width = 7
+            self.remedy.column_dimensions["J"].width = 10
 
     def build_refs(self):
         """ build the references page. This shows tolerances and defines labels. """
@@ -985,12 +988,13 @@ class ImpManSpreadsheet:
         cell.style = self.date_dov
         self.remedy.merge_cells('C4:E4')
         cell = self.remedy.cell(row=4, column=6)
-        cell.value = "Remedy Rate:  "
+        cell.value = "Remedy Rate:  "  # label for the remedy rate
         cell.style = self.date_dov_title
         self.remedy.merge_cells('F4:G4')
-        cell = self.remedy.cell(row=4, column=8)
-        cell.value = self.remedy_rate
-        cell.style = self.date_dov
+        cell = self.remedy.cell(row=4, column=8)  # the $ value of the remedy
+        cell.value = float(self.remedy_rate)
+        cell.style = self.remedy_style
+        cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
 
     def _remedy_list_header(self, _list):
         """ create headers for each list on the remedy page """
@@ -1060,7 +1064,7 @@ class ImpManSpreadsheet:
         cell = self.remedy.cell(row=self.remedy_row, column=10)  # remedy percentage input
         cell.value = formula
         cell.style = self.calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
         self.remedy_row += 2
         # -------------------------------------------------------------------------------------------------- mandates
         self.remedy_equalizer_rows.append(self.remedy_row)  # save row number for equalization formula
@@ -1105,7 +1109,7 @@ class ImpManSpreadsheet:
         cell.style = self.date_dov_title
         self.remedy_row += 1
         self.remedy.merge_cells('B' + str(self.remedy_row) + ':H' + str(self.remedy_row))
-        cell = self.remedy.cell(row=self.remedy_row, column=2)  # row to exposition on equalization
+        cell = self.remedy.cell(row=self.remedy_row, column=2)  # row for exposition on equalization
         cell.value = "\n" \
                      "1. Using the OTDL Weekly Availability Worksheet, alter/delete availability from the OTDL " \
                      "section if there is no availability. \n" \
@@ -1149,7 +1153,7 @@ class ImpManSpreadsheet:
         cell = self.remedy.cell(row=self.remedy_row, column=10)
         cell.value = formula_a
         cell.style = self.calcs
-        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
 
     def _build_remedy_blank_arrays(self):
         """ use the remedy array to find all blank rows and build the blank remedy arrays """
@@ -1337,6 +1341,7 @@ class OvermaxSpreadsheet:
         self.ws_header = None  # style
         self.date_dov = None  # style
         self.date_dov_title = None  # style
+        self.remedy_style = None  # style
         self.col_header = None  # style
         self.col_center_header = None  # style
         self.vert_header = None  # style
@@ -1440,6 +1445,8 @@ class OvermaxSpreadsheet:
         self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                          alignment=Alignment(horizontal='right'))
+        self.remedy_style = NamedStyle(name="remedy_style", font=Font(name='Arial', size=8),
+                                       alignment=Alignment(horizontal='left'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
                                      border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                      alignment=Alignment(horizontal='left'))
@@ -1538,14 +1545,16 @@ class OvermaxSpreadsheet:
             self.summary.merge_cells('E4:F4')  # Remedy Rate (optional)
             self.summary['E4'] = "Remedy Rate"
             self.summary['E4'].style = self.date_dov_title
-            self.summary['G4'] = self.remedy_rate
-            self.summary['G4'].style = self.date_dov
+            self.summary['G4'] = float(self.remedy_rate)
+            self.summary['G4'].style = self.remedy_style
+            self.summary['G4'].number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
         self.summary['A6'] = "name"
         self.summary['A6'].style = self.col_center_header
         self.summary['B6'] = "violation"
         self.summary['B6'].style = self.col_center_header
-        self.summary['C6'] = "remedy"
-        self.summary['C6'].style = self.col_center_header
+        if self.show_remedy:
+            self.summary['C6'] = "remedy"
+            self.summary['C6'].style = self.col_center_header
 
     def build_violations(self):
         """ self.violations worksheet - format cells """
@@ -2392,8 +2401,8 @@ class OvermaxSpreadsheet:
                 formula_k = "=IF(%s!B%s=\"exempt\",0,%s!B%s*%s!G4)" \
                             % ("summary", str(summary_i), "summary", str(summary_i), "summary")
                 self.summary['C' + str(summary_i)] = formula_k
-                self.summary['C' + str(summary_i)].style = self.input_s
-                self.summary['C' + str(summary_i)].number_format = "#,###.00"
+                self.summary['C' + str(summary_i)].style = self.calcs
+                self.summary['C' + str(summary_i)].number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
                 self.summary.row_dimensions[summary_i].height = 10  # adjust all row height
             i += 2
             summary_i += 1
@@ -2419,7 +2428,7 @@ class OvermaxSpreadsheet:
                         % ("summary", "7", str(summary_i-2))
             self.summary['C' + str(summary_i)] = formula_i
             self.summary['C' + str(summary_i)].style = self.calcs
-            self.summary['C' + str(summary_i)].number_format = "#,###.00"
+            self.summary['C' + str(summary_i)].number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
             self.summary.row_dimensions[summary_i].height = 20  # adjust all row height
 
     def save_open(self):
@@ -3546,11 +3555,13 @@ class OffbidSpreadsheet:
         self.date_dov = None  # style
         self.date_dov_title = None  # style
         self.name_header = None  # style
+        self.name_header_left = None  # style
         self.col_header = None  # style
         self.input_name = None  # style
         self.input_s = None  # style
         self.calcs = None  # style
         self.list_header = None  # style
+        self.summary_name = None  # style
         self.offbid = None  # worksheet for the analysis of off bid violations
         self.summary = None  # worksheet for summary and maybe remedies
         self.carrier = ""  # carrier name
@@ -3568,6 +3579,7 @@ class OffbidSpreadsheet:
         self.move_set = 0  # extra rows used by the multiple moves display
         self.no_qualifiers = True  # is True as long as no violations have been found for any carriers.
         self.summary_array = []  # an array that holds: name, day and cell for violations
+        self.summary_row = None  # hold the number of the row for the summary sheet
 
     def create(self, frame):
         """ a master method for running the other methods in proper order. """
@@ -3642,11 +3654,18 @@ class OffbidSpreadsheet:
         """ Named styles for workbook """
         bd = Side(style='thin', color="80808080")  # defines borders
         self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
-        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        self.summary_name = NamedStyle(name="summary_name", font=Font(name='Arial', size=8),
+                                       border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                       alignment=Alignment(horizontal='left'))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8),
+                                   alignment=Alignment(horizontal='left'))
         self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
                                          alignment=Alignment(horizontal='right'))
         self.name_header = NamedStyle(name="name_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
                                       alignment=Alignment(horizontal='right'))
+        self.name_header_left = NamedStyle(name="name_header_left",
+                                           font=Font(bold=True, name='Arial', size=8, color='666666'),
+                                           alignment=Alignment(horizontal='left'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8, color='666666'),
                                      alignment=Alignment(horizontal='center'),
                                      border=Border(left=bd, top=bd, right=bd, bottom=bd))
@@ -3691,42 +3710,6 @@ class OffbidSpreadsheet:
         if self.violation_number == 0 or self.distinct_pages:
             self.build_headers()
 
-    # def build_headers(self):
-    #     """ worksheet headers """
-    #     cell = self.offbid.cell(row=self.row, column=1)
-    #     cell.value = "Off Bid Assignment Worksheet"
-    #     cell.style = self.ws_header
-    #     self.offbid.merge_cells('A' + str(self.row) + ':E' + str(self.row))
-    #     self.row += 2
-    #     cell = self.offbid.cell(row=self.row, column=1)
-    #     cell.value = "Date:  "  # create date/ pay period/ station header
-    #     cell.style = self.date_dov_title
-    #     cell = self.offbid.cell(row=self.row, column=2)
-    #     date_string = self.dates[0].strftime("%x")
-    #     # The date can be one day or a service week (a range of 7 days)
-    #     if len(self.dates) > 1:
-    #         date_string = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
-    #     cell.value = date_string  # fill in the date/s
-    #     cell.style = self.date_dov
-    #     self.offbid.merge_cells('B' + str(self.row) + ':D' + str(self.row))
-    #     cell = self.offbid.cell(row=self.row, column=5)
-    #     cell.value = "Pay Period:  "
-    #     cell.style = self.date_dov_title
-    #     self.offbid.merge_cells('E' + str(self.row) + ':F' + str(self.row))
-    #     cell = self.offbid.cell(row=self.row, column=7)
-    #     cell.value = projvar.pay_period
-    #     cell.style = self.date_dov
-    #     self.offbid.merge_cells('G' + str(self.row) + ':H' + str(self.row))
-    #     self.row += 1
-    #     cell = self.offbid.cell(row=self.row, column=1)
-    #     cell.value = "Station:  "
-    #     cell.style = self.date_dov_title
-    #     cell = self.offbid.cell(row=self.row, column=2)
-    #     cell.value = projvar.invran_station
-    #     cell.style = self.date_dov
-    #     self.offbid.merge_cells('B' + str(self.row) + ':D' + str(self.row))
-    #     self.row += 2
-
     def build_headers(self, summary=False):
         """ worksheet headers """
         sheet = self.offbid
@@ -3768,6 +3751,15 @@ class OffbidSpreadsheet:
         cell.value = projvar.invran_station
         cell.style = self.date_dov
         sheet.merge_cells('B' + str(row) + ':D' + str(row))
+        if summary and self.show_remedy:
+            cell = sheet.cell(row=row, column=5)
+            cell.value = "Remedy Rate:  "
+            cell.style = self.date_dov_title
+            cell = sheet.cell(row=row, column=7)
+            cell.value = self.hourly_remedy
+            cell.style = self.date_dov
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+            sheet.merge_cells('E' + str(row) + ':F' + str(row))
         if not summary:
             self.row += 5
 
@@ -3923,51 +3915,106 @@ class OffbidSpreadsheet:
                 self.offbid.row_breaks.append(Break(id=self.row))  # effective for windows
                 self.row += 1
 
-    def _build_summary(self):
-        """ fill the contents of the summary with the results of the summary array """
-        self.build_headers(summary=True)
+    def _build_summary_columnheaders(self):
+        """ create column headers for the summary sheet """
+        summary_row = 6
+        titles = ("name", "day", "date", "violation", "total", "remedy")
+        column = ("2", "4", "5", "6", "7", "8")
+        column_range = 5
+        if self.show_remedy:
+            column_range = 6
+        for i in range(column_range):
+            cell = self.summary.cell(row=summary_row, column=int(column[i]))  # carrier name input
+            cell.value = titles[i]
+            if i == 0:
+                cell.style = self.name_header_left
+            else:
+                cell.style = self.name_header
+
+    def _build_summary_body(self):
+        """ builds the body of the summary sheet, showing name, day, date, violation, total and maybe remedy. """
         name_array = []
-        summary_row = 5
+        self.summary_row = 6
         for name in self.summary_array:
-            print(name)
+            # print(name)
             if name[0] not in name_array:
                 name_occurances = 0
-                for array in self.summary_array:
-                    if array[0] == name[0]:
+                for array in self.summary_array:  # count the number of violations for each name
+                    if array[0] == name[0]:  # if the carrier name == the name in the array
                         name_occurances += 1
-                summary_row += 1
-                cell = self.summary.cell(row=summary_row, column=2)  # carrier name input
+                self.summary_row += 1
+                cell = self.summary.cell(row=self.summary_row, column=2)  # carrier name input
                 cell.value = name[0]
-                cell.style = self.input_s
-                self.summary.merge_cells('B' + str(summary_row) + ':D' + str(summary_row))
-                cell = self.summary.cell(row=summary_row, column=8)  # total violation formula column
-                formula = "=SUM(G%s:G%s)" % (str(summary_row), str(summary_row+name_occurances))
+                cell.style = self.summary_name
+                self.summary.merge_cells('B' + str(self.summary_row) + ':C' + str(self.summary_row))
+                cell = self.summary.cell(row=self.summary_row, column=7)  # total violation formula column
+                formula = "=SUM(F%s:F%s)" % (str(self.summary_row), str(self.summary_row + (name_occurances - 1)))
                 cell.value = formula
                 cell.style = self.input_s
                 cell.number_format = "#,###.00;[RED]-#,###.00"
+                if self.show_remedy:
+                    cell = self.summary.cell(row=self.summary_row, column=8)  # cumulative remedy formula
+                    formula = "=%s!G%s*%s!G4" \
+                              % ("summary", str(self.summary_row), "summary")
+                    cell.value = formula
+                    cell.style = self.calcs
+                    cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
                 if name[0] not in name_array:
                     name_array.append(name[0])
-            cell = self.summary.cell(row=summary_row, column=5)  # day column
+            cell = self.summary.cell(row=self.summary_row, column=4)  # day column
             cell.value = name[1]
             cell.style = self.input_s
-            cell = self.summary.cell(row=summary_row, column=6)  # date column
+            cell = self.summary.cell(row=self.summary_row, column=5)  # date column
             cell.value = name[2]
             cell.style = self.input_s
-            cell = self.summary.cell(row=summary_row, column=7)  # formula column
+            cell = self.summary.cell(row=self.summary_row, column=6)  # formula column
             formula = '=\'%s\'!J%s' % (name[3][0], str(name[3][2]))
             cell.value = formula
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
-            summary_row += 1
+            self.summary_row += 1
+
+    def _build_summary_footer(self):
+        """ builds the cumulative total and maybe the cummulative remedy for the summary sheet. """
+        self.summary_row += 1
+        cell = self.summary.cell(row=self.summary_row, column=4)  # cumulative total label
+        cell.value = "Cumulative Violations: "
+        cell.style = self.date_dov_title
+        self.summary.merge_cells('D' + str(self.summary_row) + ':F' + str(self.summary_row))
+        cell = self.summary.cell(row=self.summary_row, column=7)  # cumulative total formula
+        formula = "=SUM(G7:G%s)" % (str(self.summary_row - 2))
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        if self.show_remedy:
+            cell = self.summary.cell(row=self.summary_row + 2, column=4)  # cumulative remedy label
+            cell.value = "Cumulative Remedy: "
+            cell.style = self.date_dov_title
+            self.summary.merge_cells('D' + str(self.summary_row + 2) + ':F' + str(self.summary_row + 2))
+            cell = self.summary.cell(row=self.summary_row + 2, column=8)  # cumulative remedy formula
+            formula = "=SUM(H7:H%s)" % (str(self.summary_row - 2))
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+
+    def _build_summary(self):
+        """ fill the contents of the summary with the results of the summary array """
+        self.build_headers(summary=True)  # worksheet headers - 'summry=True' generates header for summary
+        if not self.no_qualifiers:  # if there are violations to show..
+            self._build_summary_columnheaders()  # create column headers for the summary sheet
+            self._build_summary_body()  # builds the body of the summary
+            self._build_summary_footer()  # builds the cumulative total and maybe the cummulative remedy
 
     def no_violations(self):
         """ if self.no_qualifiers is True after all carriers have been checked, this will display a message
             saying that no violations occured. """
         self.build_headers()
-        cell = self.offbid.cell(row=self.row, column=2)  # No off bid violation found
-        cell.value = "No off bid violations found"
-        cell.style = self.list_header
-        self.offbid.merge_cells('B' + str(self.row) + ':J' + str(self.row))
+        self.build_headers(summary=True)
+        for sheet in (self.offbid, self.summary):
+            cell = sheet.cell(row=6, column=2)  # No off bid violation found
+            cell.value = "No off bid violations found"
+            cell.style = self.list_header
+            sheet.merge_cells('B6' + ':J6')
 
     def save_open(self):
         """ name and open the excel file """

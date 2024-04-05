@@ -795,7 +795,15 @@ class Messenger:
                    "and the OT Desired List on the spreadsheet \n\n" \
                    "Select ON or OFF"
         if switch == "show_remedy":
-            text = "Will display a column for to show the flat rate " \
+            text = "Will display a column to show the flat rate " \
+                   "dollar amount remedy based on a specified hourly " \
+                   "rate. \n\n" \
+                   "Select ON or OFF"
+        if switch == "show_remedy_sheet":
+            text = "Will display a spreadsheet to show all possible " \
+                   "violations, a mechanism to equalize violations " \
+                   "between mandated off route overtime and availability. " \
+                   "Also a column will provide the flat rate " \
                    "dollar amount remedy based on a specified hourly " \
                    "rate. \n\n" \
                    "Select ON or OFF"
@@ -1763,8 +1771,8 @@ class InformalCReports:
         report.write("   Only settlements of \'monetary remedy\' or \'back pay are displayed\'\n")
         if not fullreport:
             report.write("   Only settlements where gats discrepancies are noted are displayed \n")
-        report.write('\n  {:<47}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Discrepancies"))
-        report.write('  {:<18}{:<10}{:<12}{:>12}{:>12}{:>12}{:>12}\n'
+        report.write('\n  {:<46}{:<24}{:<24}\n'.format("", "Settlement Awards", "Gats Discrepancies"))
+        report.write('  {:<18}{:<10}{:<11}{:>12}{:>12}{:>12}{:>12}\n'
                      .format("    Grievance #", "GATS #", "Docs?", "Hours", "Dollars", "Hours", "Dollars"))
         report.write("      -----------------------------------------------------------------------------------\n")
 
@@ -1892,7 +1900,7 @@ class InformalCReports:
                         "      -------------------------------------------------------------------------------"
                         "----\n")
                 i += 1
-            elif gats_dollar != "   ----" and gats_hour != "   ----":
+            elif gats_dollar != "   ----" or gats_hour != "   ----":
                 for gi in range(len(s_gats)):  # for gats_no in s_gats:
                     if gi == 0:  # for the first line
                         report.write('{:>4}  {:<14}{:<10}{:<12}{:>11}{:>12}{:>12}{:>12}\n'
@@ -1902,7 +1910,7 @@ class InformalCReports:
                         report.write('{:<20}{:<12}\n'.format("", s_gats[gi]))
                 if i % 3 == 0:  # every third line, insert a line a for readability
                     report.write("      ---------------------------------------------------------------------"
-                                 "-------------\n")
+                                 "--------------\n")
                 i += 1
             pb_counter += 1  # increment the count of the progress bar
         report.write(

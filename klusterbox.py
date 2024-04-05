@@ -10339,15 +10339,15 @@ class SpreadsheetConfig:
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         # ------------------------------------------------------------------------ Remedy column for Improper Mandates
-        Label(self.win.body, text="Remedy Shortcut Column:", anchor="w").grid(row=row, column=0, sticky="w")
+        Label(self.win.body, text="Remedy Shortcut Sheet:", anchor="w").grid(row=row, column=0, sticky="w")
         row += 1
-        Label(self.win.body, text="  Show Remedy Column", width=macadj(30, 26), anchor="w") \
+        Label(self.win.body, text="  Show Remedy Sheet", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_remedy = OptionMenu(self.win.body, self.impman_show_remedy_var, "on", "off")
         om_remedy.config(width=3)
         om_remedy.grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
-               command=lambda: Messenger(self.win.topframe).tolerance_info("show_remedy")) \
+               command=lambda: Messenger(self.win.topframe).tolerance_info("show_remedy_sheet")) \
             .grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="  Hourly Remedy Rate", width=macadj(30, 26), anchor="w") \
