@@ -62,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.02  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Apr 4, 2024"  # format is Jan 1, 2022
+version = 6.03  # version number must be convertable to a float and should increase for Fixes()
+release_date = "tbd"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -8594,13 +8594,15 @@ class AutoDataEntry:
                 if result:  # if there is an employee id number in the name index, then continue
                     if self.skim_check_carriers(result):  # get the kb name which correlates to the emp id
                         self.skim_get_routes()  # create an array of the carrier's routes for self.routes
+                        if self.newest_carrier[2] == "otdl":
+                            self._add_otdl_nsdays()  # put ns day new day into the protoarray
                         for i in range(len(self.weekly_protoarray)):  # loop for each day of carrier information
                             self.daily_protoarray = self.weekly_protoarray[i]
                             """ should be dealing with input rings and not protoarray as input rings is a storage 
                             array for the daily protoarrays"""
                             self.skim_detect_nsday()  # find if the day is an ns day
                             self.skim_detect_moves()  # find the moves if any
-                            self.skim_get_movestring()
+                            self.skim_get_movestring()  # format array as string to fit in dbase
                             if self.skim_get_hour52():
                                 self.skim_returntostation()
                                 self.skim_get_leavetime()
@@ -8733,6 +8735,65 @@ class AutoDataEntry:
             if self.newest_carrier[4] != "":
                 self.routes = self.newest_carrier[4].split("/")
 
+        def _add_otdl_nsdays(self):
+            """ this will add a daily array to the weekly protoarray for days where an otdl carrier has an ns day.
+            this is necessary so that a code of ns day can be added for the rings record. """
+            nsday = self._get_nsdays(self.newest_carrier[3])  # send the color of the nsday to calculate the nsday
+            mod_weekly_protoarray = []
+            annual_lv_adj = self._get_lv_adjacent("annual")
+            sick_lv_adj = self._get_lv_adjacent("sick")
+            for day in ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"):
+                add_protoarray = False  # indicates if protoarray was appended to mod weekly protoarray
+                for daily_proto_array in self.weekly_protoarray:
+                    if daily_proto_array[0] == day:  # index 0 is the day of the week
+                        mod_weekly_protoarray.append(daily_proto_array)
+                        add_protoarray = True
+                if day == nsday:  # if the day in the loop and the ns day match
+                    if not add_protoarray:  # if there was no protoarray added to the mod weekly protoarray
+                        day_hr_52 = 0.0  # work hours
+                        day_rs = 0  # return to station
+                        if day in annual_lv_adj:
+                            day_code = "annual"
+                        elif day in sick_lv_adj:
+                            day_code = "sick"
+                        else:
+                            day_code = "no call"
+                        day_moves = []  # e.g. "['MV', '09.46', '721', '0903']"
+                        day_final_leave_type = ""
+                        day_final_leave_time = 0.0
+                        day_bt = 0  # begin tour
+                        day_et = 0  # end tour
+                        proto_array = [day, self.day_name, day_hr_52, day_rs, day_code,
+                                       day_moves, day_final_leave_type, day_final_leave_time, day_bt, day_et]
+                        mod_weekly_protoarray.append(proto_array)
+            self.weekly_protoarray = mod_weekly_protoarray
+
+        @staticmethod
+        def _get_nsdays(nsday):
+            """ convert the get the full name of the ns day, i.e. 'Saturday', 'Wednesday' etc """
+            if not nsday:
+                return ""  # if there is no ns day, then return empty string
+            ns_dict = {'Sat': 'Saturday', 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday', 'Thu': 'Thursday',
+                       'Fri': 'Friday', 'none': ''}
+            day = projvar.ns_code[nsday]
+            return ns_dict[day]
+
+        def _get_lv_adjacent(self, lv_type):
+            """ lv_type is "annual" or "sick"
+            build and return of list of days which are adjacent ot annual or sick leave days. """
+            day_array = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+            lv_adj = []  # an array for annual leave adjacent days
+            for day in self.weekly_protoarray:  # loop once for each day in the day array
+                if day[6] == lv_type:  # if the leave type is "annual" or "sick"
+                    day_index = day_array.index(day[0])  # get an index for the day_array e.g. Wednesday = 3
+                    if day_index != 0:  # if the day is not Saturday
+                        if day_array[day_index - 1] not in lv_adj:  # if the day is not already in the array
+                            lv_adj.append(day_array[day_index - 1])  # add the day to the array
+                    if day_index != 5:  # if the day is not Friday
+                        if day_array[day_index + 1] not in lv_adj:  # if the day is not already in the array
+                            lv_adj.append(day_array[day_index + 1])  # add the day to the array
+            return lv_adj
+
         def skim_detect_moves(self):
             """ find the moves if any """
             self.mv_triad = []  # triad is route number, start time off route, end time off route
@@ -8768,7 +8829,7 @@ class AutoDataEntry:
             # if hours worked > 0 or there is a code or a leave type
             if float(self.daily_protoarray[2]) > 0 or self.c_code != "none" or self.daily_protoarray[6] != "":
                 hr_52 = self.daily_protoarray[2]  # assign 5200 hours variable
-                if RingTimeChecker(hr_52).check_for_zeros():  # adjust hr_52to version 4 record standards
+                if RingTimeChecker(hr_52).check_for_zeros():  # adjust hr_52 to version 4 record standards
                     self.hr_52 = ""
                 else:
                     self.hr_52 = Convert(hr_52).hundredths()

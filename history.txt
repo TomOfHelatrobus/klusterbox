@@ -110,3 +110,7 @@ Version 6.02 (04/04/2024)
 	I added remedy functionality for three spreadsheets - the improper mandates spreadsheet, the 12 and 60 hour violations spreadsheet (also called overmax) and the off bid violations spreadsheet. This includes new settings options in under the spreadsheet settings menu which allows the user to toggle off/on the remedy option and also allows the user to enter an hourly remedy rate - a flat dollar amount used to calculate the correct monetary remedy. The hourly remedy rate can also be updated on the spreadsheet itself. 
 	I also fixed a bug to display the settlements with gats descrepancies in the only descrepancies report in informalc. 
 	
+Version 6.03
+	I updated the automatic data entry so that will add a record for otdl carriers' nsday. I wrote a method that detects if that ns day is adjacent to a day of annual or sick leave - in those cases the ns day is assigned a code of 'annual' or 'sick'. Otherwise, the ns day is given the code 'no call'. 
+	
+	

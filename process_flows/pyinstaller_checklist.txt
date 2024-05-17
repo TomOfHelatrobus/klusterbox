@@ -7,7 +7,7 @@ Set up folders with updated/necessary files
 w64 w32 mac 
 ___ ___ ___  1. (in explorer/finder) make sure the kb_install folder is inside the klusterbox project folder. If not, then create it.
 
-2. (in explorer/finder) copy and paste the most resent versions of source files into the kb_install folder.
+2. (in explorer/finder) copy and paste the most recent versions of source files into the kb_install folder.
 		
 		w64 w32 mac
 		___ ___ ___  1. klusterbox.py
