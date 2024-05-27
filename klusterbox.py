@@ -29,7 +29,7 @@ from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingC
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
 from kbcsv_repair import CsvRepair
 from kbcsv_reader import MaxHr, ee_skimmer
-from kbpdfhandling import PdfConverter
+from kbpdfhandling import PdfConverter, PdfReorder
 from kbenterrings import EnterRings
 from kbinformalc import InfcSpeedSheetGen, InfcSpeedWorkBookGet, Awards, informalc_gen_clist, \
     informalc_date_converter
@@ -13567,6 +13567,7 @@ class MainFrame:
             (0, "Everything Report Reader", lambda: ee_skimmer(self.nav.topframe)),
             (0, "PDF Converter", lambda: PdfConverter().run(self.nav.topframe)),
             (0, "PDF Splitter", lambda: PdfSplitter().run(self.nav.topframe)),
+            (0, "PDF Reorder", lambda: PdfReorder().run(self.nav.topframe)),
             # ------------------------------------------------------------------------------------------- report
             (2, "Report Operations __________________________", ""),
             (0, "TACS Cheat Sheet", lambda: CheatSheet().tacs_cheatsheet()),
@@ -13721,6 +13722,7 @@ class MainFrame:
         automated_menu.add_separator()
         automated_menu.add_command(label="PDF Converter", command=lambda: PdfConverter().run(self.win.topframe))
         automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
+        automated_menu.add_command(label="PDF Reorder", command=lambda: PdfReorder().run(self.win.topframe))
         menubar.add_cascade(label="Readers", menu=automated_menu)
         # reports menu
         reports_menu = Menu(menubar, tearoff=0)

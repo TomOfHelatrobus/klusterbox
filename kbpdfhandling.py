@@ -13,6 +13,7 @@ import csv
 from io import StringIO  # change from cStringIO to io for py 3x
 import time
 import re
+import fitz
 # PDF Converter Libraries
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
@@ -1360,7 +1361,7 @@ class PdfConverter:
                         ordered_days.remove(day)
                 self.parent.found_days = ordered_days
                 self.parent.nguyen_rpt.append(self.parent.lastname)
-            if len(self.parent.found_days) > 0:  # printe out found days
+            if len(self.parent.found_days) > 0:  # show found days
                 # reorder the found days to ensure the correct order
                 self.parent.found_days = self.parent.pdf_converter_reorder_founddays()
                 if self.parent.gen_error_report:
@@ -1381,7 +1382,7 @@ class PdfConverter:
                 self.parent.mcgrath_indicator = False  # reset the indicator
                 if self.parent.gen_error_report:
                     datainput = "MCGRATH CARRYOVER: {}\n".format(self.parent.mcgrath_carryover)
-                    self.parent.kbpc_rpt.write(datainput)  # printe out a notice.
+                    self.parent.kbpc_rpt.write(datainput)  # display a notice.
                 del self.parent.underscore_slash_result[0]  # delete the ophan underscore slash
 
             count = 0
@@ -1449,7 +1450,7 @@ class PdfConverter:
                 for da in self.parent.daily_array:
                     if da[2] == self.parent.pp_days[i].strftime("%m/%d"):
                         self.parent.csv_output[i].append(da)
-            for co in self.parent.csv_output:  # for each time in the array, printe a line
+            for co in self.parent.csv_output:  # for each time in the array, display a line
                 for array in co:
                     if self.parent.gen_error_report:
                         datainput = "{}\n".format(str(array))
@@ -1629,7 +1630,6 @@ class PdfConverter:
                 datainput = "Base Counter Error: {}\n".format(self.parent.basecounter_error)
                 self.parent.kbpc_rpt.write(datainput)
 
-
         def error_messagebox(self):
             """ show any failures in a messagebox at the end of the conversion process. """
             if len(self.parent.failed) > 0:  # create messagebox to show any errors
@@ -1661,3 +1661,171 @@ class PdfConverter:
             """ close the error report document if that option was selected. """
             if self.parent.gen_error_report:
                 self.parent.kbpc_rpt.close()
+
+
+class PdfReorder:
+    """ read a list of carrier names from a spreadsheet.
+    covert the names into employee id numbers
+    search an employee everything report to find any occurances of the employee id numbers
+    sort the original pdf into a new pdf file """
+
+    def __init__(self):
+        self.frame = ""
+        self.file_path = ""
+        self.new_file_path = ""
+        self.short_file_name = ""
+        self.namelist_path = ""
+        self.names_list = []  # a list of carrier names
+        self.empid_pagenum = []  # a multi dimensional array for empid ids and related page numbers.
+        self.text = ""
+
+    def run(self, frame):
+        """ a master method for running the methods in proper order """
+        self.frame = frame
+        if not self.select_namelist():
+            return
+        self.read_namelist()
+        self.build_empid_pagenum_array()
+        if not self.select_pdf():
+            return
+        self.fill_empid_pagenum()
+        self.create_blank_pdf()
+        self.copy_pages_to_new_pdf()
+
+    def select_namelist(self):
+        """ select a text file of names from a file dialog and place the names into an array """
+        if not messagebox.askokcancel("PDF Sorter", "You must select a text file containing the names of carriers"
+                                                    "which you want included in the new sorted pdf file. \n\n "
+                                                    "Those names must appear as they are spelled in the Klusterbox "
+                                                    "database and must be on their own line in the text file. ",
+                                      parent=self.frame):
+            return False
+        try:
+            self.namelist_path = filedialog. \
+                askopenfilename(initialdir=dir_filedialog(), filetypes=[("Text files", "*.txt")])  # get the pdf file
+        except FileNotFoundError:  # end process if the user fails to select a valid file.
+            return False  # end the process
+        if not self.namelist_path:  # return if no file is selected.
+            return False  # end the process
+        return True
+
+    def read_namelist(self):
+        """ use 'open' to read the text file """
+        f = open(self.namelist_path, "r")
+        lines = f.readlines()
+        for line in lines:
+            line = line.strip()  # eliminate any white space
+            if line:  # do not add blank lines
+                if line not in self.names_list:  # do not add duplicate names
+                    self.names_list.append(line)  # add the names to the names list
+        self.names_list = sorted(self.names_list)  # sort names alphabetically
+        print(self.names_list)
+
+    def build_empid_pagenum_array(self):
+        """ build a multi dimensional array with employee ids and page numbers, e.g.
+        [[00000000, [1, 2 , 3]], [00000001, [4, 5, 6]]]"""
+        for name in self.names_list:
+            sql = "SELECT * FROM name_index WHERE kb_name = '%s'" % name
+            result = inquire(sql)
+            if result:
+                to_add = [result[0][2], []]
+                self.empid_pagenum.append(to_add)
+        print(self.empid_pagenum)
+
+    def select_pdf(self):
+        """ get a pdf file and translate it to something readable to be stored in the self.text variable. """
+        if not messagebox.askokcancel("PDF Sorter", "Select the employee everything report.",
+                                      parent=self.frame):
+            return False
+        try:
+            self.file_path = filedialog. \
+                askopenfilename(initialdir=dir_filedialog(), filetypes=[("PDF files", "*.pdf")])  # get the pdf file
+        except FileNotFoundError:  # end process if the user fails to select a valid file.
+            return False  # end the process
+        if not self.file_path:  # return if no file is selected.
+            return False  # end the process
+        if not self.get_newpdfpath():  # if the file already exist and user opts to not overwrite.
+            return False  # end the process
+        return True
+
+    def get_newpdfpath(self):
+        """ get the csv path and the shortened file name. if file already exist, ask before overwriting.  """
+        # generate csv file name and path
+        self.new_file_path = self.get_path("_sorted", ".pdf")
+        self.short_file_name = self.get_shortname()
+        # if the file path already exist - ask for confirmation
+        if os.path.exists(self.new_file_path):
+            if not messagebox.askokcancel("Possible File Name Discrepancy",
+                                          "There is already a file named {}. "
+                                          "If you proceed, the file will be overwritten. "
+                                          "Did you want to proceed?".format(self.short_file_name),
+                                          parent=self.frame):
+                return False
+        return True
+
+    def get_path(self, add_on, extension):
+        """ generate pdf file name and path """
+        file_parts = self.file_path.split("/")  # split path into folders and file
+        file_name_xten = file_parts[len(file_parts) - 1]  # get the file name from the end of the path
+        file_name = file_name_xten[:-4]  # remove the file extension from the file name
+        path = self.file_path[:-len(file_name_xten)]  # get the path back to the source folder
+        new_fname = file_name + add_on  # add suffix to to show converted pdf to csv
+        new_file_path = path + new_fname + extension  # new path with modified file name
+        return new_file_path
+
+    def get_shortname(self):
+        """ get the last part of the file name"""
+        file_parts = self.new_file_path.split("/")  # split path into folders and file
+        file_name_xten = file_parts[len(file_parts) - 1]  # get the file name from the end of the path
+        return file_name_xten
+
+    def fill_empid_pagenum(self):
+        """ find the pages where the employee id number appears. record the page number in the empid_pagenum array """
+        pdf_document = fitz.open(self.file_path)
+        # Regular expression to find text between "Sub-Unit:" and "Employee ID" keywords
+        pattern = re.compile(re.escape("Sub-Unit:") + '(.*?)' + re.escape("Employee ID"), re.S)
+        for page_num in range(len(pdf_document)):  # Iterate through each page and extract text
+            text_between_keywords = ""
+            page = pdf_document.load_page(page_num)  # Get the page
+            text = page.get_text()  # Extract text from the page
+            matches = pattern.findall(text)
+            for match in matches:  # If matches are found, add them to the result
+                text_between_keywords += match
+            for i in range(len(self.empid_pagenum)):
+                if self.empid_pagenum[i][0] in text_between_keywords:
+                    self.empid_pagenum[i][1].append(page_num)
+        print(self.empid_pagenum)  # display the emp id/ page number array
+
+    def create_blank_pdf(self):
+        """ create a new pdf file """
+        pdf_document = fitz.open()
+        # Add a blank page to the PDF
+        pdf_document.new_page(width=595, height=842)  # A4 size in points (72 points/inch)
+        pdf_document.save(self.new_file_path)  # Save the new PDF file
+        pdf_document.close()
+
+    def copy_pages_to_new_pdf(self):
+        """ copies pages from input pdf into a new pdf. """
+        input_pdf = fitz.open(self.file_path)  # Open the input PDF file
+        output_pdf = fitz.open(self.new_file_path)  # Create a new PDF file
+        # Add the specified pages to the new PDF file
+        for array in self.empid_pagenum:
+            for page_number in array[1]:
+                print(page_number)
+                # Ensure the page number is within the valid range
+                if 0 <= page_number < len(input_pdf):
+                    # Get the page from the input PDF
+                    page = input_pdf.load_page(page_number)
+                    # Insert the page into the new PDF
+                    output_pdf.insert_pdf(input_pdf, from_page=page_number, to_page=page_number)
+                    #
+                    # # Get the page from the source PDF
+                    # page = input_pdf.load_page(page_number)
+                    # # Insert the page into the target PDF at the specified position
+                    # output_pdf.insert_pdf(input_pdf, from_page=page_number, to_page=page_number,
+                    #                       start_at=insert_position)
+
+                else:
+                    print(f"Warning: Page number {page_number + 1} is out of range.")
+        output_pdf.save(self.new_file_path, incremental=True, encryption=fitz.PDF_ENCRYPT_KEEP)  # Save the new PDF file
+        output_pdf.close()
