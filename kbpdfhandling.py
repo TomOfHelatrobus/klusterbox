@@ -1676,26 +1676,30 @@ class PdfReorder:
         self.short_file_name = ""
         self.namelist_path = ""
         self.names_list = []  # a list of carrier names
+        self.no_match = []  # a list of names with no matching employee id numbers
         self.empid_pagenum = []  # a multi dimensional array for empid ids and related page numbers.
-        self.text = ""
 
     def run(self, frame):
         """ a master method for running the methods in proper order """
         self.frame = frame
         if not self.select_namelist():
             return
-        self.read_namelist()
+        if not self.read_namelist():
+            return
         self.build_empid_pagenum_array()
+        if not self.empid_pagenum_completion_msg():
+            return
         if not self.select_pdf():
             return
+        if not self.get_newpdfpath():  # if the file already exist and user opts to not overwrite.
+            return  # end the process
         self.fill_empid_pagenum()
-        self.create_blank_pdf()
         self.copy_pages_to_new_pdf()
+        self.completion_messagebox()
 
     def select_namelist(self):
         """ select a text file of names from a file dialog and place the names into an array """
-        if not messagebox.askokcancel("PDF Sorter", "You must select a text file containing the names of carriers"
-                                                    "which you want included in the new sorted pdf file. \n\n "
+        if not messagebox.askokcancel("PDF Sorter", "Select a text file containing the names.\n\n "
                                                     "Those names must appear as they are spelled in the Klusterbox "
                                                     "database and must be on their own line in the text file. ",
                                       parent=self.frame):
@@ -1719,7 +1723,13 @@ class PdfReorder:
                 if line not in self.names_list:  # do not add duplicate names
                     self.names_list.append(line)  # add the names to the names list
         self.names_list = sorted(self.names_list)  # sort names alphabetically
-        print(self.names_list)
+        if not len(self.names_list):  # if the names list is empty
+            messagebox.showinfo("Klusterbox PDF Reorder",
+                                "Klusterbox can not read any names from the selected text document. \n\n"
+                                "The document can not be created.\n\n",
+                                parent=self.frame)
+            return False
+        return True
 
     def build_empid_pagenum_array(self):
         """ build a multi dimensional array with employee ids and page numbers, e.g.
@@ -1730,10 +1740,37 @@ class PdfReorder:
             if result:
                 to_add = [result[0][2], []]
                 self.empid_pagenum.append(to_add)
-        print(self.empid_pagenum)
+            else:
+                self.no_match.append(name)
+
+    def empid_pagenum_completion_msg(self):
+        """ shows a message for the completion matching the names to the employee id numbers. """
+        nameform = "name was"  # if the lenght of self.names_list is one - use singular
+        if len(self.names_list) > 0 or len(self.names_list) == 0:  # if more than one or zero - use plural
+            nameform = "names were"
+        if not self.no_match:  # if the no match array is empty
+            messagebox.showinfo("Klusterbox PDF Reorder",
+                                "Klusterbox has finished matching carrier names to their employee id numbers. \n\n"
+                                "All names were matched. {} {} matched".format(str(len(self.names_list)), nameform),
+                                parent=self.frame)
+            return True
+        elif len(self.empid_pagenum) == len(self.names_list):
+            messagebox.showinfo("Klusterbox PDF Reorder",
+                                "Klusterbox has finished matching carrier names to their employee id numbers. \n\n"
+                                "No names could be matched. So the document can not be created.\n\n",
+                                parent=self.frame)
+            return False
+        else:
+            string = Convert(self.no_match).array_to_string()
+            messagebox.showinfo("Klusterbox PDF Reorder",
+                                "Klusterbox has finished matching carrier names to their employee id numbers. \n\n"
+                                "The following names could not be matched to employee id numbers: \n\n"
+                                "{}".format(string),
+                                parent=self.frame)
+            return True
 
     def select_pdf(self):
-        """ get a pdf file and translate it to something readable to be stored in the self.text variable. """
+        """ get a pdf file path and store it in the self.file_path variable. """
         if not messagebox.askokcancel("PDF Sorter", "Select the employee everything report.",
                                       parent=self.frame):
             return False
@@ -1744,17 +1781,13 @@ class PdfReorder:
             return False  # end the process
         if not self.file_path:  # return if no file is selected.
             return False  # end the process
-        if not self.get_newpdfpath():  # if the file already exist and user opts to not overwrite.
-            return False  # end the process
         return True
 
     def get_newpdfpath(self):
         """ get the csv path and the shortened file name. if file already exist, ask before overwriting.  """
-        # generate csv file name and path
-        self.new_file_path = self.get_path("_sorted", ".pdf")
+        self.new_file_path = self.get_path("_sorted", ".pdf")  # generate pdf file name and path
         self.short_file_name = self.get_shortname()
-        # if the file path already exist - ask for confirmation
-        if os.path.exists(self.new_file_path):
+        if os.path.exists(self.new_file_path):  # if the file path already exist - ask for confirmation
             if not messagebox.askokcancel("Possible File Name Discrepancy",
                                           "There is already a file named {}. "
                                           "If you proceed, the file will be overwritten. "
@@ -1794,38 +1827,34 @@ class PdfReorder:
             for i in range(len(self.empid_pagenum)):
                 if self.empid_pagenum[i][0] in text_between_keywords:
                     self.empid_pagenum[i][1].append(page_num)
-        print(self.empid_pagenum)  # display the emp id/ page number array
-
-    def create_blank_pdf(self):
-        """ create a new pdf file """
-        pdf_document = fitz.open()
-        # Add a blank page to the PDF
-        pdf_document.new_page(width=595, height=842)  # A4 size in points (72 points/inch)
-        pdf_document.save(self.new_file_path)  # Save the new PDF file
-        pdf_document.close()
 
     def copy_pages_to_new_pdf(self):
         """ copies pages from input pdf into a new pdf. """
         input_pdf = fitz.open(self.file_path)  # Open the input PDF file
-        output_pdf = fitz.open(self.new_file_path)  # Create a new PDF file
+        output_pdf = fitz.open()  # Create a new PDF file
         # Add the specified pages to the new PDF file
         for array in self.empid_pagenum:
             for page_number in array[1]:
-                print(page_number)
-                # Ensure the page number is within the valid range
-                if 0 <= page_number < len(input_pdf):
-                    # Get the page from the input PDF
-                    page = input_pdf.load_page(page_number)
+                if 0 <= page_number < len(input_pdf):  # Ensure the page number is within the valid range
+                    page = input_pdf.load_page(page_number)  # Get the page from the input PDF
                     # Insert the page into the new PDF
                     output_pdf.insert_pdf(input_pdf, from_page=page_number, to_page=page_number)
-                    #
-                    # # Get the page from the source PDF
-                    # page = input_pdf.load_page(page_number)
-                    # # Insert the page into the target PDF at the specified position
-                    # output_pdf.insert_pdf(input_pdf, from_page=page_number, to_page=page_number,
-                    #                       start_at=insert_position)
-
-                else:
-                    print(f"Warning: Page number {page_number + 1} is out of range.")
-        output_pdf.save(self.new_file_path, incremental=True, encryption=fitz.PDF_ENCRYPT_KEEP)  # Save the new PDF file
+        if not output_pdf.page_count:  # if there are no pages in the output pdf
+            messagebox.showinfo("Klusterbox PDF Reorder",
+                                "The PDF Reorder is complete. \n\n "
+                                "No pages were input into the new PDF document, so the document was not created.",
+                                parent=self.frame)
+            output_pdf.close()
+            input_pdf.close()
+            return False
+        output_pdf.save(self.new_file_path)  # Save the new PDF file
         output_pdf.close()
+        input_pdf.close()
+
+    def completion_messagebox(self):
+        """ create messagebox for completion """
+        file_name = self.short_file_name
+        messagebox.showinfo("Klusterbox PDF Reorder",
+                            "The PDF Reorder is complete. "
+                            "The file name is {}. ".format(file_name),
+                            parent=self.frame)
