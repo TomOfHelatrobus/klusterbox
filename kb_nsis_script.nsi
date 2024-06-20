@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "klusterbox"
-!define PRODUCT_VERSION "6.02"
+!define PRODUCT_VERSION "6.03"
 !define PRODUCT_PUBLISHER "Thomas Weeks"
 !define PRODUCT_WEB_SITE "klusterbox.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\klusterbox.exe"
@@ -89,6 +89,8 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR\Crypto\Util"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Util\_cpuid_c.cp37-win_amd64.pyd"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\Crypto\Util\_strxor.cp37-win_amd64.pyd"
+  SetOutPath "$INSTDIR\fitz"
+  File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\fitz\_fitz.cp37-win_amd64.pyd"
   SetOutPath "$INSTDIR"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\history.txt"
   File "C:\Users\toman\klusterbox\kb_install\dist\klusterbox\kbcsv_reader.py"
@@ -2409,6 +2411,7 @@ Section Uninstall
   Delete "$INSTDIR\kbcsv_repair.py"
   Delete "$INSTDIR\kbcsv_reader.py"
   Delete "$INSTDIR\history.txt"
+  Delete "$INSTDIR\fitz\_fitz.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Util\_strxor.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\Util\_cpuid_c.cp37-win_amd64.pyd"
   Delete "$INSTDIR\Crypto\PublicKey\_ec_ws.cp37-win_amd64.pyd"
@@ -2490,6 +2493,7 @@ Section Uninstall
   RMDir "$INSTDIR\tcl"
   RMDir "$INSTDIR\PIL"
   RMDir "$INSTDIR\pdfminer\cmap"
+  RMDir "$INSTDIR\fitz"
   RMDir "$INSTDIR\Crypto\Util"
   RMDir "$INSTDIR\Crypto\PublicKey"
   RMDir "$INSTDIR\Crypto\Protocol"
