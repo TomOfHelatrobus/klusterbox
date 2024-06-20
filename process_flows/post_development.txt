@@ -41,6 +41,9 @@ ___  4. Push changes to git repo.
 
 ************************************  Git Push/Pull  *************************************
 
+to check the status of the repo vs the local project folder.
+___		git diff --stat
+
 1. upload the most recent version to git hub
 ___  	a. open windows powershell
 ___  	b. navigate to the project folder
