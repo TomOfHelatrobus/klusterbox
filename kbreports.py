@@ -808,9 +808,15 @@ class Messenger:
                    "rate. \n\n" \
                    "Select ON or OFF"
         if switch == "remedy_rate":
-            text = "Sets the hourly rate of the remedy column. The " \
+            text = "Sets the hourly rate (in dollars) of the remedy column. The " \
                    "rate can also be changed on the spreadsheet. \n\n" \
                    "Enter a value between 1 and 100"
+        if switch == "remedy_tolerance":
+            text = "Sets a tolerance for violations on the remedy spreadsheet. " \
+                   "No violations under the tolerance will be visible or calculated. " \
+                   "The tolerance can also be changed on the spreadsheet. " \
+                   "The value is expressed in hours and clicks. \n\n" \
+                   "Enter a value between .00 and 24.00"
         if switch == "man4_dis_limit":
             text = "Limits what is displayed in the Improper Mandates No.4 \n" \
                    "Spreadsheet for no-list and work assignment carriers \n" \

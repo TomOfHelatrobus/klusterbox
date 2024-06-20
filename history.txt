@@ -113,6 +113,7 @@ Version 6.02 (04/04/2024)
 Version 6.03
 	I updated the automatic data entry so that will add a record for otdl carriers' nsday. I wrote a method that detects if that ns day is adjacent to a day of annual or sick leave - in those cases the ns day is assigned a code of 'annual' or 'sick'. Otherwise, the ns day is given the code 'no call'.
 	The pdf reorder class was made to edit an employee everything report so that the user can specify which carriers are included in a limited and curated employee everything report. The pdf reorder also sorts the report alphabetically by name. 
+	The remedy settings and formulas for the improper mandates spreadsheet and the overmax spreadsheet were updated to allow for tolerances. Settings for "impman_remedy_tolerance" and "overmax_remedy_tolerance" were inserted into the tolerances table to hold values for those tolerances. 
 			
 	
 	

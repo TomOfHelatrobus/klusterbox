@@ -50,6 +50,7 @@ class ImpManSpreadsheet:
         self.min_ss_aux = 0  # minimum rows for auxiliary
         self.show_remedy = None  # setting to show the remedy tab
         self.remedy_rate = None  # setting for remedy hourly rate
+        self.remedy_tolerance = None  # setting to remedy tolerance
         self.day = None  # build worksheet - loop once for each day
         self.i = 0  # build worksheet loop iteration
         self.lsi = 0  # list loop iteration
@@ -121,12 +122,11 @@ class ImpManSpreadsheet:
         self.build_ws_loop()  # calls list loop and carrier loop
         self.build_summary_header()
         self.build_summary()
-        if self.show_remedy:
-            self._build_remedy_blank_arrays()
-            self._equalize_remedy_blank_arrays()
-            self._order_remedy_blank_arrays()
-            self._build_remedy_header()
-            self._build_remedy()
+        self._build_remedy_blank_arrays()
+        self._equalize_remedy_blank_arrays()
+        self._order_remedy_blank_arrays()
+        self._build_remedy_header()
+        self._build_remedy()
         self.save_open()
 
     def ask_ok(self):
@@ -198,6 +198,7 @@ class ImpManSpreadsheet:
         self.pb_otdl_aux = Convert(result[23][0]).str_to_bool()  # page break between otdl and auxiliary
         self.show_remedy = Convert(result[48][0]).str_to_bool()
         self.remedy_rate = Convert(result[49][0]).hundredths()
+        self.remedy_tolerance = float(Convert(result[54][0]).hundredths())
 
     def get_styles(self):
         """ Named styles for workbook """
@@ -246,8 +247,7 @@ class ImpManSpreadsheet:
                 self.ws_list[i].title = day_of_week[i]  # title subsequent worksheets
         self.summary = self.wb.create_sheet("summary")
         self.reference = self.wb.create_sheet("reference")
-        if self.show_remedy:
-            self.remedy = self.wb.create_sheet("remedy")
+        self.remedy = self.wb.create_sheet("remedy")
 
     def set_dimensions(self):
         """ set the dimensions of the workbook """
@@ -277,18 +277,17 @@ class ImpManSpreadsheet:
         self.reference.column_dimensions["C"].width = 8
         self.reference.column_dimensions["D"].width = 2
         self.reference.column_dimensions["E"].width = 50
-        if self.show_remedy:
-            self.remedy.oddFooter.center.text = "&A"
-            self.remedy.column_dimensions["A"].width = 20
-            self.remedy.column_dimensions["B"].width = 6
-            self.remedy.column_dimensions["C"].width = 6
-            self.remedy.column_dimensions["D"].width = 6
-            self.remedy.column_dimensions["E"].width = 6
-            self.remedy.column_dimensions["F"].width = 6
-            self.remedy.column_dimensions["G"].width = 6
-            self.remedy.column_dimensions["H"].width = 6
-            self.remedy.column_dimensions["I"].width = 7
-            self.remedy.column_dimensions["J"].width = 10
+        self.remedy.oddFooter.center.text = "&A"
+        self.remedy.column_dimensions["A"].width = 20
+        self.remedy.column_dimensions["B"].width = 6
+        self.remedy.column_dimensions["C"].width = 6
+        self.remedy.column_dimensions["D"].width = 6
+        self.remedy.column_dimensions["E"].width = 6
+        self.remedy.column_dimensions["F"].width = 6
+        self.remedy.column_dimensions["G"].width = 6
+        self.remedy.column_dimensions["H"].width = 6
+        self.remedy.column_dimensions["I"].width = 7
+        self.remedy.column_dimensions["J"].width = 10
 
     def build_refs(self):
         """ build the references page. This shows tolerances and defines labels. """
@@ -963,15 +962,15 @@ class ImpManSpreadsheet:
         cell.value = "Improper Mandate Remedies"
         cell.style = self.ws_header
         self.remedy.merge_cells('A1:E1')
-        cell = self.remedy.cell(row=3, column=2)
+        cell = self.remedy.cell(row=3, column=1)
         cell.value = "Date:  "  # create date/ pay period/ station header
         cell.style = self.date_dov_title
-        cell = self.remedy.cell(row=3, column=3)
+        cell = self.remedy.cell(row=3, column=2)
         cell.value = self.dates[0].strftime("%x")
         if projvar.invran_weekly_span:
             cell.value = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
         cell.style = self.date_dov
-        self.remedy.merge_cells('C3:E3')
+        self.remedy.merge_cells('B3:D3')
         cell = self.remedy.cell(row=3, column=6)
         cell.value = "Pay Period:  "
         cell.style = self.date_dov_title
@@ -980,21 +979,30 @@ class ImpManSpreadsheet:
         cell.value = projvar.pay_period
         cell.style = self.date_dov
         self.remedy.merge_cells('H3:I3')
-        cell = self.remedy.cell(row=4, column=2)
+        cell = self.remedy.cell(row=4, column=1)
         cell.value = "Station:  "
         cell.style = self.date_dov_title
-        cell = self.remedy.cell(row=4, column=3)
+        cell = self.remedy.cell(row=4, column=2)
         cell.value = projvar.invran_station
         cell.style = self.date_dov
-        self.remedy.merge_cells('C4:E4')
-        cell = self.remedy.cell(row=4, column=6)
-        cell.value = "Remedy Rate:  "  # label for the remedy rate
+        self.remedy.merge_cells('B4:D4')
+        cell = self.remedy.cell(row=4, column=5)
+        cell.value = "Remedy Tolerance:  "  # label for the remedy tolerance
         cell.style = self.date_dov_title
-        self.remedy.merge_cells('F4:G4')
+        self.remedy.merge_cells('E4:G4')
         cell = self.remedy.cell(row=4, column=8)  # the $ value of the remedy
-        cell.value = float(self.remedy_rate)
+        cell.value = self.remedy_tolerance
         cell.style = self.remedy_style
-        cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        if self.show_remedy:
+            cell = self.remedy.cell(row=5, column=6)
+            cell.value = "Remedy Rate:  "  # label for the remedy rate
+            cell.style = self.date_dov_title
+            self.remedy.merge_cells('F5:G5')
+            cell = self.remedy.cell(row=5, column=8)  # the $ value of the remedy
+            cell.value = float(self.remedy_rate)
+            cell.style = self.remedy_style
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
 
     def _remedy_list_header(self, _list):
         """ create headers for each list on the remedy page """
@@ -1007,16 +1015,19 @@ class ImpManSpreadsheet:
         cell.value = list_title[_list]
         cell.style = self.list_header
         self.remedy.merge_cells('G' + str(self.remedy_row) + ':I' + str(self.remedy_row))
-        cell = self.remedy.cell(row=self.remedy_row, column=7)  # remedy percentage label
-        cell.value = "remedy percentage:"
-        cell.style = self.date_dov_title
-        cell = self.remedy.cell(row=self.remedy_row, column=10)  # remedy percentage input
-        cell.value = default_percent[_list]
-        cell.style = self.date_dov
-        cell.number_format = "#,###.00;[RED]-#,###.00"
+        if self.show_remedy:
+            cell = self.remedy.cell(row=self.remedy_row, column=7)  # remedy percentage label
+            cell.value = "remedy percentage:"
+            cell.style = self.date_dov_title
+            cell = self.remedy.cell(row=self.remedy_row, column=10)  # remedy percentage input
+            cell.value = default_percent[_list]
+            cell.style = self.date_dov
+            cell.number_format = "#,###.00;[RED]-#,###.00"
         self.remedy_row += 1
-        sub_header = ("sat", "sun", "mon", "tue", "wed", "thu", "fri", "total", "remedy")
-        for i in range(9):
+        sub_header = ("sat", "sun", "mon", "tue", "wed", "thu", "fri", "total")
+        if self.show_remedy:
+            sub_header = ("sat", "sun", "mon", "tue", "wed", "thu", "fri", "total", "remedy")
+        for i in range(len(sub_header)):
             cell = self.remedy.cell(row=self.remedy_row, column=i+2)
             cell.value = sub_header[i]
             cell.style = self.col_header
@@ -1052,19 +1063,20 @@ class ImpManSpreadsheet:
         cell = self.remedy.cell(row=self.remedy_row, column=1)  # list section header
         cell.value = "Equalization"
         cell.style = self.list_header
-        self.remedy.merge_cells('G' + str(self.remedy_row) + ':I' + str(self.remedy_row))
-        cell = self.remedy.cell(row=self.remedy_row, column=7)  # remedy percentage label
-        cell.value = "cumulative remedy:"
-        cell.style = self.date_dov_title
-        formula = "=SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)" \
-                  % ("remedy", self.remedy_cum[0][0], "remedy", self.remedy_cum[0][1],
-                     "remedy", self.remedy_cum[1][0], "remedy", self.remedy_cum[1][1],
-                     "remedy", self.remedy_cum[2][0], "remedy", self.remedy_cum[2][1],
-                     "remedy", self.remedy_cum[3][0], "remedy", self.remedy_cum[3][1])
-        cell = self.remedy.cell(row=self.remedy_row, column=10)  # remedy percentage input
-        cell.value = formula
-        cell.style = self.calcs
-        cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+        if self.show_remedy:
+            self.remedy.merge_cells('G' + str(self.remedy_row) + ':I' + str(self.remedy_row))
+            cell = self.remedy.cell(row=self.remedy_row, column=7)  # remedy percentage label
+            cell.value = "cumulative remedy:"
+            cell.style = self.date_dov_title
+            formula = "=SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)" \
+                      % ("remedy", self.remedy_cum[0][0], "remedy", self.remedy_cum[0][1],
+                         "remedy", self.remedy_cum[1][0], "remedy", self.remedy_cum[1][1],
+                         "remedy", self.remedy_cum[2][0], "remedy", self.remedy_cum[2][1],
+                         "remedy", self.remedy_cum[3][0], "remedy", self.remedy_cum[3][1])
+            cell = self.remedy.cell(row=self.remedy_row, column=10)  # remedy percentage input
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
         self.remedy_row += 2
         # -------------------------------------------------------------------------------------------------- mandates
         self.remedy_equalizer_rows.append(self.remedy_row)  # save row number for equalization formula
@@ -1127,7 +1139,9 @@ class ImpManSpreadsheet:
          returns a formula for a tuple. """
         formula = ""  # the default is an empty string
         if type(violation_cell) == tuple:
-            formula = "=%s!%s%s" % (violation_cell[0], violation_cell[1], violation_cell[2])
+            formula = "=IF(%s!%s%s>=remedy!H4,%s!%s%s,\"\") " % \
+                      (violation_cell[0], violation_cell[1], violation_cell[2],
+                       violation_cell[0], violation_cell[1], violation_cell[2])
         return formula
 
     def _display_remedy_row(self, name, violation_cells):
@@ -1142,18 +1156,21 @@ class ImpManSpreadsheet:
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
         # display totals cell
-        formula_a = "=SUM(%s!B%s:%s!H%s)" % ('remedy', self.remedy_row, 'remedy', self.remedy_row)
+        formula_a = "=IF(SUM(%s!B%s:%s!H%s)>0, SUM(%s!B%s:%s!H%s), \"\")" % \
+                    ('remedy', self.remedy_row, 'remedy', self.remedy_row, 'remedy', self.remedy_row, 'remedy',
+                     self.remedy_row)
         cell = self.remedy.cell(row=self.remedy_row, column=9)
         cell.value = formula_a
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
-        # display remedy cell
-        formula_a = "=(%s!H%s*%s!J%s)*%s!I%s" \
-                    % ('remedy', str(4), 'remedy', str(self.remedy_start_row-2), 'remedy', str(self.remedy_row))
-        cell = self.remedy.cell(row=self.remedy_row, column=10)
-        cell.value = formula_a
-        cell.style = self.calcs
-        cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+        if self.show_remedy:  # display remedy cell
+            formula_a = "=IF(AND(%s!I%s<>\"\", %s!I%s<>0),(%s!H$4 * %s!J$%s) * %s!I%s,\"\")" % \
+                        ('remedy', str(self.remedy_row), 'remedy', str(self.remedy_row),
+                         'remedy', 'remedy', str(self.remedy_start_row-2), 'remedy', str(self.remedy_row))
+            cell = self.remedy.cell(row=self.remedy_row, column=10)
+            cell.value = formula_a
+            cell.style = self.calcs
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
 
     def _build_remedy_blank_arrays(self):
         """ use the remedy array to find all blank rows and build the blank remedy arrays """
@@ -1251,7 +1268,7 @@ class ImpManSpreadsheet:
 
     def _build_remedy(self):
         """ build the remedy page """
-        self.remedy_row = 6
+        self.remedy_row = 7
         _list_array = ("nl", "wal", "otdl", "aux")
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         for _list in _list_array:  # sort names by list
@@ -1338,6 +1355,7 @@ class OvermaxSpreadsheet:
         self.wal_dec_exempt_mod = ""  # text inserted into formulas which varies depending on wal_dec_exempt setting
         self.show_remedy = ""  # show the remedy on the summary sheet
         self.remedy_rate = ""  # the hourly pay rate of the remedy.
+        self.remedy_tolerance = ""  # the tolerance for the remedy. e.g. ".50" - 50 clicks
         self.ws_header = None  # style
         self.date_dov = None  # style
         self.date_dov_title = None  # style
@@ -1424,6 +1442,7 @@ class OvermaxSpreadsheet:
         self.wal_dec_exempt = Convert(result[45][0]).str_to_bool()
         self.show_remedy = Convert(result[50][0]).str_to_bool()
         self.remedy_rate = Convert(result[51][0]).hundredths()
+        self.remedy_tolerance = Convert(result[55][0]).hundredths()
 
     def set_wal12hrmod(self):
         """ if the wal_12hour setting is True, don't include 'wal' in formula"""
@@ -1525,36 +1544,42 @@ class OvermaxSpreadsheet:
         self.summary['A1'].style = self.ws_header
         self.summary.column_dimensions["A"].width = 15
         self.summary.column_dimensions["B"].width = 8
-        self.summary['A3'] = "Date:"
+        self.summary['A3'] = "Date: "
         self.summary['A3'].style = self.date_dov_title
         self.summary.merge_cells('B3:D3')  # blank field for date
         self.summary['B3'] = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
         self.summary['B3'].style = self.date_dov
         self.summary.merge_cells('K3:N3')
-        self.summary['F3'] = "Pay Period:"  # Pay Period Header
+        self.summary['F3'] = "Pay Period: "  # Pay Period Header
         self.summary['F3'].style = self.date_dov_title
         self.summary.merge_cells('G3:I3')  # blank field for pay period
         self.summary['G3'] = projvar.pay_period
         self.summary['G3'].style = self.date_dov
-        self.summary['A4'] = "Station:"  # Station Header
+        self.summary['A4'] = "Station: "  # Station Header
         self.summary['A4'].style = self.date_dov_title
         self.summary.merge_cells('B4:D4')  # blank field for station
         self.summary['B4'] = projvar.invran_station
         self.summary['B4'].style = self.date_dov
+        self.summary.merge_cells('E4:F4')  # Remedy Rate (optional)
+        self.summary['E4'] = "Remedy Tolerance: "
+        self.summary['E4'].style = self.date_dov_title
+        self.summary['G4'] = float(self.remedy_tolerance)
+        self.summary['G4'].style = self.remedy_style
+        self.summary['G4'].number_format = "#,##0.00;[RED]-#,##0.00"
         if self.show_remedy:
-            self.summary.merge_cells('E4:F4')  # Remedy Rate (optional)
-            self.summary['E4'] = "Remedy Rate"
-            self.summary['E4'].style = self.date_dov_title
-            self.summary['G4'] = float(self.remedy_rate)
-            self.summary['G4'].style = self.remedy_style
-            self.summary['G4'].number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
-        self.summary['A6'] = "name"
-        self.summary['A6'].style = self.col_center_header
-        self.summary['B6'] = "violation"
-        self.summary['B6'].style = self.col_center_header
+            self.summary.merge_cells('E5:F5')  # Remedy Rate (optional)
+            self.summary['E5'] = "Remedy Rate: "
+            self.summary['E5'].style = self.date_dov_title
+            self.summary['G5'] = float(self.remedy_rate)
+            self.summary['G5'].style = self.remedy_style
+        self.summary['G5'].number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+        self.summary['A7'] = "name"
+        self.summary['A7'].style = self.col_center_header
+        self.summary['B7'] = "violation"
+        self.summary['B7'].style = self.col_center_header
         if self.show_remedy:
-            self.summary['C6'] = "remedy"
-            self.summary['C6'].style = self.col_center_header
+            self.summary['C7'] = "remedy"
+            self.summary['C7'].style = self.col_center_header
 
     def build_violations(self):
         """ self.violations worksheet - format cells """
@@ -2144,7 +2169,7 @@ class OvermaxSpreadsheet:
 
     def show_violations(self):
         """ generates the rows of the violations and the summary worksheets. """
-        summary_i = 7
+        summary_i = 8
         i = 10
         for line in self.violation_recsets:
             carrier_name = line[0][0]
@@ -2392,14 +2417,16 @@ class OvermaxSpreadsheet:
             formula_i = "=IF(%s!A%s = 0,\"\",%s!A%s)" % ("violations", str(i), "violations", str(i))
             self.summary['A' + str(summary_i)] = formula_i
             self.summary['A' + str(summary_i)].style = self.input_name
-            formula_j = "=%s!X%s" % ("violations", str(i))
+            formula_j = "= IF(violations!X%s = \"exempt\", \"\", " \
+                        "IF(violations!X%s >= summary!G$4,violations!X%s, \"\"))" \
+                        % (str(i), str(i), str(i))
             self.summary['B' + str(summary_i)] = formula_j
             self.summary['B' + str(summary_i)].style = self.input_s
             self.summary['B' + str(summary_i)].number_format = "#,###.00"
             self.summary.row_dimensions[summary_i].height = 10  # adjust all row height
             if self.show_remedy:  # optional Super remedy solution
-                formula_k = "=IF(%s!B%s=\"exempt\",0,%s!B%s*%s!G4)" \
-                            % ("summary", str(summary_i), "summary", str(summary_i), "summary")
+                formula_k = "=IF(OR(summary!B%s=\"exempt\", summary!B%s=\"\"),\"\",summary!B%s*summary!G5)" \
+                            % (str(summary_i), str(summary_i), str(summary_i))
                 self.summary['C' + str(summary_i)] = formula_k
                 self.summary['C' + str(summary_i)].style = self.calcs
                 self.summary['C' + str(summary_i)].number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"

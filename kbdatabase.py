@@ -20,12 +20,12 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(144)
+        self.pbar.max_count(146)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
         self.stations()  # pb increment: 1
-        self.tolerances()  # pb increment: 52
+        self.tolerances()  # pb increment: 54
         self.rings()  # pb increment: 1
         self.skippers()  # pb increment: 1
         self.ns_config()  # pb increment: 6
@@ -180,7 +180,9 @@ class DataBase:
             (50, "overmax_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
             (51, "overmax_remedy", 0),  # the hourly pay rate for 12 and 60 hour violations.
             (52, "offbid_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
-            (53, "offbid_remedy", 0)  # the hourly pay rate for off bid violations.
+            (53, "offbid_remedy", 0),  # the hourly pay rate for off bid violations.
+            (54, "impman_remedy_tolerance", 0.01),  # improper mandate remedy tolerance
+            (55, "overmax_remedy_tolerance", 0.01)  # over max remedy tolerance
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:

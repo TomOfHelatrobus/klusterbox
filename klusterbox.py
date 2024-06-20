@@ -10105,6 +10105,7 @@ class SpreadsheetConfig:
         self.pb_otdl_aux = True  # page break between otdl and auxiliary
         self.impman_show_remedy = 0  # show remedy column for improper mandate spreadsheet
         self.impman_remedy = 0  # the hourly remedy rate for the improper mandate spreadsheet
+        self.impman_remedy_tolerance = 0.0  # the tolerance for the improper mandate remedy
         self.min4_nl = 0.0  # minimum rows for mandates no.4
         self.min4_wal = 0.0
         self.min4_otdl = 0.0
@@ -10118,6 +10119,7 @@ class SpreadsheetConfig:
         self.overmax_wal_dec = None
         self.overmax_show_remedy = 0  # show remedy column for overmax spreadsheet
         self.overmax_remedy = 0  # the hourly remedy rate for the overmax
+        self.overmax_remedy_tolerance = 0.0  # the tolerance for the over max remedy
         self.offbid_distinctpages = None  # off bid distinct page
         self.offbid_maxpivot = None  # off bid maximum pivot
         self.offbid_show_remedy = 0  # the hourly remedy rate for the off bid spreadsheet
@@ -10134,6 +10136,7 @@ class SpreadsheetConfig:
         self.pb_wal_otdl_var = None  # page break between work assignment and otdl
         self.pb_otdl_aux_var = None  # page break between otdl and auxiliary
         self.impman_show_remedy_var = None  # optionmenu show remedy column for improper mandate spreadsheet
+        self.impman_remedy_tol_var = None  # entry value for the remedy tolerance
         self.impman_remedy_var = None  # optionmenu the hourly remedy rate for the improper mandate spreadsheet
         self.min4_nl_var = None  # stringvar for mandates no.4
         self.min4_wal_var = None
@@ -10148,6 +10151,7 @@ class SpreadsheetConfig:
         self.overmax_wal_dec_var = None  # 12 and 60 hour option for wal dec exemption
         self.overmax_show_remedy_var = None  # show remedy column for overmax spreadsheet
         self.overmax_remedy_var = None  # the hourly remedy rate for the overmax
+        self.overmax_remedy_tol_var = None  # the over max remedy tolerance
         self.offbid_distinctpages_var = None  # off bid spreadsheet: creates distinct pages for each carrier
         self.offbid_maxpivot_var = None  # off bid spreadsheet: maximum pivot
         self.offbid_show_remedy_var = None  # the hourly remedy rate for the off bid spreadsheet
@@ -10169,6 +10173,7 @@ class SpreadsheetConfig:
         self.add_pb_otdl_aux = True  # page break between otdl and auxiliary
         self.add_impman_show_remedy = None  # toggle to show remedy shortcut for improper mandates
         self.add_impman_remedy = 0.0
+        self.add_impman_remedy_tol = 0.0
         self.add_min4_nl = 0.0  # prep values to be entered into database for mandates no.4
         self.add_min4_wal = 0.0
         self.add_min4_otdl = 0.0
@@ -10182,6 +10187,7 @@ class SpreadsheetConfig:
         self.add_overmax_wal_dec = None
         self.add_overmax_show_remedy = None  # toggle to show remedy shortcut for over max violations
         self.add_overmax_remedy = 0.0
+        self.add_overmax_remedy_tol = 0.0
         self.add_offbid_maxpivot = 0.0
         self.add_offbid_distinctpages = None
         self.add_offbid_show_remedy = None  # toggle to show remedy shortcut for off bid violations
@@ -10232,8 +10238,10 @@ class SpreadsheetConfig:
         # get values for remedy column display and rate
         self.impman_show_remedy = results[48][0]
         self.impman_remedy = results[49][0]
+        self.impman_remedy_tolerance = results[54][0]
         self.overmax_show_remedy = results[50][0]
         self.overmax_remedy = results[51][0]
+        self.overmax_remedy_tolerance = results[55][0]
         self.offbid_show_remedy = results[52][0]
         self.offbid_remedy = results[53][0]
         # convert bool to "on" or "off"
@@ -10264,11 +10272,13 @@ class SpreadsheetConfig:
         self.min_aux_var = StringVar(self.win.body)
         self.min_overmax_var = StringVar(self.win.body)
         self.impman_show_remedy_var = StringVar(self.win.body)
+        self.impman_remedy_tol_var = StringVar(self.win.body)
         self.impman_remedy_var = StringVar(self.win.body)
         self.overmax_12hour_var = StringVar(self.win.body)
         self.overmax_wal_dec_var = StringVar(self.win.body)
         self.overmax_show_remedy_var = StringVar(self.win.body)
         self.overmax_remedy_var = StringVar(self.win.body)
+        self.overmax_remedy_tol_var = StringVar(self.win.body)
         self.offbid_distinctpages_var = StringVar(self.win.body)
         self.offbid_maxpivot_var = StringVar(self.win.body)
         self.offbid_show_remedy_var = StringVar(self.win.body)
@@ -10296,20 +10306,18 @@ class SpreadsheetConfig:
         self.min_otdl_var.set(self.min_otdl)
         self.min_aux_var.set(self.min_aux)
         self.min_overmax_var.set(self.min_overmax)
-
         self.impman_show_remedy_var.set(self.impman_show_remedy)
+        self.impman_remedy_tol_var.set(self.impman_remedy_tolerance)
         self.impman_remedy_var.set(self.impman_remedy)
-
         self.overmax_12hour_var.set(self.overmax_12hour)
         self.overmax_wal_dec_var.set(self.overmax_wal_dec)
         self.overmax_show_remedy_var.set(self.overmax_show_remedy)
         self.overmax_remedy_var.set(self.overmax_remedy)
-
+        self.overmax_remedy_tol_var.set(self.overmax_remedy_tolerance)
         self.offbid_distinctpages_var.set(self.offbid_distinctpages)
         self.offbid_maxpivot_var.set(self.offbid_maxpivot)
         self.offbid_show_remedy_var.set(self.offbid_show_remedy)
         self.offbid_remedy_var.set(self.offbid_remedy)
-
         self.pb_nl_wal_var.set(self.pb_nl_wal)
         self.pb_wal_otdl_var.set(self.pb_wal_otdl)
         self.pb_otdl_aux_var.set(self.pb_otdl_aux)
@@ -10400,9 +10408,17 @@ class SpreadsheetConfig:
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         # ------------------------------------------------------------------------ Remedy column for Improper Mandates
-        Label(self.win.body, text="Remedy Shortcut Sheet:", anchor="w").grid(row=row, column=0, sticky="w")
+        Label(self.win.body, text="Remedy Settings:", anchor="w").grid(row=row, column=0, sticky="w")
         row += 1
-        Label(self.win.body, text="  Show Remedy Sheet", width=macadj(30, 26), anchor="w") \
+        Label(self.win.body, text="  Remedy Tolerance", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=7, textvariable=self.impman_remedy_tol_var)\
+            .grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("remedy_tolerance")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="  Show Remedy Column", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_remedy = OptionMenu(self.win.body, self.impman_show_remedy_var, "on", "off")
         om_remedy.config(width=3)
@@ -10531,7 +10547,15 @@ class SpreadsheetConfig:
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
         # --------------------------------------------------------------------------------- Remedy column for OverMax
-        Label(self.win.body, text="Remedy Shortcut Column:", anchor="w").grid(row=row, column=0, sticky="w")
+        Label(self.win.body, text="Remedy Settings:", anchor="w").grid(row=row, column=0, sticky="w")
+        row += 1
+        Label(self.win.body, text="  Remedy Tolerance", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=7, textvariable=self.overmax_remedy_tol_var)\
+            .grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("remedy_tolerance"))\
+            .grid(row=row, column=2, padx=4)
         row += 1
         Label(self.win.body, text="  Show Remedy Column", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
@@ -10766,7 +10790,7 @@ class SpreadsheetConfig:
     def check_float(self, var):
         """ checks entries for floating values. """
         current_var = ("Off Bid Maximum Pivot", "Improper Mandate Remedy", "Overmax Violation Remedy",
-                       "Off Bid Violation Remedy")
+                       "Off Bid Violation Remedy", "Improper Mandate Remedy Tolerance", "Overmax Remedy Tolerance")
         if RingTimeChecker(var).check_for_zeros():  # skip all checks if the value is zero or empty
             return True
         if not RingTimeChecker(var).check_numeric():
@@ -10778,13 +10802,18 @@ class SpreadsheetConfig:
                 text = "{} must be an 8 or zero or a number in between.".format(current_var[self.check_i])
                 messagebox.showerror("Data Entry Error", text, parent=self.win.body)
                 return False
+        elif current_var[self.check_i] in ("Improper Mandate Remedy Tolerance", "Overmax Remedy Tolerance"):
+            if not RingTimeChecker(var).over_24():
+                text = "{} must be an 24 or zero or a number in between.".format(current_var[self.check_i])
+                messagebox.showerror("Data Entry Error", text, parent=self.win.body)
+                return False
         else:  # remedies for improper mandate, overmax and off violations can not be over 100 ($ per hour)
             if not RingTimeChecker(var).over_100():
                 text = "{} must be an 100 or zero or a number in between.".format(current_var[self.check_i])
                 messagebox.showerror("Data Entry Error", text, parent=self.win.body)
                 return False
         if not RingTimeChecker(var).less_than_zero():
-            text = "{} must be an 8 or zero or a number in between.".format(current_var[self.check_i])
+            text = "{} must not be a negative number or less than zero.".format(current_var[self.check_i])
             messagebox.showerror("Data Entry Error", text, parent=self.win.body)
             return False
         if not RingTimeChecker(var).count_decimals_place():
@@ -10810,11 +10839,15 @@ class SpreadsheetConfig:
         categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux",
                       "min4_ss_nl", "min4_ss_wal", "min4_ss_otdl", "min4_ss_aux",
                       "min_ss_overmax", "min_ot_equit", "min_ot_dist")
-        onrecs_float = (self.offbid_maxpivot, self.impman_remedy, self.overmax_remedy, self.offbid_remedy)
+        onrecs_float = (self.offbid_maxpivot, self.impman_remedy, self.overmax_remedy, self.offbid_remedy,
+                        self.impman_remedy_tolerance, self.overmax_remedy_tolerance)
         check_float = (self.offbid_maxpivot_var.get(), self.impman_remedy_var.get(), self.overmax_remedy_var.get(),
-                       self.offbid_remedy_var.get())
-        add_float = [self.add_offbid_maxpivot, self.add_impman_remedy, self.add_overmax_remedy, self.add_offbid_remedy]
-        float_categories = ("offbid_maxpivot", "impman_remedy", "overmax_remedy", "offbid_remedy")
+                       self.offbid_remedy_var.get(), self.impman_remedy_tol_var.get(),
+                       self.overmax_remedy_tol_var.get())
+        add_float = [self.add_offbid_maxpivot, self.add_impman_remedy, self.add_overmax_remedy, self.add_offbid_remedy,
+                     self.add_impman_remedy_tol, self.add_overmax_remedy_tol]
+        float_categories = ("offbid_maxpivot", "impman_remedy", "overmax_remedy", "offbid_remedy",
+                            "impman_remedy_tolerance", "overmax_remedy_tolerance")
         # page breaks,  distinct pages option menu items and show remedy options
         onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux,
                          self.pb4_nl_wal, self.pb4_wal_aux, self.pb4_aux_otdl,
