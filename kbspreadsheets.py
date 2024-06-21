@@ -1164,7 +1164,7 @@ class ImpManSpreadsheet:
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
         if self.show_remedy:  # display remedy cell
-            formula_a = "=IF(AND(%s!I%s<>\"\", %s!I%s<>0),(%s!H$4 * %s!J$%s) * %s!I%s,\"\")" % \
+            formula_a = "=IF(AND(%s!I%s<>\"\", %s!I%s<>0),(%s!H$5 * %s!J$%s) * %s!I%s,\"\")" % \
                         ('remedy', str(self.remedy_row), 'remedy', str(self.remedy_row),
                          'remedy', 'remedy', str(self.remedy_start_row-2), 'remedy', str(self.remedy_row))
             cell = self.remedy.cell(row=self.remedy_row, column=10)
