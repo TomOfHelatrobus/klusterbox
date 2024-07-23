@@ -4082,6 +4082,7 @@ class OtAvailSpreadsheet:
         self.pb = None  # progress bar object
         self.pbi = 0  # progress bar count index
         self.carrier_list = []  # build a carrier list
+        self.nsday_dict = {}
         self.ot_carrier = None
         self.wb = None  # workbook object
         self.availability = None  # workbook object sheet
@@ -4145,6 +4146,7 @@ class OtAvailSpreadsheet:
             for rec in carrier:
                 if rec[2] == "otdl":
                     self.carrier_list.append(carrier[0])  # add record for each otdl carrier in carrier list
+                    self.nsday_dict.setdefault(rec[1], projvar.ns_code[rec[3]].lower())
                     break
 
     def get_styles(self):
@@ -4207,7 +4209,7 @@ class OtAvailSpreadsheet:
             self.availability.row_dimensions[x].height = 10  # adjust all row height
         sheets = (self.availability, )
         for sheet in sheets:
-            sheet.column_dimensions["A"].width = 16
+            sheet.column_dimensions["A"].width = 17
             sheet.column_dimensions["B"].width = 6
             sheet.column_dimensions["C"].width = 2
             sheet.column_dimensions["D"].width = 6
@@ -4236,16 +4238,17 @@ class OtAvailSpreadsheet:
                 self.ot_carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
                 self.display_recs()
                 carriers_displayed += 1
-            if first_page and carriers_displayed == 5:  # allow only five carriers per page.
+            if first_page and carriers_displayed == 4:  # allow only five carriers per page.
                 self.make_pagebreak()  # insert a page break
                 carriers_displayed = 0  # reinitialize the counter
                 first_page = False
-            if not first_page and carriers_displayed == 6:
+            if not first_page and carriers_displayed == 5:
                 self.make_pagebreak()  # insert a page break
                 carriers_displayed = 0  # reinitialize the counter
 
     def display_recs(self):
         """ build the carrier and ring recs into the spreadsheet. """
+        ns_day_array = self.get_nsday()
         merge_first = ("B", "D", "F", "H", "J", "L", "N")
         merge_second = ("C", "E", "G", "I", "K", "M", "O")
         col_increment = 2
@@ -4259,28 +4262,38 @@ class OtAvailSpreadsheet:
         self.row += 1
         # row headers
         cell = self.availability.cell(column=1, row=self.row + 1)  # paid leave label
-        cell.value = "paid leave: "
+        cell.value = "paid leave/ type: "
         cell.style = self.name_header
         self.availability.row_dimensions[self.row + 1].height = 12  # adjust all row height
         cell = self.availability.cell(column=1, row=self.row + 2)  # hours worked label
-        cell.value = "hours worked: "
+        cell.value = "hours worked/ ns day: "
         cell.style = self.name_header
         self.availability.row_dimensions[self.row + 2].height = 12  # adjust all row height
         cell = self.availability.cell(column=1, row=self.row + 3)  # cumulative hours label
         cell.value = "cumulative hours: "
         cell.style = self.name_header
         self.availability.row_dimensions[self.row + 3].height = 12  # adjust all row height
-        cell = self.availability.cell(column=1, row=self.row + 4)  # cumulative hours label
-        cell.value = "available weekly: "
+        cell = self.availability.cell(column=1, row=self.row + 4)  # cumulative overtime hours label
+        cell.value = "cumulative overtime: "
         cell.style = self.name_header
         self.availability.row_dimensions[self.row + 4].height = 12  # adjust all row height
-        cell = self.availability.cell(column=1, row=self.row + 5)  # cumulative hours label
-        cell.value = "available daily: "
+        cell = self.availability.cell(column=1, row=self.row + 5)  # weekly availability label
+        cell.value = "available weekly: "
         cell.style = self.name_header
         self.availability.row_dimensions[self.row + 5].height = 12  # adjust all row height
+        cell = self.availability.cell(column=1, row=self.row + 6)  # overtime availability label
+        cell.value = "available overtime: "
+        cell.style = self.name_header
+        self.availability.row_dimensions[self.row + 6].height = 12  # adjust all row height
+        cell = self.availability.cell(column=1, row=self.row + 7)  # cumulative hours label
+        cell.value = "available daily: "
+        cell.style = self.name_header
+        self.availability.row_dimensions[self.row + 7].height = 12  # adjust all row height
         # use loops and an array to build the column headers
         column_headers = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         for i in range(7):
+            # get the total hours, leave type and leave hours for the carrier
+            rings = self.get_rings(self.dates[i])
             # ------------------------------------------------------------------------------------- column headers row
             cell = self.availability.cell(column=i + col_increment, row=self.row)
             cell.value = column_headers[i]
@@ -4288,21 +4301,23 @@ class OtAvailSpreadsheet:
             self.availability.merge_cells(str(merge_first[i]) + str(self.row) + ":" +
                                           str(merge_second[i]) + str(self.row))
             # ----------------------------------------------------------------------------------------- paid leave row
-            rings = self.get_rings(self.dates[i])  # get the total hours, leave type and leave hours for the carrier
-            cell = self.availability.cell(column=i + col_increment, row=self.row + 1)  # column headers row
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 1)  # display paid leave hours
             cell.value = self.format_time(rings[2])  # format and display leave time
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = self.availability.cell(column=i + 1 + col_increment, row=self.row + 1)  # column headers row
+            cell = self.availability.cell(column=i + 1 + col_increment, row=self.row + 1)  # display leave code
             cell.value = self.leave_code(rings[1])  # format and display leave code
             cell.style = self.col_header
-            # ---------------------------------------------------------------------------------------- total hours row
-            cell = self.availability.cell(column=i + col_increment, row=self.row + 2)  # column headers row
+            # ----------------------------------------------------------------------------------------- 5200 hours row
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 2)  # display 5200 hours
             cell.value = self.format_time(rings[0])
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
-            self.availability.merge_cells(str(merge_first[i]) + str(self.row + 2) + ":" +
-                                          str(merge_second[i]) + str(self.row + 2))
+            cell = self.availability.cell(column=i + 1 + col_increment, row=self.row + 2)  # display ns day indicator
+            cell.value = ""  # display indicator for ns day
+            if i in ns_day_array:
+                cell.value = "N"
+            cell.style = self.col_header
             # --------------------------------------------------------------------------------------- cumulative hours
             cell = self.availability.cell(column=i + col_increment, row=self.row + 3)
             cell.value = self.cum_formula(i, self.row)  # get the formula for the cell
@@ -4310,27 +4325,41 @@ class OtAvailSpreadsheet:
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.availability.merge_cells(str(merge_first[i]) + str(self.row + 3) + ":" +
                                           str(merge_second[i]) + str(self.row + 3))
-            # -------------------------------------------------------------------------------------------- availability
+            # ------------------------------------------------------------------------------------- cumulative overtime
             cell = self.availability.cell(column=i + col_increment, row=self.row + 4)
-            cell.value = self.avail_formula(i, self.row)  # get the formula for the cell
+            cell.value = self.cum_ot_formula(i, self.row)  # get the formula for the cell
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.availability.merge_cells(str(merge_first[i]) + str(self.row + 4) + ":" +
                                           str(merge_second[i]) + str(self.row + 4))
-            # --------------------------------------------------------------------------------------daily availability
+            # ------------------------------------------------------------------------------------- weekly availability
             cell = self.availability.cell(column=i + col_increment, row=self.row + 5)
-            cell.value = self.avail_daily(i, self.row)  # get the formula for the cell
+            cell.value = self.avail_formula(i, self.row)  # get the formula for the cell
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.availability.merge_cells(str(merge_first[i]) + str(self.row + 5) + ":" +
                                           str(merge_second[i]) + str(self.row + 5))
+            # ----------------------------------------------------------------------------------- overtime availability
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 6)
+            cell.value = self.avail_ot_formula(i, self.row)  # get the formula for the cell
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.availability.merge_cells(str(merge_first[i]) + str(self.row + 6) + ":" +
+                                          str(merge_second[i]) + str(self.row + 6))
+            # --------------------------------------------------------------------------------------daily availability
+            cell = self.availability.cell(column=i + col_increment, row=self.row + 7)
+            cell.value = self.avail_daily(i, self.row)  # get the formula for the cell
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.availability.merge_cells(str(merge_first[i]) + str(self.row + 7) + ":" +
+                                          str(merge_second[i]) + str(self.row + 7))
             col_increment += 1  # move over two columns
-        self.row += 7
+        self.row += 9
 
     def get_rings(self, date):
         """ get individual carrier rings for the day - define self.rings"""
-        sql = "SELECT total, leave_type, leave_time FROM rings3 WHERE carrier_name = '%s' AND rings_date = '%s' " \
-              "ORDER BY rings_date, carrier_name" % (self.ot_carrier, date)
+        sql = "SELECT total, leave_type, leave_time FROM rings3 WHERE carrier_name = '%s' " \
+              "AND rings_date = '%s' ORDER BY rings_date, carrier_name" % (self.ot_carrier, date)
         rings = inquire(sql)
         totalhours = 0.0  # set default as an empty string
         lv_type = ""
@@ -4358,6 +4387,28 @@ class OtAvailSpreadsheet:
             return ""
         else:
             return ""
+
+    def get_nsday(self):
+        """ get the nsday from self.nsday_dict and the self.get_rings() data.
+        The method returns a list with a day of the week as an index. Sunday (1) is included in the list a default. """
+        ns_days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        ns_day = [1, ]  # sunday is a default ns day
+        for i in range(7):
+            if i == 1:  # skip sunday
+                continue
+            sql = "SELECT code FROM rings3 WHERE carrier_name = '%s' " \
+                  "AND rings_date = '%s' ORDER BY rings_date, carrier_name" % (self.ot_carrier, self.dates[i])
+            rings = inquire(sql)
+            if rings:
+                if rings[0][0] in ("ns day", "no call"):
+                    ns_day.append(i)
+        if len(ns_day) > 1:
+            return ns_day
+        # if no ns day was found other than sunday, then use other method
+        if self.ot_carrier in self.nsday_dict:  # if the carrier's name is in the nsday dictionary...
+            if self.nsday_dict[self.ot_carrier] != '  ':  # if the carrier's nsday is not none
+                ns_day.append(ns_days.index(self.nsday_dict[self.ot_carrier]))
+        return ns_day
 
     @staticmethod
     def format_time(time):
@@ -4388,6 +4439,31 @@ class OtAvailSpreadsheet:
             return "=SUM(%s!L%s+N%s+N%s)" % ('availability', str(row + 3), str(row + 1), str(row + 2))
 
     @staticmethod
+    def cum_ot_formula(day, row):
+        """ return a formula for cumulative hours """
+        if day == 0:  # if the day is saturday
+            return "=IF(availability!C%s=\"\",MAX(availability!B%s-8,0),availability!B%s)" \
+                   % (str(row + 2), str(row + 2), str(row + 2))
+        if day == 1:  # if the day is sunday
+            return "=SUM(IF(availability!E%s=\"\",MAX(availability!D%s-8,0),availability!D%s)+availability!B%s" \
+                   % (str(row + 2), str(row + 2), str(row + 2), str(row + 4))
+        if day == 2:  # if the day is monday
+            return "=SUM(IF(availability!G%s=\"\",MAX(availability!F%s-8,0),availability!F%s)+availability!D%s" \
+                   % (str(row + 2), str(row + 2), str(row + 2), str(row + 4))
+        if day == 3:  # if the day is tuesday
+            return "=SUM(IF(availability!I%s=\"\",MAX(availability!H%s-8,0),availability!H%s)+availability!F%s" \
+                   % (str(row + 2), str(row + 2), str(row + 2), str(row + 4))
+        if day == 4:  # if the day is wednesday
+            return "=SUM(IF(availability!K%s=\"\",MAX(availability!J%s-8,0),availability!J%s)+availability!H%s" \
+                   % (str(row + 2), str(row + 2), str(row + 2), str(row + 4))
+        if day == 5:  # if the day is thursday
+            return "=SUM(IF(availability!M%s=\"\",MAX(availability!L%s-8,0),availability!L%s)+availability!J%s" \
+                   % (str(row + 2), str(row + 2), str(row + 2), str(row + 4))
+        if day == 6:  # if the day is friday
+            return "=SUM(IF(availability!O%s=\"\",MAX(availability!N%s-8,0),availability!N%s)+availability!L%s" \
+                   % (str(row + 2), str(row + 2), str(row + 2), str(row + 4))
+
+    @staticmethod
     def avail_formula(day, row):
         """ return a formula for cumulative hours """
         if day == 0:  # if the day is saturday
@@ -4406,29 +4482,61 @@ class OtAvailSpreadsheet:
             return "=MAX(%s-%s!N%s, 0)" % (str(60), 'availability', str(row + 3))
 
     @staticmethod
+    def avail_ot_formula(day, row):
+        """ return a formula for cumulative hours """
+        if day == 0:  # if the day is saturday
+            return "=MAX(%s-%s!B%s, 0)" % (str(20), 'availability', str(row + 4))
+        if day == 1:  # if the day is sunday
+            return "=MAX(%s-%s!D%s, 0)" % (str(20), 'availability', str(row + 4))
+        if day == 2:  # if the day is monday
+            return "=MAX(%s-%s!F%s, 0)" % (str(20), 'availability', str(row + 4))
+        if day == 3:  # if the day is tuesday
+            return "=MAX(%s-%s!H%s, 0)" % (str(20), 'availability', str(row + 4))
+        if day == 4:  # if the day is wednesday
+            return "=MAX(%s-%s!J%s, 0)" % (str(20), 'availability', str(row + 4))
+        if day == 5:  # if the day is thursday
+            return "=MAX(%s-%s!L%s, 0)" % (str(20), 'availability', str(row + 4))
+        if day == 6:  # if the day is friday
+            return "=MAX(%s-%s!N%s, 0)" % (str(20), 'availability', str(row + 4))
+
+    @staticmethod
     def avail_daily(day, row):
         """ return a formula for cumulative hours """
         if day == 0:  # if the day is saturday
-            return "=IF(%s!C%s=\"\",MIN(MAX(%s-%s!B%s, 0), %s!B%s),0)" % \
-                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            # =MIN(IF($availability.C8="",MIN(MAX(12-$availability.B9, 0), $availability.B12),0),B13)
+            return "=MIN(IF(availability!C%s=\"\",MIN(MAX(12-availability!B%s,0),availability!B%s),0)," \
+                   "availability!B%s)" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
         if day == 1:  # if the day is sunday
-            return "=IF(%s!E%s=\"\",MIN(MAX(%s-%s!D%s, 0), %s!D%s),0)" % \
-                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            # =MIN(IF($availability.E8 = "", MIN(MAX(12 -$availability.D9, 0), $availability.D12), 0), D13)
+            return "=MIN(IF(availability!E%s=\"\",MIN(MAX(12-availability!D%s,0),availability!D%s),0)," \
+                   "availability!D%s)" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
         if day == 2:  # if the day is monday
-            return "=IF(%s!G%s=\"\",MIN(MAX(%s-%s!F%s, 0), %s!F%s),0)" % \
-                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            # =MIN(IF($availability.G8="",MIN(MAX(12-$availability.F9, 0), $availability.F12),0),F13)
+            return "=MIN(IF(availability!G%s=\"\",MIN(MAX(12-availability!F%s,0),availability!F%s),0)," \
+                   "availability!F%s)" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
         if day == 3:  # if the day is tuesday
-            return "=IF(%s!I%s=\"\",MIN(MAX(%s-%s!H%s, 0), %s!H%s),0)" % \
-                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            # =MIN(IF($availability.I8="",MIN(MAX(12-$availability.H9, 0), $availability.H12),0),H13)
+            return "=MIN(IF(availability!I%s=\"\",MIN(MAX(12-availability!H%s,0),availability!H%s),0)," \
+                   "availability!H%s)" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
         if day == 4:  # if the day is wednesday
-            return "=IF(%s!K%s=\"\",MIN(MAX(%s-%s!J%s, 0), %s!J%s),0)" % \
-                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            # =MIN(IF($availability.K8 = "", MIN(MAX(12 -$availability.J9, 0), $availability.J12), 0), J13)
+            return "=MIN(IF(availability!K%s=\"\",MIN(MAX(12-availability!J%s,0),availability!J%s),0)," \
+                   "availability!J%s)" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
         if day == 5:  # if the day is thursday
-            return "=IF(%s!M%s=\"\",MIN(MAX(%s-%s!L%s, 0), %s!L%s),0)" % \
-                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            # =MIN(IF($availability.M8="",MIN(MAX(12-$availability.L9, 0), $availability.L12),0),L13)
+            return "=MIN(IF(availability!M%s=\"\",MIN(MAX(12-availability!L%s,0),availability!L%s),0)," \
+                   "availability!L%s)" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
         if day == 6:  # if the day is friday
-            return "=IF(%s!O%s=\"\",MIN(MAX(%s-%s!N%s, 0), %s!N%s),0)" % \
-                   ('availability', str(row + 1), str(12), 'availability', str(row + 2), 'availability', str(row + 4))
+            # =MIN(IF($availability.O8="",MIN(MAX(12-$availability.N9, 0), $availability.N12),0),N13)
+            return "=MIN(IF(availability!O%s=\"\",MIN(MAX(12-availability!N%s,0),availability!N%s),0)," \
+                   "availability!N%s)" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
 
     def make_pagebreak(self):
         """ create a page break """

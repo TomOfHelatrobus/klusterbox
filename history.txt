@@ -110,10 +110,15 @@ Version 6.02 (04/04/2024)
 	I added remedy functionality for three spreadsheets - the improper mandates spreadsheet, the 12 and 60 hour violations spreadsheet (also called overmax) and the off bid violations spreadsheet. This includes new settings options in under the spreadsheet settings menu which allows the user to toggle off/on the remedy option and also allows the user to enter an hourly remedy rate - a flat dollar amount used to calculate the correct monetary remedy. The hourly remedy rate can also be updated on the spreadsheet itself. 
 	I also fixed a bug to display the settlements with gats descrepancies in the only descrepancies report in informalc. 
 	
-Version 6.03
+Version 6.03 (06/19/2024)
 	I updated the automatic data entry so that will add a record for otdl carriers' nsday. I wrote a method that detects if that ns day is adjacent to a day of annual or sick leave - in those cases the ns day is assigned a code of 'annual' or 'sick'. Otherwise, the ns day is given the code 'no call'.
 	The pdf reorder class was made to edit an employee everything report so that the user can specify which carriers are included in a limited and curated employee everything report. The pdf reorder also sorts the report alphabetically by name. 
-	The remedy settings and formulas for the improper mandates spreadsheet and the overmax spreadsheet were updated to allow for tolerances. Settings for "impman_remedy_tolerance" and "overmax_remedy_tolerance" were inserted into the tolerances table to hold values for those tolerances. 
+	The remedy settings and formulas for the improper mandates spreadsheet and the overmax spreadsheet were updated to allow for tolerances. Settings for "impman_remedy_tolerance" and "overmax_remedy_tolerance" were inserted into the tolerances table to hold values for those tolerances.
+
+Version 6.04 (07/25/2024)	
+	The ot availability spreadsheet was updated to include cumulative ot and ot availability up to 20 hours. A box was added for the daily hours column to indicate ns days. Once 20 hours of ot is reached, the carrier is no longer available for overtime. 
+	
+
 			
 	
 	

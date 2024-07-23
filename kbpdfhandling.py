@@ -198,7 +198,7 @@ class PdfConverter:
     def validation_error(self, _type):
         """ if self.validate_text returns False then display messagebox.
         the kbpc rpt is closed and destroyed. """
-        msg = "This file does not appear to be an Employee Everything Report. \n\n " \
+        msg = "This file is either not an Employee Everything Report or is not a searchable pdf file. \n\n " \
               "The PDF Converter will not generate a file "
         if _type == "nostation":
             msg = "No station could be indentified in this Employee Everything Report. \n\n" \
