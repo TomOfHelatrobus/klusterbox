@@ -115,10 +115,6 @@ Version 6.03 (06/19/2024)
 	The pdf reorder class was made to edit an employee everything report so that the user can specify which carriers are included in a limited and curated employee everything report. The pdf reorder also sorts the report alphabetically by name. 
 	The remedy settings and formulas for the improper mandates spreadsheet and the overmax spreadsheet were updated to allow for tolerances. Settings for "impman_remedy_tolerance" and "overmax_remedy_tolerance" were inserted into the tolerances table to hold values for those tolerances.
 
-Version 6.04 (07/25/2024)	
+Version 6.04 (07/28/2024)	
 	The ot availability spreadsheet was updated to include cumulative ot and ot availability up to 20 hours. A box was added for the daily hours column to indicate ns days. Once 20 hours of ot is reached, the carrier is no longer available for overtime. 
-	
-
-			
-	
 	

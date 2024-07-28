@@ -4146,7 +4146,7 @@ class OtAvailSpreadsheet:
             for rec in carrier:
                 if rec[2] == "otdl":
                     self.carrier_list.append(carrier[0])  # add record for each otdl carrier in carrier list
-                    self.nsday_dict.setdefault(rec[1], projvar.ns_code[rec[3]].lower())
+                    self.nsday_dict.setdefault(rec[1], projvar.ns_code[rec[3]].lower())  # put ns day in dictionary
                     break
 
     def get_styles(self):
@@ -4178,18 +4178,18 @@ class OtAvailSpreadsheet:
         self.availability.merge_cells('A1:O1')
         self.availability['A1'] = "OTDL Weekly Availability Worksheet"
         self.availability['A1'].style = self.ws_header
-        self.availability['A3'] = "Date:"  # date label
+        self.availability['A3'] = "Date: "  # date label
         self.availability['A3'].style = self.date_dov_title
         self.availability.merge_cells('B3:H3')  # blank field for date
         self.availability['B3'] = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
         self.availability['B3'].style = self.date_dov
         self.availability.merge_cells('I3:L3')  # pay period label
-        self.availability['I3'] = "Pay Period:"
+        self.availability['I3'] = "Pay Period: "
         self.availability['I3'].style = self.date_dov_title  # blank field for pay period
         self.availability.merge_cells('M3:O3')
         self.availability['M3'] = projvar.pay_period
         self.availability['M3'].style = self.date_dov
-        self.availability['A4'] = "Station:"  # station label
+        self.availability['A4'] = "Station: "  # station label
         self.availability['A4'].style = self.date_dov_title
         self.availability.merge_cells('B4:O4')  # blank field for station
         self.availability['B4'] = projvar.invran_station
@@ -4249,16 +4249,29 @@ class OtAvailSpreadsheet:
     def display_recs(self):
         """ build the carrier and ring recs into the spreadsheet. """
         ns_day_array = self.get_nsday()
+        full_day_dict = {"sat": "saturday", "sun": "sunday", "mon": "monday", "tue": "tuesday", "wed": "wednesday",
+                         "thu": "thursday", "fri": "friday", "  ": ""}
         merge_first = ("B", "D", "F", "H", "J", "L", "N")
         merge_second = ("C", "E", "G", "I", "K", "M", "O")
         col_increment = 2
         cell = self.availability.cell(row=self.row, column=1)  # carrier label
         cell.value = "carrier:  "
         cell.style = self.name_header
+
         cell = self.availability.cell(row=self.row, column=2)  # carrier name input
         cell.value = self.ot_carrier
         cell.style = self.input_name
-        self.availability.merge_cells('B' + str(self.row) + ':O' + str(self.row))
+        self.availability.merge_cells('B' + str(self.row) + ':I' + str(self.row))
+        cell = self.availability.cell(row=self.row, column=10)  # carrier ns day label
+        cell.value = "ns day: "
+        cell.style = self.name_header
+        self.availability.merge_cells('J' + str(self.row) + ':K' + str(self.row))
+
+        cell = self.availability.cell(row=self.row, column=12)  # carrier ns day input
+        cell.value = full_day_dict[self.nsday_dict[self.ot_carrier]]
+        cell.style = self.input_name
+        self.availability.merge_cells('L' + str(self.row) + ':O' + str(self.row))
+
         self.row += 1
         # row headers
         cell = self.availability.cell(column=1, row=self.row + 1)  # paid leave label
