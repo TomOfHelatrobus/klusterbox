@@ -4209,7 +4209,7 @@ class OtAvailSpreadsheet:
             self.availability.row_dimensions[x].height = 10  # adjust all row height
         sheets = (self.availability, )
         for sheet in sheets:
-            sheet.column_dimensions["A"].width = 17
+            sheet.column_dimensions["A"].width = 19
             sheet.column_dimensions["B"].width = 6
             sheet.column_dimensions["C"].width = 2
             sheet.column_dimensions["D"].width = 6
@@ -4516,40 +4516,34 @@ class OtAvailSpreadsheet:
     def avail_daily(day, row):
         """ return a formula for cumulative hours """
         if day == 0:  # if the day is saturday
-            # =MIN(IF($availability.C8="",MIN(MAX(12-$availability.B9, 0), $availability.B12),0),B13)
             return "=MIN(IF(availability!C%s=\"\",MIN(MAX(12-availability!B%s,0),availability!B%s),0)," \
                    "availability!B%s)" \
                    % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
         if day == 1:  # if the day is sunday
-            # =MIN(IF($availability.E8 = "", MIN(MAX(12 -$availability.D9, 0), $availability.D12), 0), D13)
-            return "=MIN(IF(availability!E%s=\"\",MIN(MAX(12-availability!D%s,0),availability!D%s),0)," \
-                   "availability!D%s)" \
-                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
+            #        % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
+            return "=MIN(IF(availability!E%s<>\"\",0,MIN(MAX(12-availability!D%s,0),availability!D%s))," \
+                   "IF(AND(availability!E%s<>\"\",availability!B%s<8),0,availability!D%s))" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 2), str(row + 6), str(row + 6))
         if day == 2:  # if the day is monday
-            # =MIN(IF($availability.G8="",MIN(MAX(12-$availability.F9, 0), $availability.F12),0),F13)
-            return "=MIN(IF(availability!G%s=\"\",MIN(MAX(12-availability!F%s,0),availability!F%s),0)," \
-                   "availability!F%s)" \
-                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
+            return "=MIN(IF(availability!G%s<>\"\",0,MIN(MAX(12-availability!F%s,0),availability!F%s))," \
+                   "IF(AND(availability!G%s<>\"\",availability!D%s<8),0,availability!F%s))" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 2), str(row + 6), str(row + 6))
         if day == 3:  # if the day is tuesday
-            # =MIN(IF($availability.I8="",MIN(MAX(12-$availability.H9, 0), $availability.H12),0),H13)
-            return "=MIN(IF(availability!I%s=\"\",MIN(MAX(12-availability!H%s,0),availability!H%s),0)," \
-                   "availability!H%s)" \
-                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
+            return "=MIN(IF(availability!I%s<>\"\",0,MIN(MAX(12-availability!H%s,0),availability!H%s))," \
+                   "IF(AND(availability!I%s<>\"\",availability!F%s<8),0,availability!H%s))" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 2), str(row + 6), str(row + 6))
         if day == 4:  # if the day is wednesday
-            # =MIN(IF($availability.K8 = "", MIN(MAX(12 -$availability.J9, 0), $availability.J12), 0), J13)
-            return "=MIN(IF(availability!K%s=\"\",MIN(MAX(12-availability!J%s,0),availability!J%s),0)," \
-                   "availability!J%s)" \
-                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
+            return "=MIN(IF(availability!K%s<>\"\",0,MIN(MAX(12-availability!J%s,0),availability!J%s))," \
+                   "IF(AND(availability!K%s<>\"\",availability!H%s<8),0,availability!J%s))" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 2), str(row + 6), str(row + 6))
         if day == 5:  # if the day is thursday
-            # =MIN(IF($availability.M8="",MIN(MAX(12-$availability.L9, 0), $availability.L12),0),L13)
-            return "=MIN(IF(availability!M%s=\"\",MIN(MAX(12-availability!L%s,0),availability!L%s),0)," \
-                   "availability!L%s)" \
-                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
+            return "=MIN(IF(availability!M%s<>\"\",0,MIN(MAX(12-availability!L%s,0),availability!L%s))," \
+                   "IF(AND(availability!M%s<>\"\",availability!J%s<8),0,availability!L%s))" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 2), str(row + 6), str(row + 6))
         if day == 6:  # if the day is friday
-            # =MIN(IF($availability.O8="",MIN(MAX(12-$availability.N9, 0), $availability.N12),0),N13)
-            return "=MIN(IF(availability!O%s=\"\",MIN(MAX(12-availability!N%s,0),availability!N%s),0)," \
-                   "availability!N%s)" \
-                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 6))
+            return "=MIN(IF(availability!O%s<>\"\",0,MIN(MAX(12-availability!N%s,0),availability!N%s))," \
+                   "IF(AND(availability!O%s<>\"\",availability!L%s<8),0,availability!N%s))" \
+                   % (str(row + 1), str(row + 2), str(row + 5), str(row + 2), str(row + 6), str(row + 6))
 
     def make_pagebreak(self):
         """ create a page break """

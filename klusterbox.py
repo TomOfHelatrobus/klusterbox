@@ -62,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.04  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Jul 28, 2024"  # format is Jan 1, 2022
+version = 6.05  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Jul 31, 2024"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -13644,7 +13644,7 @@ class MainFrame:
             (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'ot_distribution')),
             (0, "Everything Report", lambda: Archive().file_dialogue(dir_path('ee_reader'))),
             (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'ee_reader')),
-            (0, "Weekly Availability", lambda: Archive().file_dialogue(dir_path('weekly_availability'))),
+            (0, "OTDL Availability", lambda: Archive().file_dialogue(dir_path('weekly_availability'))),
             (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'weekly_availability')),
             (0, "Pay Period Guide", lambda: Archive().file_dialogue(dir_path('pp_guide'))),
             (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'pp_guide')),
@@ -13744,6 +13744,8 @@ class MainFrame:
             basic_menu.entryconfig(6, state=DISABLED)
             basic_menu.entryconfig(7, state=DISABLED)
             basic_menu.entryconfig(8, state=DISABLED)
+            basic_menu.entryconfig(9, state=DISABLED)
+            basic_menu.entryconfig(10, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
@@ -13836,7 +13838,7 @@ class MainFrame:
                                         command=lambda: Archive().file_dialogue(dir_path('ot_distribution')))
         reportsarchive_menu.add_command(label="Everything Report",
                                         command=lambda: Archive().file_dialogue(dir_path('ee_reader')))
-        reportsarchive_menu.add_command(label="Weekly Availability",
+        reportsarchive_menu.add_command(label="OTDL Availability",
                                         command=lambda: Archive().file_dialogue(dir_path('weekly_availability')))
         reportsarchive_menu.add_command(label="Pay Period Guide",
                                         command=lambda: Archive().file_dialogue(dir_path('pp_guide')))
@@ -13860,7 +13862,7 @@ class MainFrame:
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'ot_distribution'))
         cleararchive.add_command(label="Everything Report",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'ee_reader'))
-        cleararchive.add_command(label="Weekly Availability",
+        cleararchive.add_command(label="OTDL Availability",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'weekly_availability'))
         cleararchive.add_command(label="Pay Period Guide",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'pp_guide'))

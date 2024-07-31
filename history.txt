@@ -118,3 +118,6 @@ Version 6.03 (06/19/2024)
 Version 6.04 (07/28/2024)	
 	The ot availability spreadsheet was updated to include cumulative ot and ot availability up to 20 hours. A box was added for the daily hours column to indicate ns days. Once 20 hours of ot is reached, the carrier is no longer available for overtime. 
 	
+Version 6.05 (07/31/2024)
+	The otdl availability spreadsheet formula for daily availability was modified so that ns days when the carrier does not have availability for the 8 hours (the guaranteed time) will show no availability. 
+	
