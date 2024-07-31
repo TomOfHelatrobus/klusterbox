@@ -213,6 +213,7 @@ if there is a script already exist and you have not added libraries, documents o
 	___ ___  2. Change the value of the PRODUCT_VERSION variable to the current version.
 
 	___ ___  3. Save changes and close NS Edit.
+	
 	___ ___  4. Repeat the steps for the 32 bit version to save time. 
 
 ___ ___  11. Open the NSIS program.
