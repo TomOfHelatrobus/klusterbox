@@ -3020,6 +3020,7 @@ class ImpManSpreadsheet4:
         cell = self.ws_list[self.i].cell(row=self.row, column=1)
         cell.value = self.page_titles[self.lsi]  # Displays the page title for each list,
         cell.style = self.list_header
+        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':O' + str(self.row))
         cell = self.ws_list[self.i].cell(row=self.row, column=16)
         cell.value = "Page {}".format(self.lsi+1)  # Displays the page title for each list,
         cell.style = self.list_header
@@ -3077,7 +3078,7 @@ class ImpManSpreadsheet4:
         self.row += 1  # increment the row so first name starts on fresh line.
 
     def carrierlist_mod(self):
-        """ add empty carrier records to carrier list until quantity matches minrows preference """
+        """ get the carrier list appropriate to the day and list status """
         self.mod_carrierlist = self.carrier_breakdown[self.i][self.lsi]
 
     def get_first_row(self):
@@ -3292,7 +3293,7 @@ class ImpManSpreadsheet4:
         cell.value = self.list_dict[self.list_]
         cell.style = self.input_s
         self.ws_list[self.i].merge_cells('E' + str(self.row) + ':F' + str(self.row))
-        cell = self.ws_list[self.i].cell(row=self.row, column=7)  # list status
+        cell = self.ws_list[self.i].cell(row=self.row, column=7)  # route
         cell.value = self.route
         cell.style = self.input_s
         cell = self.ws_list[self.i].cell(row=self.row, column=8)  # begin tour
@@ -3553,6 +3554,557 @@ class ImpManSpreadsheet4:
                 subprocess.call(["xdg-open", 'kb_sub/mandates_4/' + xl_filename])
             if sys.platform == "darwin":
                 subprocess.call(["open", dir_path('mandates_4') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not opened. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=self.frame)
+
+
+class ImpManSpreadsheet5:
+    """ this table will create spreadsheets which can be copy/pasted into improper mandate grievance contentions """
+
+    def __init__(self):
+        self.frame = None  # the frame of parent
+        self.pb = None  # progress bar object
+        self.pbi = 0  # progress bar count index
+        self.startdate = None  # start date of the investigation
+        self.enddate = None  # ending date of the investigation
+        self.dates = []  # all days of the investigation
+        self.carrierlist = []  # all carriers in carrier list
+        self.carrier_breakdown = []  # all carriers in carrier list broken down into appropiate list
+        self.mod_carrierlist = []
+        self.tol_ot_ownroute = 0.0  # get tolerances from tolerances table.
+        self.tol_ot_offroute = 0.0
+        self.tol_availability = 0.0
+        self.wb = None  # the workbook object
+        self.ws_list = []  # "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"
+        self.day_of_week = []  # seven day array for weekly investigations/ one day array for daily investigations
+        # styles for worksheet
+        self.ws_header = None  # style
+        self.list_header = None  # style
+        self.date_dov = None  # style
+        self.date_dov_title = None  # style
+        self.col_header = None  # style
+        self.input_name = None  # style
+        self.input_s = None  # style
+        self.calcs = None  # style
+        self.quad_top = None  # style
+        self.quad_bottom = None  # style
+        self.quad_left = None  # style
+        self.quad_right = None  # style
+        self.col_header_left = None  # style
+        self.col_header = None  # style
+        self.footer_left = None  # style
+        self.footer_right = None  # style
+        self.footer_mid = None  # style
+        self.day = None  # build worksheet - loop once for each day
+        self.i = 0  # build worksheet loop iteration
+        self.lsi = 0  # list loop iteration
+        self.pref = ("nl", "wal", "otdl", "aux")
+        self.row = 1
+        # cell for summary quadrants page
+        self.cellc9 = None  # non otdl own route violations
+        self.cellf9 = None  # non otdl off route violations
+        self.cellf11 = None  # wal off route violations
+        self.cellj9 = None  # aux availability to 10 hours
+        self.cellm9 = None  # aux availability to 11.5 hours
+        self.cellj11 = None  # otdl availability to 10 hours
+        self.cellm11 = None  # otdl availability to 12 hours
+        self.cellf16 = None  # carriers out past dispatch of value
+        self.celln16 = None  # otdl/aux availability to DOV
+
+        self.ot_list = ("NON OTDL", "Work Assignment", "Auxiliary", "OTDL")  # list loop iteration
+        self.page_titles = ("NON-OTDL and Work Assignment Employees that worked overtime",
+                            "OTDL/Auxiliary Employees who were available to work overtime")
+        self.pref = ("nl", "wal", "aux", "otdl")
+        self.row_number = 1
+        self.carrier = None  # current iteration of carrier's name is assigned self.carrier
+        self.list_ = None  # current iteration of carrier's list status is assigned self.carrier
+        self.route = None  # current iteration of carrier's route is assigned self.carrier
+        self.rings = []  # assign as self.rings
+        self.totalhours = 0.0  # set default as an empty string
+        self.bt = ""
+        self.rs = ""
+        self.et = ""
+        self.codes = ""
+        self.moves = ""
+        self.cum_hr_dict = {}  # a dictionary to hold cumulative hours for a specific carrier
+        self.cum_ot_dict = {}  # a dictionary to hold cumulative overtime hours for a specific carrier
+        self.avail_ot_dict = {}  # a dictionary that holds prior available ot for the previous day.
+        self.avail_max = 0  # the maximum amount of availability for a carrier on a given day
+        self.overtime = 0.0  # the amount of overtime worked by the carrier
+        self.onroute = 0.0  # the amount of overworked on the carrier's own route.
+        self.offroute = 0.0  # empty string or calculated time that carrier spent off their assignment
+        self.offroute_adj = 0.0  # self.offroute adjusted for pivot time, ns days, and whole days off bid assignment
+        self.otherroute_array = []  # a list of routes where carrier worked off assignment
+        self.otherroute = ""  # the off assignment route the carrier worked on - formated for the cell
+        self.overtime_rate = 0.0  # otdl and aux available for ot rate remedy
+        self.penalty_rate = 0.0  # otdl and aux available for penalty remedy
+        self.lvtype = ""
+        self.lvtime = ""
+        self.first_row = 0  # record the number of the first row for totals formulas in footers
+        self.last_row = 0  # record the number of the last row for totals formulas in footers
+        # build a dictionary for displaying list statuses on spreadsheet
+        self.list_dict = {'': '', 'nl': 'non list', 'wal': 'wal', 'otdl': 'otdl', 'aux': 'cca', 'ptf': 'ptf'}
+        self.display_limiter = "show all"  # show all, only workdays, only mandates
+        self.display_counter = 0  # count the number of rows displayed per list loop
+        self.listrange = []  # records the first row, last row and summary row of each list
+        self.dayrange = []  # records the listranges for the day by appending listranges after each listloop.
+        self.dovarray = []  # build a list of 7 dov times. One for each day.
+
+    def create(self, frame):
+        """ a master method for running other methods in proper order."""
+        self.frame = frame
+        if not self.ask_ok():  # abort if user selects cancel from askokcancel
+            return
+        self.pb = ProgressBarDe(label="Building Improper Mandates Spreadsheet")
+        self.pb.max_count(100)  # set length of progress bar
+        self.pb.start_up()  # start the progress bar
+        self.pbi = 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Gathering Data... ")
+        self.get_dates()
+        self.get_pb_max_count()  # set the length of the progress bar
+        self.get_carrierlist()
+        self.get_carrier_breakdown()  # breakdown carrier list into non-otdl and available
+        self.get_dov()  # get the dispatch of value for each day
+        self.get_styles()
+        self.build_workbook()
+        self.set_dimensions()
+        self.build_ws_loop()  # loop once for each day
+        self.save_open()
+
+    def ask_ok(self):
+        """ ends process if user cancels """
+        if messagebox.askokcancel("Spreadsheet generator",
+                                  "Do you want to generate an \nImproper Mandates No. 5 Spreadsheet?",
+                                  parent=self.frame):
+            return True
+        return False
+
+    def get_dates(self):
+        """ get the dates from the project variables """
+        self.startdate = projvar.invran_date  # set daily investigation range as default - get start date
+        self.enddate = projvar.invran_date  # get end date
+        self.dates = [projvar.invran_date, ]  # create an array of days - only one day if daily investigation range
+        if projvar.invran_weekly_span:  # if the investigation range is weekly
+            date = projvar.invran_date_week[0]
+            self.startdate = projvar.invran_date_week[0]
+            self.enddate = projvar.invran_date_week[6]
+            self.dates = []
+            for _ in range(7):  # create an array with all the days in the weekly investigation range
+                self.dates.append(date)
+                date += timedelta(days=1)
+
+    def get_pb_max_count(self):
+        """ set length of progress bar """
+        self.pb.max_count((len(self.dates)*4)+1)  # once for each list in each day, plus saving
+
+    def get_carrierlist(self):
+        """ get record sets for all carriers """
+        self.carrierlist = CarrierList(self.startdate, self.enddate, projvar.invran_station).get()
+
+    def get_carrier_breakdown(self):
+        """ breakdown carrier list into no list, wal, otdl, aux """
+        timely_rec = []
+        for day in self.dates:
+            non_otdl_array = []  # non otdl and work assignment carriers mandates to work overtime
+            available_array = []  # otdl and auxiliary carriers available to carrier overtime
+            for carrier in self.carrierlist:
+                for rec in reversed(carrier):
+                    if Convert(rec[0]).dt_converter() <= day:
+                        timely_rec = rec
+                if timely_rec[2] == "nl":
+                    non_otdl_array.append(timely_rec)
+                if timely_rec[2] == "wal":
+                    non_otdl_array.append(timely_rec)
+                if timely_rec[2] == "otdl":
+                    available_array.append(timely_rec)
+                if timely_rec[2] == "aux" or timely_rec[2] == "ptf":
+                    available_array.append(timely_rec)
+            daily_breakdown = [non_otdl_array, available_array]
+            self.carrier_breakdown.append(daily_breakdown)
+
+    def get_dov(self):
+        """ get the dov records currently in the database """
+        days = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        for i in range(len(days)):
+            sql = "SELECT * FROM dov WHERE eff_date <= '%s' AND station = '%s' AND day = '%s' " \
+                  "ORDER BY eff_date DESC" % \
+                  (projvar.invran_date_week[0], projvar.invran_station, days[i])
+            result = inquire(sql)
+            for rec in result:
+                if rec[0] == Convert(projvar.invran_date_week[0]).dt_to_str():
+                    self.dovarray.append(rec[3])
+                    break
+                elif rec[4] == "False":
+                    self.dovarray.append(rec[3])
+                    break
+                else:
+                    continue
+
+    def get_styles(self):
+        """ Named styles for workbook """
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.list_header = NamedStyle(name="list_header", font=Font(bold=True, name='Arial', size=10))
+        self.date_dov = NamedStyle(name="date_dov", font=Font(name='Arial', size=8))
+        self.date_dov_title = NamedStyle(name="date_dov_title", font=Font(bold=True, name='Arial', size=8),
+                                         alignment=Alignment(horizontal='right'))
+        self.col_header_left = NamedStyle(name="col_header_left", font=Font(bold=True, name='Arial', size=8),
+                                          alignment=Alignment(horizontal='left', vertical='bottom'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='center', vertical='bottom'))
+        self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
+        self.calcs = NamedStyle(name="calcs", font=Font(name='Arial', size=8),
+                                border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
+                                alignment=Alignment(horizontal='right'))
+
+        self.quad_top = NamedStyle(name="quad_top", font=Font(name='Arial', size=10),
+                                   alignment=Alignment(horizontal='left', vertical='top'),
+                                   border=Border(left=bd, top=bd, right=bd))
+        self.quad_bottom = NamedStyle(name="quad_bottom", font=Font(name='Arial', size=10),
+                                      alignment=Alignment(horizontal='right'),
+                                      border=Border(left=bd, bottom=bd, right=bd))
+        self.quad_left = NamedStyle(name="quad_left", font=Font(name='Arial', size=10),
+                                    alignment=Alignment(horizontal='left', vertical='top'),
+                                    border=Border(left=bd, bottom=bd, top=bd))
+        self.quad_right = NamedStyle(name="quad_right", font=Font(name='Arial', size=10),
+                                     alignment=Alignment(horizontal='right', vertical='top'),
+                                     border=Border(top=bd, bottom=bd, right=bd))
+        self.footer_left = NamedStyle(name="footer_left", font=Font(bold=True, name='Arial', size=8),
+                                      alignment=Alignment(horizontal='left'),
+                                      border=Border(left=bd, bottom=bd, top=bd))
+        self.footer_right = NamedStyle(name="footer_right", font=Font(bold=True, name='Arial', size=8),
+                                       alignment=Alignment(horizontal='right'),
+                                       border=Border(top=bd, bottom=bd, right=bd))
+        self.footer_mid = NamedStyle(name="footer_mid", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='right'),
+                                     border=Border(top=bd, bottom=bd))
+
+    def build_workbook(self):
+        """ build the workbook object """
+        day_finder = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+        day_of_week = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"]
+        i = 0
+        self.wb = Workbook()  # define the workbook
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            for ii in range(len(day_finder)):
+                if projvar.invran_date.strftime("%a") == day_finder[ii]:  # find the correct day
+                    i = ii
+            self.ws_list.append(self.wb.active)  # create first worksheet
+            self.ws_list[0].title = day_of_week[i]  # title first worksheet
+            self.day_of_week.append(day_of_week[i])  # create self.day_of_week array with one day
+        if projvar.invran_weekly_span:  # if investigation range is weekly
+            for day in day_of_week:
+                self.day_of_week.append(day)  # create self.day_of_week array with seven days
+            self.ws_list.append(self.wb.active)  # create first worksheet
+            self.ws_list[0].title = "saturday"  # title first worksheet
+            for i in range(1, 7):  # create worksheet for remaining six days
+                self.ws_list.append(self.wb.create_sheet(day_of_week[i]))  # create subsequent worksheets
+                self.ws_list[i].title = day_of_week[i]  # title subsequent worksheets
+
+    def set_dimensions(self):
+        """ set the orientation and dimensions of the workbook """
+        for i in range(len(self.dates)):
+            self.ws_list[i].set_printer_settings(paper_size=1, orientation='landscape')  # set orientation
+            self.ws_list[i].oddFooter.center.text = "&A"  # include the footer
+            self.ws_list[i].column_dimensions["A"].width = 16  # column width
+            self.ws_list[i].column_dimensions["B"].width = 4
+            self.ws_list[i].column_dimensions["C"].width = 20
+            self.ws_list[i].column_dimensions["D"].width = 20
+            self.ws_list[i].column_dimensions["E"].width = 20
+
+    def build_ws_loop(self):
+        """ this loops once for each list. """
+        self.i = 0
+        for day in self.dates:
+            self.dayrange = []  # initialize array for holding all start/stop/summary rows for all four list.
+            self.day = day
+            self.list_loop()  # loops four times. once for each list.
+            self.i += 1
+
+    def list_loop(self):
+        """ loops four times. once for each list. """
+        self.lsi = 0  # iterations of the list loop method
+        for _ in self.ot_list:  # loops for nl, wal, otdl and aux
+            self.list_and_column_headers()  # builds headers for list and columns
+            self.carrierlist_mod()
+            self.carrierloop()  # loop once to fill a row with carrier rings data
+            self.increment_progbar()
+            self.lsi += 1
+        self.lsi = 0  # reset list loop iteration
+
+    def list_and_column_headers(self):
+        """ builds headers for list and column """
+        c_3headers = ("Own route/ string", "OT worked")
+        d_4headers = ("mandated route", "available at OT rate")
+        e_5headers = ("mandated OT", "available at penalty rate")
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)
+        cell.value = self.page_titles[self.lsi]  # Displays the table title for each list,
+        cell.style = self.list_header
+        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':E' + str(self.row))
+        self.row += 1
+        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':E' + str(self.row))
+        self.row += 1
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)  # Name Header
+        cell.value = "Name"
+        cell.style = self.col_header_left
+        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':B' + str(self.row))
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=3)  # own route or ot worked
+        cell.value = c_3headers[self.lsi]
+        cell.style = self.col_header_left
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)  # mandated route or available at OT rate
+        cell.value = d_4headers[self.lsi]
+        cell.style = self.col_header_left
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=8)  # mandated OT or available at penalty rate
+        cell.value = e_5headers[self.lsi]
+        cell.style = self.col_header
+
+    def carrierlist_mod(self):
+        """ get the carrier list appropriate to the day and list status """
+        self.mod_carrierlist = self.carrier_breakdown[self.i][self.lsi]
+
+    def carrierloop(self):
+        """ loop for each carrier """
+        for carrier in self.mod_carrierlist:
+            self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
+            self.list_ = carrier[2]  # get the list status of the carrier
+            self.route = carrier[4]  # get the route of the carrier
+            self.build_availability_dict()  # build three dictionaries related to availability
+            self.get_rings()  # get individual carrier rings for the day
+            self.number_crunching()  # do calculations to get overtime and availability
+            if self.qualify():  # test the rings to see if they need to be displayed
+                self.display_recs()  # build the carrier and the rings row into the spreadsheet
+                self.row += 1
+
+    def get_rings(self):
+        """ get individual carrier rings for the day """
+        self.rings = Rings(self.carrier, self.dates[self.i]).get_for_day()  # assign as self.rings
+        self.totalhours = 0.0  # set default as an empty string
+        self.bt = ""
+        self.rs = ""
+        self.et = ""
+        self.codes = ""
+        self.moves = ""
+        self.lvtype = ""
+        self.lvtime = ""
+        if self.rings[0]:  # if rings record is not blank
+            self.totalhours = float(Convert(self.rings[0][2]).zero_not_empty())
+            self.bt = self.rings[0][9]
+            self.rs = self.rings[0][3]
+            self.et = self.rings[0][10]
+            self.codes = self.rings[0][4]
+            self.moves = self.rings[0][5]
+            self.lvtype = self.rings[0][6]
+            self.lvtime = self.rings[0][7]
+
+    def build_availability_dict(self):
+        """ add the carrier's name to the availability dictionaries on the first loop of days """
+        if self.i == 0:
+            self.cum_hr_dict[self.carrier] = 0
+            self.cum_ot_dict[self.carrier] = 0
+            self.avail_ot_dict[self.carrier] = 20
+
+    def calc_max_availability(self):
+        """ get the maximum availability for the day for the given carrier
+        this takes into account: weekly hours to 60, weekly ot hours to 20, daily limit to 12 or 11.50, leave,
+        ns day """
+        # cumulative hours for the week
+        cum_hr = (float(self.lvtime) + float(self.totalhours)) + float(self.cum_hr_dict[self.carrier])
+        # cumulative ot hours for the week
+        cum_ot = max(float(self.totalhours) - 8, 0) + float(self.cum_ot_dict[self.carrier])
+        if self.codes == "ns day":  # if ns day, then full day is added to cumulative ot.
+            cum_ot = float(self.totalhours) + float(self.cum_ot_dict[self.carrier])
+        avail_wkly = max(60 - cum_hr, 0)  # the weekly availability is 60 - weekly cumulative
+        avail_ot = max(20 - cum_ot, 0)  # the weekly ot availability is 20 - weekly ot cumulative
+        avail_daily = max(11.50 - float(self.totalhours), 0)  # daily availability is 11.50 minus daily work hours
+        if self.list_[2] == "otdl":  # except if the carrier is on the otdl
+            avail_daily = max(12 - float(self.totalhours), 0)  # then daily availability is 12 minus daily work hours
+        avail_leave = 12  # availability is zeroed out if the carrier takes leave
+        if self.lvtype in ("", "none"):  # zero out if lvtype is empty or 'none'
+            avail_leave = 0
+        prior_avail_ot = 20  # this is the available ot from the prior day, default is 20
+        if self.i != 0:  # if this is not the first day
+            prior_avail_ot = self.avail_ot_dict[self.carrier]  # get the value from the dictionary
+        avail_ns = avail_ot  # this code will zero out availability if the carrier can not work 8 hours on an ns day.
+        # if it is the ns day and 8 hours are not available
+        if self.codes in ("ns day", "no call") and prior_avail_ot < 8:
+            avail_ns = 0  # zero out availability
+        avail_codes = avail_ot
+        if self.codes in ("light", "excused", "sch chg", "annual", "sick"):  # if carrier excused for day
+            avail_codes = 0  # if any of the listed codes are in self.codes - zero availability
+        # select the lowest value from all criteria.
+        self.avail_max = min(avail_wkly, avail_ot, avail_daily, avail_leave, avail_ns, avail_codes)
+        self.update_availability_dict(cum_hr, cum_ot, avail_ot)
+
+    def update_availability_dict(self, cum_hr, cum_ot, avail_ot):
+        """ update the 3 availability dictionaries used to find max availablity , takes 3 arguments """
+        self.cum_hr_dict[self.carrier].update({self.carrier: cum_hr})
+        self.cum_ot_dict[self.carrier].update({self.carrier: cum_ot})
+        self.avail_ot_dict[self.carrier].update({self.carrier: avail_ot})
+
+    def number_crunching(self):
+        """ crunch numbers to get overtime, off route, other route and availability"""
+        self.overtime = 0.0  # the total overtime worked
+        self.onroute = 0.0  # the amount of overtime worked on the carrier's own route.
+        self.offroute = 0.0  # total time spend off route
+        self.offroute_adj = 0.0
+        self.otherroute_array = []  # a list of routes where carrier worked off assignment
+        self.otherroute = ""  # display routes worked off assignment
+
+        self.calc_max_availability()  # get maximum availability and store in self.avail_max
+        self.calc_overtime()  # calculate the amount of overtime worked
+        if self.list_ in ("nl", "wal"):  # for no list and work assignment carriers
+            if self.moves:
+                self.calc_offroute()  # calculate the time that the carrier spent off their route and get other route
+                self.format_otherroute()  # format the self.other route so that if fits in the spreadsheet cell
+            self.calc_offroute_adj()  # adj for pivot time or if code is nsday or whole day spent off route
+        if self.list_ in ("otdl", "ptf", "aux"):  # for otdl and auxiliary carriers
+            self.calc_remedy()
+
+    def calc_overtime(self):
+        """ calculates the amount of overtime worked. if it is the carrier's ns day, then the full day is overtime. """
+        if self.codes == "ns day":
+            self.overtime = self.totalhours
+        else:
+            self.overtime = max(self.totalhours - 8, 0)
+
+    def calc_offroute(self):
+        """ calculate the time that the carrier spent off their route assignment, get other route """
+        moves = self.moves.split(",")
+        move_sets = int(len(moves)/3)  # get the number of triads in the moves array
+        count = 0
+        for _ in range(move_sets):
+            offroute = float(moves[count+1]) - float(moves[count])  # calculate off route time per triad
+            self.offroute += offroute  # add triad time off route
+            self.otherroute_array.append(moves[count+2])
+            count += 3
+        self.offroute = round(self.offroute, 2)
+        if self.offroute >= self.totalhours:  # if the carrier took lunch, off route could be greater than total hours
+            self.offroute = self.totalhours
+
+    def format_otherroute(self):
+        """ format the self.other route. format like '1024, 1008, 0935' . do not allow duplicates"""
+        unique_routes = []
+        for route in self.otherroute_array:
+            if route not in unique_routes:
+                unique_routes.append(route)
+        self.otherroute = Convert(unique_routes).array_to_string()
+
+    def calc_offroute_adj(self):
+        """ calculate the off route overtime for ns days or if the whole day is spent off own route. """
+        self.offroute_adj = min(self.overtime, self.offroute)  # will adjust for pivot time
+        if self.codes == "ns day":  # if it is the ns day, then whole day is off route
+            self.offroute_adj = self.totalhours
+            self.otherroute_array.append("ns day")
+            self.otherroute = "ns day"
+            self.moves = self.bt
+        # if self.totalhours:  # save code in case I want to exclude off bid violations
+        #     if self.offroute == self.totalhours:  # if the whole day is off route
+        #         self.offroute_adj = self.totalhours
+        #         self.otherroute = "off bid"
+
+    def calc_remedy(self):
+        """ calculate the availability at the ot rate and the penalty rate """
+        self.penalty_rate = 0.0  # initialize
+        self.overtime_rate = 0.0
+        ot_max, pen_max, start_ot, start_pen = 2, 2, 8, 10
+        if self.codes in ("ns day", "no call"):
+            ot_max, pen_max, start_ot, start_pen = 8, 4, 0, 8
+        a_max, wk_hrs = self.avail_max, self.totalhours
+        avail = max(a_max - wk_hrs, 0)
+        high_pen = min(max(a_max - start_pen, 0), pen_max)
+        pen_rate = min(avail, high_pen)
+        high_ot = min(max(a_max - start_ot, 0), ot_max)
+        ot_rate = min(max(avail - pen_rate, 0), high_ot)
+        self.penalty_rate = pen_rate  # assign remedy rates
+        self.overtime_rate = ot_rate
+
+    def calc_onroute(self):
+        """ calculate the overtime the carrier worked on their own route. """
+        if self.codes == "ns day":
+            self.onroute = 0
+        else:
+            self.onroute = max(self.overtime - self.offroute, 0)
+
+    def qualify(self):
+        """ check to see if the carrier information needs to be displayed. """
+        if self.list_ in ("otdl", "aux", "ptf"):
+            if self.penalty_rate or self.overtime_rate:
+                return True
+        if self.list_ in ("nl", "wal"):  # if there is any overtime worked off route
+            if self.offroute_adj:
+                return True
+        return False
+
+    def display_recs(self):
+        """ put the carrier and the first part of rings into the spreadsheet - it's show time! """
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)  # name
+        cell.value = self.carrier
+        cell.style = self.input_name
+        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':B' + str(self.row))
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)  # list status
+        cell.value = self.list_dict[self.list_]
+        cell.style = self.input_s
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=3)  # own route or overtime worked
+        cell.value = self.route  # default, the carrier is no list or wal
+        if self.lsi == 1:  # if the carrier is an otdl or aux carrier
+            cell.value = Convert(self.overtime).str_to_floatoremptystr()
+        cell.style = self.input_s
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)  # mandated route or available at ot rate
+        cell.value = self.otherroute  # default, the carrier is no list or wal
+        if self.list_ in ("otdl", "ptf", "aux"):  # if the carrier is an otdl
+            cell.value = self.avail_max
+
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)  # mandated route or available at penalty rate
+        cell.value = self.otherroute  # default, the carrier is no list or wal
+        if self.list_ in ("otdl", "ptf", "aux"):  # if the carrier is an auxiliary carrier
+            cell.value = self.avail_max
+
+    def increment_progbar(self):
+        """ move the progress bar, update with info on what is being done """
+        lst = ("No List", "Work Assignment", "Overtime Desired", "Auxiliary")
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building day {}: list: {}".format(self.day.strftime("%A"), lst[self.lsi]))
+
+    def save_open(self):
+        """ name and open the excel file """
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Saving...")
+        self.pb.stop()
+        r = "_w"
+        if not projvar.invran_weekly_span:  # if investigation range is daily
+            r = "_d"
+        xl_filename = "man5" + str(format(self.dates[0], "_%y_%m_%d")) + r + ".xlsx"
+        try:
+            self.wb.save(dir_path('mandates_5') + xl_filename)
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.frame)
+            if sys.platform == "win32":
+                os.startfile(dir_path('mandates_5') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/mandates_5/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('mandates_5') + xl_filename])
         except PermissionError:
             messagebox.showerror("Spreadsheet generator",
                                  "The spreadsheet was not opened. \n"

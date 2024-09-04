@@ -1,0 +1,277 @@
+
+Improper Mandates 
+
+
+On Saturday 06/29/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t(work assignment, ns day: Tue, route: 0922)
+        ('8.51', '10.53', '0925')
+        ('12.25', '14.22', '1056')
+    an, j(work assignment, ns day: Wed, route: 1015)
+        ('8.63', '9.67', '1018')
+    aquino, s(no list, ns day: Fri, string: 1033/1037/1045/1053/1071)
+        ('8.50', '18.77', '1011')
+    bustos, h(work assignment, ns day: Mon, route: 0905)
+        ('10.20', '11.03', '0950')
+    custodio, t(work assignment, ns day: Tue, route: 1023)
+        ('16.64', '20.23', '1022')
+    decamillo, n(no list, ns day: Thu, string: 1003/1015/1023/1032/1044)
+        ('20.00', '21.51', '0933')
+    dollar, w(no list, ns day: Mon, route: 0930)
+        ('15.49', '18.80', '0925')
+    freyder, r(no list, ns day: Wed, route: 0926)
+        ('10.52', '12.54', '0916')
+    l huillier jr, w(work assignment, ns day: Mon, route: 1058)
+        ('10.73', '12.05', '1056')
+    la, s(work assignment, ns day: Mon, route: 1035)
+        ('8.60', '11.96', '1025')
+    liu, c(no list, ns day: Thu, route: 0913)
+        ('8.50', '9.59', '1043')
+        ('16.14', '19.92', '1043')
+    mamo, t(work assignment, ns day: Thu, string: 0512/0922/0925/0926/0930)
+        ('8.50', '16.00', '0931')
+        ('19.18', '19.18', '0931')
+    mccoumb, s(no list, ns day: Tue, route: 1001)
+        ('18.00', '19.73', '1003')
+    mcdonald, n(work assignment, ns day: Mon, route: 1045)
+        ('16.35', '17.80', '1059')
+    ngcheng, c(no list, ns day: Tue, route: 1037)
+        ('13.31', '16.81', '1043')
+    rose jr, a(work assignment, ns day: Thu, route: 0918)
+        ('11.14', '12.07', '0950')
+    todman, d(no list, ns day: Fri, route: 1021)
+        ('15.00', '15.50', '1013')
+    yates, l(work assignment, ns day: Wed, route: 0941)
+        ('10.21', '10.53', '0933')
+        ('10.59', '14.49', '0933')
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    barnett, j (was not scheduled) 12 hours
+    benlmaloua, m 0.0600000000000005 hours
+    huynh, m 0.09999999999999964 hours
+    nguyen, a 2.0 hours
+    tran, t 0.22000000000000064 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    kashwer, j 0.5 hours
+    lewis, s 1.7699999999999996 hours
+
+On Sunday 06/30/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    kashwer, j 3.58 hours
+    lewis, s 2.49 hours
+
+On Monday 07/01/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t(work assignment, ns day: Tue, route: 0922)
+        ('8.50', '11.17', '0925')
+    an, j(work assignment, ns day: Wed, route: 1015)
+        ('8.56', '10.04', '1018')
+    aquino, s(work assignment, ns day: Fri, string: 1033/1037/1045/1053/1071)
+        ('8.52', '19.38', '1051')
+    bustos, h(work assignment, ns day: Mon, route: 0905)
+        ('13.57', '14.59', '0950')
+    chang, s(no list, ns day: Thu, route: 1025)
+        ('14.66', '19.56', '1004')
+    chung, b(work assignment, ns day: Sat, route: 0907)
+        ('18.21', '20.11', '0950')
+    custodio, t(work assignment, ns day: Tue, route: 1023)
+        ('17.17', '20.16', '0935')
+    decamillo, n(work assignment, ns day: Thu, string: 1003/1015/1023/1032/1044)
+        ('20.94', '23.54', '1059')
+    dollar, w(work assignment, ns day: Mon, route: 0930)
+        ('16.44', '20.29', '0925')
+    freyder, r(no list, ns day: Wed, route: 0926)
+        ('11.85', '14.61', '0932')
+    mccoumb, s(no list, ns day: Tue, route: 1001)
+        ('15.26', '15.46', '1032')
+    ngcheng, c(no list, ns day: Tue, route: 1037)
+        ('17.43', '17.80', '1043')
+    pang, d(work assignment, ns day: Mon, route: 1022)
+        ('8.81', '11.42', '1043')
+        ('20.59', '22.26', '1043')
+    rose jr, a(work assignment, ns day: Thu, route: 0918)
+        ('13.04', '14.61', '0950')
+    tam, e(no list, ns day: Mon, route: 0929)
+        ('17.17', '20.30', '1058')
+    tran, m(no list, ns day: Sat, route: 0937)
+        ('17.00', '20.42', '0916')
+    wanamaker, a(no list, ns day: Fri, route: 1013)
+        ('16.90', '18.00', '1058')
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    manibusan, p (was not scheduled) 12 hours
+    nelson, g (was not scheduled) 12 hours
+    solof, e 4.0 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    lewis, s 0.5899999999999999 hours
+
+On Tuesday 07/02/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t(work assignment, ns day: Tue, route: 0922)
+        ('8.51', '10.99', '0925')
+    an, j(work assignment, ns day: Wed, route: 1015)
+        ('8.55', '9.93', '1018')
+    aquino, s(work assignment, ns day: Fri, string: 1033/1037/1045/1053/1071)
+        ('8.52', '19.17', '0932')
+    bustos, h(work assignment, ns day: Mon, route: 0905)
+        ('10.25', '11.29', '0950')
+    chang, s(no list, ns day: Thu, route: 1025)
+        ('13.61', '16.88', '1043')
+        ('19.45', '19.46', '1043')
+    chung, b(work assignment, ns day: Sat, route: 0907)
+        ('13.32', '14.76', '0950')
+    custodio, t(work assignment, ns day: Tue, route: 1023)
+        ('15.96', '18.57', '1018')
+    dollar, w(work assignment, ns day: Mon, route: 0930)
+        ('12.97', '15.55', '0925')
+    freyder, r(no list, ns day: Wed, route: 0926)
+        ('11.42', '13.22', '0916')
+    mcdonald, n(work assignment, ns day: Mon, route: 1045)
+        ('16.75', '18.37', '1059')
+    ngcheng, c(no list, ns day: Tue, route: 1037)
+        ('13.48', '16.45', '1043')
+    pang, d(work assignment, ns day: Mon, route: 1022)
+        ('8.56', '8.90', '1020')
+        ('8.94', '11.78', '1020')
+    rose jr, a(work assignment, ns day: Thu, route: 0918)
+        ('12.35', '13.80', '0950')
+    tam, e(no list, ns day: Mon, route: 0929)
+        ('16.44', '19.77', '0925')
+    tran, m(no list, ns day: Sat, route: 0937)
+        ('16.00', '18.83', '0916')
+    wanamaker, a(no list, ns day: Fri, route: 1013)
+        ('16.65', '18.74', '1020')
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    huynh, m 0.9900000000000002 hours
+    la, s 0.9199999999999999 hours
+    liu, c 0.1999999999999993 hours
+    nguyen, a 1.0 hours
+    phan, a 0.75 hours
+    solof, e 4.0 hours
+    tran, t 5.94 hours
+    trinh, q 0.7699999999999996 hours
+    williams, l 1.4499999999999993 hours
+    yates, l 2.83 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    lewis, s 1.7699999999999996 hours
+
+On Wednesday 07/03/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    aquino, s(work assignment, ns day: Fri, string: 1033/1037/1045/1053/1071)
+        ('8.77', '19.41', '0916')
+    bustos, h(work assignment, ns day: Mon, route: 0905)
+        ('13.52', '14.35', '0950')
+    chang, s(no list, ns day: Thu, route: 1025)
+        ('13.58', '16.51', '1043')
+    chung, b(work assignment, ns day: Sat, route: 0907)
+        ('16.00', '17.91', '0950')
+    custodio, t(work assignment, ns day: Tue, route: 1023)
+        ('17.03', '18.77', '1018')
+    dollar, w(work assignment, ns day: Mon, route: 0930)
+        ('13.72', '15.51', '0925')
+    freyder, r(no list, ns day: Wed, route: 0926)
+        ('12.43', '14.39', '0925')
+    l huillier jr, w(no list, ns day: Mon, route: 1058)
+        ('11.39', '12.53', '1056')
+    mccoumb, s(no list, ns day: Tue, route: 1001)
+        ('16.83', '18.05', '1016')
+    ngcheng, c(no list, ns day: Tue, route: 1037)
+        ('13.75', '16.58', '1043')
+    rose jr, a(work assignment, ns day: Thu, route: 0918)
+        ('12.32', '13.49', '0950')
+    tam, e(no list, ns day: Mon, route: 0929)
+        ('17.12', '20.29', '0927')
+    wanamaker, a(no list, ns day: Fri, route: 1013)
+        ('16.92', '19.51', '1059')
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    la, s 0.07000000000000028 hours
+    mamo, t 1.7200000000000006 hours
+    phan, a 0.23000000000000043 hours
+    solof, e 4.0 hours
+    tran, t 0.8300000000000001 hours
+    trinh, q 5.64 hours
+    williams, l 0.14000000000000057 hours
+    yates, l 1.2599999999999998 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    lewis, s 2.7300000000000004 hours
+
+On Thursday 07/04/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    huynh, m (was not scheduled) 12 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+
+On Friday 07/05/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t(work assignment, ns day: Tue, route: 0922)
+        ('8.50', '10.50', '0925')
+        ('19.00', '21.00', '0925')
+    an, j(work assignment, ns day: Wed, route: 1015)
+        ('8.54', '10.32', '1020')
+    aquino, s(work assignment, ns day: Fri, string: 1033/1037/1045/1053/1071)
+        ('15.96', '19.54', '1022')
+    bustos, h(work assignment, ns day: Mon, route: 0905)
+        ('13.08', '13.99', '0950')
+    chang, s(no list, ns day: Thu, route: 1025)
+        ('14.54', '18.50', '1007')
+    chung, b(work assignment, ns day: Sat, route: 0907)
+        ('10.34', '12.35', '0950')
+    custodio, t(work assignment, ns day: Tue, route: 1023)
+        ('8.61', '9.79', '1046')
+        ('10.26', '11.04', '1046')
+        ('16.61', '19.71', '1022')
+    decamillo, n(work assignment, ns day: Thu, string: 1003/1015/1023/1032/1044)
+        ('20.28', '22.01', '1043')
+    dollar, w(work assignment, ns day: Mon, route: 0930)
+        ('10.64', '14.25', '1020')
+    freyder, r(no list, ns day: Wed, route: 0926)
+        ('11.96', '15.01', '0925')
+    l huillier jr, w(no list, ns day: Mon, route: 1058)
+        ('11.16', '12.33', '1056')
+    mccoumb, s(no list, ns day: Tue, route: 1001)
+        ('17.50', '19.07', '1021')
+    mcdonald, n(work assignment, ns day: Mon, route: 1045)
+        ('16.71', '18.22', '1059')
+    rose jr, a(work assignment, ns day: Thu, route: 0918)
+        ('11.86', '13.13', '0950')
+    symons, s(no list, ns day: Sat, route: 0933)
+        ('13.07', '15.20', '0916')
+    tam, e(no list, ns day: Mon, route: 0929)
+        ('16.65', '20.37', '0906')
+    torpy, d(no list, ns day: Sat, route: 1011)
+        ('16.39', '17.40', '1004')
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    barnett, j 1.4299999999999997 hours
+    benlmaloua, m 0.11999999999999922 hours
+    huynh, m 0.4900000000000002 hours
+    liu, c 0.08000000000000007 hours
+    mamo, t 1.0 hours
+    phan, a 0.009999999999999787 hours
+    solof, e 4.0 hours
+    steinke, s 0.4299999999999997 hours
+    williams, l 0.3800000000000008 hours
+    yates, l 1.2599999999999998 hours
+    yeung, q (was not scheduled) 12 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    kashwer, j 0.009999999999999787 hours

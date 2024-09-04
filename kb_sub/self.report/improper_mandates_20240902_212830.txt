@@ -1,0 +1,186 @@
+
+Improper Mandates 
+
+
+On Saturday 06/29/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t  (route: 0922) off assignment hours worked: 3.99
+    an, j  (route: 1015) off assignment hours worked: 1.04
+    aquino, s  (string: 1033/1037/1045/1053/1071) off assignment hours worked: 10.27
+    bustos, h  (route: 0905) off assignment hours worked: 0.83
+    custodio, t  (route: 1023) off assignment hours worked: 3.59
+    decamillo, n  (string: 1003/1015/1023/1032/1044) off assignment hours worked: 1.51
+    dollar, w  (route: 0930) off assignment hours worked: 3.31
+    freyder, r  (route: 0926) off assignment hours worked: 2.02
+    l huillier jr, w  (route: 1058) off assignment hours worked: 1.32
+    la, s  (route: 1035) off assignment hours worked: 3.36
+    liu, c  (route: 0913) off assignment hours worked: 4.87
+    mamo, t  (string: 0512/0922/0925/0926/0930) off assignment hours worked: 7.50
+    mccoumb, s  (route: 1001) off assignment hours worked: 1.73
+    mcdonald, n  (route: 1045) off assignment hours worked: 1.45
+    ngcheng, c  (route: 1037) off assignment hours worked: 3.50
+    rose jr, a  (route: 0918) off assignment hours worked: 0.93
+    todman, d  (route: 1021) off assignment hours worked: 0.50
+    yates, l  (route: 0941) off assignment hours worked: 4.22
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    barnett, j (was not scheduled) 12 hours
+    benlmaloua, m 0.0600000000000005 hours
+    huynh, m 0.09999999999999964 hours
+    nguyen, a 2.0 hours
+    tran, t 0.22000000000000064 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    kashwer, j 0.5 hours
+    lewis, s 1.7699999999999996 hours
+
+On Sunday 06/30/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    kashwer, j 3.58 hours
+    lewis, s 2.49 hours
+
+On Monday 07/01/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t  (route: 0922) off assignment hours worked: 2.67
+    an, j  (route: 1015) off assignment hours worked: 1.48
+    aquino, s  (string: 1033/1037/1045/1053/1071) off assignment hours worked: 10.86
+    bustos, h  (route: 0905) off assignment hours worked: 1.02
+    chang, s  (route: 1025) off assignment hours worked: 4.90
+    chung, b  (route: 0907) off assignment hours worked: 1.90
+    custodio, t  (route: 1023) off assignment hours worked: 2.99
+    decamillo, n  (string: 1003/1015/1023/1032/1044) off assignment hours worked: 2.60
+    dollar, w  (route: 0930) off assignment hours worked: 3.85
+    freyder, r  (route: 0926) off assignment hours worked: 2.76
+    mccoumb, s  (route: 1001) off assignment hours worked: 0.20
+    ngcheng, c  (route: 1037) off assignment hours worked: 0.37
+    pang, d  (route: 1022) off assignment hours worked: 4.28
+    rose jr, a  (route: 0918) off assignment hours worked: 1.57
+    tam, e  (route: 0929) off assignment hours worked: 3.13
+    tran, m  (route: 0937) off assignment hours worked: 3.42
+    wanamaker, a  (route: 1013) off assignment hours worked: 1.10
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    manibusan, p (was not scheduled) 12 hours
+    nelson, g (was not scheduled) 12 hours
+    solof, e 4.0 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    lewis, s 0.5899999999999999 hours
+
+On Tuesday 07/02/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t  (route: 0922) off assignment hours worked: 2.48
+    an, j  (route: 1015) off assignment hours worked: 1.38
+    aquino, s  (string: 1033/1037/1045/1053/1071) off assignment hours worked: 10.65
+    bustos, h  (route: 0905) off assignment hours worked: 1.04
+    chang, s  (route: 1025) off assignment hours worked: 3.28
+    chung, b  (route: 0907) off assignment hours worked: 1.44
+    custodio, t  (route: 1023) off assignment hours worked: 2.61
+    dollar, w  (route: 0930) off assignment hours worked: 2.58
+    freyder, r  (route: 0926) off assignment hours worked: 1.80
+    mcdonald, n  (route: 1045) off assignment hours worked: 1.62
+    ngcheng, c  (route: 1037) off assignment hours worked: 2.97
+    pang, d  (route: 1022) off assignment hours worked: 3.18
+    rose jr, a  (route: 0918) off assignment hours worked: 1.45
+    tam, e  (route: 0929) off assignment hours worked: 3.33
+    tran, m  (route: 0937) off assignment hours worked: 2.83
+    wanamaker, a  (route: 1013) off assignment hours worked: 2.09
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    huynh, m 0.9900000000000002 hours
+    la, s 0.9199999999999999 hours
+    liu, c 0.1999999999999993 hours
+    nguyen, a 1.0 hours
+    phan, a 0.75 hours
+    solof, e 4.0 hours
+    tran, t 5.94 hours
+    trinh, q 0.7699999999999996 hours
+    williams, l 1.4499999999999993 hours
+    yates, l 2.83 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    lewis, s 1.7699999999999996 hours
+
+On Wednesday 07/03/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    aquino, s  (string: 1033/1037/1045/1053/1071) off assignment hours worked: 10.64
+    bustos, h  (route: 0905) off assignment hours worked: 0.83
+    chang, s  (route: 1025) off assignment hours worked: 2.93
+    chung, b  (route: 0907) off assignment hours worked: 1.91
+    custodio, t  (route: 1023) off assignment hours worked: 1.74
+    dollar, w  (route: 0930) off assignment hours worked: 1.79
+    freyder, r  (route: 0926) off assignment hours worked: 1.96
+    l huillier jr, w  (route: 1058) off assignment hours worked: 1.14
+    mccoumb, s  (route: 1001) off assignment hours worked: 1.22
+    ngcheng, c  (route: 1037) off assignment hours worked: 2.83
+    rose jr, a  (route: 0918) off assignment hours worked: 1.17
+    tam, e  (route: 0929) off assignment hours worked: 3.17
+    wanamaker, a  (route: 1013) off assignment hours worked: 2.59
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    la, s 0.07000000000000028 hours
+    mamo, t 1.7200000000000006 hours
+    phan, a 0.23000000000000043 hours
+    solof, e 4.0 hours
+    tran, t 0.8300000000000001 hours
+    trinh, q 5.64 hours
+    williams, l 0.14000000000000057 hours
+    yates, l 1.2599999999999998 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    lewis, s 2.7300000000000004 hours
+
+On Thursday 07/04/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    huynh, m (was not scheduled) 12 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+
+On Friday 07/05/24
+
+The following 'no list' and work assignment carriers were mandated to work overtime off of their bid assignments: 
+    ahmed, t  (route: 0922) off assignment hours worked: 4.00
+    an, j  (route: 1015) off assignment hours worked: 1.78
+    aquino, s  (string: 1033/1037/1045/1053/1071) off assignment hours worked: 3.58
+    bustos, h  (route: 0905) off assignment hours worked: 0.91
+    chang, s  (route: 1025) off assignment hours worked: 3.96
+    chung, b  (route: 0907) off assignment hours worked: 2.01
+    custodio, t  (route: 1023) off assignment hours worked: 5.06
+    decamillo, n  (string: 1003/1015/1023/1032/1044) off assignment hours worked: 1.73
+    dollar, w  (route: 0930) off assignment hours worked: 3.61
+    freyder, r  (route: 0926) off assignment hours worked: 3.05
+    l huillier jr, w  (route: 1058) off assignment hours worked: 1.17
+    mccoumb, s  (route: 1001) off assignment hours worked: 1.57
+    mcdonald, n  (route: 1045) off assignment hours worked: 1.51
+    rose jr, a  (route: 0918) off assignment hours worked: 1.27
+    symons, s  (route: 0933) off assignment hours worked: 2.13
+    tam, e  (route: 0929) off assignment hours worked: 3.72
+    torpy, d  (route: 1011) off assignment hours worked: 1.01
+
+The following overtime desired list carriers were not utilized to the fullest extent: 
+    barnett, j 1.4299999999999997 hours
+    benlmaloua, m 0.11999999999999922 hours
+    huynh, m 0.4900000000000002 hours
+    liu, c 0.08000000000000007 hours
+    mamo, t 1.0 hours
+    phan, a 0.009999999999999787 hours
+    solof, e 4.0 hours
+    steinke, s 0.4299999999999997 hours
+    williams, l 0.3800000000000008 hours
+    yates, l 1.2599999999999998 hours
+    yeung, q (was not scheduled) 12 hours
+
+The following auxiliary carriers were not utilized to the fullest extent: 
+    kashwer, j 0.009999999999999787 hours

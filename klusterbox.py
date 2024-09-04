@@ -23,7 +23,7 @@ from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_pat
     IndexArticleChecker, IssueDecisionChecker, DecisionTypeChecker, distinctresult_to_list, \
     issuedecisionresult_sorter, AwardsChecker, AwardsFormatting, save_all
 from kbspreadsheets import OvermaxSpreadsheet, ImpManSpreadsheet, ImpManSpreadsheet4, OffbidSpreadsheet, \
-    OtAvailSpreadsheet
+    OtAvailSpreadsheet, ImpManSpreadsheet5
 from kbdatabase import DataBase, setup_plaformvar, setup_dirs_by_platformvar, DovBase, DataBaseFix
 from kbspeedsheets import SpeedSheetGen, OpenText, SpeedCarrierCheck, SpeedRingCheck
 from kbequitability import QuarterRecs, OTEquitSpreadsheet, OTDistriSpreadsheet
@@ -13573,6 +13573,7 @@ class MainFrame:
             (1, "Multiple Input", lambda dd="Sat", ss="name": MassInput().mass_input(self.nav.topframe, dd, ss)),
             (1, "Mandates Spreadsheet", lambda: ImpManSpreadsheet().create(self.nav.topframe)),
             (1, "Mandates No.4 Spreadsheet", lambda: ImpManSpreadsheet4().create(self.nav.topframe)),
+            (1, "Mandates No.5 Spreadsheet", lambda: ImpManSpreadsheet5().create(self.nav.topframe)),
             (1, "Over Max Spreadsheet", lambda: OvermaxSpreadsheet().create(self.nav.topframe)),
             (1, "Off Bid Spreadsheet", lambda: OffbidSpreadsheet().create(self.nav.topframe)),
             (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
@@ -13707,6 +13708,8 @@ class MainFrame:
                                command=lambda: ImpManSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Mandates No.4 Spreadsheet",
                                command=lambda: ImpManSpreadsheet4().create(self.win.topframe))
+        basic_menu.add_command(label="Mandates No.5 Spreadsheet",
+                               command=lambda: ImpManSpreadsheet5().create(self.win.topframe))
         basic_menu.add_command(label="Over Max Spreadsheet",
                                command=lambda: OvermaxSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Off Bid Spreadsheet",
@@ -13746,6 +13749,7 @@ class MainFrame:
             basic_menu.entryconfig(8, state=DISABLED)
             basic_menu.entryconfig(9, state=DISABLED)
             basic_menu.entryconfig(10, state=DISABLED)
+            basic_menu.entryconfig(11, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
