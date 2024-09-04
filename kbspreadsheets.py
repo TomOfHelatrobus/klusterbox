@@ -3616,7 +3616,6 @@ class ImpManSpreadsheet5:
         self.cellf16 = None  # carriers out past dispatch of value
         self.celln16 = None  # otdl/aux availability to DOV
 
-        self.ot_list = ("NON OTDL", "Work Assignment", "Auxiliary", "OTDL")  # list loop iteration
         self.page_titles = ("NON-OTDL and Work Assignment Employees that worked overtime",
                             "OTDL/Auxiliary Employees who were available to work overtime")
         self.pref = ("nl", "wal", "aux", "otdl")
@@ -3701,7 +3700,7 @@ class ImpManSpreadsheet5:
 
     def get_pb_max_count(self):
         """ set length of progress bar """
-        self.pb.max_count((len(self.dates)*4)+1)  # once for each list in each day, plus saving
+        self.pb.max_count((len(self.dates)*2)+1)  # once for each list in each day, plus saving
 
     def get_carrierlist(self):
         """ get record sets for all carriers """
@@ -3818,7 +3817,7 @@ class ImpManSpreadsheet5:
             self.ws_list[i].set_printer_settings(paper_size=1, orientation='landscape')  # set orientation
             self.ws_list[i].oddFooter.center.text = "&A"  # include the footer
             self.ws_list[i].column_dimensions["A"].width = 16  # column width
-            self.ws_list[i].column_dimensions["B"].width = 4
+            self.ws_list[i].column_dimensions["B"].width = 6
             self.ws_list[i].column_dimensions["C"].width = 20
             self.ws_list[i].column_dimensions["D"].width = 20
             self.ws_list[i].column_dimensions["E"].width = 20
@@ -3827,15 +3826,16 @@ class ImpManSpreadsheet5:
         """ this loops once for each list. """
         self.i = 0
         for day in self.dates:
-            self.dayrange = []  # initialize array for holding all start/stop/summary rows for all four list.
+            # self.dayrange = []  # initialize array for holding all start/stop/summary rows for all four list.
             self.day = day
             self.list_loop()  # loops four times. once for each list.
             self.i += 1
+            self.row = 1
 
     def list_loop(self):
         """ loops four times. once for each list. """
         self.lsi = 0  # iterations of the list loop method
-        for _ in self.ot_list:  # loops for nl, wal, otdl and aux
+        for _ in range(2):  # loops for nl, wal, otdl and aux
             self.list_and_column_headers()  # builds headers for list and columns
             self.carrierlist_mod()
             self.carrierloop()  # loop once to fill a row with carrier rings data
@@ -3846,9 +3846,9 @@ class ImpManSpreadsheet5:
     def list_and_column_headers(self):
         """ builds headers for list and column """
         c_3headers = ("Own route/ string", "OT worked")
-        d_4headers = ("mandated route", "available at OT rate")
-        e_5headers = ("mandated OT", "available at penalty rate")
-
+        d_4headers = ("Mandated route", "Available at OT rate")
+        e_5headers = ("Mandated OT", "Available at penalty rate")
+        self.row += 1
         cell = self.ws_list[self.i].cell(row=self.row, column=1)
         cell.value = self.page_titles[self.lsi]  # Displays the table title for each list,
         cell.style = self.list_header
@@ -3869,9 +3869,10 @@ class ImpManSpreadsheet5:
         cell.value = d_4headers[self.lsi]
         cell.style = self.col_header_left
 
-        cell = self.ws_list[self.i].cell(row=self.row, column=8)  # mandated OT or available at penalty rate
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)  # mandated OT or available at penalty rate
         cell.value = e_5headers[self.lsi]
-        cell.style = self.col_header
+        cell.style = self.col_header_left
+        self.row += 1
 
     def carrierlist_mod(self):
         """ get the carrier list appropriate to the day and list status """
@@ -3907,6 +3908,9 @@ class ImpManSpreadsheet5:
             self.rs = self.rings[0][3]
             self.et = self.rings[0][10]
             self.codes = self.rings[0][4]
+            if self.day_of_week[self.i] == "Sunday":
+                if self.list_ == "otdl" and not self.totalhours:
+                    self.codes == "no call"
             self.moves = self.rings[0][5]
             self.lvtype = self.rings[0][6]
             self.lvtime = self.rings[0][7]
@@ -3914,27 +3918,30 @@ class ImpManSpreadsheet5:
     def build_availability_dict(self):
         """ add the carrier's name to the availability dictionaries on the first loop of days """
         if self.i == 0:
-            self.cum_hr_dict[self.carrier] = 0
-            self.cum_ot_dict[self.carrier] = 0
-            self.avail_ot_dict[self.carrier] = 20
+            self.cum_hr_dict[self.carrier] = 0.0
+            self.cum_ot_dict[self.carrier] = 0.0
+            self.avail_ot_dict[self.carrier] = 20.0
 
     def calc_max_availability(self):
         """ get the maximum availability for the day for the given carrier
         this takes into account: weekly hours to 60, weekly ot hours to 20, daily limit to 12 or 11.50, leave,
         ns day """
+        totalhours = Convert(self.totalhours).str_to_float()
+        lv_time = Convert(self.lvtime).str_to_float()
         # cumulative hours for the week
-        cum_hr = (float(self.lvtime) + float(self.totalhours)) + float(self.cum_hr_dict[self.carrier])
-        # cumulative ot hours for the week
-        cum_ot = max(float(self.totalhours) - 8, 0) + float(self.cum_ot_dict[self.carrier])
+        cum_hr = (lv_time + totalhours) + float(self.cum_hr_dict[self.carrier])  # cumulative ot hours for the week
+        cum_ot = max(totalhours - 8, 0) + float(self.cum_ot_dict[self.carrier])
+        if self.codes in ("no call", "ns day"):  # if it is the carrier's ns day
+            cum_ot = totalhours + float(self.cum_ot_dict[self.carrier])
         if self.codes == "ns day":  # if ns day, then full day is added to cumulative ot.
-            cum_ot = float(self.totalhours) + float(self.cum_ot_dict[self.carrier])
+            cum_ot = totalhours + float(self.cum_ot_dict[self.carrier])
         avail_wkly = max(60 - cum_hr, 0)  # the weekly availability is 60 - weekly cumulative
         avail_ot = max(20 - cum_ot, 0)  # the weekly ot availability is 20 - weekly ot cumulative
-        avail_daily = max(11.50 - float(self.totalhours), 0)  # daily availability is 11.50 minus daily work hours
-        if self.list_[2] == "otdl":  # except if the carrier is on the otdl
-            avail_daily = max(12 - float(self.totalhours), 0)  # then daily availability is 12 minus daily work hours
+        avail_daily = max(11.50 - totalhours, 0)  # daily availability is 11.50 minus daily work hours
+        if self.list_ == "otdl":  # except if the carrier is on the otdl
+            avail_daily = max(12 - totalhours, 0)  # then daily availability is 12 minus daily work hours
         avail_leave = 12  # availability is zeroed out if the carrier takes leave
-        if self.lvtype in ("", "none"):  # zero out if lvtype is empty or 'none'
+        if self.lvtype not in ("", "none"):  # zero out if lvtype is empty or 'none'
             avail_leave = 0
         prior_avail_ot = 20  # this is the available ot from the prior day, default is 20
         if self.i != 0:  # if this is not the first day
@@ -3952,9 +3959,9 @@ class ImpManSpreadsheet5:
 
     def update_availability_dict(self, cum_hr, cum_ot, avail_ot):
         """ update the 3 availability dictionaries used to find max availablity , takes 3 arguments """
-        self.cum_hr_dict[self.carrier].update({self.carrier: cum_hr})
-        self.cum_ot_dict[self.carrier].update({self.carrier: cum_ot})
-        self.avail_ot_dict[self.carrier].update({self.carrier: avail_ot})
+        self.cum_hr_dict.update({self.carrier: cum_hr})
+        self.cum_ot_dict.update({self.carrier: cum_ot})
+        self.avail_ot_dict.update({self.carrier: avail_ot})
 
     def number_crunching(self):
         """ crunch numbers to get overtime, off route, other route and availability"""
@@ -3964,7 +3971,6 @@ class ImpManSpreadsheet5:
         self.offroute_adj = 0.0
         self.otherroute_array = []  # a list of routes where carrier worked off assignment
         self.otherroute = ""  # display routes worked off assignment
-
         self.calc_max_availability()  # get maximum availability and store in self.avail_max
         self.calc_overtime()  # calculate the amount of overtime worked
         if self.list_ in ("nl", "wal"):  # for no list and work assignment carriers
@@ -4021,17 +4027,17 @@ class ImpManSpreadsheet5:
         """ calculate the availability at the ot rate and the penalty rate """
         self.penalty_rate = 0.0  # initialize
         self.overtime_rate = 0.0
-        ot_max, pen_max, start_ot, start_pen = 2, 2, 8, 10
+        pen_max = 2
         if self.codes in ("ns day", "no call"):
-            ot_max, pen_max, start_ot, start_pen = 8, 4, 0, 8
-        a_max, wk_hrs = self.avail_max, self.totalhours
-        avail = max(a_max - wk_hrs, 0)
-        high_pen = min(max(a_max - start_pen, 0), pen_max)
-        pen_rate = min(avail, high_pen)
-        high_ot = min(max(a_max - start_ot, 0), ot_max)
-        ot_rate = min(max(avail - pen_rate, 0), high_ot)
+            pen_max = 4
+        if self.list_ in ("aux", "ptf"):
+            pen_max = 1.5
+        a_max = self.avail_max
+        pen_rate = min(a_max, pen_max)
+        ot_rate = a_max - pen_rate
         self.penalty_rate = pen_rate  # assign remedy rates
         self.overtime_rate = ot_rate
+        array = (a_max, pen_rate, ot_rate)
 
     def calc_onroute(self):
         """ calculate the overtime the carrier worked on their own route. """
@@ -4042,8 +4048,13 @@ class ImpManSpreadsheet5:
 
     def qualify(self):
         """ check to see if the carrier information needs to be displayed. """
+        if self.list_ in ("aux", "ptf"):  # do not count aux carriers who miss days
+            if not self.totalhours:
+                return False
         if self.list_ in ("otdl", "aux", "ptf"):
-            if self.penalty_rate or self.overtime_rate:
+            if self.penalty_rate:
+                return True
+            if self.overtime_rate:
                 return True
         if self.list_ in ("nl", "wal"):  # if there is any overtime worked off route
             if self.offroute_adj:
@@ -4055,7 +4066,7 @@ class ImpManSpreadsheet5:
         cell = self.ws_list[self.i].cell(row=self.row, column=1)  # name
         cell.value = self.carrier
         cell.style = self.input_name
-        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':B' + str(self.row))
+
         cell = self.ws_list[self.i].cell(row=self.row, column=2)  # list status
         cell.value = self.list_dict[self.list_]
         cell.style = self.input_s
@@ -4063,22 +4074,48 @@ class ImpManSpreadsheet5:
         cell = self.ws_list[self.i].cell(row=self.row, column=3)  # own route or overtime worked
         cell.value = self.route  # default, the carrier is no list or wal
         if self.lsi == 1:  # if the carrier is an otdl or aux carrier
-            cell.value = Convert(self.overtime).str_to_floatoremptystr()
+            # cell.value = Convert(self.overtime).str_to_floatoremptystr()
+            cell.value = "{:.2f}".format(self.overtime)
         cell.style = self.input_s
 
         cell = self.ws_list[self.i].cell(row=self.row, column=4)  # mandated route or available at ot rate
         cell.value = self.otherroute  # default, the carrier is no list or wal
         if self.list_ in ("otdl", "ptf", "aux"):  # if the carrier is an otdl
-            cell.value = self.avail_max
+            cell.value = "{:.2f}".format(self.overtime_rate)
+        cell.style = self.input_s
 
         cell = self.ws_list[self.i].cell(row=self.row, column=5)  # mandated route or available at penalty rate
-        cell.value = self.otherroute  # default, the carrier is no list or wal
+        cell.value = "{:.2f}".format(self.offroute_adj)  # default, the carrier is no list or wal
         if self.list_ in ("otdl", "ptf", "aux"):  # if the carrier is an auxiliary carrier
-            cell.value = self.avail_max
+            cell.value = "{:.2f}".format(self.penalty_rate)
+        cell.style = self.input_s
+
+    def generate_text(self):
+        """ This will generate a text file """
+        date = self.dates[self.i].strftime("%a %x")
+        text1 = "The first table below shows overtime hours worked by non-ODL and WA Carriers, " \
+                "their regular route, and the route on which the overtime was worked on {}. " \
+                "The second table shows the ODL and CCA Carriers, the number of overtime hours " \
+                "worked, the number of hours they were available at the regular overtime rate, " \
+                "and the number of hours they were available at the penalty overtime rate on {}. " \
+                "All data included in the tables is documented by the TACS Employee Everything " \
+                "reports included in the case file. ".format("date", "date")
+        text2 = "As illustrated above, otdl and/or auxiliary Carrier(s) {} were available" \
+                " for an additional total of {} at the" \
+                " regular overtime rate on {}. Therefore, otdl and/or auxiliary Carrier(s) {}" \
+                " should have been assigned the overtime worked by Non-" \
+                " ODL Carrier(s) {} on their own assignment on {}." \
+                " \nMoreover, the table above also shows otdl and/or auxiliary Carrier(s) {} " \
+                "were available for an additional total of {} at " \
+                "the penalty overtime rate on {}. Therefore, otdl and/or auxiliary Letter " \
+                "Carrier(s) {} should have been assigned the overtime worked by " \
+                "no list and work assignment carriers {} off of their assignments on [Date]. "\
+            .format("avail ot names", "avail ot total", "date", "avail ot names", "mandate names", "date",
+                    "avail pen names", "avail pen total", "date", "avail pen names", "mandate names", date)
 
     def increment_progbar(self):
         """ move the progress bar, update with info on what is being done """
-        lst = ("No List", "Work Assignment", "Overtime Desired", "Auxiliary")
+        lst = ("Finding Mandates", "Finding Availability")
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building day {}: list: {}".format(self.day.strftime("%A"), lst[self.lsi]))
@@ -4515,7 +4552,6 @@ class OffbidSpreadsheet:
         name_array = []
         self.summary_row = 6
         for name in self.summary_array:
-            # print(name)
             if name[0] not in name_array:
                 name_occurances = 0
                 for array in self.summary_array:  # count the number of violations for each name

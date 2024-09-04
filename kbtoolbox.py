@@ -1140,6 +1140,14 @@ class Convert:
             return float(self.data)
         return self.data
 
+    def str_to_float(self):
+        """ reuturns empty string for zero, asterisk for asterisk, float for a float or return arg.  """
+        if self.data == "":
+            return 0.0
+        if isfloat(self.data):
+            return float(self.data)
+        return self.data
+
     def none_not_empty(self):
         """ returns none instead of empty string for option menus """
         if self.data == "":
