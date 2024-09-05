@@ -1205,7 +1205,7 @@ class SpeedRingCheck:
 
     def check_empty(self):
         """ determine conditions where existing record is deleted """
-        permitted_codes = ("no call", "annual", "sick", "excused")
+        permitted_codes = ("no call", "ns day", "annual", "sick", "excused")
         if not self.hours:
             if not self.lv_time:
                 if self.codes not in permitted_codes:
@@ -1635,7 +1635,7 @@ class SpeedRingCheck:
         if not self.allowaddrings:
             return
         # determine conditions where existing record is deleted
-        permitted_codes = ("no call", "annual", "sick", "excused")
+        permitted_codes = ("no call", "ns day", "annual", "sick", "excused")
         if not self.hours:
             if not self.lv_time:
                 if self.codes not in permitted_codes:

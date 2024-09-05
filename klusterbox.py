@@ -62,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.05  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Jul 31, 2024"  # format is Jan 1, 2022
+version = 6.06 # version number must be convertable to a float and should increase for Fixes()
+release_date = "to be determined"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:

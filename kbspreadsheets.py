@@ -3910,7 +3910,7 @@ class ImpManSpreadsheet5:
             self.codes = self.rings[0][4]
             if self.day_of_week[self.i] == "Sunday":
                 if self.list_ == "otdl" and not self.totalhours:
-                    self.codes == "no call"
+                    self.codes = "no call"
             self.moves = self.rings[0][5]
             self.lvtype = self.rings[0][6]
             self.lvtime = self.rings[0][7]
@@ -3949,6 +3949,7 @@ class ImpManSpreadsheet5:
         avail_ns = avail_ot  # this code will zero out availability if the carrier can not work 8 hours on an ns day.
         # if it is the ns day and 8 hours are not available
         if self.codes in ("ns day", "no call") and prior_avail_ot < 8:
+            print(self.carrier, self.dates[self.i].strftime("%a"))
             avail_ns = 0  # zero out availability
         avail_codes = avail_ot
         if self.codes in ("light", "excused", "sch chg", "annual", "sick"):  # if carrier excused for day
@@ -4018,26 +4019,28 @@ class ImpManSpreadsheet5:
             self.otherroute_array.append("ns day")
             self.otherroute = "ns day"
             self.moves = self.bt
-        # if self.totalhours:  # save code in case I want to exclude off bid violations
-        #     if self.offroute == self.totalhours:  # if the whole day is off route
-        #         self.offroute_adj = self.totalhours
-        #         self.otherroute = "off bid"
+        if self.totalhours:  # save code in case I want to exclude off bid violations
+            if self.offroute == self.totalhours:  # if the whole day is off route
+                self.offroute_adj = self.totalhours
+                self.otherroute = "off bid"
 
     def calc_remedy(self):
         """ calculate the availability at the ot rate and the penalty rate """
         self.penalty_rate = 0.0  # initialize
         self.overtime_rate = 0.0
-        pen_max = 2
+        pen_max, ot_max, pen_srt = 2.0, 2.0, 10.0
         if self.codes in ("ns day", "no call"):
-            pen_max = 4
+            pen_max, ot_max, pen_srt = 4.0, 8.0, 8.0
         if self.list_ in ("aux", "ptf"):
-            pen_max = 1.5
-        a_max = self.avail_max
-        pen_rate = min(a_max, pen_max)
-        ot_rate = a_max - pen_rate
+            pen_max, ot_max, pen_srt = 1.5, 2.0, 10.0
+        wk = self.totalhours
+        a_max = self.avail_max  # available maximum
+        a_ceil = wk + a_max  # available ceiling
+        pen_adj = max(a_ceil - pen_srt, 0)
+        pen_rate = min([a_max, pen_max, pen_adj])  # penalty overtime rate maximum
+        ot_rate = min(a_max - pen_rate, ot_max)
         self.penalty_rate = pen_rate  # assign remedy rates
         self.overtime_rate = ot_rate
-        array = (a_max, pen_rate, ot_rate)
 
     def calc_onroute(self):
         """ calculate the overtime the carrier worked on their own route. """
@@ -4048,6 +4051,8 @@ class ImpManSpreadsheet5:
 
     def qualify(self):
         """ check to see if the carrier information needs to be displayed. """
+        if self.list_ in ("nl", "wal") and self.otherroute == "off bid":
+            return False
         if self.list_ in ("aux", "ptf"):  # do not count aux carriers who miss days
             if not self.totalhours:
                 return False

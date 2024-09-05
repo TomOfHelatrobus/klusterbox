@@ -821,7 +821,7 @@ class EnterRings:
     def addrecs(self):
         """ add records to database """
         sql = ""
-        permitted_codes = ("no call", "annual", "sick", "excused")
+        permitted_codes = ("no call", "ns day", "annual", "sick", "excused")
         for i in range(len(self.dates)):
             # convert the daily moves from an array into a string.
             self.addrings[i][5] = Convert(self.addrings[i][5]).array_to_string()
