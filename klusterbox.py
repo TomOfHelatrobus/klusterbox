@@ -1253,7 +1253,7 @@ class InformalC:
                 messagebox.showerror("Invalid Data Entry", msgg, parent=self.win.topframe)
                 return False
             return True
-        grievance_number = self.src_grievance.get()
+        grievance_number = self.src_grievance.get().replace(" ","").lower()
         if not check_grievance_number():
             return
         self.grv_sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
@@ -8960,7 +8960,7 @@ class AutoDataEntry:
             # get second and third digits of the of the split line 20 or spt_20
             spt_20_mod = "".join([spt_20[0][1], spt_20[0][2]])
             if spt_20_mod == "52":
-                self.day_hr_52 = spt_20[1]  # get the total hours worked
+                self._skim_multiple_hr_52_handler(spt_20[1])
             if spt_20_mod == "55":
                 self.day_hr_55 = spt_20[1]  # get the annual leave hours
             if spt_20_mod == "56":
@@ -8971,6 +8971,15 @@ class AutoDataEntry:
                 self.day_hr_62 = spt_20[1]  # get the guaranteed time hours
             if spt_20_mod == "86":
                 self.day_hr_86 = spt_20[1]  # get other leave hours
+
+        def _skim_multiple_hr_52_handler(self, time_str):
+            """ handles multiple 5200 times by converting 5200 times from strings to floats, adding them to existing
+             5200 times and converting it back to a string. this normally occurs when carriers work on higher level
+             assignments for part of the day. """
+            hr_52 = Convert(time_str).str_to_float()  # new input - convert string to float
+            hr_52_holder = Convert(self.day_hr_52).str_to_float()  # stored data - convert string to float
+            hr_52_total = hr_52 + hr_52_holder  # add new input to stored data
+            self.day_hr_52 = Convert(hr_52_total).hundredths_float()  # store total as a string in self.day_hr_52 var
 
         def skim_daily_leavetime(self):
             """ fill day leave type and time variables """

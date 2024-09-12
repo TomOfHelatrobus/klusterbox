@@ -9,7 +9,7 @@ from tkinter import messagebox
 import os
 import sys
 import subprocess
-from datetime import timedelta
+from datetime import datetime, timedelta
 # non standard libraries
 from openpyxl import Workbook
 from openpyxl.worksheet.pagebreak import Break
@@ -60,6 +60,7 @@ class ImpManSpreadsheet:
         self.row = 0  # list loop iteration/ the row placement
         self.mod_carrierlist = []  # carrier list with empty recs added to reach minimum row quantity
         self.carrier = []  # carrier name
+        self.list_ = ""
         self.rings = []  # carrier rings queried from database
         self.totalhours = ""  # carrier rings - 5200 time
         self.codes = ""  # carrier rings - code/note
@@ -68,6 +69,11 @@ class ImpManSpreadsheet:
         self.lvtype = ""  # carrier rings - leave type
         self.lvtime = ""  # carrier rings - leave time
         self.movesarray = []
+        self.avail_max = 0.0  # the maximum about of availability for a carrier on a given day
+        self.cum_hr_dict = {}  # a dictionary to hold cumulative hours for a specific carrier
+        self.cum_ot_dict = {}  # a dictionary to hold cumulative overtime hours for a specific carrier
+        self.avail_ot_dict = {}  # a dictionary that holds prior available ot for the previous day.
+        self.a_max_dict = {}  # a dictionary for holding a max values of every carrier for each day.
         self.move_i = 0  # increments rows for multiple move functionality
         self.tol_ot_ownroute = 0.0  # tolerance for ot on own route
         self.tol_ot_offroute = 0.0  # tolerance for ot off own route
@@ -538,8 +544,12 @@ class ImpManSpreadsheet:
         for carrier in self.mod_carrierlist:
             self.get_last_row()  # record the number of the last row for total formulas in footers
             self.carrier = carrier[1]  # current iteration of carrier list is assigned self.carrier
+            self.list_ = carrier[2]  # get the list status of the carrier
             # fill empty with a designator which starts with 'zzz!_' and a number
             self.get_rings()  # get individual carrier rings for the day
+            if carrier[1]:  # if the carrier data set is not empty (for blank rows)
+                self.build_availability_dict()
+                self.calc_max_availability()
             self.display_recs()  # put the carrier and the first part of rings into the spreadsheet
             if self.pref[self.lsi] in ("nl", "wal"):  # if the list is no list or work assignment
                 self.get_movesarray()  # get the moves
@@ -576,6 +586,57 @@ class ImpManSpreadsheet:
             self.moves = self.rings[0][5]
             self.lvtype = self.rings[0][6]
             self.lvtime = self.rings[0][7]
+
+    def build_availability_dict(self):
+        """ add the carrier's name to the availability dictionaries on the first loop of days """
+        if self.i == 0:
+            self.cum_hr_dict[self.carrier] = 0.0
+            self.cum_ot_dict[self.carrier] = 0.0
+            self.avail_ot_dict[self.carrier] = 20.0
+            self.a_max_dict[self.carrier] = []
+
+    def calc_max_availability(self):
+        """ get the maximum availability for the day for the given carrier
+        this takes into account: weekly hours to 60, weekly ot hours to 20, daily limit to 12 or 11.50, leave,
+        ns day """
+        totalhours = Convert(self.totalhours).str_to_float()
+        lv_time = Convert(self.lvtime).str_to_float()
+        # cumulative hours for the week
+        cum_hr = (lv_time + totalhours) + float(self.cum_hr_dict[self.carrier])  # cumulative ot hours for the week
+        cum_ot = max(totalhours - 8, 0) + float(self.cum_ot_dict[self.carrier])
+        if self.codes in ("no call", "ns day"):  # if it is the carrier's ns day
+            cum_ot = totalhours + float(self.cum_ot_dict[self.carrier])
+        if self.codes == "ns day":  # if ns day, then full day is added to cumulative ot.
+            cum_ot = totalhours + float(self.cum_ot_dict[self.carrier])
+        avail_wkly = max(60 - cum_hr, 0)  # the weekly availability is 60 - weekly cumulative
+        avail_ot = max(20 - cum_ot, 0)  # the weekly ot availability is 20 - weekly ot cumulative
+        avail_daily = max(11.50 - totalhours, 0)  # daily availability is 11.50 minus daily work hours
+        if self.list_ == "otdl":  # except if the carrier is on the otdl
+            avail_daily = max(12 - totalhours, 0)  # then daily availability is 12 minus daily work hours
+        avail_leave = 12  # availability is zeroed out if the carrier takes leave
+        if self.lvtype not in ("", "none"):  # zero out if lvtype is empty or 'none'
+            avail_leave = 0
+        prior_avail_ot = 20  # this is the available ot from the prior day, default is 20
+        if self.i != 0:  # if this is not the first day
+            prior_avail_ot = self.avail_ot_dict[self.carrier]  # get the value from the dictionary
+        avail_ns = avail_ot  # this code will zero out availability if the carrier can not work 8 hours on an ns day.
+        # if it is the ns day and 8 hours are not available
+        if self.codes in ("ns day", "no call") and prior_avail_ot < 8:
+            avail_ns = 0  # zero out availability
+        avail_codes = avail_ot
+        if self.codes in ("light", "excused", "sch chg", "annual", "sick"):  # if carrier excused for day
+            avail_codes = 0  # if any of the listed codes are in self.codes - zero availability
+        # select the lowest value from all criteria.
+        self.avail_max = min(avail_wkly, avail_ot, avail_daily, avail_leave, avail_ns, avail_codes)
+        self.update_availability_dict(cum_hr, cum_ot, avail_ot)
+
+    def update_availability_dict(self, cum_hr, cum_ot, avail_ot):
+        """ update the 3 availability dictionaries used to find max availablity , takes 3 arguments """
+        self.cum_hr_dict.update({self.carrier: cum_hr})
+        self.cum_ot_dict.update({self.carrier: cum_ot})
+        self.avail_ot_dict.update({self.carrier: avail_ot})
+        avail_max = Convert(self.avail_max).hundredths_float()  # convert the avail max to a float with 2 decimal places
+        self.a_max_dict[self.carrier].append(avail_max)
 
     def display_recs(self):
         """ put the carrier and the first part of rings into the spreadsheet """
@@ -1134,28 +1195,38 @@ class ImpManSpreadsheet:
         self.remedy.row_dimensions[self.remedy_row].height = 100
 
     @staticmethod
-    def _remedy_violation_cell(violation_cell):
+    def _remedy_violation_cell(_list, violation_cell, a_max):
         """ accepts an empty string or a tuple. returns empty string for empty string
          returns a formula for a tuple. """
         formula = ""  # the default is an empty string
         if type(violation_cell) == tuple:
-            formula = "=IF(%s!%s%s>=remedy!H4,%s!%s%s,\"\") " % \
-                      (violation_cell[0], violation_cell[1], violation_cell[2],
-                       violation_cell[0], violation_cell[1], violation_cell[2])
+            if _list in ("nl", "wal"):
+                formula = "=IF(%s!%s%s>=remedy!H4,%s!%s%s,\"\") " % \
+                          (violation_cell[0], violation_cell[1], violation_cell[2],
+                           violation_cell[0], violation_cell[1], violation_cell[2])
+            else:
+                formula = "=IF(MIN(%s!%s%s,%s)>=remedy!H4,MIN(%s!%s%s,%s),\"\") " % \
+                          (violation_cell[0], violation_cell[1], violation_cell[2], a_max,
+                           violation_cell[0], violation_cell[1], violation_cell[2], a_max)
+
         return formula
 
-    def _display_remedy_row(self, name, violation_cells):
+    def _display_remedy_row(self, name, _list, violation_cells):
         """ display the name, daily violations, total and remedy for each name - will fill one row of remedy sheet """
+        try:
+            a_max_array = self.a_max_dict[name]
+        except KeyError:
+            a_max_array = [12, 12, 12, 12, 12, 12, 12]
         cell = self.remedy.cell(row=self.remedy_row, column=1)
         cell.value = name
         cell.style = self.input_name
         cell.number_format = '@'
         for i in range(7):  # display violations
             cell = self.remedy.cell(row=self.remedy_row, column=i+2)
-            cell.value = self._remedy_violation_cell(violation_cells[i])
+            cell.value = self._remedy_violation_cell(_list, violation_cells[i], a_max_array[i])  # get the formula
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
-        # display totals cell
+        # display totals cell at the end of the row
         formula_a = "=IF(SUM(%s!B%s:%s!H%s)>0, SUM(%s!B%s:%s!H%s), \"\")" % \
                     ('remedy', self.remedy_row, 'remedy', self.remedy_row, 'remedy', self.remedy_row, 'remedy',
                      self.remedy_row)
@@ -1163,7 +1234,7 @@ class ImpManSpreadsheet:
         cell.value = formula_a
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
-        if self.show_remedy:  # display remedy cell
+        if self.show_remedy:  # display remedy cell for a dollar amount remedy
             formula_a = "=IF(AND(%s!I%s<>\"\", %s!I%s<>0),(%s!H$5 * %s!J$%s) * %s!I%s,\"\")" % \
                         ('remedy', str(self.remedy_row), 'remedy', str(self.remedy_row),
                          'remedy', 'remedy', str(self.remedy_start_row-2), 'remedy', str(self.remedy_row))
@@ -1248,22 +1319,22 @@ class ImpManSpreadsheet:
         if _list == "nl":
             for i in range(len(self.order_nl_blanks)):
                 name = ""
-                self._display_remedy_row(name, self.order_nl_blanks[i])
+                self._display_remedy_row(name, _list, self.order_nl_blanks[i])
                 self.remedy_row += 1
         if _list == "wal":
             for i in range(len(self.order_wal_blanks)):
                 name = ""
-                self._display_remedy_row(name, self.order_wal_blanks[i])
+                self._display_remedy_row(name, _list, self.order_wal_blanks[i])
                 self.remedy_row += 1
         if _list == "otdl":
             for i in range(len(self.order_otdl_blanks)):
                 name = ""
-                self._display_remedy_row(name, self.order_otdl_blanks[i])
+                self._display_remedy_row(name, _list, self.order_otdl_blanks[i])
                 self.remedy_row += 1
         if _list == "aux":
             for i in range(len(self.order_aux_blanks)):
                 name = ""
-                self._display_remedy_row(name, self.order_aux_blanks[i])
+                self._display_remedy_row(name, _list, self.order_aux_blanks[i])
                 self.remedy_row += 1
 
     def _build_remedy(self):
@@ -1290,7 +1361,7 @@ class ImpManSpreadsheet:
                             add_this = r[3]
                             break
                     violation_cells.append(add_this)
-                self._display_remedy_row(name, violation_cells)
+                self._display_remedy_row(name, _list, violation_cells)
                 self.remedy_row += 1  # after block of name/remedies - add a blank row for readability
             # solutions for blank rows - insert here
             self._build_remedy_blanks(_list)
@@ -3579,7 +3650,10 @@ class ImpManSpreadsheet5:
         self.tol_ot_ownroute = 0.0  # get tolerances from tolerances table.
         self.tol_ot_offroute = 0.0
         self.tol_availability = 0.0
+        self.max_pivot = 0.0
         self.wb = None  # the workbook object
+        self.report = None  # the text document
+        self.report_filename = None  # the file name of the report
         self.ws_list = []  # "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday"
         self.day_of_week = []  # seven day array for weekly investigations/ one day array for daily investigations
         # styles for worksheet
@@ -3589,12 +3663,9 @@ class ImpManSpreadsheet5:
         self.date_dov_title = None  # style
         self.col_header = None  # style
         self.input_name = None  # style
+        self.input_list = None  # style
         self.input_s = None  # style
         self.calcs = None  # style
-        self.quad_top = None  # style
-        self.quad_bottom = None  # style
-        self.quad_left = None  # style
-        self.quad_right = None  # style
         self.col_header_left = None  # style
         self.col_header = None  # style
         self.footer_left = None  # style
@@ -3603,23 +3674,9 @@ class ImpManSpreadsheet5:
         self.day = None  # build worksheet - loop once for each day
         self.i = 0  # build worksheet loop iteration
         self.lsi = 0  # list loop iteration
-        self.pref = ("nl", "wal", "otdl", "aux")
         self.row = 1
-        # cell for summary quadrants page
-        self.cellc9 = None  # non otdl own route violations
-        self.cellf9 = None  # non otdl off route violations
-        self.cellf11 = None  # wal off route violations
-        self.cellj9 = None  # aux availability to 10 hours
-        self.cellm9 = None  # aux availability to 11.5 hours
-        self.cellj11 = None  # otdl availability to 10 hours
-        self.cellm11 = None  # otdl availability to 12 hours
-        self.cellf16 = None  # carriers out past dispatch of value
-        self.celln16 = None  # otdl/aux availability to DOV
-
         self.page_titles = ("NON-OTDL and Work Assignment Employees that worked overtime",
                             "OTDL/Auxiliary Employees who were available to work overtime")
-        self.pref = ("nl", "wal", "aux", "otdl")
-        self.row_number = 1
         self.carrier = None  # current iteration of carrier's name is assigned self.carrier
         self.list_ = None  # current iteration of carrier's list status is assigned self.carrier
         self.route = None  # current iteration of carrier's route is assigned self.carrier
@@ -3630,6 +3687,10 @@ class ImpManSpreadsheet5:
         self.et = ""
         self.codes = ""
         self.moves = ""
+        self.mandate_names = [[], [], [], [], [], [], []]  # multiple array, contains names of mandated carriers
+        self.available_names = [[], [], [], [], [], [], []]  # multiple array, contains names of available carriers
+        self.mandate_totals = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # contains totals of mandated carriers
+        self.available_totals = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # contains totals of available carriers
         self.cum_hr_dict = {}  # a dictionary to hold cumulative hours for a specific carrier
         self.cum_ot_dict = {}  # a dictionary to hold cumulative overtime hours for a specific carrier
         self.avail_ot_dict = {}  # a dictionary that holds prior available ot for the previous day.
@@ -3644,14 +3705,8 @@ class ImpManSpreadsheet5:
         self.penalty_rate = 0.0  # otdl and aux available for penalty remedy
         self.lvtype = ""
         self.lvtime = ""
-        self.first_row = 0  # record the number of the first row for totals formulas in footers
-        self.last_row = 0  # record the number of the last row for totals formulas in footers
         # build a dictionary for displaying list statuses on spreadsheet
         self.list_dict = {'': '', 'nl': 'non list', 'wal': 'wal', 'otdl': 'otdl', 'aux': 'cca', 'ptf': 'ptf'}
-        self.display_limiter = "show all"  # show all, only workdays, only mandates
-        self.display_counter = 0  # count the number of rows displayed per list loop
-        self.listrange = []  # records the first row, last row and summary row of each list
-        self.dayrange = []  # records the listranges for the day by appending listranges after each listloop.
         self.dovarray = []  # build a list of 7 dov times. One for each day.
 
     def create(self, frame):
@@ -3666,15 +3721,18 @@ class ImpManSpreadsheet5:
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Gathering Data... ")
         self.get_dates()
+        self.get_settings()
         self.get_pb_max_count()  # set the length of the progress bar
         self.get_carrierlist()
         self.get_carrier_breakdown()  # breakdown carrier list into non-otdl and available
         self.get_dov()  # get the dispatch of value for each day
         self.get_styles()
         self.build_workbook()
+        self.build_text_doc()
         self.set_dimensions()
         self.build_ws_loop()  # loop once for each day
         self.save_open()
+        self.save_open_report()
 
     def ask_ok(self):
         """ ends process if user cancels """
@@ -3697,6 +3755,13 @@ class ImpManSpreadsheet5:
             for _ in range(7):  # create an array with all the days in the weekly investigation range
                 self.dates.append(date)
                 date += timedelta(days=1)
+
+    def get_settings(self):
+        """ get the tolerances for the spreadsheet from the database """
+        self.tol_availability = .50
+        sql = "SELECT tolerance FROM tolerances WHERE category = 'offbid_maxpivot'"
+        result = inquire(sql)
+        self.max_pivot = float(result[0][0])
 
     def get_pb_max_count(self):
         """ set length of progress bar """
@@ -3758,7 +3823,10 @@ class ImpManSpreadsheet5:
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
                                      alignment=Alignment(horizontal='center', vertical='bottom'))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
-                                     border=Border(left=bd, top=bd, right=bd, bottom=bd))
+                                     border=Border(left=bd, top=bd, bottom=bd))
+        self.input_list = NamedStyle(name="input_list", font=Font(name='Arial', size=8),
+                                     border=Border(top=bd, right=bd, bottom=bd),
+                                     alignment=Alignment(horizontal='right'))
         self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
                                   border=Border(left=bd, top=bd, right=bd, bottom=bd),
                                   alignment=Alignment(horizontal='right'))
@@ -3766,28 +3834,6 @@ class ImpManSpreadsheet5:
                                 border=Border(left=bd, top=bd, right=bd, bottom=bd),
                                 fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
                                 alignment=Alignment(horizontal='right'))
-
-        self.quad_top = NamedStyle(name="quad_top", font=Font(name='Arial', size=10),
-                                   alignment=Alignment(horizontal='left', vertical='top'),
-                                   border=Border(left=bd, top=bd, right=bd))
-        self.quad_bottom = NamedStyle(name="quad_bottom", font=Font(name='Arial', size=10),
-                                      alignment=Alignment(horizontal='right'),
-                                      border=Border(left=bd, bottom=bd, right=bd))
-        self.quad_left = NamedStyle(name="quad_left", font=Font(name='Arial', size=10),
-                                    alignment=Alignment(horizontal='left', vertical='top'),
-                                    border=Border(left=bd, bottom=bd, top=bd))
-        self.quad_right = NamedStyle(name="quad_right", font=Font(name='Arial', size=10),
-                                     alignment=Alignment(horizontal='right', vertical='top'),
-                                     border=Border(top=bd, bottom=bd, right=bd))
-        self.footer_left = NamedStyle(name="footer_left", font=Font(bold=True, name='Arial', size=8),
-                                      alignment=Alignment(horizontal='left'),
-                                      border=Border(left=bd, bottom=bd, top=bd))
-        self.footer_right = NamedStyle(name="footer_right", font=Font(bold=True, name='Arial', size=8),
-                                       alignment=Alignment(horizontal='right'),
-                                       border=Border(top=bd, bottom=bd, right=bd))
-        self.footer_mid = NamedStyle(name="footer_mid", font=Font(bold=True, name='Arial', size=8),
-                                     alignment=Alignment(horizontal='right'),
-                                     border=Border(top=bd, bottom=bd))
 
     def build_workbook(self):
         """ build the workbook object """
@@ -3811,6 +3857,13 @@ class ImpManSpreadsheet5:
                 self.ws_list.append(self.wb.create_sheet(day_of_week[i]))  # create subsequent worksheets
                 self.ws_list[i].title = day_of_week[i]  # title subsequent worksheets
 
+    def build_text_doc(self):
+        """ build the text document for the list of names and totals.  """
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.report_filename = "impropermandating5" + "_" + stamp + ".txt"
+        self.report = open(dir_path('report') + self.report_filename, "w")
+        self.report.write("\nImproper Mandating Report\n")
+
     def set_dimensions(self):
         """ set the orientation and dimensions of the workbook """
         for i in range(len(self.dates)):
@@ -3823,22 +3876,55 @@ class ImpManSpreadsheet5:
             self.ws_list[i].column_dimensions["E"].width = 20
 
     def build_ws_loop(self):
-        """ this loops once for each list. """
+        """ this loops once for each day. """
         self.i = 0
         for day in self.dates:
-            # self.dayrange = []  # initialize array for holding all start/stop/summary rows for all four list.
+            self.build_ws_headers()
             self.day = day
             self.list_loop()  # loops four times. once for each list.
             self.i += 1
             self.row = 1
 
+    def build_ws_headers(self):
+        """ worksheet headers """
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)
+        cell.value = "Improper Mandate Worksheet"
+        cell.style = self.ws_header
+        # self.ws_list[self.i].merge_cells('A1:E1')
+        self.row += 2
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)
+        cell.value = "Date:  "  # create date/ pay period/ station header
+        cell.style = self.date_dov_title
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)
+        cell.value = format(self.dates[self.i], "%A  %m/%d/%y")
+        cell.style = self.date_dov
+        self.ws_list[self.i].merge_cells('B3:C3')
+        cell = self.ws_list[self.i].cell(row=self.row, column=4)
+        cell.value = "Pay Period:  "
+        cell.style = self.date_dov_title
+        # self.ws_list[self.i].merge_cells('E3:F3')
+        cell = self.ws_list[self.i].cell(row=self.row, column=5)
+        cell.value = projvar.pay_period
+        cell.style = self.date_dov
+        # self.ws_list[self.i].merge_cells('G3:H3')
+        self.row += 1
+        cell = self.ws_list[self.i].cell(row=self.row, column=1)
+        cell.value = "Station:  "
+        cell.style = self.date_dov_title
+        cell = self.ws_list[self.i].cell(row=self.row, column=2)
+        cell.value = projvar.invran_station
+        cell.style = self.date_dov
+        self.row += 2
+        self.ws_list[self.i].merge_cells('B4:C4')
+
     def list_loop(self):
-        """ loops four times. once for each list. """
-        self.lsi = 0  # iterations of the list loop method
+        """ loops two times. once for each group. """
+        self.lsi = 0  # iterations of the list loop method - 1st nl and wal - 2nd otdl and aux
         for _ in range(2):  # loops for nl, wal, otdl and aux
             self.list_and_column_headers()  # builds headers for list and columns
             self.carrierlist_mod()
             self.carrierloop()  # loop once to fill a row with carrier rings data
+            self.update_report()  # write contentions for the day to the report document
             self.increment_progbar()
             self.lsi += 1
         self.lsi = 0  # reset list loop iteration
@@ -3860,15 +3946,12 @@ class ImpManSpreadsheet5:
         cell.value = "Name"
         cell.style = self.col_header_left
         self.ws_list[self.i].merge_cells('A' + str(self.row) + ':B' + str(self.row))
-
         cell = self.ws_list[self.i].cell(row=self.row, column=3)  # own route or ot worked
         cell.value = c_3headers[self.lsi]
         cell.style = self.col_header_left
-
         cell = self.ws_list[self.i].cell(row=self.row, column=4)  # mandated route or available at OT rate
         cell.value = d_4headers[self.lsi]
         cell.style = self.col_header_left
-
         cell = self.ws_list[self.i].cell(row=self.row, column=5)  # mandated OT or available at penalty rate
         cell.value = e_5headers[self.lsi]
         cell.style = self.col_header_left
@@ -3889,7 +3972,35 @@ class ImpManSpreadsheet5:
             self.number_crunching()  # do calculations to get overtime and availability
             if self.qualify():  # test the rings to see if they need to be displayed
                 self.display_recs()  # build the carrier and the rings row into the spreadsheet
+                self.increment_names_array()  # build a list of mandated/ available carriers
+                self.increment_totals_array()  # build a list of mandated/available totals
                 self.row += 1
+
+    def update_report(self):
+        """ write contentions for the day to the report document.
+        includes list of mandated carrriers, mandate hour totals, list of available carriers
+        and available hour totals."""
+        if self.lsi == 1:
+            self.report.write("\n{}\n".format(self.dates[self.i].strftime("%x %A")))
+            text1 = "The first table below shows overtime hours worked by Non-OTDL and Work Assignment List " \
+                    "Carriers, their regular route, and the route on which the overtime was worked on {}. " \
+                    "The second table shows the OTDL and Auxiliary Carriers, the number of overtime hours " \
+                    "worked, the number of hours they were available at the regular overtime rate, " \
+                    "and the number of hours they were available at the penalty overtime rate. " \
+                    "All data included in the tables is documented by the TACS Employee Everything " \
+                    "reports included in the case file. "\
+                .format(self.dates[self.i].strftime("%a %x"))
+            self.report.write("\n{}\n".format(text1))
+            text2 = "As the table above illustrates, on {} OTDL and/or Auxiliary carriers {} were available " \
+                    "for {:.2f} hours at the overtime and penalty overtime rate. On the same date, Non OTDL and Work " \
+                    "Assignment Carriers {} worked {:.2f} hours.OTDL and/or Auxiliary Letter Carrier(s) should have " \
+                    "been assigned the overtime worked by Non OTDL and Work Assignment List"\
+                .format(self.dates[self.i].strftime("%a %x"),
+                        Convert(self.available_names[self.i]).array_to_string_withand(),
+                        self.available_totals[self.i],
+                        Convert(self.mandate_names[self.i]).array_to_string_withand(),
+                        self.mandate_totals[self.i])
+            self.report.write("\n{}\n".format(text2))
 
     def get_rings(self):
         """ get individual carrier rings for the day """
@@ -3949,7 +4060,6 @@ class ImpManSpreadsheet5:
         avail_ns = avail_ot  # this code will zero out availability if the carrier can not work 8 hours on an ns day.
         # if it is the ns day and 8 hours are not available
         if self.codes in ("ns day", "no call") and prior_avail_ot < 8:
-            print(self.carrier, self.dates[self.i].strftime("%a"))
             avail_ns = 0  # zero out availability
         avail_codes = avail_ot
         if self.codes in ("light", "excused", "sch chg", "annual", "sick"):  # if carrier excused for day
@@ -4019,9 +4129,13 @@ class ImpManSpreadsheet5:
             self.otherroute_array.append("ns day")
             self.otherroute = "ns day"
             self.moves = self.bt
-        if self.totalhours:  # save code in case I want to exclude off bid violations
-            if self.offroute == self.totalhours:  # if the whole day is off route
-                self.offroute_adj = self.totalhours
+        if self.totalhours:  # detect off bid violations use max pivot from off bid spreadsheet settings.
+            # if self.offroute == self.totalhours:  # if the whole day is off route
+            #     self.offroute_adj = self.totalhours
+            #     self.otherroute = "off bid"
+            ownroute = max(self.totalhours - self.offroute, 0)  # calculate the total time spent on route
+            violation = max(8 - ownroute, 0)  # calculate the total violation
+            if violation > self.max_pivot:
                 self.otherroute = "off bid"
 
     def calc_remedy(self):
@@ -4051,19 +4165,17 @@ class ImpManSpreadsheet5:
 
     def qualify(self):
         """ check to see if the carrier information needs to be displayed. """
-        if self.list_ in ("nl", "wal") and self.otherroute == "off bid":
+        if self.list_ in ("nl", "wal") and self.otherroute == "off bid":  # exclude off bids
             return False
-        if self.list_ in ("aux", "ptf"):  # do not count aux carriers who miss days
-            if not self.totalhours:
-                return False
-        if self.list_ in ("otdl", "aux", "ptf"):
-            if self.penalty_rate:
-                return True
-            if self.overtime_rate:
-                return True
         if self.list_ in ("nl", "wal"):  # if there is any overtime worked off route
             if self.offroute_adj:
                 return True
+        if self.list_ in ("otdl", "aux", "ptf"):  # implement tolerances
+            if self.penalty_rate + self.overtime_rate >= self.tol_availability:
+                return True
+        if self.list_ in ("aux", "ptf"):  # do not count aux carriers who miss days
+            if not self.totalhours:
+                return False
         return False
 
     def display_recs(self):
@@ -4071,29 +4183,43 @@ class ImpManSpreadsheet5:
         cell = self.ws_list[self.i].cell(row=self.row, column=1)  # name
         cell.value = self.carrier
         cell.style = self.input_name
-
         cell = self.ws_list[self.i].cell(row=self.row, column=2)  # list status
         cell.value = self.list_dict[self.list_]
-        cell.style = self.input_s
-
+        cell.style = self.input_list
+        cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.ws_list[self.i].cell(row=self.row, column=3)  # own route or overtime worked
         cell.value = self.route  # default, the carrier is no list or wal
         if self.lsi == 1:  # if the carrier is an otdl or aux carrier
-            # cell.value = Convert(self.overtime).str_to_floatoremptystr()
-            cell.value = "{:.2f}".format(self.overtime)
+            cell.value = self.overtime
         cell.style = self.input_s
-
+        cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.ws_list[self.i].cell(row=self.row, column=4)  # mandated route or available at ot rate
         cell.value = self.otherroute  # default, the carrier is no list or wal
         if self.list_ in ("otdl", "ptf", "aux"):  # if the carrier is an otdl
-            cell.value = "{:.2f}".format(self.overtime_rate)
+            cell.value = self.overtime_rate
         cell.style = self.input_s
-
+        cell.number_format = "#,###.00;[RED]-#,###.00"
         cell = self.ws_list[self.i].cell(row=self.row, column=5)  # mandated route or available at penalty rate
-        cell.value = "{:.2f}".format(self.offroute_adj)  # default, the carrier is no list or wal
+        cell.value = self.offroute_adj  # default, the carrier is no list or wal
         if self.list_ in ("otdl", "ptf", "aux"):  # if the carrier is an auxiliary carrier
-            cell.value = "{:.2f}".format(self.penalty_rate)
+            cell.value = self.penalty_rate
         cell.style = self.input_s
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+
+    def increment_names_array(self):
+        """ build a list of mandated/ available carriers """
+        if self.list_ in ("nl", "wal"):
+            self.mandate_names[self.i].append(self.carrier)
+        else:
+            self.available_names[self.i].append(self.carrier)
+
+    def increment_totals_array(self):
+        """ build a list of mandated/ available totals  """
+        if self.list_ in ("nl", "wal"):
+            self.mandate_totals[self.i] += self.offroute_adj
+        else:
+            avail_total = self.overtime_rate + self.penalty_rate
+            self.available_totals[self.i] += avail_total
 
     def generate_text(self):
         """ This will generate a text file """
@@ -4104,7 +4230,8 @@ class ImpManSpreadsheet5:
                 "worked, the number of hours they were available at the regular overtime rate, " \
                 "and the number of hours they were available at the penalty overtime rate on {}. " \
                 "All data included in the tables is documented by the TACS Employee Everything " \
-                "reports included in the case file. ".format("date", "date")
+                "reports included in the case file. ".format(self.dates[self.i].strftime("%x %a"),
+                                                             self.dates[self.i].strftime("%x %a"))
         text2 = "As illustrated above, otdl and/or auxiliary Carrier(s) {} were available" \
                 " for an additional total of {} at the" \
                 " regular overtime rate on {}. Therefore, otdl and/or auxiliary Carrier(s) {}" \
@@ -4154,6 +4281,16 @@ class ImpManSpreadsheet5:
                                  "Make sure that identically named spreadsheets are closed "
                                  "(the file can't be overwritten while open).",
                                  parent=self.frame)
+
+    def save_open_report(self):
+        """ name and open the text file """
+        self.report.close()
+        if sys.platform == "win32":  # open the text document
+            os.startfile(dir_path('report') + self.report_filename)
+        if sys.platform == "linux":
+            subprocess.call(["xdg-open", 'kb_sub/report/' + self.report_filename])
+        if sys.platform == "darwin":
+            subprocess.call(["open", dir_path('report') + self.report_filename])
 
 
 class OffbidSpreadsheet:

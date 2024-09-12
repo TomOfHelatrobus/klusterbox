@@ -1070,6 +1070,17 @@ class Convert:
                 string += ","
         return string
 
+    def array_to_string_withand(self):
+        """ make an array into a string (with commas) """
+        string = ""
+        for i in range(len(self.data)):
+            string += self.data[i].replace(",", "")
+            if i == len(self.data) - 2:
+                string += " and "
+            elif i != len(self.data) - 1:
+                string += ", "
+        return string
+
     def string_to_array(self):
         """ make string into array, remove whitespace """
         new_array = []
@@ -1164,6 +1175,12 @@ class Convert:
         """ returns a number (as a string) into a number with 2 decimal places """
         number = float(self.data)  # convert the number to a float
         return "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
+
+    def hundredths_float(self):
+        """ returns a number (as a string) into a number with 2 decimal places """
+        number = float(self.data)  # convert the number to a float
+        number = "{:.2f}".format(number).lstrip('0')  # return the number as a string with 2 decimal places
+        return float(number)
 
     def zero_or_hundredths(self):
         """ returns number strings for numbers """
