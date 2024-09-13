@@ -3647,9 +3647,7 @@ class ImpManSpreadsheet5:
         self.carrierlist = []  # all carriers in carrier list
         self.carrier_breakdown = []  # all carriers in carrier list broken down into appropiate list
         self.mod_carrierlist = []
-        self.tol_ot_ownroute = 0.0  # get tolerances from tolerances table.
-        self.tol_ot_offroute = 0.0
-        self.tol_availability = 0.0
+        self.remedy_tolerance = 0.0  # get tolerances from tolerances table.self.remedy_tolerance
         self.max_pivot = 0.0
         self.wb = None  # the workbook object
         self.report = None  # the text document
@@ -3664,6 +3662,7 @@ class ImpManSpreadsheet5:
         self.col_header = None  # style
         self.input_name = None  # style
         self.input_list = None  # style
+        self.instruct_text = None  # style
         self.input_s = None  # style
         self.calcs = None  # style
         self.col_header_left = None  # style
@@ -3689,8 +3688,12 @@ class ImpManSpreadsheet5:
         self.moves = ""
         self.mandate_names = [[], [], [], [], [], [], []]  # multiple array, contains names of mandated carriers
         self.available_names = [[], [], [], [], [], [], []]  # multiple array, contains names of available carriers
+        self.otdl_names = [[], [], [], [], [], [], []]  # multiple array, contains names of available carriers
+        self.aux_names = [[], [], [], [], [], [], []]  # multiple array, contains names of available carriers
         self.mandate_totals = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # contains totals of mandated carriers
         self.available_totals = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # contains totals of available carriers
+        self.mentioned_names = []  # gives a list of carriers mentioned in the grievance
+        self.remedy_array = []  # hold arrays with data about possible violations
         self.cum_hr_dict = {}  # a dictionary to hold cumulative hours for a specific carrier
         self.cum_ot_dict = {}  # a dictionary to hold cumulative overtime hours for a specific carrier
         self.avail_ot_dict = {}  # a dictionary that holds prior available ot for the previous day.
@@ -3707,6 +3710,8 @@ class ImpManSpreadsheet5:
         self.lvtime = ""
         # build a dictionary for displaying list statuses on spreadsheet
         self.list_dict = {'': '', 'nl': 'non list', 'wal': 'wal', 'otdl': 'otdl', 'aux': 'cca', 'ptf': 'ptf'}
+        self.rem_man_row_end = 0
+        self.rem_avail_row_start = 0
         self.dovarray = []  # build a list of 7 dov times. One for each day.
 
     def create(self, frame):
@@ -3731,6 +3736,8 @@ class ImpManSpreadsheet5:
         self.build_text_doc()
         self.set_dimensions()
         self.build_ws_loop()  # loop once for each day
+        self.build_remedy()  # build the worksheet for remedies
+        self.write_mentioned_names()  # write all names mentioned at the end of the text report
         self.save_open()
         self.save_open_report()
 
@@ -3758,10 +3765,10 @@ class ImpManSpreadsheet5:
 
     def get_settings(self):
         """ get the tolerances for the spreadsheet from the database """
-        self.tol_availability = .50
-        sql = "SELECT tolerance FROM tolerances WHERE category = 'offbid_maxpivot'"
+        sql = "SELECT tolerance FROM tolerances"
         result = inquire(sql)
-        self.max_pivot = float(result[0][0])
+        self.remedy_tolerance = float(Convert(result[54][0]).hundredths())
+        self.max_pivot = float(Convert(result[42][0]).hundredths())
 
     def get_pb_max_count(self):
         """ set length of progress bar """
@@ -3820,6 +3827,8 @@ class ImpManSpreadsheet5:
                                          alignment=Alignment(horizontal='right'))
         self.col_header_left = NamedStyle(name="col_header_left", font=Font(bold=True, name='Arial', size=8),
                                           alignment=Alignment(horizontal='left', vertical='bottom'))
+        self.col_header_right = NamedStyle(name="col_header_right", font=Font(bold=True, name='Arial', size=8),
+                                          alignment=Alignment(horizontal='right', vertical='bottom'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
                                      alignment=Alignment(horizontal='center', vertical='bottom'))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
@@ -3834,6 +3843,8 @@ class ImpManSpreadsheet5:
                                 border=Border(left=bd, top=bd, right=bd, bottom=bd),
                                 fill=PatternFill(fgColor='e5e4e2', fill_type='solid'),
                                 alignment=Alignment(horizontal='right'))
+        self.instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=9),
+                                        alignment=Alignment(horizontal='left', vertical='top'))
 
     def build_workbook(self):
         """ build the workbook object """
@@ -3856,6 +3867,8 @@ class ImpManSpreadsheet5:
             for i in range(1, 7):  # create worksheet for remaining six days
                 self.ws_list.append(self.wb.create_sheet(day_of_week[i]))  # create subsequent worksheets
                 self.ws_list[i].title = day_of_week[i]  # title subsequent worksheets
+            self.ws_list.append(self.wb.create_sheet("remedy"))  # create subsequent worksheets
+            self.ws_list[7].title = "remedy"  # title subsequent worksheets
 
     def build_text_doc(self):
         """ build the text document for the list of names and totals.  """
@@ -3867,13 +3880,18 @@ class ImpManSpreadsheet5:
     def set_dimensions(self):
         """ set the orientation and dimensions of the workbook """
         for i in range(len(self.dates)):
-            self.ws_list[i].set_printer_settings(paper_size=1, orientation='landscape')  # set orientation
             self.ws_list[i].oddFooter.center.text = "&A"  # include the footer
             self.ws_list[i].column_dimensions["A"].width = 16  # column width
             self.ws_list[i].column_dimensions["B"].width = 6
             self.ws_list[i].column_dimensions["C"].width = 20
             self.ws_list[i].column_dimensions["D"].width = 20
             self.ws_list[i].column_dimensions["E"].width = 20
+        self.ws_list[7].oddFooter.center.text = "&A"  # include the footer
+        self.ws_list[7].column_dimensions["A"].width = 15  # set dimensions for remedy worksheet
+        column_tuple = ("B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P")
+        for col in column_tuple:
+            self.ws_list[7].column_dimensions[col].width = 4
+        self.ws_list[7].column_dimensions["Q"].width = 6  # column width
 
     def build_ws_loop(self):
         """ this loops once for each day. """
@@ -3917,6 +3935,40 @@ class ImpManSpreadsheet5:
         self.row += 2
         self.ws_list[self.i].merge_cells('B4:C4')
 
+    def build_remedy_ws_headers(self):
+        """ remedy worksheet header """
+        cell = self.ws_list[7].cell(row=self.row, column=1)
+        cell.value = "Improper Mandate Worksheet"
+        cell.style = self.ws_header
+        self.ws_list[7].merge_cells('A1:Q1')
+        self.row += 2
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # date label
+        cell.value = "Date:  "
+        cell.style = self.date_dov_title
+        cell = self.ws_list[7].cell(row=self.row, column=2)
+        cell.value = self.dates[0].strftime("%x")  # date
+        if projvar.invran_weekly_span:
+            cell.value = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
+        cell.style = self.date_dov
+        self.ws_list[7].merge_cells('B3:E3')
+        cell = self.ws_list[7].cell(row=self.row, column=9)  # pay period label
+        cell.value = "Pay Period:  "
+        cell.style = self.date_dov_title
+        self.ws_list[7].merge_cells('I3:K3')
+        cell = self.ws_list[7].cell(row=self.row, column=12)  # pay period
+        cell.value = projvar.pay_period
+        cell.style = self.date_dov
+        self.ws_list[7].merge_cells('L3:N3')
+        self.row += 1
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # station label
+        cell.value = "Station:  "
+        cell.style = self.date_dov_title
+        cell = self.ws_list[7].cell(row=self.row, column=2)  # station
+        cell.value = projvar.invran_station
+        cell.style = self.date_dov
+        self.ws_list[7].merge_cells('B4:E4')
+        self.row += 1
+
     def list_loop(self):
         """ loops two times. once for each group. """
         self.lsi = 0  # iterations of the list loop method - 1st nl and wal - 2nd otdl and aux
@@ -3938,9 +3990,11 @@ class ImpManSpreadsheet5:
         cell = self.ws_list[self.i].cell(row=self.row, column=1)
         cell.value = self.page_titles[self.lsi]  # Displays the table title for each list,
         cell.style = self.list_header
-        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':E' + str(self.row))
-        self.row += 1
-        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':E' + str(self.row))
+        self.ws_list[self.i].merge_cells('A' + str(self.row) + ':D' + str(self.row))
+        if self.lsi == 0:
+            cell = self.ws_list[self.i].cell(row=self.row, column=5)
+            cell.value = self.dates[self.i].strftime("%A  %m/%d/%y")
+            cell.style = self.col_header_right
         self.row += 1
         cell = self.ws_list[self.i].cell(row=self.row, column=1)  # Name Header
         cell.value = "Name"
@@ -3973,7 +4027,9 @@ class ImpManSpreadsheet5:
             if self.qualify():  # test the rings to see if they need to be displayed
                 self.display_recs()  # build the carrier and the rings row into the spreadsheet
                 self.increment_names_array()  # build a list of mandated/ available carriers
+                self.increment_mentioned_names()  # build a list of all carriers mentioned
                 self.increment_totals_array()  # build a list of mandated/available totals
+                self.append_remedy_array()  # add the possible violation to the remedy array
                 self.row += 1
 
     def update_report(self):
@@ -3982,25 +4038,51 @@ class ImpManSpreadsheet5:
         and available hour totals."""
         if self.lsi == 1:
             self.report.write("\n{}\n".format(self.dates[self.i].strftime("%x %A")))
-            text1 = "The first table below shows overtime hours worked by Non-OTDL and Work Assignment List " \
-                    "Carriers, their regular route, and the route on which the overtime was worked on {}. " \
-                    "The second table shows the OTDL and Auxiliary Carriers, the number of overtime hours " \
-                    "worked, the number of hours they were available at the regular overtime rate, " \
-                    "and the number of hours they were available at the penalty overtime rate. " \
-                    "All data included in the tables is documented by the TACS Employee Everything " \
-                    "reports included in the case file. "\
-                .format(self.dates[self.i].strftime("%a %x"))
-            self.report.write("\n{}\n".format(text1))
-            text2 = "As the table above illustrates, on {} OTDL and/or Auxiliary carriers {} were available " \
-                    "for {:.2f} hours at the overtime and penalty overtime rate. On the same date, Non OTDL and Work " \
-                    "Assignment Carriers {} worked {:.2f} hours.OTDL and/or Auxiliary Letter Carrier(s) should have " \
-                    "been assigned the overtime worked by Non OTDL and Work Assignment List"\
+            contention1 = "On {}, the following letter carriers are not on any overtime desired list for the " \
+                          "[quarter] of [year] at the [station]: {}. This is documented by the absence of these " \
+                          "letter carrier’s names on the current overtime desired list  sign-up sheet in the " \
+                          "case file."\
+                .format(self.dates[self.i].strftime("%x %A"),
+                        Convert(self.mandate_names[self.i]).array_to_string_withand())
+            contention2 = "The following letter carriers are on the 10/12-hour overtime desired list for the " \
+                          "[quarter] of [year] at the [station]: {}. This is documented by the Overtime Desired " \
+                          "List sign-up sheet included in the case file."\
+                .format(Convert(self.otdl_names[self.i]).array_to_string_withand())
+            contention3 = "The following letter carriers are ptf or cca carriers at the [station] during the week of " \
+                          "[investigation range start]-[investigation range end]: {}. This is documented by the " \
+                          "employee everything report included in the case file. Part Time Flexible (ptf) are " \
+                          "designated the D/A code 43-4 and City Carrier Assistant (cca or aux) are designated by " \
+                          "the D/A code 84-4."\
+                .format(Convert(self.aux_names[self.i]).array_to_string_withand())
+            contention5_1 = "The tables below show the distribution of overtime worked/denied for {}. " \
+                            "The first table below shows overtime hours worked by non-otdl and work assignment list " \
+                            "carriers, their regular route, and the route on which the overtime was worked. " \
+                            "The second table shows the otdl and auxiliary carriers, the number of overtime hours " \
+                            "worked, the number of hours they were available at the regular overtime rate, and the " \
+                            "number of hours they were available at the penalty overtime rate. All data included in " \
+                            "the tables is documented by the TACS Employee Everything reports included in the case " \
+                            "file. "\
+                .format(self.dates[self.i].strftime("%x %A"))
+            contention5_2 = "As the table above illustrates, on {} otdl and/or auxiliary carriers: {} were available " \
+                            "for {:.2f} combined hours at the overtime and penalty overtime rate. On the same date, " \
+                            "non otdl and work assignment carriers: {} worked {:.2f} hours. Otdl and/or auxiliary " \
+                            "letter carrier(s) should have been assigned the overtime worked by non otdl and work " \
+                            "assignment list carriers."\
                 .format(self.dates[self.i].strftime("%a %x"),
                         Convert(self.available_names[self.i]).array_to_string_withand(),
                         self.available_totals[self.i],
                         Convert(self.mandate_names[self.i]).array_to_string_withand(),
                         self.mandate_totals[self.i])
-            self.report.write("\n{}\n".format(text2))
+            self.report.write("\n{}\n".format(">>> paragraph one _______________________"))
+            self.report.write("\n{}\n".format(contention1))
+            self.report.write("\n{}\n".format(">>> paragraph two _______________________"))
+            self.report.write("\n{}\n".format(contention2))
+            self.report.write("\n{}\n".format(">>> paragraph three _______________________"))
+            self.report.write("\n{}\n".format(contention3))
+            self.report.write("\n{}\n".format(">>> paragraph four _______________________"))
+            self.report.write("\n{}\n".format(contention5_1))
+            self.report.write("\n{}\n".format(">>> paragraph five _______________________"))
+            self.report.write("\n{}\n".format(contention5_2))
 
     def get_rings(self):
         """ get individual carrier rings for the day """
@@ -4130,9 +4212,6 @@ class ImpManSpreadsheet5:
             self.otherroute = "ns day"
             self.moves = self.bt
         if self.totalhours:  # detect off bid violations use max pivot from off bid spreadsheet settings.
-            # if self.offroute == self.totalhours:  # if the whole day is off route
-            #     self.offroute_adj = self.totalhours
-            #     self.otherroute = "off bid"
             ownroute = max(self.totalhours - self.offroute, 0)  # calculate the total time spent on route
             violation = max(8 - ownroute, 0)  # calculate the total violation
             if violation > self.max_pivot:
@@ -4167,15 +4246,18 @@ class ImpManSpreadsheet5:
         """ check to see if the carrier information needs to be displayed. """
         if self.list_ in ("nl", "wal") and self.otherroute == "off bid":  # exclude off bids
             return False
+        if self.list_ in ("aux", "ptf"):  # do not count aux carriers who miss days
+            if self.totalhours == 0.0:
+                return False
+        if self.list_ in ("otdl",):  # if the otdl carrier has no record for the day - return false
+            if not self.rings[0]:
+                return False
         if self.list_ in ("nl", "wal"):  # if there is any overtime worked off route
-            if self.offroute_adj:
+            if self.offroute_adj >= self.remedy_tolerance:
                 return True
         if self.list_ in ("otdl", "aux", "ptf"):  # implement tolerances
-            if self.penalty_rate + self.overtime_rate >= self.tol_availability:
+            if self.penalty_rate + self.overtime_rate >= self.remedy_tolerance:
                 return True
-        if self.list_ in ("aux", "ptf"):  # do not count aux carriers who miss days
-            if not self.totalhours:
-                return False
         return False
 
     def display_recs(self):
@@ -4212,6 +4294,29 @@ class ImpManSpreadsheet5:
             self.mandate_names[self.i].append(self.carrier)
         else:
             self.available_names[self.i].append(self.carrier)
+            if self.list_ == "otdl":
+                self.otdl_names[self.i].append(self.carrier)
+            else:
+                self.aux_names[self.i].append(self.carrier)
+
+    def append_remedy_array(self):
+        """ builds a multidimensional array e.g. [["weeks, t", "mandate" 2, .88],]
+        elements are 1. name, 2. list, 3. day, 4. possible violation - will be ot and penalty for availability """
+        list_ = "mandated"  # default values for non list and work assignment
+        poss_violation_1 = self.offroute_adj
+        poss_violation_2 = 0.0
+        if self.list_ in ("otdl", "aux", "ptf"):
+            list_ = "available"
+            poss_violation_1 = self.overtime_rate
+            poss_violation_2 = self.penalty_rate
+        to_add = [self.carrier, list_, self.i, poss_violation_1, poss_violation_2]
+        self.remedy_array.append(to_add)
+
+    def increment_mentioned_names(self):
+        """ builds a list of all names mentioned in the investigation """
+        if self.i != 1:  # do not include sundays
+            if self.carrier not in self.mentioned_names:
+                self.mentioned_names.append(self.carrier)
 
     def increment_totals_array(self):
         """ build a list of mandated/ available totals  """
@@ -4221,29 +4326,234 @@ class ImpManSpreadsheet5:
             avail_total = self.overtime_rate + self.penalty_rate
             self.available_totals[self.i] += avail_total
 
-    def generate_text(self):
-        """ This will generate a text file """
-        date = self.dates[self.i].strftime("%a %x")
-        text1 = "The first table below shows overtime hours worked by non-ODL and WA Carriers, " \
-                "their regular route, and the route on which the overtime was worked on {}. " \
-                "The second table shows the ODL and CCA Carriers, the number of overtime hours " \
-                "worked, the number of hours they were available at the regular overtime rate, " \
-                "and the number of hours they were available at the penalty overtime rate on {}. " \
-                "All data included in the tables is documented by the TACS Employee Everything " \
-                "reports included in the case file. ".format(self.dates[self.i].strftime("%x %a"),
-                                                             self.dates[self.i].strftime("%x %a"))
-        text2 = "As illustrated above, otdl and/or auxiliary Carrier(s) {} were available" \
-                " for an additional total of {} at the" \
-                " regular overtime rate on {}. Therefore, otdl and/or auxiliary Carrier(s) {}" \
-                " should have been assigned the overtime worked by Non-" \
-                " ODL Carrier(s) {} on their own assignment on {}." \
-                " \nMoreover, the table above also shows otdl and/or auxiliary Carrier(s) {} " \
-                "were available for an additional total of {} at " \
-                "the penalty overtime rate on {}. Therefore, otdl and/or auxiliary Letter " \
-                "Carrier(s) {} should have been assigned the overtime worked by " \
-                "no list and work assignment carriers {} off of their assignments on [Date]. "\
-            .format("avail ot names", "avail ot total", "date", "avail ot names", "mandate names", "date",
-                    "avail pen names", "avail pen total", "date", "avail pen names", "mandate names", date)
+    def build_remedy(self):
+        """ build the worksheet for finding a remedy. """
+        self.row = 1  # initialize the row of the remedy worksheet
+        self.build_remedy_ws_headers()
+        self.remedy_headers("mandated")
+        all_remedy_arrays = self.sort_remedy_list()  # first sort the remedy array into two list
+        remedy_category = ("mandated", "available")
+        for i in range(len(all_remedy_arrays)):  # cycle through sorted remedy array
+            if i == 1:
+                self.remedy_headers("available")  # once available remedies are run - create headers
+                self.rem_avail_row_start = self.row
+            for name in all_remedy_arrays[i]:  # start with mandated, then available
+                remedy_array = []  # capture all remedies for each carrier
+                for array in self.remedy_array:
+                    if name == array[0] and array[1] == remedy_category[i]:  # if the correct name and list - display
+                        remedy_array.append(array)
+                self.display_remedy(remedy_array)
+        self.remedy_equalization()
+
+    def sort_remedy_list(self):
+        """ first sort the remedy array into two list """
+        all_mandated = []
+        all_available = []
+        for d in range(len(self.dates)):
+            for name in self.mandate_names[d]:
+                if name not in all_mandated:
+                    all_mandated.append(name)
+            for name in self.available_names[d]:
+                if name not in all_available:
+                    all_available.append(name)
+        all_mandated.sort()
+        all_available.sort()
+        all_remedy_arrays = (all_mandated, all_available)
+        return all_remedy_arrays
+
+    def display_remedy(self, remedy_array):
+        """ create the cells on the remedy worksheet"""
+        if remedy_array[0][1] == "mandated":
+            self.display_mandated_remedy(remedy_array)
+        if remedy_array[0][1] == "available":
+            self.display_available_remedy(remedy_array)
+
+    def remedy_headers(self, list_):
+        """ put headers on the top of the mandated remedies """
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # white space
+        cell.value = ""
+        self.ws_list[7].merge_cells('A' + str(self.row) + ':Q' + str(self.row))
+        self.row += 1
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # possible violation
+        cell.value = "NON-OTDL and Work Assignment Employees that worked overtime"
+        if list_ == "available":
+            cell.value = "OTDL/Auxiliary Employees who were available to work overtime"
+        cell.style = self.list_header
+        self.ws_list[7].merge_cells('A' + str(self.row) + ':Q' + str(self.row))
+        self.row += 1
+        headers = ("Name", "sat", "sun", "mon", "tue", "wed", "thu", "fri", "total")
+        column_array = (1, 3, 5, 7, 9, 11, 13, 15, 17)
+        merge1_tuple = ("A", "C", "E", "G", "I", "K", "M", "O", "Q")
+        merge2_tuple = ("B", "D", "F", "H", "J", "L", "N", "P", "R")
+        for i in range(9):
+            cell = self.ws_list[7].cell(row=self.row, column=column_array[i])  # possible violation
+            cell.value = headers[i]
+            cell.style = self.col_header_left
+            self.ws_list[7].merge_cells(merge1_tuple[i] + str(self.row) + ':' + merge2_tuple[i] + str(self.row))
+        self.row += 1
+
+    def display_mandated_remedy(self, remedy_array):
+        """ display remedy cells for mandated carriers """
+        def get_mandated_violation(ii):
+            """ find the appropriate violation for the appropriate day """
+            for array in remedy_array:  # cycle through all arrays in remedy array
+                if ii == array[2]:
+                    return array[3]
+            return ""
+        column_array = (3, 5, 7, 9, 11, 13, 15)
+        merge1_tuple = ("C", "E", "G", "I", "K", "M", "O")
+        merge2_tuple = ("D", "F", "H", "J", "L", "N", "P")
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # name
+        cell.value = remedy_array[0][0]
+        cell.style = self.input_name
+        self.ws_list[7].merge_cells('A' + str(self.row) + ':B' + str(self.row))
+        for i in range(7):
+            cell = self.ws_list[7].cell(row=self.row, column=column_array[i])  # possible violation
+            cell.value = get_mandated_violation(i)
+            cell.style = self.input_s
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.ws_list[7].merge_cells(merge1_tuple[i] + str(self.row) + ':' + merge2_tuple[i] + str(self.row))
+        cell = self.ws_list[7].cell(row=self.row, column=17)  # total
+        formula = "=SUM(%s!C%s:O%s)" % ("remedy", self.row, self.row)
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.row += 1
+
+    def display_available_remedy(self, remedy_array):
+        """ display remedy cells for mandated carriers """
+        def get_otrate_violation(ii):
+            """ find the appropriate overtime rate violation for the appropriate day """
+            for array in remedy_array:  # cycle through all arrays in remedy array
+                if ii == array[2]:
+                    return array[3]
+            return ""
+
+        def get_penrate_violation(ii):
+            """ find the appropriate penalty rate violation for the appropriate day """
+            for array in remedy_array:  # cycle through all arrays in remedy array
+                if ii == array[2]:
+                    return array[4]
+            return ""
+
+        rates_column_array = (3, 5, 7, 9, 11, 13, 15)
+        together_column_array = (4, 6, 8, 10, 12, 14, 16)
+        rates_tuple = ("C", "E", "G", "I", "K", "M", "O")
+        together_tuple = ("D", "F", "H", "J", "L", "N", "P")
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # name
+        cell.value = remedy_array[0][0]
+        cell.style = self.input_name
+        self.ws_list[7].merge_cells('A' + str(self.row) + ':A' + str(self.row + 1))
+        cell = self.ws_list[7].cell(row=self.row, column=2)  # ot label
+        cell.value = "ot"
+        cell.style = self.input_s
+        cell = self.ws_list[7].cell(row=self.row + 1, column=2)  # pen label
+        cell.value = "pen"
+        cell.style = self.calcs
+        for i in range(7):
+            cell = self.ws_list[7].cell(row=self.row, column=rates_column_array[i])  # ot rate availability
+            cell.value = get_otrate_violation(i)
+            cell.style = self.input_s
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            cell = self.ws_list[7].cell(row=self.row + 1, column=rates_column_array[i])  # pen rate availability
+            cell.value = get_penrate_violation(i)
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            cell = self.ws_list[7].cell(row=self.row, column=together_column_array[i])  # sum availability
+            formula = "=IF(SUM(%s!%s%s:%s%s)>0,SUM(%s!%s%s:%s%s),\"\"" \
+                      % ("remedy", rates_tuple[i], self.row, rates_tuple[i], self.row + 1,
+                         "remedy", rates_tuple[i], self.row, rates_tuple[i], self.row + 1)
+            cell.value = formula
+            cell.style = self.input_s
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            self.ws_list[7].merge_cells(together_tuple[i] + str(self.row) + ':' +
+                                        together_tuple[i] + str(self.row + 1))
+        cell = self.ws_list[7].cell(row=self.row, column=17)  # sum availability
+        formula = "=IF(SUM(%s!C%s+%s!E%s+%s!G%s+%s!I%s+%s!K%s+%s!M%s+%s!O%s)>0," \
+                  "SUM(%s!C%s+%s!E%s+%s!G%s+%s!I%s+%s!K%s+%s!M%s+%s!O%s),\"\"" \
+                  % ("remedy", self.row, "remedy", self.row, "remedy", self.row, "remedy", self.row,
+                     "remedy", self.row, "remedy", self.row, "remedy", self.row, "remedy", self.row,
+                     "remedy", self.row, "remedy", self.row, "remedy", self.row, "remedy", self.row,
+                     "remedy", self.row, "remedy", self.row)
+        cell.value = formula
+        cell.style = self.input_s
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[7].cell(row=self.row + 1, column=17)  # sum availability
+        formula = "=IF(SUM(%s!C%s+%s!E%s+%s!G%s+%s!I%s+%s!K%s+%s!M%s+%s!O%s)>0," \
+                  "SUM(%s!C%s+%s!E%s+%s!G%s+%s!I%s+%s!K%s+%s!M%s+%s!O%s),\"\"" \
+                  % ("remedy", self.row + 1, "remedy", self.row + 1, "remedy", self.row + 1, "remedy", self.row + 1,
+                     "remedy", self.row + 1, "remedy", self.row + 1, "remedy", self.row + 1, "remedy", self.row + 1,
+                     "remedy", self.row + 1, "remedy", self.row + 1, "remedy", self.row + 1, "remedy", self.row + 1,
+                     "remedy", self.row + 1, "remedy", self.row + 1)
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.row += 2
+
+    def remedy_equalization(self):
+        """ create rows at the bottom of the sheet for total mandates, total availability, and equalization """
+        a_tuple = ("C", "E", "G", "I", "K", "M", "O", "Q")
+        b_tuple = ("D", "F", "H", "J", "L", "N", "P", "R")
+        b_column  = (4, 6, 8, 10, 12, 14, 16)
+        column = ("B", "C", "D", "E", "F", "G", "H")
+        self.row += 1
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # list section header
+        cell.value = "Equalization"
+        cell.style = self.list_header
+        self.row += 2
+        # -------------------------------------------------------------------------------------------------- mandates
+        # self.remedy_equalizer_rows.append(self.row)  # save row number for equalization formula
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # title row for section footer
+        cell.value = "Mandates:  "
+        cell.style = self.date_dov_title
+        for i in range(7):
+            formula = "=SUM(%s!%s%s:%s%s)" % ("remedy", a_tuple[i], 8, a_tuple[i], self.rem_avail_row_start - 4)
+            cell = self.ws_list[7].cell(row=self.row, column=b_column[i])
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.row += 1
+        # ----------------------------------------------------------------------------------------------- availability
+        # self.remedy_equalizer_rows.append(self.row)  # save row number for equalization formula
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # title row for section footer
+        cell.value = "Availability:  "
+        cell.style = self.date_dov_title
+        for i in range(7):
+            formula = "=SUM(%s!%s%s:%s%s)" % ("remedy", b_tuple[i], self.rem_avail_row_start,
+                                              b_tuple[i], self.row - 3)
+            cell = self.ws_list[7].cell(row=self.row, column=b_column[i])
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.row += 2
+        # ----------------------------------------------------------------------------------------------- equalization
+        cell = self.ws_list[7].cell(row=self.row, column=1)  # title row for section footer
+        cell.value = "Equalization:  "
+        cell.style = self.date_dov_title
+        for i in range(7):
+            formula = "=SUM(%s!%s%s-%s!%s%s)" % ("remedy", b_tuple[i], self.row - 3,
+                                                 "remedy", b_tuple[i], self.row - 2)
+            cell = self.ws_list[7].cell(row=self.row, column=b_column[i])
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.ws_list[7].cell(row=self.row, column=17)  # remedy percentage input
+        cell.value = " <- adjust to zero"
+        cell.style = self.date_dov_title
+        self.ws_list[7].merge_cells('Q' + str(self.row) + ':R' + str(self.row))
+        self.row += 1
+        self.ws_list[7].merge_cells('B' + str(self.row) + ':Q' + str(self.row))
+        cell = self.ws_list[7].cell(row=self.row, column=2)  # row for exposition on equalization
+        cell.value = "\n" \
+                     "1. Using the OTDL Weekly Availability Worksheet, alter/delete availability from the OTDL " \
+                     "section if there is no availability. \n" \
+                     "2. If value is positive, subtract/delete from No List and Work Assignment sections to " \
+                     "equalize. \n" \
+                     "3. If the value is negative, subtract/delete from OTDL and Auxiliary sections to equalize. \n"
+        # cell.style = self.instruct_text
+        self.ws_list[7]['B' + str(self.row)].alignment = Alignment(wrap_text=True, vertical='top',
+                                                                      shrink_to_fit=False)
+        self.ws_list[7].row_dimensions[self.row].height = 100
 
     def increment_progbar(self):
         """ move the progress bar, update with info on what is being done """
@@ -4251,6 +4561,17 @@ class ImpManSpreadsheet5:
         self.pbi += 1
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building day {}: list: {}".format(self.day.strftime("%A"), lst[self.lsi]))
+
+    def write_mentioned_names(self):
+        """ before ending the class, write all the mentioned names to the report """
+        if not self.mentioned_names:
+            self.report.write("There are no names mentioned in this investigation.\n")
+            return
+        self.mentioned_names.sort()
+        self.report.write("\n")
+        self.report.write("Mentioned Names: \n")
+        for name in self.mentioned_names:
+            self.report.write("{}\n".format(name))
 
     def save_open(self):
         """ name and open the excel file """
