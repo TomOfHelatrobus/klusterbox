@@ -708,6 +708,29 @@ class NsDayDict:
         return code_ns
 
 
+class DateHandler:
+    """ handles methods needed for date time objects """
+    def __init__(self, dt_obj):
+        self.dt_obj = dt_obj
+
+    def find_index(self):
+        """ returns an index for the day of the week of the date time object ie, sat = 0, sun = 2, mon = 3, etc """
+        day = self.dt_obj.strftime("%a").lower()
+        if day == "sat":
+            return 0
+        if day == "sun":
+            return 1
+        if day == "mon":
+            return 2
+        if day == "tue":
+            return 3
+        if day == "wed":
+            return 4
+        if day == "thu":
+            return 5
+        if day == "fri":
+            return 6
+
 def dir_path(dir_):
     """ create needed directories if they don't exist and return the appropriate path """
     path_ = ""

@@ -873,6 +873,16 @@ class Messenger:
             text = "Sets the maximum pivot which will count as a \n" \
                    "violation of the carrier's off bid assignment. \n\n" \
                    "Enter a value between 0 and 8"
+        if switch == "impman5_fullreport":
+            text = "Improper Mandates 5 Report: \n\n" \
+                   "On will show the full text report which can be used for contentions. \n\n" \
+                   "Off will show the shortened text report which can be used for contentions."
+        if switch == "impman5_report":
+            text = "Improper Mandates 5 Report: \n\n" \
+                   "On will show the text report which can be used for contentions in addition to " \
+                   "the spreadsheet.\n\n" \
+                   "Off will not show the text report which can be used for contentions in addition to " \
+                   "the spreadsheet."
         messagebox.showinfo("About Tolerances and Settings", text, parent=self.frame)
 
 
@@ -887,6 +897,7 @@ class Archive:
         self.path_array = [  # used in clear all
             'spreadsheets',
             'mandates_4',
+            'mandates_5'
             'over_max_spreadsheet',
             'speedsheets',
             'over_max',

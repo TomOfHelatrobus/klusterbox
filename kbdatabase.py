@@ -20,7 +20,7 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(146)
+        self.pbar.max_count(150)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
@@ -169,7 +169,7 @@ class DataBase:
             (39, "man4_dis_limit", "show all"),
             (40, "speedsheets_fullreport", "False"),
             (41, "offbid_distinctpage", "True"),
-            (42, "offbid_maxpivot", 2.0),
+            (42, "offbid_maxpivot", 2.0),  # the maximum pivot before an off bid violation is detected
             (43, "triad_routefirst", "False"),  # when False, the route is displayed at the end of the route triad
             (44, "wal_12_hour", "True"),  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
             (45, "wal_dec_exempt", "False"),
@@ -182,7 +182,11 @@ class DataBase:
             (52, "offbid_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
             (53, "offbid_remedy", 0),  # the hourly pay rate for off bid violations.
             (54, "impman_remedy_tolerance", 0.01),  # improper mandate remedy tolerance
-            (55, "overmax_remedy_tolerance", 0.01)  # over max remedy tolerance
+            (55, "overmax_remedy_tolerance", 0.01),  # over max remedy tolerance
+            (56, "impman5_remedy_tolerance", 0.01),  # improper mandate no.5 remedy tolerance
+            (57, "impman5_maxpivot", 2.0),  # the maximum pivot before an off bid violation is detected
+            (58, "impman5_fullreport", False),  # The full text report for the improper mandate 5 report
+            (59, "impman5_report", True)  # generate the report for contentions for the imp man 5
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:

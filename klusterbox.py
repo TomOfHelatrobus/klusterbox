@@ -62,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.06 # version number must be convertable to a float and should increase for Fixes()
-release_date = "to be determined"  # format is Jan 1, 2022
+version = 6.06  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Oct 5, 2024"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -10123,6 +10123,13 @@ class SpreadsheetConfig:
         self.pb4_wal_aux = True  # page break between work assignment and otdl for mandates no.4
         self.pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
         self.man4_dis_limit = None
+
+        self.impman5_remedy_tolerance = 0.0  # the tolerance for the improper mandate remedy
+        self.impman5_maxpivot = 0.0  # the maximum pivot after which an off bid violation is detected
+        self.impman5_fullreport = False  # The full text report for the improper mandate 5 report
+        self.impman5_report = True  # generate a report for use in contentions for impman 5 - none, short, full
+        self.impman5_offbid_exclude = True  # automatically detects and elminates off bid violations for impman5
+
         self.min_overmax = 0.0  # overmax settings
         self.overmax_12hour = None
         self.overmax_wal_dec = None
@@ -10155,6 +10162,12 @@ class SpreadsheetConfig:
         self.pb4_wal_aux_var = None  # page break between work assignment and aux for mandates no.4
         self.pb4_aux_otdl_var = None  # page break between auxiliary and otdl for mandates no.4
         self.man4_dis_limit_var = None  # mandates no.4 display limiter
+
+        self.impman5_remedy_tol_var = None  # entry value for the remedy tolerance
+        self.impman5_maxpivot_var = None  # entry value for impman5 max pivot
+        self.impman5_fullreport_var = None  # var for improper mandate 5 full report
+        self.impman5_report_var = None  # var for improper mandate 5 report
+
         self.min_overmax_var = None  # minimum rows for overmax
         self.overmax_12hour_var = None  # 12 and 60 hour option for wal 12 hour daily limit
         self.overmax_wal_dec_var = None  # 12 and 60 hour option for wal dec exemption
@@ -10191,6 +10204,12 @@ class SpreadsheetConfig:
         self.add_pb4_wal_aux = True  # page break between work assignment and otdl for mandates no.4
         self.add_pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
         self.add_man4_dis_limit = None  # mandates no.4 display limiter
+
+        self.add_impman5_remedy_tol = 0.0  # value to add to db for impman5 remedy tolerance
+        self.add_impman5_maxpivot = 0.0  # value to add to db for impman5 maximum pivot
+        self.add_impman5_fullreport = False  # value for impman5 show full report
+        self.add_impman5_report = True  # value for impman5 to show report
+
         self.add_min_overmax = 0.0
         self.add_overmax_12hour = None
         self.add_overmax_wal_dec = None
@@ -10244,6 +10263,11 @@ class SpreadsheetConfig:
         self.pb4_wal_aux = results[37][0]  # page break between work assignment and aux
         self.pb4_aux_otdl = results[38][0]  # page break between auxiliary and otdl
         self.man4_dis_limit = results[39][0]  # mandates no.4 display limiter
+        # get values for mandates no.5 spreadsheets
+        self.impman5_remedy_tolerance = results[56][0]  # improper mandates 5 remedy tolerance
+        self.impman5_maxpivot = results[57][0]
+        self.impman5_fullreport = results[58][0]
+        self.impman5_report = results[59][0]
         # get values for remedy column display and rate
         self.impman_show_remedy = results[48][0]
         self.impman_remedy = results[49][0]
@@ -10266,6 +10290,8 @@ class SpreadsheetConfig:
         self.impman_show_remedy = Convert(self.impman_show_remedy).strbool_to_onoff()
         self.overmax_show_remedy = Convert(self.overmax_show_remedy).strbool_to_onoff()
         self.offbid_show_remedy = Convert(self.offbid_show_remedy).strbool_to_onoff()
+        self.impman5_fullreport = Convert(self.impman5_fullreport).strbool_to_onoff()
+        self.impman5_report = Convert(self.impman5_report).strbool_to_onoff()
         # otdl equitability vars
         self.min_ot_equit = results[25][0]  # minimum rows
         self.ot_calc_pref = results[26][0]  # ot calculation preference
@@ -10307,6 +10333,10 @@ class SpreadsheetConfig:
         self.ot_calc_pref_var = StringVar(self.win.body)
         self.min_ot_dist_var = StringVar(self.win.body)
         self.ot_calc_pref_dist_var = StringVar(self.win.body)
+        self.impman5_remedy_tol_var = StringVar(self.win.body)
+        self.impman5_maxpivot_var = StringVar(self.win.body)
+        self.impman5_fullreport_var = StringVar(self.win.body)
+        self.impman5_report_var = StringVar(self.win.body)
 
     def set_stringvars(self):
         """ set stringvar values """
@@ -10342,6 +10372,10 @@ class SpreadsheetConfig:
         self.ot_calc_pref_var.set(self.ot_calc_pref)
         self.min_ot_dist_var.set(self.min_ot_dist)
         self.ot_calc_pref_dist_var.set(self.ot_calc_pref_dist)
+        self.impman5_remedy_tol_var.set(self.impman5_remedy_tolerance)
+        self.impman5_maxpivot_var.set(self.impman5_maxpivot)
+        self.impman5_fullreport_var.set(self.impman5_fullreport)
+        self.impman5_report_var.set(self.impman5_report)
 
     def build(self):
         """ fills the window with widgets. """
@@ -10520,6 +10554,49 @@ class SpreadsheetConfig:
         row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1
+        text = macadj("Improper Mandate No. 5 Spreadsheets ____________________________________",
+                      "Improper Mandate No. 5 Spreadsheets ____________________________")
+        Label(self.win.body, text=text, anchor="w",
+              fg="blue").grid(row=row, column=0, columnspan=14, sticky="w")
+        row += 1
+        Label(self.win.body, text="Remedy Tolerance", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=7, textvariable=self.impman5_remedy_tol_var)\
+            .grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("remedy_tolerance")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="Maximum Pivot", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        Entry(self.win.body, width=5, textvariable=self.impman5_maxpivot_var)\
+            .grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("offbid_maxpivot")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        # on shows the full report (if self.report is on), else shows shortened report
+        Label(self.win.body, text="Show full report", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_pb_1 = OptionMenu(self.win.body, self.impman5_fullreport_var, "on", "off")
+        om_pb_1.config(width=3)
+        om_pb_1.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("impman5_fullreport")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        # shows the report for improper mandates 5 - off does not generate the report
+        Label(self.win.body, text="Show report", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_pb_1 = OptionMenu(self.win.body, self.impman5_report_var, "on", "off")
+        om_pb_1.config(width=3)
+        om_pb_1.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("impman5_report")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
+        Label(self.win.body, text="").grid(row=row, column=0)
+        row += 1
         text = macadj("12 and 60 Hour Violations Spreadsheets ___________________________________",
                       "12 and 60 Hour Violations Spreadsheets __________________________")
         Label(self.win.body, text=text, anchor="w",
@@ -10537,7 +10614,7 @@ class SpreadsheetConfig:
         Label(self.win.body, text="WAL 12 Hour Violation", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_12simple = OptionMenu(self.win.body, self.overmax_12hour_var, "on", "off")
-        om_12simple.config(width=7)
+        om_12simple.config(width=3)
         om_12simple.grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("wal_12_hour")) \
@@ -10547,7 +10624,7 @@ class SpreadsheetConfig:
         Label(self.win.body, text="WAL December Exemption", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_wal_dec = OptionMenu(self.win.body, self.overmax_wal_dec_var, "on", "off")
-        om_wal_dec.config(width=7)
+        om_wal_dec.config(width=3)
         om_wal_dec.grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("wal_dec_exempt")) \
@@ -10592,7 +10669,7 @@ class SpreadsheetConfig:
         Label(self.win.body, text="Distinct Pages for Violations", width=macadj(30, 26), anchor="w") \
             .grid(row=row, column=0, ipady=5, sticky="w")
         om_offbid = OptionMenu(self.win.body, self.offbid_distinctpages_var, "on", "off")
-        om_offbid.config(width=7)
+        om_offbid.config(width=3)
         om_offbid.grid(row=row, column=1, padx=4, sticky="e")
         Button(self.win.body, width=5, text="info",
                command=lambda: Messenger(self.win.topframe).tolerance_info("offbid_distinctpage")) \
@@ -10769,8 +10846,8 @@ class SpreadsheetConfig:
         """ checks entries for minimum rows. """
         current_var = ("No List minimum rows", "Work Assignment minimum rows", "OT Desired minimum rows",
                        "Auxiliary minimum rows", "No List minimum rows no.4", "Work Assignment minimum rows no.4",
-                       "OT Desired minimum rows no.4",
-                       "Auxiliary minimum rows no.4", "Over Max minimum rows", "OTDL Equitability minimum rows")
+                       "OT Desired minimum rows no.4", "Auxiliary minimum rows no.4",
+                       "Over Max minimum rows", "OTDL Equitability minimum rows")
         if MinrowsChecker(var).is_empty():
             return True
         if not MinrowsChecker(var).is_numeric():
@@ -10798,20 +10875,28 @@ class SpreadsheetConfig:
 
     def check_float(self, var):
         """ checks entries for floating values. """
-        current_var = ("Off Bid Maximum Pivot", "Improper Mandate Remedy", "Overmax Violation Remedy",
-                       "Off Bid Violation Remedy", "Improper Mandate Remedy Tolerance", "Overmax Remedy Tolerance")
+        current_var = ("Off Bid Maximum Pivot",
+                       "Improper Mandate Remedy",
+                       "Overmax Violation Remedy",
+                       "Off Bid Violation Remedy",
+                       "Improper Mandate Remedy Tolerance",
+                       "Overmax Remedy Tolerance",
+                       "Improper Mandate 5 Remedy, Tolerance",
+                       "Improper Mandate 5 Maximum Pivot")
         if RingTimeChecker(var).check_for_zeros():  # skip all checks if the value is zero or empty
             return True
         if not RingTimeChecker(var).check_numeric():
             text = "{} must be a number".format(current_var[self.check_i])
             messagebox.showerror("Data Entry Error", text, parent=self.win.body)
             return False
-        if current_var[self.check_i] in ("Off Bid Maximum Pivot", ):  # off bid max pivot can't be over 8 hours
+        if current_var[self.check_i] in ("Off Bid Maximum Pivot",
+                                         "Improper Mandate 5 Maximum Pivot"):  # max pivot can't be over 8 hours
             if not RingTimeChecker(var).over_8():
                 text = "{} must be an 8 or zero or a number in between.".format(current_var[self.check_i])
                 messagebox.showerror("Data Entry Error", text, parent=self.win.body)
                 return False
-        elif current_var[self.check_i] in ("Improper Mandate Remedy Tolerance", "Overmax Remedy Tolerance"):
+        elif current_var[self.check_i] in ("Improper Mandate Remedy Tolerance", "Overmax Remedy Tolerance",
+                                           "Improper Mandate 5 Remedy, Tolerance"):
             if not RingTimeChecker(var).over_24():
                 text = "{} must be an 24 or zero or a number in between.".format(current_var[self.check_i])
                 messagebox.showerror("Data Entry Error", text, parent=self.win.body)
@@ -10834,67 +10919,168 @@ class SpreadsheetConfig:
 
     def apply(self, go_home):
         """ checks and updates spreadsheet settings """
-        onrecs_min = (self.min_nl, self.min_wal, self.min_otdl, self.min_aux,
-                      self.min4_nl, self.min4_wal, self.min4_otdl, self.min4_aux,
-                      self.min_overmax, self.min_ot_equit,
+        onrecs_min = (self.min_nl,
+                      self.min_wal,
+                      self.min_otdl,
+                      self.min_aux,
+                      self.min4_nl,
+                      self.min4_wal,
+                      self.min4_otdl,
+                      self.min4_aux,
+                      self.min_overmax,
+                      self.min_ot_equit,
                       self.min_ot_dist)
-        check_these = (self.min_nl_var.get(), self.min_wal_var.get(), self.min_otdl_var.get(), self.min_aux_var.get(),
-                       self.min4_nl_var.get(), self.min4_wal_var.get(), self.min4_otdl_var.get(),
-                       self.min4_aux_var.get(), self.min_overmax_var.get(), self.min_ot_equit_var.get(),
+        check_these = (self.min_nl_var.get(),
+                       self.min_wal_var.get(),
+                       self.min_otdl_var.get(),
+                       self.min_aux_var.get(),
+                       self.min4_nl_var.get(),
+                       self.min4_wal_var.get(),
+                       self.min4_otdl_var.get(),
+                       self.min4_aux_var.get(),
+                       self.min_overmax_var.get(),
+                       self.min_ot_equit_var.get(),
                        self.min_ot_dist_var.get())
-        add_these = [self.add_min_nl, self.add_min_wal, self.add_min_otdl, self.add_min_aux,
-                     self.add_min4_nl, self.add_min4_wal, self.add_min4_otdl, self.add_min4_aux,
-                     self.add_min_overmax, self.add_min_ot_equit, self.add_min_ot_dist]
-        categories = ("min_ss_nl", "min_ss_wal", "min_ss_otdl", "min_ss_aux",
-                      "min4_ss_nl", "min4_ss_wal", "min4_ss_otdl", "min4_ss_aux",
-                      "min_ss_overmax", "min_ot_equit", "min_ot_dist")
-        onrecs_float = (self.offbid_maxpivot, self.impman_remedy, self.overmax_remedy, self.offbid_remedy,
-                        self.impman_remedy_tolerance, self.overmax_remedy_tolerance)
-        check_float = (self.offbid_maxpivot_var.get(), self.impman_remedy_var.get(), self.overmax_remedy_var.get(),
-                       self.offbid_remedy_var.get(), self.impman_remedy_tol_var.get(),
-                       self.overmax_remedy_tol_var.get())
-        add_float = [self.add_offbid_maxpivot, self.add_impman_remedy, self.add_overmax_remedy, self.add_offbid_remedy,
-                     self.add_impman_remedy_tol, self.add_overmax_remedy_tol]
-        float_categories = ("offbid_maxpivot", "impman_remedy", "overmax_remedy", "offbid_remedy",
-                            "impman_remedy_tolerance", "overmax_remedy_tolerance")
+        add_these = [self.add_min_nl,
+                     self.add_min_wal,
+                     self.add_min_otdl,
+                     self.add_min_aux,
+                     self.add_min4_nl,
+                     self.add_min4_wal,
+                     self.add_min4_otdl,
+                     self.add_min4_aux,
+                     self.add_min_overmax,
+                     self.add_min_ot_equit,
+                     self.add_min_ot_dist]
+        categories = ("min_ss_nl",
+                      "min_ss_wal",
+                      "min_ss_otdl",
+                      "min_ss_aux",
+                      "min4_ss_nl",
+                      "min4_ss_wal",
+                      "min4_ss_otdl",
+                      "min4_ss_aux",
+                      "min_ss_overmax",
+                      "min_ot_equit",
+                      "min_ot_dist")
+        onrecs_float = (self.offbid_maxpivot,
+                        self.impman_remedy,
+                        self.overmax_remedy,
+                        self.offbid_remedy,
+                        self.impman_remedy_tolerance,
+                        self.overmax_remedy_tolerance,
+                        self.impman5_remedy_tolerance,
+                        self.impman5_maxpivot)
+        check_float = (self.offbid_maxpivot_var.get(),
+                       self.impman_remedy_var.get(),
+                       self.overmax_remedy_var.get(),
+                       self.offbid_remedy_var.get(),
+                       self.impman_remedy_tol_var.get(),
+                       self.overmax_remedy_tol_var.get(),
+                       self.impman5_remedy_tol_var.get(),
+                       self.impman5_maxpivot_var.get())
+        add_float = [self.add_offbid_maxpivot,
+                     self.add_impman_remedy,
+                     self.add_overmax_remedy,
+                     self.add_offbid_remedy,
+                     self.add_impman_remedy_tol,
+                     self.add_overmax_remedy_tol,
+                     self.add_impman5_remedy_tol,
+                     self.add_impman5_maxpivot]
+        float_categories = ("offbid_maxpivot",
+                            "impman_remedy",
+                            "overmax_remedy",
+                            "offbid_remedy",
+                            "impman_remedy_tolerance",
+                            "overmax_remedy_tolerance",
+                            "impman5_remedy_tolerance",
+                            "impman5_maxpivot")
         # page breaks,  distinct pages option menu items and show remedy options
-        onrecs_breaks = (self.pb_nl_wal, self.pb_wal_otdl, self.pb_otdl_aux,
-                         self.pb4_nl_wal, self.pb4_wal_aux, self.pb4_aux_otdl,
-                         self.overmax_12hour, self.overmax_wal_dec,
-                         self.offbid_distinctpages, self.impman_show_remedy, self.overmax_show_remedy,
-                         self.offbid_show_remedy)
-
-        pbs = (self.pb_nl_wal_var.get(), self.pb_wal_otdl_var.get(), self.pb_otdl_aux_var.get(),
-               self.pb4_nl_wal_var.get(), self.pb4_wal_aux_var.get(), self.pb4_aux_otdl_var.get(),
-               self.overmax_12hour_var.get(), self.overmax_wal_dec_var.get(), self.offbid_distinctpages_var.get(),
-               self.impman_show_remedy_var.get(), self.overmax_show_remedy_var.get(), self.offbid_show_remedy_var.get()
-               )
-        add_pbs = [self.add_pb_nl_wal, self.add_pb_wal_otdl, self.add_pb_otdl_aux,
-                   self.add_pb4_nl_wal, self.add_pb4_wal_aux, self.add_pb4_aux_otdl,
-                   self.add_overmax_12hour, self.add_overmax_wal_dec, self.add_offbid_distinctpages,
-                   self.add_impman_show_remedy, self.add_overmax_show_remedy, self.add_offbid_show_remedy]
+        onrecs_breaks = (self.pb_nl_wal,
+                         self.pb_wal_otdl,
+                         self.pb_otdl_aux,
+                         self.pb4_nl_wal,
+                         self.pb4_wal_aux,
+                         self.pb4_aux_otdl,
+                         self.overmax_12hour,
+                         self.overmax_wal_dec,
+                         self.offbid_distinctpages,
+                         self.impman_show_remedy,
+                         self.overmax_show_remedy,
+                         self.offbid_show_remedy,
+                         self.impman5_fullreport,
+                         self.impman5_report)
+        pbs = (self.pb_nl_wal_var.get(),
+               self.pb_wal_otdl_var.get(),
+               self.pb_otdl_aux_var.get(),
+               self.pb4_nl_wal_var.get(),
+               self.pb4_wal_aux_var.get(),
+               self.pb4_aux_otdl_var.get(),
+               self.overmax_12hour_var.get(),
+               self.overmax_wal_dec_var.get(),
+               self.offbid_distinctpages_var.get(),
+               self.impman_show_remedy_var.get(),
+               self.overmax_show_remedy_var.get(),
+               self.offbid_show_remedy_var.get(),
+               self.impman5_fullreport_var.get(),
+               self.impman5_report_var.get())
+        add_pbs = [self.add_pb_nl_wal,
+                   self.add_pb_wal_otdl,
+                   self.add_pb_otdl_aux,
+                   self.add_pb4_nl_wal,
+                   self.add_pb4_wal_aux,
+                   self.add_pb4_aux_otdl,
+                   self.add_overmax_12hour,
+                   self.add_overmax_wal_dec,
+                   self.add_offbid_distinctpages,
+                   self.add_impman_show_remedy,
+                   self.add_overmax_show_remedy,
+                   self.add_offbid_show_remedy,
+                   self.add_impman5_fullreport,
+                   self.add_impman5_report]
         # the settings as they are named in the tolerances table of the database
-        pb_categories = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux",
-                         "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl",
-                         "wal_12_hour", "wal_dec_exempt", "offbid_distinctpage",
-                         "impman_show_remedy", "overmax_show_remedy", "offbid_show_remedy")
+        pb_categories = ("pb_nl_wal",
+                         "pb_wal_otdl",
+                         "pb_otdl_aux",
+                         "pb4_nl_wal",
+                         "pb4_wal_aux",
+                         "pb4_aux_otdl",
+                         "wal_12_hour",
+                         "wal_dec_exempt",
+                         "offbid_distinctpage",
+                         "impman_show_remedy",
+                         "overmax_show_remedy",
+                         "offbid_show_remedy",
+                         "impman5_fullreport",
+                         "impman5_report")
         # misc stringvars
-        onrecs_misc = (self.man4_dis_limit, self.ot_calc_pref, self.ot_calc_pref_dist)
-        misc = (self.man4_dis_limit_var.get(), self.ot_calc_pref_var.get(), self.ot_calc_pref_dist_var.get())
+        onrecs_misc = (self.man4_dis_limit,
+                       self.ot_calc_pref,
+                       self.ot_calc_pref_dist)
+        misc = (self.man4_dis_limit_var.get(),
+                self.ot_calc_pref_var.get(),
+                self.ot_calc_pref_dist_var.get())
         # misc values to update to database
-        add_misc = [self.add_man4_dis_limit, self.add_ot_calc_pref, self.add_ot_calc_pref_dist]
+        add_misc = [self.add_man4_dis_limit,
+                    self.add_ot_calc_pref,
+                    self.add_ot_calc_pref_dist]
         # list of records in the tolerance table.
-        misc_categories = ("man4_dis_limit", "ot_calc_pref", "ot_calc_pref_dist")
+        misc_categories = ("man4_dis_limit",
+                           "ot_calc_pref",
+                           "ot_calc_pref_dist")
+
         self.check_i = 0
         for var in check_these:  # check each of the minimum rows stringvars
             if not self.check(var):  # if any fail
                 return  # stop the method
             self.check_i += 1
+
         self.check_i = 0
         for var in check_float:  # check each of the float value stringvars - off route max pivot
             if not self.check_float(var):  # if any fail
                 return  # stop the method
             self.check_i += 1
+
         for i in range(len(check_these)):
             add_this = Convert(check_these[i]).zero_not_empty()  # replace empty strings with a zero
             add_these[i] = Handler(add_this).format_str_as_int()  # format the string as an int
@@ -10902,6 +11088,7 @@ class SpreadsheetConfig:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_these[i], categories[i])
                 commit(sql)
                 self.report_counter += 1
+
         for i in range(len(check_float)):
             add_this = Convert(check_float[i]).zero_not_empty()  # replace empty string with a zero
             add_float[i] = Handler(add_this).format_str_as_float()  # format the string as a float
@@ -10910,18 +11097,21 @@ class SpreadsheetConfig:
                       % (add_float[i], float_categories[i])
                 commit(sql)
                 self.report_counter += 1
+
         for i in range(len(pbs)):  # loop through pagebreak stringvars
             add_pbs[i] = Convert(pbs[i]).onoff_to_bool()
             if onrecs_breaks[i] != str(pbs[i]):
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_pbs[i], pb_categories[i])
                 commit(sql)
                 self.report_counter += 1
+
         for i in range(len(misc)):  # loop through misc/otdl calculation preferences stringvar
             add_misc[i] = str(misc[i])
             if onrecs_misc[i] != str(misc[i]):
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_misc[i], misc_categories[i])
                 commit(sql)
                 self.report_counter += 1
+
         if go_home:
             MainFrame().start(frame=self.win.topframe)
         else:
@@ -13639,6 +13829,7 @@ class MainFrame:
             (0, "Mandates Spreadsheet", lambda: Archive().file_dialogue(dir_path('spreadsheets'))),
             (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'spreadsheets')),
             (0, "Mandates No. 4", lambda: Archive().file_dialogue(dir_path('mandates_4'))),
+            (0, "Mandates No. 5", lambda: Archive().file_dialogue(dir_path('mandates_5'))),
             (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'mandates_4')),
             (0, "Over Max Spreadsheet", lambda: Archive().file_dialogue(dir_path('over_max_spreadsheet'))),
             (3, "delete", lambda: Archive().remove_file_var(self.nav.topframe, 'over_max_spreadsheet')),
@@ -13837,6 +14028,8 @@ class MainFrame:
                                         command=lambda: Archive().file_dialogue(dir_path('spreadsheets')))
         reportsarchive_menu.add_command(label="Mandates No. 4",
                                         command=lambda: Archive().file_dialogue(dir_path('mandates_4')))
+        reportsarchive_menu.add_command(label="Mandates No. 5",
+                                        command=lambda: Archive().file_dialogue(dir_path('mandates_5')))
         reportsarchive_menu.add_command(label="Over Max Spreadsheet",
                                         command=lambda: Archive().file_dialogue(dir_path('over_max_spreadsheet')))
         reportsarchive_menu.add_command(label="Speedsheets",
@@ -13861,6 +14054,8 @@ class MainFrame:
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'spreadsheets'))
         cleararchive.add_command(label="Mandates No. 4",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'mandates_4'))
+        cleararchive.add_command(label="Mandates No. 5",
+                                 command=lambda: Archive().remove_file_var(self.win.topframe, 'mandates_5'))
         cleararchive.add_command(label="Over Max Spreadsheet",
                                  command=lambda: Archive().remove_file_var(self.win.topframe, 'over_max_spreadsheet'))
         cleararchive.add_command(label="Speedsheets",

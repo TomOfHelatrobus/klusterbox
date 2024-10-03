@@ -121,6 +121,7 @@ Version 6.04 (07/28/2024)
 Version 6.05 (07/31/2024)
 	The otdl availability spreadsheet formula for daily availability was modified so that ns days when the carrier does not have availability for the 8 hours (the guaranteed time) will show no availability. 
 	
-Version 6.06
+Version 6.06 (10/05/2024)
 	The Improper Mandates number 5 spreadsheet was added. These spreadsheets were meant to be copy/pasted into contentions for improper mandate grievances. These spreadsheets have the added funtionality of calculating the remedy for otdl and auxiliary carriers as a remedy to be paid at ot rate and remedy to be paid at the penalty rate. 
+	The improper mandates remedy spreadsheet was modified so that availability is determined by all factors, including the 20 hour weekly overtime limit, the 60 hour weekly limit, etc
 	
