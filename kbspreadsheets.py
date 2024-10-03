@@ -3668,6 +3668,7 @@ class ImpManSpreadsheet5:
         self.input_s = None  # style
         self.calcs = None  # style
         self.col_header_left = None  # style
+        self.col_header_right = None  # style
         self.col_header = None  # style
         self.footer_left = None  # style
         self.footer_right = None  # style
@@ -3840,7 +3841,7 @@ class ImpManSpreadsheet5:
         self.col_header_left = NamedStyle(name="col_header_left", font=Font(bold=True, name='Arial', size=8),
                                           alignment=Alignment(horizontal='left', vertical='bottom'))
         self.col_header_right = NamedStyle(name="col_header_right", font=Font(bold=True, name='Arial', size=8),
-                                          alignment=Alignment(horizontal='right', vertical='bottom'))
+                                           alignment=Alignment(horizontal='right', vertical='bottom'))
         self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
                                      alignment=Alignment(horizontal='center', vertical='bottom'))
         self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),

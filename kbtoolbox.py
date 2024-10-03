@@ -731,6 +731,7 @@ class DateHandler:
         if day == "fri":
             return 6
 
+
 def dir_path(dir_):
     """ create needed directories if they don't exist and return the appropriate path """
     path_ = ""

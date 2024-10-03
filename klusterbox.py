@@ -1253,7 +1253,7 @@ class InformalC:
                 messagebox.showerror("Invalid Data Entry", msgg, parent=self.win.topframe)
                 return False
             return True
-        grievance_number = self.src_grievance.get().replace(" ","").lower()
+        grievance_number = self.src_grievance.get().replace(" ", "").lower()
         if not check_grievance_number():
             return
         self.grv_sql = "SELECT DISTINCT grv_no FROM informalc_grievances WHERE grv_no = '%s' and station = '%s'" % \
