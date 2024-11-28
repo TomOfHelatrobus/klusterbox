@@ -125,3 +125,6 @@ Version 6.06 (10/05/2024)
 	The Improper Mandates number 5 spreadsheet was added. These spreadsheets were meant to be copy/pasted into contentions for improper mandate grievances. These spreadsheets have the added funtionality of calculating the remedy for otdl and auxiliary carriers as a remedy to be paid at ot rate and remedy to be paid at the penalty rate. 
 	The improper mandates remedy spreadsheet was modified so that availability is determined by all factors, including the 20 hour weekly overtime limit, the 60 hour weekly limit, etc
 	
+Version 6.07 (11/29/2024)
+	A fix was made to the pdf converter. pdf miner was reading the level and putting two levels (base and temp) as one line. The formula for the weekly violations on the overmax worksheet was modified so that weekly violations for both aux and ptf carriers are zero in all cases. Page breaks were inserted between the list on the remedy sheet of the improper mandates worksheet. Off bid violations were factored into the calculations for maximum availability on the remedy spreadsheet of the improper mandates worksheet. 
+	

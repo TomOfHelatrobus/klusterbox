@@ -51,6 +51,7 @@ class ImpManSpreadsheet:
         self.show_remedy = None  # setting to show the remedy tab
         self.remedy_rate = None  # setting for remedy hourly rate
         self.remedy_tolerance = None  # setting to remedy tolerance
+        self.max_pivot = 0.0  # the maximum allowed pivot.
         self.day = None  # build worksheet - loop once for each day
         self.i = 0  # build worksheet loop iteration
         self.lsi = 0  # list loop iteration
@@ -74,6 +75,7 @@ class ImpManSpreadsheet:
         self.cum_ot_dict = {}  # a dictionary to hold cumulative overtime hours for a specific carrier
         self.avail_ot_dict = {}  # a dictionary that holds prior available ot for the previous day.
         self.a_max_dict = {}  # a dictionary for holding a max values of every carrier for each day.
+        self.offbid_dict = {}  # a dictionary holding off bid data for every carrier for each day.
         self.move_i = 0  # increments rows for multiple move functionality
         self.tol_ot_ownroute = 0.0  # tolerance for ot on own route
         self.tol_ot_offroute = 0.0  # tolerance for ot off own route
@@ -205,6 +207,7 @@ class ImpManSpreadsheet:
         self.show_remedy = Convert(result[48][0]).str_to_bool()
         self.remedy_rate = Convert(result[49][0]).hundredths()
         self.remedy_tolerance = float(Convert(result[54][0]).hundredths())
+        self.max_pivot = float(result[42][0])  # the maximum allowed pivot which will be displayed.
 
     def get_styles(self):
         """ Named styles for workbook """
@@ -550,6 +553,7 @@ class ImpManSpreadsheet:
             if carrier[1]:  # if the carrier data set is not empty (for blank rows)
                 self.build_availability_dict()
                 self.calc_max_availability()
+                self.offbid_dict[self.carrier].append(self.find_offbid())  # add true or false to the offbid dict
             self.display_recs()  # put the carrier and the first part of rings into the spreadsheet
             if self.pref[self.lsi] in ("nl", "wal"):  # if the list is no list or work assignment
                 self.get_movesarray()  # get the moves
@@ -594,6 +598,7 @@ class ImpManSpreadsheet:
             self.cum_ot_dict[self.carrier] = 0.0
             self.avail_ot_dict[self.carrier] = 20.0
             self.a_max_dict[self.carrier] = []
+            self.offbid_dict[self.carrier] = []
 
     def calc_max_availability(self):
         """ get the maximum availability for the day for the given carrier
@@ -637,6 +642,27 @@ class ImpManSpreadsheet:
         self.avail_ot_dict.update({self.carrier: avail_ot})
         avail_max = Convert(self.avail_max).hundredths_float()  # convert the avail max to a float with 2 decimal places
         self.a_max_dict[self.carrier].append(avail_max)
+
+    def find_offbid(self):
+        """ do calculations to determine off route, on route and violation values.
+        returns True if there is a violation. Adds violation boolean to self.offbid_dict[self.carrier]. """
+        offroute = 0.0  # this is the total time spent off the carrier's route
+        if not self.totalhours:  # if the total hours is zero - the violation is zero
+            return False
+        if self.codes == "ns day":  # if it is the carrier's ns day - violation is zero
+            return False
+        if not self.moves:  # if the moves is empty, then the violation is zero
+            return False
+        index = 0  # set the index to 1. This will point to an element in the moves array.
+        moves = Convert(self.moves).string_to_array()  # simplify the variable name
+        while index < len(moves):  # calculate the total time off route
+            offroute += float(moves[index+1]) - float(moves[index])
+            index += 3
+        ownroute = max(float(self.totalhours) - offroute, 0)   # calculate the total time spent on route
+        violation = max(8 - ownroute, 0)  # calculate the total violation
+        if violation > self.max_pivot:
+            return True
+        return False
 
     def display_recs(self):
         """ put the carrier and the first part of rings into the spreadsheet """
@@ -1163,6 +1189,38 @@ class ImpManSpreadsheet:
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
         self.remedy_row += 2
+        # -------------------------------------------------------------------------------------------- estimated hours
+        self.remedy.merge_cells('G' + str(self.remedy_row) + ':I' + str(self.remedy_row))
+        cell = self.remedy.cell(row=self.remedy_row, column=7)  # remedy percentage label
+        cell.value = "estimated hours:"
+        cell.style = self.date_dov_title
+        formula = "=(SUM(MIN(%s!B%s,%s!B%s)+MIN(%s!C%s,%s!C%s)+MIN(%s!D%s,%s!D%s)+" \
+                  "MIN(%s!E%s,%s!E%s)+MIN(%s!F%s,%s!F%s)+MIN(%s!G%s,%s!G%s)+MIN(%s!H%s,%s!H%s))*2)" % \
+                  ("remedy", int(self.remedy_row - 3), "remedy", int(self.remedy_row - 2),
+                   "remedy", int(self.remedy_row - 3), "remedy", int(self.remedy_row - 2),
+                   "remedy", int(self.remedy_row - 3), "remedy", int(self.remedy_row - 2),
+                   "remedy", int(self.remedy_row - 3), "remedy", int(self.remedy_row - 2),
+                   "remedy", int(self.remedy_row - 3), "remedy", int(self.remedy_row - 2),
+                   "remedy", int(self.remedy_row - 3), "remedy", int(self.remedy_row - 2),
+                   "remedy", int(self.remedy_row - 3), "remedy", int(self.remedy_row - 2))
+        cell = self.remedy.cell(row=self.remedy_row, column=10)  # remedy percentage input
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.remedy_row += 1
+        # -------------------------------------------------------------------------------------------- estimated remedy
+        if self.show_remedy:
+            self.remedy.merge_cells('G' + str(self.remedy_row) + ':I' + str(self.remedy_row))
+            cell = self.remedy.cell(row=self.remedy_row, column=7)  # remedy percentage label
+            cell.value = "estimated remedy:"
+            cell.style = self.date_dov_title
+            formula = "=(%s!J%s * %s!H5)" % ("remedy", self.remedy_row - 1, "remedy")
+            cell = self.remedy.cell(row=self.remedy_row, column=10)  # remedy percentage input
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+            self.remedy_row += 1
+        self.remedy_row += 1
         # ----------------------------------------------------------------------------------------------- equalization
         cell = self.remedy.cell(row=self.remedy_row, column=1)  # title row for section footer
         cell.value = "Equalization:  "
@@ -1209,7 +1267,7 @@ class ImpManSpreadsheet:
 
         return formula
 
-    def _display_remedy_row(self, name, _list, violation_cells):
+    def _display_remedy_row(self, name, _list, violation_cells, offbid):
         """ display the name, daily violations, total and remedy for each name - will fill one row of remedy sheet """
         try:
             a_max_array = self.a_max_dict[name]
@@ -1222,6 +1280,8 @@ class ImpManSpreadsheet:
         for i in range(7):  # display violations
             cell = self.remedy.cell(row=self.remedy_row, column=i+2)
             cell.value = self._remedy_violation_cell(_list, violation_cells[i], a_max_array[i])  # get the formula
+            if i in offbid:
+                cell.value = ""
             cell.style = self.input_s
             cell.number_format = "#,###.00;[RED]-#,###.00"
         # display totals cell at the end of the row
@@ -1317,22 +1377,22 @@ class ImpManSpreadsheet:
         if _list == "nl":
             for i in range(len(self.order_nl_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_nl_blanks[i])
+                self._display_remedy_row(name, _list, self.order_nl_blanks[i], [])
                 self.remedy_row += 1
         if _list == "wal":
             for i in range(len(self.order_wal_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_wal_blanks[i])
+                self._display_remedy_row(name, _list, self.order_wal_blanks[i], [])
                 self.remedy_row += 1
         if _list == "otdl":
             for i in range(len(self.order_otdl_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_otdl_blanks[i])
+                self._display_remedy_row(name, _list, self.order_otdl_blanks[i], [])
                 self.remedy_row += 1
         if _list == "aux":
             for i in range(len(self.order_aux_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_aux_blanks[i])
+                self._display_remedy_row(name, _list, self.order_aux_blanks[i], [])
                 self.remedy_row += 1
 
     def _build_remedy(self):
@@ -1352,21 +1412,29 @@ class ImpManSpreadsheet:
             self.remedy_start_row = self.remedy_row  # capture the starting row for sum formula
             for name in temp_names:
                 violation_cells = []  # list with an element for each day, holds cell coordinates or empty string.
+                offbid = []
                 for i in range(7):
                     add_this = ""
                     for r in self.remedy_array:
                         if r[0] == _list and r[1] == day_array[i] and r[2] == name:
                             add_this = r[3]
+                            if self.offbid_dict[name][i] and _list in ("nl", "wal"):  # ignore offbid violations
+                                offbid.append(i)  # put index of offbid days in an array
                             break
                     violation_cells.append(add_this)
-                self._display_remedy_row(name, _list, violation_cells)
+                self._display_remedy_row(name, _list, violation_cells, offbid)
                 self.remedy_row += 1  # after block of name/remedies - add a blank row for readability
             # solutions for blank rows - insert here
             self._build_remedy_blanks(_list)
             self._remedy_list_footer(_list)
+            if _list is not "aux":  # insert page breaks
+                try:
+                    self.remedy.page_breaks.append(Break(id=self.remedy_row))
+                except AttributeError:
+                    self.remedy.row_breaks.append(Break(id=self.remedy_row))  # effective for windows
             self.remedy_row += 1
         self._remedy_equalization()  # write the rows for the end of the sheet
-        
+
     def save_open(self):
         """ name and open the excel file """
         self.pbi += 1
@@ -1985,8 +2053,9 @@ class OvermaxSpreadsheet:
         self.instructions['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
         # instructions weekly self.violations
         self.instructions.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-        formula = "=IF(%s!B%s = \"aux\",0,MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
-                  % (page, str(i), page, str(i), page, str(i + 1), page, str(i),
+        formula = "=IF(OR(%s!B%s = \"aux\",%s!B%s = \"ptf\"),0," \
+                  "MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
+                  % (page, str(i), page, str(i), page, str(i), page, str(i + 1), page, str(i),
                      page, str(i + 1))
         self.instructions['S10'] = formula
         self.instructions['S10'].style = self.calcs
@@ -2354,9 +2423,10 @@ class OvermaxSpreadsheet:
             self.violations['R' + str(i + 1)].number_format = "#,###.00;[RED]-#,###.00"
             # weekly violation
             self.violations.merge_cells('S' + str(i) + ':S' + str(i + 1))  # merge box for weekly violation
-            formula_c = "=IF(%s!B%s = \"aux\",0,MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
-                        % ("violations", str(i), "violations", str(i), "violations", str(i + 1), "violations", str(i),
-                           "violations", str(i + 1))
+            formula_c = "=IF(OR(%s!B%s = \"aux\",%s!B%s = \"ptf\"),0," \
+                        "MAX(IF(%s!R%s>%s!R%s,MAX(%s!R%s-60,0),MAX(%s!R%s-60)),0))" \
+                        % ("violations", str(i), "violations", str(i), "violations", str(i),
+                           "violations", str(i + 1), "violations", str(i), "violations", str(i + 1))
             self.violations['S' + str(i)] = formula_c
             self.violations['S' + str(i)].style = self.calcs
             self.violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"

@@ -44,7 +44,6 @@ from datetime import datetime, timedelta
 import sqlite3
 from operator import itemgetter
 import os
-# import shutil
 from shutil import copyfile, rmtree
 from csv import reader
 import sys
@@ -62,8 +61,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.06  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Oct 5, 2024"  # format is Jan 1, 2022
+version = 6.07  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Nov 29, 2024"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:

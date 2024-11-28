@@ -90,6 +90,7 @@ class CsvRepair:
             update = "row: " + str(i) + "/" + str(rowcount)  # build string for status message update
             pb.change_text(update)  # update status message on progress bar
             i += 1
+            line = self.remove_escape_char(line)  # remove any escape character "\" inserted by the pdf converter
             if firstline:  # do not subject the first line to any test
                 self.build_csv(line)
                 firstline = False
@@ -112,6 +113,15 @@ class CsvRepair:
                 else:
                     self.cache_rows(line)
         pb.stop()  # stop and destroy the progress bar
+
+    @staticmethod
+    def remove_escape_char(line):
+        """ the escape character is '!' which is generated when the pdf converter needs an escape character to avoid
+         a crash. this needs to be removed if it occurs. """
+        for i in range(len(line)):  # Loop through the list and remove "!" if found
+            if "!" in line[i]:
+                line[i] = line[i].replace('!"', '')
+        return line
 
     def get_firsteid(self, line):
         """

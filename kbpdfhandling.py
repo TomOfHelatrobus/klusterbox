@@ -13,9 +13,9 @@ import csv
 from io import StringIO  # change from cStringIO to io for py 3x
 import time
 import re
-import fitz
+import fitz  # named PyMuPDF in requirements
 # PDF Converter Libraries
-from pdfminer.pdfparser import PDFParser
+from pdfminer.pdfparser import PDFParser  # named pdfminer.six in requirements
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter, resolve1
 from pdfminer.converter import TextConverter
@@ -104,6 +104,7 @@ class PdfConverter:
         self.unruh_rpt = []
         self.mcgrath_rpt = []
         self.levelindexerror_rpt = []
+        self.routesindexerror_rpt = []
         # denton error - employee id not showing up till end of page causes error with found days.
         self.denton_rpt = []
         self.unresolved = []
@@ -123,7 +124,8 @@ class PdfConverter:
                              delimiter=',',
                              quoting=csv.QUOTE_NONE,
                              skipinitialspace=True,
-                             lineterminator="\r"
+                             lineterminator="\r",
+                             escapechar='!'
                              )
 
     def run(self, frame):
@@ -209,6 +211,26 @@ class PdfConverter:
         messagebox.showerror("Klusterbox PDF Converter", msg, parent=self.frame)
         if _type in ("general", "nostation"):
             self.close_destroy()  # close and destroy files if the conversion process fails.
+
+    def solve_level_indexerror(self, i):
+        """ this will handle rare cases were length of the jobs array is longer than the level array by
+        adding to the level array. """
+        try:
+            if self.level[i]:  # if there is an index for the level array
+                pass  # no nothing
+        except IndexError:  # if there is not an index for the level array
+            self.levelindexerror_rpt.append(self.lastname)
+            self.level.append(self.level[0])  # use the first element of the level array
+
+    def solve_routes_indexerror(self, i):
+        """ this will handle rare cases were length of the jobs array is longer than the level array by
+        adding to the level array. """
+        try:
+            if self.routes[i]:  # if there is an index for the level array
+                pass  # no nothing
+        except IndexError:  # if there is not an index for the level array
+            self.routesindexerror_rpt.append(self.lastname)
+            self.routes.append(self.routes[0])  # use the first element of the level array
 
     def close_destroy(self):
         """ close and destroy files if the conversion process fails. """
@@ -1089,7 +1111,7 @@ class PdfConverter:
 
         def csvoutput_time(self):
             """ This code writes the csv output for lines containing either daily times ie 5200 time,
-                                5500 time, etc or lines containing moves ie ET, MV, BT, 093, etc. """
+            5500 time, etc or lines containing moves ie ET, MV, BT, 093, etc. """
             for co in self.parent.csv_output:  # for each time in the array, write a line
                 for array in co:
                     if self.parent.gen_error_report:
@@ -1120,9 +1142,11 @@ class PdfConverter:
 
         def csvoutput_base(self):
             """ This code writes lines to the csv file that contain the Base or Temp info. This line will
-                                 contain the D/A designation. """
+            contain the D/A designation. """
             if len(self.parent.jobs) > 0:
                 for i in range(len(self.parent.jobs)):
+                    self.parent.solve_level_indexerror(i)
+                    self.parent.solve_routes_indexerror(i)
                     base_line = [self.parent.base_temp[i], '"{}"'.format(self.parent.jobs[i].replace("-", "").strip()),
                                  '"0000"', '"7220-10"',
                                  '"Q0"', '"{}"'.format(self.parent.level[i]), '"N"',
@@ -1132,6 +1156,16 @@ class PdfConverter:
                     whole_line = self.parent.prime_info + base_line
                     self.parent.writer = csv.writer(self.parent.csv_doc, dialect='myDialect')
                     self.parent.writer.writerow(whole_line)
+
+        # def __solve_level_indexerror(self, i):
+        #     """ this will handle rare cases were length of the jobs array is longer than the level array by
+        #     adding to the level array. """
+        #     try:
+        #         if self.parent.level[i]:  # if there is an index for the level array
+        #             pass  # no nothing
+        #     except IndexError:  # if there is not an index for the level array
+        #         self.parent.levelindexerror_rpt.append(self.parent.lastname)
+        #         self.parent.level.append(self.parent.level[0])  # use the first element of the level array
 
         def writeloop_init(self):
             """ initialize arrays """
@@ -1217,6 +1251,13 @@ class PdfConverter:
                 if re.match(r"[0-9]{2}$", e):
                     self.parent.level.append(e)
                     self.parent.lookfor2level = True  # set trap to catch the second level next line
+                self.parent.lookforlevel = False
+                # in case that the two levels are back to back on the same line eg '0202'
+                if re.match(r"[0-2,7]{4}$", e):  # look for a four digit number where numbers are 0, 1, 2 or 7
+                    split_lvl1 = e[0]+e[1]
+                    split_lvl2 = e[2]+e[3]
+                    self.parent.level.append(split_lvl1)
+                    self.parent.level.append(split_lvl2)
                 self.parent.lookforlevel = False
 
         def trap_lvl(self, e):
@@ -1328,7 +1369,8 @@ class PdfConverter:
                 # if the route count is less than the jobs count, fill the route count
                 self.parent.routes = PdfConverterFix(self.parent.routes).route_filler(len(self.parent.jobs))
                 for i in range(len(self.parent.jobs)):
-                    self.__solve_level_indexerror(i)
+                    self.parent.solve_level_indexerror(i)
+                    self.parent.solve_routes_indexerror(i)
                     base_line = [self.parent.base_temp[i],
                                  '"{}"'.format(self.parent.jobs[i].replace("-", "").strip()),
                                  '"0000"', '"7220-10"',
@@ -1339,16 +1381,6 @@ class PdfConverter:
                     whole_line = self.parent.prime_info + base_line
                     self.parent.writer = csv.writer(self.parent.csv_doc, dialect='myDialect')
                     self.parent.writer.writerow(whole_line)
-
-        def __solve_level_indexerror(self, i):
-            """ this will handle rare cases were length of the jobs array is longer than the level array by
-            adding to the level array. """
-            try:
-                if self.parent.level[i]:  # if there is an index for the level array
-                    pass  # no nothing
-            except IndexError:  # if there is not an index for the level array
-                self.parent.levelindexerror_rpt.append(self.parent.lastname)
-                self.parent.level.append(self.parent.level[0])  # use the first element of the level array
 
         def reorder_days(self):
             """ make sure the days are in the correct order"""
@@ -1624,6 +1656,10 @@ class PdfConverter:
                 # display level index error
                 self.parent.kbpc_rpt.write("LevelIndex Error: length of level array does not match jobs array\n")
                 datainput = "\t>>> {}\n".format(self.parent.levelindexerror_rpt)
+                self.parent.kbpc_rpt.write(datainput)
+                # display routes index error
+                self.parent.kbpc_rpt.write("RoutesIndex Error: length of routes array does not match jobs array\n")
+                datainput = "\t>>> {}\n".format(self.parent.routesindexerror_rpt)
                 self.parent.kbpc_rpt.write(datainput)
                 datainput = "Unresolved: {}\n".format(self.parent.unresolved)
                 self.parent.kbpc_rpt.write(datainput)
