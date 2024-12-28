@@ -61,8 +61,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.07  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Nov 29, 2024"  # format is Jan 1, 2022
+version = 6.08  # version number must be convertable to a float and should increase for Fixes()
+release_date = "undetermined"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -10139,6 +10139,7 @@ class SpreadsheetConfig:
         self.offbid_maxpivot = None  # off bid maximum pivot
         self.offbid_show_remedy = 0  # the hourly remedy rate for the off bid spreadsheet
         self.offbid_remedy = 0  # the hourly remedy rate for the off bid spreadsheet
+        self.offbid_show_sunday = 0  # show sundays on offbid violation report
         self.min_ot_equit = None  # minimum rows for ot equitability spreadsheet
         self.ot_calc_pref = None  # overtime calcuations preference for otdl equitability
         self.min_ot_dist = None  # minimum rows for ot distribution spreadsheet
@@ -10176,6 +10177,7 @@ class SpreadsheetConfig:
         self.offbid_distinctpages_var = None  # off bid spreadsheet: creates distinct pages for each carrier
         self.offbid_maxpivot_var = None  # off bid spreadsheet: maximum pivot
         self.offbid_show_remedy_var = None  # the hourly remedy rate for the off bid spreadsheet
+        self.offbid_show_sunday_var = None  # show sundays on the off bid report
         self.offbid_remedy_var = None  # the hourly remedy rate for the off bid spreadsheet
         self.min_otdl_var = None  # minimum rows for ot equitability
         self.min_ot_equit_var = None  # minimum rows for ot equitability spreadsheet
@@ -10219,6 +10221,7 @@ class SpreadsheetConfig:
         self.add_offbid_distinctpages = None
         self.add_offbid_show_remedy = None  # toggle to show remedy shortcut for off bid violations
         self.add_offbid_remedy = 0.0
+        self.add_offbid_show_sunday = None  # toggle to show sundays on off bid reports
         self.add_min_ot_equit = None
         self.add_ot_calc_pref = None
         self.add_min_ot_dist = None  # minimum rows for ot distribution spreadsheet
@@ -10276,6 +10279,7 @@ class SpreadsheetConfig:
         self.overmax_remedy_tolerance = results[55][0]
         self.offbid_show_remedy = results[52][0]
         self.offbid_remedy = results[53][0]
+        self.offbid_show_sunday = results[60][0]
         # convert bool to "on" or "off"
         self.pb_nl_wal = Convert(self.pb_nl_wal).strbool_to_onoff()
         self.pb_wal_otdl = Convert(self.pb_wal_otdl).strbool_to_onoff()
@@ -10289,6 +10293,7 @@ class SpreadsheetConfig:
         self.impman_show_remedy = Convert(self.impman_show_remedy).strbool_to_onoff()
         self.overmax_show_remedy = Convert(self.overmax_show_remedy).strbool_to_onoff()
         self.offbid_show_remedy = Convert(self.offbid_show_remedy).strbool_to_onoff()
+        self.offbid_show_sunday = Convert(self.offbid_show_sunday).strbool_to_onoff()
         self.impman5_fullreport = Convert(self.impman5_fullreport).strbool_to_onoff()
         self.impman5_report = Convert(self.impman5_report).strbool_to_onoff()
         # otdl equitability vars
@@ -10317,6 +10322,7 @@ class SpreadsheetConfig:
         self.offbid_maxpivot_var = StringVar(self.win.body)
         self.offbid_show_remedy_var = StringVar(self.win.body)
         self.offbid_remedy_var = StringVar(self.win.body)
+        self.offbid_show_sunday_var = StringVar(self.win.body)
         self.pb_nl_wal_var = StringVar(self.win.body)
         self.pb_wal_otdl_var = StringVar(self.win.body)
         self.pb_otdl_aux_var = StringVar(self.win.body)
@@ -10355,6 +10361,7 @@ class SpreadsheetConfig:
         self.offbid_distinctpages_var.set(self.offbid_distinctpages)
         self.offbid_maxpivot_var.set(self.offbid_maxpivot)
         self.offbid_show_remedy_var.set(self.offbid_show_remedy)
+        self.offbid_show_sunday_var.set(self.offbid_show_sunday)
         self.offbid_remedy_var.set(self.offbid_remedy)
         self.pb_nl_wal_var.set(self.pb_nl_wal)
         self.pb_wal_otdl_var.set(self.pb_wal_otdl)
@@ -10702,6 +10709,16 @@ class SpreadsheetConfig:
                command=lambda: Messenger(self.win.topframe).tolerance_info("remedy_rate"))\
             .grid(row=row, column=2, padx=4)
         row += 1
+        # --------------------------------------------------------------------------------- Show Sundays for Off Bid
+        Label(self.win.body, text="  Show Sundays", width=macadj(30, 26), anchor="w") \
+            .grid(row=row, column=0, ipady=5, sticky="w")
+        om_offbid_sunday = OptionMenu(self.win.body, self.offbid_show_sunday_var, "on", "off")
+        om_offbid_sunday.config(width=3)
+        om_offbid_sunday.grid(row=row, column=1, padx=4, sticky="e")
+        Button(self.win.body, width=5, text="info",
+               command=lambda: Messenger(self.win.topframe).tolerance_info("show_sunday")) \
+            .grid(row=row, column=2, padx=4)
+        row += 1
         Label(self.win.body, text="").grid(row=row, column=0)
         row += 1  # Display header for OTDL Equitability Spread Sheet
         text = macadj("OTDL Equitability Spreadsheets ____________________________________________",
@@ -10827,10 +10844,29 @@ class SpreadsheetConfig:
         # set minimum row value for ot distribution
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (ot_dist_num, "min_ot_dist")
         commit(sql)
-        pagebreaks = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux", "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl")
+        """
+        (41, "offbid_distinctpage", "True"),
+        (43, "triad_routefirst", "False"),  # when False, the route is displayed at the end of the route triad
+        (44, "wal_12_hour", "True"),  # when True, wal 12/60 violations happen after 12 hr, else after 11.50 hrs
+        (45, "wal_dec_exempt", "False"),
+        (48, "impman_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
+        (50, "overmax_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
+        (52, "offbid_show_remedy", "False"),  # True(1) show remedy column, False(0) don't create remedy column
+        (58, "impman5_fullreport", False),  # The full text report for the improper mandate 5 report
+        (59, "impman5_report", True),  # generate the report for contentions for the imp man 5
+        (60, "offbid_show_sunday", "False")  # True(1) display sundays, False(0) will not show sundays
+        """
+        # 'pagebreaks' are not all pagebreaks - some are boolean (true/false) settings which are have other functions
+        pagebreaks = ("pb_nl_wal", "pb_wal_otdl", "pb_otdl_aux", "pb4_nl_wal", "pb4_wal_aux", "pb4_aux_otdl",
+                      "offbid_distinctpage", "wal_12_hour", "impman5_report")
+        false_pagebreaks = ("wal_dec_exempt", "impman_show_remedy", "overmax_show_remedy",
+                            "offbid_show_remedy", "impman5_fullreport", "offbid_show_sunday")
         if order == "default":
             for pb in pagebreaks:
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("True", pb)
+                commit(sql)
+            for pb in false_pagebreaks:
+                sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", pb)
                 commit(sql)
             sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("off_route", "ot_calc_pref")
             commit(sql)
@@ -10994,7 +11030,7 @@ class SpreadsheetConfig:
                             "overmax_remedy_tolerance",
                             "impman5_remedy_tolerance",
                             "impman5_maxpivot")
-        # page breaks,  distinct pages option menu items and show remedy options
+        # page breaks, distinct pages option menu items, show remedy and show sunday options
         onrecs_breaks = (self.pb_nl_wal,
                          self.pb_wal_otdl,
                          self.pb_otdl_aux,
@@ -11007,6 +11043,7 @@ class SpreadsheetConfig:
                          self.impman_show_remedy,
                          self.overmax_show_remedy,
                          self.offbid_show_remedy,
+                         self.offbid_show_sunday,
                          self.impman5_fullreport,
                          self.impman5_report)
         pbs = (self.pb_nl_wal_var.get(),
@@ -11021,6 +11058,7 @@ class SpreadsheetConfig:
                self.impman_show_remedy_var.get(),
                self.overmax_show_remedy_var.get(),
                self.offbid_show_remedy_var.get(),
+               self.offbid_show_sunday_var.get(),
                self.impman5_fullreport_var.get(),
                self.impman5_report_var.get())
         add_pbs = [self.add_pb_nl_wal,
@@ -11035,6 +11073,7 @@ class SpreadsheetConfig:
                    self.add_impman_show_remedy,
                    self.add_overmax_show_remedy,
                    self.add_offbid_show_remedy,
+                   self.add_offbid_show_sunday,
                    self.add_impman5_fullreport,
                    self.add_impman5_report]
         # the settings as they are named in the tolerances table of the database
@@ -11050,6 +11089,7 @@ class SpreadsheetConfig:
                          "impman_show_remedy",
                          "overmax_show_remedy",
                          "offbid_show_remedy",
+                         "offbid_show_sunday",
                          "impman5_fullreport",
                          "impman5_report")
         # misc stringvars
@@ -11098,7 +11138,7 @@ class SpreadsheetConfig:
                 self.report_counter += 1
 
         for i in range(len(pbs)):  # loop through pagebreak stringvars
-            add_pbs[i] = Convert(pbs[i]).onoff_to_bool()
+            add_pbs[i] = Convert(pbs[i]).onoff_to_bool()  # convert the string ('on" or 'off", to a boolean
             if onrecs_breaks[i] != str(pbs[i]):
                 sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (add_pbs[i], pb_categories[i])
                 commit(sql)
@@ -11379,7 +11419,7 @@ class SpeedConfig:
                       "__________________________________________________________________")
         Label(self.win.body,
               text=text, pady=5, fg="blue").grid(row=10, columnspan=5, sticky="w")
-        Label(self.win.body, text="Restore Defaults").grid(row=11, column=0, ipady=5, sticky="w")
+        Label(self.win.body, text="Medium Setting (default)").grid(row=11, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set",
                command=lambda: self.preset_default()).grid(row=11, column=3)
         Label(self.win.body, text="High Settings").grid(row=12, column=0, ipady=5, sticky="w")
@@ -11388,6 +11428,9 @@ class SpeedConfig:
         Label(self.win.body, text="Low Settings").grid(row=13, column=0, ipady=5, sticky="w")
         Button(self.win.body, width=5, text="set",
                command=lambda: self.preset_low()).grid(row=13, column=3)
+        Label(self.win.body, text="Restore Defaults on all Settings").grid(row=14, column=0, ipady=5, sticky="w")
+        Button(self.win.body, width=5, text="set",
+               command=lambda: self.restore_defaults()).grid(row=14, column=3)
         self.buttons_frame()
 
     def buttons_frame(self):
@@ -11502,7 +11545,7 @@ class SpeedConfig:
         alpha = "50"
         abc = "10"
         self.preset_to_base(self, empid, alpha, abc)
-        self.status_update.config(text="Default Minimum Row Settings Restored")
+        self.status_update.config(text="Default Settings Restored")
 
     def preset_high(self):
         """ a high setting for defaults. """
@@ -11522,15 +11565,30 @@ class SpeedConfig:
 
     @staticmethod
     def preset_to_base(self, empid, alpha, abc):
-        """ abc breakdown is false in all cases """
-        sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % ("False", "abc_breakdown")
-        commit(sql)
+        """  will reset the minimum rows to either low, medium (default) or high setting """
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (empid, "min_spd_empid")
         commit(sql)
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (alpha, "min_spd_alpha")
         commit(sql)
         sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (abc, "min_spd_abc")
         commit(sql)
+        self.set_stringvars()
+
+    def restore_defaults(self):
+        """ restores all settings to defaults:
+        'speedcell_ns_rotate_mode', 'True'
+        'speedsheets_fullreport', 'False'
+        'triad_routefirst', 'False'
+        'abc breakdown', 'False'
+        'empid' = 50
+        'alpha' = 50
+        'abc' = 10 """
+        categories = ("speedcell_ns_rotate_mode", "speedsheets_fullreport", "triad_routefirst",
+                      "abc_breakdown", "min_spd_empid", "min_spd_alpha", "min_spd_abc")
+        values = ("True", "False", "False", "False", 50, 50, 10)
+        for i in range(len(categories)):
+            sql = "UPDATE tolerances SET tolerance ='%s' WHERE category = '%s'" % (values[i], categories[i])
+            commit(sql)
         self.set_stringvars()
 
     def set_stringvars(self):

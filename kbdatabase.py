@@ -20,12 +20,12 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(150)
+        self.pbar.max_count(151)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
         self.stations()  # pb increment: 1
-        self.tolerances()  # pb increment: 54
+        self.tolerances()  # pb increment: 60
         self.rings()  # pb increment: 1
         self.skippers()  # pb increment: 1
         self.ns_config()  # pb increment: 6
@@ -186,7 +186,8 @@ class DataBase:
             (56, "impman5_remedy_tolerance", 0.01),  # improper mandate no.5 remedy tolerance
             (57, "impman5_maxpivot", 2.0),  # the maximum pivot before an off bid violation is detected
             (58, "impman5_fullreport", False),  # The full text report for the improper mandate 5 report
-            (59, "impman5_report", True)  # generate the report for contentions for the imp man 5
+            (59, "impman5_report", True),  # generate the report for contentions for the imp man 5
+            (60, "offbid_show_sunday", "False")  # True(1) display sundays, False(0) will not show sundays
             # increment self.pbar.max_count() in self.setup() if you add more records.
         )
         for tol in tolerance_array:

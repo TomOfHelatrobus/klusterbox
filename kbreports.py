@@ -799,6 +799,9 @@ class Messenger:
                    "dollar amount remedy based on a specified hourly " \
                    "rate. \n\n" \
                    "Select ON or OFF"
+        if switch == "show_sunday":
+            text = "Will show all off bid violations on Sunday unless the nsday code is used. \n\n" \
+                   "Select ON or OFF"
         if switch == "show_remedy_sheet":
             text = "Will display a spreadsheet to show all possible " \
                    "violations, a mechanism to equalize violations " \

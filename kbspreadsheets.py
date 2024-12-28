@@ -4853,6 +4853,7 @@ class OffbidSpreadsheet:
         self.max_pivot = 0.0  # the maximum allowed pivot.
         self.distinct_pages = None
         self.show_remedy = None  # if True, show the remedy
+        self.show_sunday = None  # if False, do not display Sunday
         self.hourly_remedy = 0.0  # the hourly rate of the remedy in dollars
         self.move_set = 0  # extra rows used by the multiple moves display
         self.no_qualifiers = True  # is True as long as no violations have been found for any carriers.
@@ -4923,6 +4924,9 @@ class OffbidSpreadsheet:
         sql = "SELECT tolerance FROM tolerances WHERE category = 'offbid_remedy'"
         result = inquire(sql)
         self.hourly_remedy = float(result[0][0])
+        sql = "SELECT tolerance FROM tolerances WHERE category = 'offbid_show_sunday'"
+        result = inquire(sql)
+        self.show_sunday = Convert(result[0][0]).str_to_bool()
 
     def get_pb_max_count(self):
         """ set length of progress bar """
@@ -5077,6 +5081,9 @@ class OffbidSpreadsheet:
         if self.rings[i][2] == "ns day":  # if it is the carrier's ns day - violation is zero
             return False
         if not self.rings[i][3]:  # if the moves is empty, then the violation is zero
+            return False
+        # if the setting for show sunday is false/off, do not show any day which is sunday
+        if not self.show_sunday and self.rings[i][0].strftime("%a") == "Sun":
             return False
         index = 0  # set the index to 1. This will point to an element in the moves array.
         totalhours = self.rings[i][1]  # simplify the variable name
