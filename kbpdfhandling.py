@@ -1081,7 +1081,7 @@ class PdfConverter:
         def alt_founddays(self):
             """ an alternate method for getting found days."""
             self.parent.found_days = []  # re inintialized the alt founddays array.
-            days = ("Saturday", "Sunday", "Monday", "Tuesday", "Thursday", "Friday")
+            days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             for day in days:
                 if self.parent.page.count(day):
                     self.parent.found_days.append(day)

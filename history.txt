@@ -129,5 +129,8 @@ Version 6.07 (11/29/2024)
 	A fix was made to the pdf converter. pdf miner was reading the level and putting two levels (base and temp) as one line. The formula for the weekly violations on the overmax worksheet was modified so that weekly violations for both aux and ptf carriers are zero in all cases. Page breaks were inserted between the list on the remedy sheet of the improper mandates worksheet. Off bid violations were factored into the calculations for maximum availability on the remedy spreadsheet of the improper mandates worksheet. 
 	
 Version 6.08 (undetermined)
-	A setting was added to the Spreadsheet Settings for the offbid violations report which allows the user to show any sundays. "Off" is the default setting, which will result any any clock rings for sunday not being displayed on the off bid violation report. The "on" setting will result in sunday off bid violations being shown as long as the "ns day" code is not in the carrier's clock rings.
+	A setting was added to the Spreadsheet Settings for the offbid violations report which allows the user to show any sundays. "Off" is the default setting, which will result any any clock rings for sunday not being displayed on the off bid violation report. The "on" setting will result in sunday off bid violations being shown as long as the "ns day" code is not in the carrier's clock rings. 
+	Added a bug fix for the kbpdfhandling module - LineAnalysis().alt_founddays() function. Wednesday was missing in the tuple of days. 
+	I updated the kbspreadsheets module - ImpManSpreadsheet().display_formulas_non() with a new formula for OT to show overtime on the carrier's own route, excluding OT off route. 
+	
 	

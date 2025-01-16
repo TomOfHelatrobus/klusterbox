@@ -34,6 +34,7 @@ class ImpManSpreadsheet:
         self.summary = None  # worksheet for summary page
         self.reference = None  # worksheet for reference page
         self.remedy = None  # worksheet for remedy page
+        self.remedy_10hr = None  # worksheet for 10 hour/ letter carrier paragraph remedy page
         self.ws_header = None  # style
         self.list_header = None  # style
         self.date_dov = None  # style
@@ -93,6 +94,7 @@ class ImpManSpreadsheet:
         self.subtotal_loc_holder = []  # stores the cell location of a subtotal for total mandates/ availability
         self.remedy_array = []  # an array that holds: list, day, name and cell for violations
         self.remedy_row = 0  # holds the value of the row on the remedy page
+        self.remedy10_row = 0  # holds the value of the row on the remedy page
         self.remedy_start_row = 0  # will hold the start row of the list which was last started. updates for each list
         self.remedy_footer_row = []
         self.remedy_equalizer_rows = []
@@ -106,6 +108,20 @@ class ImpManSpreadsheet:
         self.order_wal_blanks = []
         self.order_otdl_blanks = []
         self.order_aux_blanks = []
+        self.remedy10_array = []  # an array that holds: list, day, name and cell for violations
+        self.remedy10_row = 0  # holds the value of the row on the remedy page
+        self.remedy10_row = 0  # holds the value of the row on the remedy page
+        self.remedy10_start_row = 0  # will hold the start row of the list which was last started. updates for each list
+        self.remedy10_footer_row = []
+        self.remedy10_equalizer_rows = []
+        self.remedy10_cum = []  # hold 4 tuples of two values - start and end of totals columns.
+        self.remedy10_incrementor = 0
+        self.remedy10_blank_nl = [[], [], [], [], [], [], []]
+        self.remedy10_blank_otdl = [[], [], [], [], [], [], []]
+        self.remedy10_blank_aux = [[], [], [], [], [], [], []]
+        self.order10_nl_blanks = []
+        self.order10_otdl_blanks = []
+        self.order10_aux_blanks = []
 
     def create(self, frame):
         """ master method for calling all methods in class """
@@ -130,11 +146,13 @@ class ImpManSpreadsheet:
         self.build_ws_loop()  # calls list loop and carrier loop
         self.build_summary_header()
         self.build_summary()
-        self._build_remedy_blank_arrays()
-        self._equalize_remedy_blank_arrays()
-        self._order_remedy_blank_arrays()
+        self._build_remedy_blank_arrays()  # for both 12 and 10 hour
+        self._equalize_remedy_blank_arrays()  # for both 12 and 10 hour
+        self._order_remedy_blank_arrays()  # for both 12 and 10 hour
         self._build_remedy_header()
         self._build_remedy()
+        # self._build_remedy10_header()
+        self._build_remedy10()
         self.save_open()
 
     def ask_ok(self):
@@ -257,6 +275,7 @@ class ImpManSpreadsheet:
         self.summary = self.wb.create_sheet("summary")
         self.reference = self.wb.create_sheet("reference")
         self.remedy = self.wb.create_sheet("remedy")
+        self.remedy_10hr = self.wb.create_sheet("remedy_10hr")  # remedy for letter carrier paragraph
 
     def set_dimensions(self):
         """ set the dimensions of the workbook """
@@ -297,6 +316,17 @@ class ImpManSpreadsheet:
         self.remedy.column_dimensions["H"].width = 6
         self.remedy.column_dimensions["I"].width = 7
         self.remedy.column_dimensions["J"].width = 10
+        self.remedy_10hr.oddFooter.center.text = "&A"
+        self.remedy_10hr.column_dimensions["A"].width = 20
+        self.remedy_10hr.column_dimensions["B"].width = 6
+        self.remedy_10hr.column_dimensions["C"].width = 6
+        self.remedy_10hr.column_dimensions["D"].width = 6
+        self.remedy_10hr.column_dimensions["E"].width = 6
+        self.remedy_10hr.column_dimensions["F"].width = 6
+        self.remedy_10hr.column_dimensions["G"].width = 6
+        self.remedy_10hr.column_dimensions["H"].width = 6
+        self.remedy_10hr.column_dimensions["I"].width = 7
+        self.remedy_10hr.column_dimensions["J"].width = 10
 
     def build_refs(self):
         """ build the references page. This shows tolerances and defines labels. """
@@ -369,9 +399,9 @@ class ImpManSpreadsheet:
         self.reference['C25'] = "MV Total"
         self.reference['C25'].style = self.input_s
         self.reference['E25'] = "Time spent on overtime/pivot off route"
-        self.reference['C26'] = "OT"
+        self.reference['C26'] = "OT own"
         self.reference['C26'].style = self.input_s
-        self.reference['E26'] = "Daily overtime"
+        self.reference['E26'] = "Daily overtime on the carrier's own route"
         self.reference['C27'] = "Off rte"
         self.reference['C27'].style = self.input_s
         self.reference['E27'] = "Total daily time spent off route"
@@ -485,7 +515,7 @@ class ImpManSpreadsheet:
         cell.value = "MV total"
         cell.style = self.col_header
         cell = self.ws_list[self.i].cell(row=self.row, column=9)
-        cell.value = "OT"
+        cell.value = "OT own"
         cell.style = self.col_header
         cell = self.ws_list[self.i].cell(row=self.row, column=10)
         cell.value = "off rt"
@@ -542,6 +572,18 @@ class ImpManSpreadsheet:
         add_this = (_list[self.lsi], day, self.carrier, coordinates)
         self.remedy_array.append(add_this)
 
+    def _build_remedy10_array(self):
+        """ builds the remedy10_array which holds the list, day, name and cell coordinates as a
+        tuple (sheet, column, row) """
+        _list = {0: "nl", 1: "wal", 2: "otdl", 3: "aux"}
+        day = format(self.day, "%a").lower()  # format datetime to abbreviated day of week e.g. "sat", "sun", "mon"
+        column = "I"  # column for nl is I (work assignment can not have a violation)
+        if _list[self.lsi] in ("otdl", "aux"):
+            column = "E"  # column for otdl and aux is E
+        coordinates = (self.day_of_week[self.i], column, self.row)
+        add_this = (_list[self.lsi], day, self.carrier, coordinates)
+        self.remedy10_array.append(add_this)
+
     def carrierloop(self):
         """ loop for each carrier """
         for carrier in self.mod_carrierlist:
@@ -562,6 +604,7 @@ class ImpManSpreadsheet:
             else:  # if otdl or aux
                 self.display_formulas_ot()  # display formulas for otdl/aux
             self._build_remedy_array()  # add to remedy array to hold coordinates for remedy sheet
+            self._build_remedy10_array()  # add to remedy 10 array to hold coordinates for 10 hr remedy sheet
             self.increment_rows()
 
     def get_last_row(self):
@@ -744,14 +787,9 @@ class ImpManSpreadsheet:
 
     def display_formulas_non(self):
         """ fill the formulas columns for non list carriers. """
-        ot_formula = "=IF(%s!B%s =\"ns day\", %s!C%s, MAX(%s!C%s - 8, 0))" \
+        ot_formula = "=IF(MAX(MAX(%s!C%s-8,0)-%s!K%s)>reference!C$3, MAX(MAX(%s!C%s-8,0)-%s!K%s),0)" \
                      % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                        self.day_of_week[self.i], str(self.row))
-        if self.pref[self.lsi] == "nl":  # use alternate formula for non list carriers
-            ot_formula = "=IF(%s!B%s =\"ns day\",%s!C%s," \
-                         "IF(%s!C%s <= 8 + reference!C$3, 0, MAX(%s!C%s - 8, 0)))" \
-                         % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                            self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
+                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
         off_rt_formula = "=%s!H%s" % (self.day_of_week[self.i], str(self.row))  # copy data from column H/ MV total
         ot_off_rt_formula = "=IF(%s!C%s=\"\",0, " \
                             "IF(OR(%s!B%s=\"ns day\",%s!J%s>=%s!C%s),%s!C%s, " \
@@ -940,7 +978,7 @@ class ImpManSpreadsheet:
             self.row += 1
             return
         try:
-            self.ws_list[self.i].page_breaks.append(Break(id=self.row))
+            self.ws_list[self.i].page_breaks.append(Break(id=self.row))  # effective for mac
         except AttributeError:
             self.ws_list[self.i].row_breaks.append(Break(id=self.row))  # effective for windows
         self.row += 1
@@ -1043,52 +1081,55 @@ class ImpManSpreadsheet:
             row += 2
             
     def _build_remedy_header(self):
-        """ remedy headers """
-        cell = self.remedy.cell(row=1, column=1)
-        cell.value = "Improper Mandate Remedies"
-        cell.style = self.ws_header
-        self.remedy.merge_cells('A1:E1')
-        cell = self.remedy.cell(row=3, column=1)
-        cell.value = "Date:  "  # create date/ pay period/ station header
-        cell.style = self.date_dov_title
-        cell = self.remedy.cell(row=3, column=2)
-        cell.value = self.dates[0].strftime("%x")
-        if projvar.invran_weekly_span:
-            cell.value = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
-        cell.style = self.date_dov
-        self.remedy.merge_cells('B3:D3')
-        cell = self.remedy.cell(row=3, column=6)
-        cell.value = "Pay Period:  "
-        cell.style = self.date_dov_title
-        self.remedy.merge_cells('F3:G3')
-        cell = self.remedy.cell(row=3, column=8)
-        cell.value = projvar.pay_period
-        cell.style = self.date_dov
-        self.remedy.merge_cells('H3:I3')
-        cell = self.remedy.cell(row=4, column=1)
-        cell.value = "Station:  "
-        cell.style = self.date_dov_title
-        cell = self.remedy.cell(row=4, column=2)
-        cell.value = projvar.invran_station
-        cell.style = self.date_dov
-        self.remedy.merge_cells('B4:D4')
-        cell = self.remedy.cell(row=4, column=5)
-        cell.value = "Remedy Tolerance:  "  # label for the remedy tolerance
-        cell.style = self.date_dov_title
-        self.remedy.merge_cells('E4:G4')
-        cell = self.remedy.cell(row=4, column=8)  # the $ value of the remedy
-        cell.value = self.remedy_tolerance
-        cell.style = self.remedy_style
-        cell.number_format = "#,###.00;[RED]-#,###.00"
-        if self.show_remedy:
-            cell = self.remedy.cell(row=5, column=6)
-            cell.value = "Remedy Rate:  "  # label for the remedy rate
+        """ remedy headers for 12 hour and 10 hour remedies"""
+        sheet = (self.remedy, self.remedy_10hr)
+        title = ("Remedies for Improper Overtime OFF Own Route", "Remedies for Improper Overtime ON Own Route")
+        for i in range(len(sheet)):
+            cell = sheet[i].cell(row=1, column=1)
+            cell.value = title[i]
+            cell.style = self.ws_header
+            sheet[i].merge_cells('A1:I1')
+            cell = sheet[i].cell(row=3, column=1)
+            cell.value = "Date:  "  # create date/ pay period/ station header
             cell.style = self.date_dov_title
-            self.remedy.merge_cells('F5:G5')
-            cell = self.remedy.cell(row=5, column=8)  # the $ value of the remedy
-            cell.value = float(self.remedy_rate)
+            cell = sheet[i].cell(row=3, column=2)
+            cell.value = self.dates[0].strftime("%x")
+            if projvar.invran_weekly_span:
+                cell.value = self.dates[0].strftime("%x") + " - " + self.dates[6].strftime("%x")
+            cell.style = self.date_dov
+            sheet[i].merge_cells('B3:D3')
+            cell = sheet[i].cell(row=3, column=6)
+            cell.value = "Pay Period:  "
+            cell.style = self.date_dov_title
+            sheet[i].merge_cells('F3:G3')
+            cell = sheet[i].cell(row=3, column=8)
+            cell.value = projvar.pay_period
+            cell.style = self.date_dov
+            sheet[i].merge_cells('H3:I3')
+            cell = sheet[i].cell(row=4, column=1)
+            cell.value = "Station:  "
+            cell.style = self.date_dov_title
+            cell = sheet[i].cell(row=4, column=2)
+            cell.value = projvar.invran_station
+            cell.style = self.date_dov
+            sheet[i].merge_cells('B4:D4')
+            cell = sheet[i].cell(row=4, column=5)
+            cell.value = "Remedy Tolerance:  "  # label for the remedy tolerance
+            cell.style = self.date_dov_title
+            sheet[i].merge_cells('E4:G4')
+            cell = sheet[i].cell(row=4, column=8)  # the $ value of the remedy
+            cell.value = self.remedy_tolerance
             cell.style = self.remedy_style
-            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+            if self.show_remedy:
+                cell = sheet[i].cell(row=5, column=6)
+                cell.value = "Remedy Rate:  "  # label for the remedy rate
+                cell.style = self.date_dov_title
+                sheet[i].merge_cells('F5:G5')
+                cell = sheet[i].cell(row=5, column=8)  # the $ value of the remedy
+                cell.value = float(self.remedy_rate)
+                cell.style = self.remedy_style
+                cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
 
     def _remedy_list_header(self, _list):
         """ create headers for each list on the remedy page """
@@ -1251,18 +1292,21 @@ class ImpManSpreadsheet:
         self.remedy.row_dimensions[self.remedy_row].height = 100
 
     @staticmethod
-    def _remedy_violation_cell(_list, violation_cell, a_max):
+    def _remedy_violation_cell(_list, violation_cell, a_max, _12hour=True):
         """ accepts an empty string or a tuple. returns empty string for empty string
          returns a formula for a tuple. """
+        sheet = "remedy"
+        if not _12hour:
+            sheet = "remedy_10hr"
         formula = ""  # the default is an empty string
         if type(violation_cell) == tuple:
             if _list in ("nl", "wal"):
-                formula = "=IF(%s!%s%s>=remedy!H4,%s!%s%s,\"\") " % \
-                          (violation_cell[0], violation_cell[1], violation_cell[2],
+                formula = "=IF(%s!%s%s>=%s!H4,%s!%s%s,\"\") " % \
+                          (violation_cell[0], violation_cell[1], violation_cell[2], sheet,
                            violation_cell[0], violation_cell[1], violation_cell[2])
             else:
-                formula = "=IF(MIN(%s!%s%s,%s)>=remedy!H4,MIN(%s!%s%s,%s),\"\") " % \
-                          (violation_cell[0], violation_cell[1], violation_cell[2], a_max,
+                formula = "=IF(MIN(%s!%s%s,%s)>=%s!H4,MIN(%s!%s%s,%s),\"\") " % \
+                          (violation_cell[0], violation_cell[1], violation_cell[2], a_max, sheet,
                            violation_cell[0], violation_cell[1], violation_cell[2], a_max)
 
         return formula
@@ -1314,6 +1358,15 @@ class ImpManSpreadsheet:
                     self.remedy_blank_otdl[day[rec[1]]].append(rec[3])
                 if rec[0] == "aux":  # place array in auxiliary blank array
                     self.remedy_blank_aux[day[rec[1]]].append(rec[3])
+        for rec in self.remedy10_array:
+            if not rec[2]:  # if there is not a name in the array
+                if rec[0] == "nl":  # place array in no list blank array
+                    self.remedy10_blank_nl[day[rec[1]]].append(rec[3])
+                # because wal is not used in 10 hour remedy, there is no such array
+                if rec[0] == "otdl":  # place array in overtime desired list blank array
+                    self.remedy10_blank_otdl[day[rec[1]]].append(rec[3])
+                if rec[0] == "aux":  # place array in auxiliary blank array
+                    self.remedy10_blank_aux[day[rec[1]]].append(rec[3])
     
     @staticmethod        
     def _get_array_length(array):
@@ -1330,27 +1383,34 @@ class ImpManSpreadsheet:
         for i in range(7):
             while len(self.remedy_blank_nl[i]) < max_count:
                 self.remedy_blank_nl[i].append("")
+                self.remedy10_blank_nl[i].append("")
         max_count = self._get_array_length(self.remedy_blank_wal)  # blank wal array
         for i in range(7):
             while len(self.remedy_blank_wal[i]) < max_count:
                 self.remedy_blank_wal[i].append("")
+                # there is no remedy10_blank_wal array
         max_count = self._get_array_length(self.remedy_blank_otdl)  # blank otdl array
         for i in range(7):
             while len(self.remedy_blank_otdl[i]) < max_count:
                 self.remedy_blank_otdl[i].append("")
+                self.remedy10_blank_otdl[i].append("")
         max_count = self._get_array_length(self.remedy_blank_aux)  # blank aux array
         for i in range(7):
             while len(self.remedy_blank_aux[i]) < max_count:
                 self.remedy_blank_aux[i].append("")
+                self.remedy10_blank_aux[i].append("")
 
     def _order_remedy_blank_arrays(self):
         """ sort the remedy blank arrays so that the unnamed user has 7 coordinates """
         max_count = len(self.remedy_blank_nl[0])  # no list
         for i in range(max_count):
             new_array = []
+            new10_array = []
             for ii in range(7):  # for each day of the week
                 new_array.append(self.remedy_blank_nl[ii][i])
+                new10_array.append(self.remedy10_blank_nl[ii][i])
             self.order_nl_blanks.append(new_array)
+            self.order10_nl_blanks.append(new10_array)
         max_count = len(self.remedy_blank_wal[0])  # work asignment
         for i in range(max_count):
             new_array = []
@@ -1361,39 +1421,58 @@ class ImpManSpreadsheet:
         self.order_otdl_blanks = []
         for i in range(max_count):
             new_array = []
+            new10_array = []
             for ii in range(7):  # for each day of the week
                 new_array.append(self.remedy_blank_otdl[ii][i])
+                new10_array.append(self.remedy10_blank_otdl[ii][i])
             self.order_otdl_blanks.append(new_array)
+            self.order10_otdl_blanks.append(new10_array)
         max_count = len(self.remedy_blank_aux[0])  # auxiliary
         self.order_aux_blanks = []
         for i in range(max_count):
             new_array = []
+            new10_array = []
             for ii in range(7):  # for each day of the week
                 new_array.append(self.remedy_blank_aux[ii][i])
+                new10_array.append(self.remedy10_blank_aux[ii][i])
             self.order_aux_blanks.append(new_array)
+            self.order10_aux_blanks.append(new10_array)
 
-    def _build_remedy_blanks(self, _list):
+    def _build_remedy_blanks(self, _list, _12hr=True):
         """ build the remedy blanks on the remedy page """
         if _list == "nl":
             for i in range(len(self.order_nl_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_nl_blanks[i], [])
-                self.remedy_row += 1
+                if _12hr:
+                    self._display_remedy_row(name, _list, self.order_nl_blanks[i], [])
+                    self.remedy_row += 1
+                else:
+                    self._display_remedy10_row(name, _list, self.order10_nl_blanks[i], [])
+                    self.remedy10_row += 1
         if _list == "wal":
             for i in range(len(self.order_wal_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_wal_blanks[i], [])
-                self.remedy_row += 1
+                if _12hr:
+                    self._display_remedy_row(name, _list, self.order_wal_blanks[i], [])
+                    self.remedy_row += 1
         if _list == "otdl":
             for i in range(len(self.order_otdl_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_otdl_blanks[i], [])
-                self.remedy_row += 1
+                if _12hr:
+                    self._display_remedy_row(name, _list, self.order_otdl_blanks[i], [])
+                    self.remedy_row += 1
+                else:
+                    self._display_remedy10_row(name, _list, self.order10_otdl_blanks[i], [])
+                    self.remedy10_row += 1
         if _list == "aux":
             for i in range(len(self.order_aux_blanks)):
                 name = ""
-                self._display_remedy_row(name, _list, self.order_aux_blanks[i], [])
-                self.remedy_row += 1
+                if _12hr:
+                    self._display_remedy_row(name, _list, self.order_aux_blanks[i], [])
+                    self.remedy_row += 1
+                else:
+                    self._display_remedy10_row(name, _list, self.order10_aux_blanks[i], [])
+                    self.remedy10_row += 1
 
     def _build_remedy(self):
         """ build the remedy page """
@@ -1427,13 +1506,246 @@ class ImpManSpreadsheet:
             # solutions for blank rows - insert here
             self._build_remedy_blanks(_list)
             self._remedy_list_footer(_list)
-            if _list is not "aux":  # insert page breaks
+            if _list is not "aux":  # insert page breaks for all list except the last
                 try:
                     self.remedy.page_breaks.append(Break(id=self.remedy_row))
                 except AttributeError:
                     self.remedy.row_breaks.append(Break(id=self.remedy_row))  # effective for windows
             self.remedy_row += 1
         self._remedy_equalization()  # write the rows for the end of the sheet
+
+    def _remedy10_list_header(self, _list):
+        """ create headers for each list on the remedy page """
+        list_title = {"nl": "No List Carriers",
+                      "otdl": "Overtime Desired List Carriers ",
+                      "aux": "Auxiliary Assistance"}
+        default_percent = {"nl": ".50", "otdl": "1.50", "aux": "1.50"}
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=1)  # list section header
+        cell.value = list_title[_list]
+        cell.style = self.list_header
+        self.remedy_10hr.merge_cells('G' + str(self.remedy10_row) + ':I' + str(self.remedy10_row))
+        if self.show_remedy:
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=7)  # remedy percentage label
+            cell.value = "remedy percentage:"
+            cell.style = self.date_dov_title
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=10)  # remedy percentage input
+            cell.value = default_percent[_list]
+            cell.style = self.date_dov
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.remedy10_row += 1
+        sub_header = ("sat", "sun", "mon", "tue", "wed", "thu", "fri", "total")
+        if self.show_remedy:
+            sub_header = ("sat", "sun", "mon", "tue", "wed", "thu", "fri", "total", "remedy")
+        for i in range(len(sub_header)):
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
+            cell.value = sub_header[i]
+            cell.style = self.col_header
+        self.remedy10_row += 1
+
+    def _remedy10_list_footer(self, _list):
+        """ this will place a footter at the end of each list section"""
+        list_title = {"nl": "No List Mandates:  ",
+                      "otdl": "OTDL Availability:  ",
+                      "aux": "Auxiliary Availability:  "}
+        self.remedy10_row += 1
+        self.remedy10_footer_row.append(self.remedy10_row)  # save the row of the footers for equalization rows
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=1)  # title row for section footer
+        cell.value = list_title[_list]
+        cell.style = self.date_dov_title
+        column = ("B", "C", "D", "E", "F", "G", "H")
+        for i in range(7):
+            formula = "=SUM(%s!%s%s:%s!%s%s)" % ("remedy_10hr", column[i], self.remedy10_start_row,
+                                                 "remedy_10hr", column[i],  self.remedy10_row-2)
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        add_this = (self.remedy10_start_row, self.remedy10_row-2)  # capture the section for cumulative total at end
+        self.remedy10_cum.append(add_this)
+        self.remedy10_row += 1
+
+    def _remedy10_equalization(self):
+        """ create rows at the bottom of the sheet for total mandates, total availability, and equalization """
+        column = ("B", "C", "D", "E", "F", "G", "H")
+        self.remedy10_row += 1
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=1)  # list section header
+        cell.value = "Equalization"
+        cell.style = self.list_header
+        if self.show_remedy:
+            self.remedy_10hr.merge_cells('G' + str(self.remedy10_row) + ':I' + str(self.remedy10_row))
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=7)  # remedy percentage label
+            cell.value = "cumulative remedy:"
+            cell.style = self.date_dov_title
+            formula = "=SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)" \
+                      % ("remedy_10hr", self.remedy10_cum[0][0], "remedy_10hr", self.remedy10_cum[0][1],
+                         "remedy_10hr", self.remedy10_cum[1][0], "remedy_10hr", self.remedy10_cum[1][1],
+                         "remedy_10hr", self.remedy10_cum[2][0], "remedy_10hr", self.remedy10_cum[2][1],
+                         "remedy_10hr", self.remedy10_cum[3][0], "remedy_10hr", self.remedy10_cum[3][1])
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=10)  # remedy percentage input
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+        self.remedy10_row += 2
+        # ----------------------------------------------------------------------------------------- own route mandates
+        self.remedy10_equalizer_rows.append(self.remedy10_row)  # save row number for equalization formula
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=1)  # title row for section footer
+        cell.value = "Own Route Mandates:  "
+        cell.style = self.date_dov_title
+        for i in range(7):
+            formula = "=SUM(%s!%s%s)" % ("remedy_10hr", column[i], self.remedy10_footer_row[0])
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.remedy10_row += 1
+        # ----------------------------------------------------------------------------------------------- availability
+        self.remedy10_equalizer_rows.append(self.remedy10_row)  # save row number for equalization formula
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=1)  # title row for section footer
+        cell.value = "Availability to 10 Hours:  "
+        cell.style = self.date_dov_title
+        for i in range(7):
+            formula = "=%s!%s%s+%s!%s%s" % ("remedy_10hr", column[i], self.remedy10_footer_row[1],
+                                            "remedy_10hr", column[i], self.remedy10_footer_row[2])
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.remedy10_row += 2
+        # -------------------------------------------------------------------------------------------- estimated hours
+        self.remedy_10hr.merge_cells('G' + str(self.remedy10_row) + ':I' + str(self.remedy10_row))
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=7)  # remedy percentage label
+        cell.value = "estimated hours:"
+        cell.style = self.date_dov_title
+        formula = "=(SUM(MIN(%s!B%s,%s!B%s)+MIN(%s!C%s,%s!C%s)+MIN(%s!D%s,%s!D%s)+" \
+                  "MIN(%s!E%s,%s!E%s)+MIN(%s!F%s,%s!F%s)+MIN(%s!G%s,%s!G%s)+MIN(%s!H%s,%s!H%s))*2)" % \
+                  ("remedy_10hr", int(self.remedy10_row - 3), "remedy_10hr", int(self.remedy10_row - 2),
+                   "remedy_10hr", int(self.remedy10_row - 3), "remedy_10hr", int(self.remedy10_row - 2),
+                   "remedy_10hr", int(self.remedy10_row - 3), "remedy_10hr", int(self.remedy10_row - 2),
+                   "remedy_10hr", int(self.remedy10_row - 3), "remedy_10hr", int(self.remedy10_row - 2),
+                   "remedy_10hr", int(self.remedy10_row - 3), "remedy_10hr", int(self.remedy10_row - 2),
+                   "remedy_10hr", int(self.remedy10_row - 3), "remedy_10hr", int(self.remedy10_row - 2),
+                   "remedy_10hr", int(self.remedy10_row - 3), "remedy_10hr", int(self.remedy10_row - 2))
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=10)  # remedy percentage input
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.remedy10_row += 1
+        # -------------------------------------------------------------------------------------------- estimated remedy
+        if self.show_remedy:
+            self.remedy_10hr.merge_cells('G' + str(self.remedy10_row) + ':I' + str(self.remedy10_row))
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=7)  # remedy percentage label
+            cell.value = "estimated remedy:"
+            cell.style = self.date_dov_title
+            formula = "=(%s!J%s * %s!H5)" % ("remedy_10hr", self.remedy10_row - 1, "remedy_10hr")
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=10)  # remedy percentage input
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+            self.remedy10_row += 1
+        self.remedy10_row += 1
+        # ----------------------------------------------------------------------------------------------- equalization
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=1)  # title row for section footer
+        cell.value = "Equalization:  "
+        cell.style = self.date_dov_title
+        for i in range(7):
+            formula = "=SUM(%s!%s%s-%s!%s%s)" % ("remedy_10hr", column[i], self.remedy10_equalizer_rows[0],
+                                                 "remedy_10hr", column[i], self.remedy10_equalizer_rows[1])
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i + 2)
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        self.remedy_10hr.merge_cells('I' + str(self.remedy10_row) + ':J' + str(self.remedy10_row))
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=9)  # remedy percentage input
+        cell.value = " <- adjust to zero"
+        cell.style = self.date_dov_title
+        self.remedy10_row += 1
+        self.remedy_10hr.merge_cells('B' + str(self.remedy_row) + ':H' + str(self.remedy_row))
+        cell = self.remedy_10hr.cell(row=self.remedy_row, column=2)  # row for exposition on equalization
+        cell.value = "\n" \
+                     "1. Using the OTDL Weekly Availability Worksheet, alter/delete availability from the OTDL " \
+                     "section if there is no availability. \n" \
+                     "2. If value is positive, subtract/delete from No List and Work Assignment sections to " \
+                     "equalize. \n" \
+                     "3. If the value is negative, subtract/delete from OTDL and Auxiliary sections to equalize. \n"
+        cell.style = self.instruct_text
+        self.remedy_10hr['B' + str(self.remedy_row)].alignment = Alignment(wrap_text=True, vertical='top',
+                                                                           shrink_to_fit=False)
+        self.remedy_10hr.row_dimensions[self.remedy_row].height = 100
+
+    def _display_remedy10_row(self, name, _list, violation_cells, offbid):
+        """ display the name, daily violations, total and remedy for each name - will fill one row of remedy sheet """
+        try:
+            a_max_array = self.a_max_dict[name]
+        except KeyError:
+            a_max_array = [10, 10, 10, 10, 10, 10, 10]
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=1)
+        cell.value = name
+        cell.style = self.input_name
+        cell.number_format = '@'
+        for i in range(7):  # display violations
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
+            # get the formula/ 12 hour kwarg is sent to designate the OT ON route sheet.
+            cell.value = self._remedy_violation_cell(_list, violation_cells[i], a_max_array[i], _12hour=False)
+            if i in offbid:
+                cell.value = ""
+            cell.style = self.input_s
+            cell.number_format = "#,###.00;[RED]-#,###.00"
+        # display totals cell at the end of the row
+        formula_a = "=IF(SUM(%s!B%s:%s!H%s)>0, SUM(%s!B%s:%s!H%s), \"\")" % \
+                    ('remedy_10hr', self.remedy10_row, 'remedy_10hr', self.remedy10_row, 'remedy_10hr',
+                     self.remedy10_row, 'remedy_10hr', self.remedy10_row)
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=9)
+        cell.value = formula_a
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        if self.show_remedy:  # display remedy cell for a dollar amount remedy
+            formula_a = "=IF(AND(%s!I%s<>\"\", %s!I%s<>0),(%s!H$5 * %s!J$%s) * %s!I%s,\"\")" % \
+                        ('remedy_10hr', str(self.remedy10_row), 'remedy_10hr', str(self.remedy10_row),
+                         'remedy_10hr', 'remedy_10hr', str(self.remedy10_start_row-2), 'remedy_10hr',
+                         str(self.remedy10_row))
+            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=10)
+            cell.value = formula_a
+            cell.style = self.calcs
+            cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+
+    def _build_remedy10(self):
+        """ build the remedy page """
+        self.remedy10_row = 7
+        _list_array = ("nl", "otdl", "aux")
+        day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        for _list in _list_array:  # sort names by list
+            temp_names = []
+            for rec in self.remedy10_array:  # create a distinct list of names for each list
+                if rec[0] == _list:  # if the rec cooresponds to the list.
+                    if rec[2]:  # if the name element is not empty
+                        if rec[2] not in temp_names:  # avoid duplicates
+                            temp_names.append(rec[2])  # add the name
+            temp_names = sorted(temp_names)  # sort the list
+            self._remedy10_list_header(_list)  # create headers for each list on the remedy page
+            self.remedy10_start_row = self.remedy10_row  # capture the starting row for sum formula
+            for name in temp_names:
+                violation_cells = []  # list with an element for each day, holds cell coordinates or empty string.
+                offbid = []
+                for i in range(7):
+                    add_this = ""
+                    for r in self.remedy10_array:
+                        if r[0] == _list and r[1] == day_array[i] and r[2] == name:
+                            add_this = r[3]
+                            if self.offbid_dict[name][i] and _list in ("nl", "wal"):  # ignore offbid violations
+                                offbid.append(i)  # put index of offbid days in an array
+                            break
+                    violation_cells.append(add_this)
+                self._display_remedy10_row(name, _list, violation_cells, offbid)
+                self.remedy10_row += 1  # after block of name/remedies - add a blank row for readability
+            self._build_remedy_blanks(_list, _12hr=False)  # solutions for blank rows
+            self._remedy10_list_footer(_list)
+            if _list is not "aux":  # insert page breaks for all list except the last
+                try:
+                    self.remedy_10hr.page_breaks.append(Break(id=self.remedy10_row))
+                except AttributeError:
+                    self.remedy_10hr.row_breaks.append(Break(id=self.remedy10_row))  # effective for windows
+            self.remedy10_row += 1
+        self._remedy10_equalization()  # write the rows for the end of the sheet
 
     def save_open(self):
         """ name and open the excel file """
