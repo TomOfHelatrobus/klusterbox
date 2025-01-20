@@ -24,6 +24,9 @@ class ImpManSpreadsheet:
         self.frame = None  # the frame of parent
         self.pb = None  # progress bar object
         self.pbi = 0  # progress bar count index
+        self.daily_loop_range = 7
+        if not projvar.invran_weekly_span:
+            self.daily_loop_range = 1
         self.startdate = None  # start date of the investigation
         self.enddate = None  # ending date of the investigation
         self.dates = []  # all days of the investigation
@@ -89,6 +92,8 @@ class ImpManSpreadsheet:
         self.mandates_all = []  # stores cell location for total mandates for each sheet
         self.availability_10 = []  # stores cell location for total availability to 10 hrs for each sheet
         self.availability_max = []  # stores cell location for total maximum availabilityfor each sheet
+        self.remedy_summary_row = 1  # stores the row of the remedy sheet totals for the summary
+        self.remedy10_summary_row = 1  # stores the row of the 10 hr remedy sheet totals for the summary
         self.first_row = 0  # stores the first row for each list, re initialized at end of list
         self.last_row = 0  # stores the last row for each list, re initialized at end of list
         self.subtotal_loc_holder = []  # stores the cell location of a subtotal for total mandates/ availability
@@ -142,17 +147,15 @@ class ImpManSpreadsheet:
         self.get_styles()
         self.build_workbook()
         self.set_dimensions()
-        self.build_refs()
         self.build_ws_loop()  # calls list loop and carrier loop
-        self.build_summary_header()
-        self.build_summary()
         self._build_remedy_blank_arrays()  # for both 12 and 10 hour
         self._equalize_remedy_blank_arrays()  # for both 12 and 10 hour
         self._order_remedy_blank_arrays()  # for both 12 and 10 hour
         self._build_remedy_header()
         self._build_remedy()
-        # self._build_remedy10_header()
         self._build_remedy10()
+        self.build_summary()
+        self.build_refs()
         self.save_open()
 
     def ask_ok(self):
@@ -272,10 +275,10 @@ class ImpManSpreadsheet:
             for i in range(1, 7):  # create worksheet for remaining six days
                 self.ws_list.append(self.wb.create_sheet(day_of_week[i]))  # create subsequent worksheets
                 self.ws_list[i].title = day_of_week[i]  # title subsequent worksheets
-        self.summary = self.wb.create_sheet("summary")
-        self.reference = self.wb.create_sheet("reference")
         self.remedy = self.wb.create_sheet("remedy")
         self.remedy_10hr = self.wb.create_sheet("remedy_10hr")  # remedy for letter carrier paragraph
+        self.summary = self.wb.create_sheet("summary")
+        self.reference = self.wb.create_sheet("reference")
 
     def set_dimensions(self):
         """ set the dimensions of the workbook """
@@ -982,103 +985,6 @@ class ImpManSpreadsheet:
         except AttributeError:
             self.ws_list[self.i].row_breaks.append(Break(id=self.row))  # effective for windows
         self.row += 1
-
-    def build_summary_header(self):
-        """ summary headers """
-        self.pbi += 1
-        self.pb.move_count(self.pbi)  # increment progress bar
-        self.pb.change_text("Building day Summary...")
-        self.summary['A1'] = "Improper Mandate Worksheet"
-        self.summary['A1'].style = self.ws_header
-        self.summary.merge_cells('A1:E1')
-        self.summary['B3'] = "Summary Sheet"
-        self.summary['B3'].style = self.date_dov_title
-        self.summary['A5'] = "Pay Period:  "
-        self.summary['A5'].style = self.date_dov_title
-        self.summary['B5'] = projvar.pay_period
-        self.summary['B5'].style = self.date_dov
-        self.summary.merge_cells('B5:D5')
-        self.summary['A6'] = "Station:  "
-        self.summary['A6'].style = self.date_dov_title
-        self.summary['B6'] = projvar.invran_station
-        self.summary['B6'].style = self.date_dov
-        # reference page has no header
-        
-    def build_summary(self):
-        """ build the summary page. """
-        self.summary['A1'] = "Improper Mandate Worksheet"
-        self.summary['A1'].style = self.ws_header
-        self.summary.merge_cells('A1:E1')
-        self.summary['B3'] = "Summary Sheet"
-        self.summary['B3'].style = self.date_dov_title
-        self.summary['A5'] = "Pay Period:  "
-        self.summary['A5'].style = self.date_dov_title
-        self.summary['B5'] = projvar.pay_period
-        self.summary['B5'].style = self.date_dov
-        self.summary.merge_cells('B5:D5')
-        self.summary['A6'] = "Station:  "
-        self.summary['A6'].style = self.date_dov_title
-        self.summary['B6'] = projvar.invran_station
-        self.summary['B6'].style = self.date_dov
-        self.summary.merge_cells('B6:D6')
-        self.summary['B8'] = "Availability"
-        self.summary['B8'].style = self.date_dov_title
-        self.summary['B9'] = "to 10"
-        self.summary['B9'].style = self.date_dov_title
-        self.summary['C8'] = "No list"
-        self.summary['C8'].style = self.date_dov_title
-        self.summary['C9'] = "overtime"
-        self.summary['C9'].style = self.date_dov_title
-        self.summary['D9'] = "violations"
-        self.summary['D9'].style = self.date_dov_title
-        self.summary['F8'] = "Availability"
-        self.summary['F8'].style = self.date_dov_title
-        self.summary['F9'] = "to 12"
-        self.summary['F9'].style = self.date_dov_title
-        self.summary['G8'] = "Off route"
-        self.summary['G8'].style = self.date_dov_title
-        self.summary['G9'] = "mandates"
-        self.summary['G9'].style = self.date_dov_title
-        self.summary['H9'] = "violations"
-        self.summary['H9'].style = self.date_dov_title
-        row = 10
-        for i in range(len(self.dates)):
-            self.summary['A' + str(row)].value = format(self.dates[i], "%m/%d/%y %a")
-            self.summary['A' + str(row)].style = self.date_dov_title
-            self.summary['A' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-            location = self.availability_10[i]  # get the location of the total from the worksheet from the array
-            formula = "=%s!%s%s" % (location[0], location[1], location[2])
-            self.summary['B' + str(row)] = formula
-            self.summary['B' + str(row)].style = self.input_s
-            self.summary['B' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-            location = self.mandates_own_route[i]  # get the location of the total from the worksheet from the array
-            formula = "=%s!%s%s" % (location[0], location[1], location[2])
-            self.summary['C' + str(row)] = formula
-            self.summary['C' + str(row)].style = self.input_s
-            self.summary['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!B%s<%s!C%s,%s!B%s,%s!C%s)" \
-                      % ('summary', str(row), 'summary', str(row), 'summary',
-                         str(row), 'summary', str(row))
-            self.summary['D' + str(row)] = formula
-            self.summary['D' + str(row)].style = self.calcs
-            self.summary['D' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-            location = self.availability_max[i]  # get the location of the total from the worksheet from the array
-            formula = "=%s!%s%s" % (location[0], location[1], location[2])
-            self.summary['F' + str(row)] = formula
-            self.summary['F' + str(row)].style = self.input_s
-            self.summary['F' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-            location = self.mandates_all[i]  # get location of total mandates from worksheet from the array
-            formula = "=%s!%s%s" % (location[0], location[1], location[2])  # total mandates
-            self.summary['G' + str(row)] = formula
-            self.summary['G' + str(row)].style = self.input_s
-            self.summary['G' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-            formula = "=IF(%s!F%s<%s!G%s,%s!F%s,%s!G%s)" \
-                      % ('summary', str(row), 'summary', str(row), 'summary',
-                         str(row), 'summary', str(row))
-            self.summary['H' + str(row)] = formula
-            self.summary['H' + str(row)].style = self.calcs
-            self.summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-            row += 2
             
     def _build_remedy_header(self):
         """ remedy headers for 12 hour and 10 hour remedies"""
@@ -1313,6 +1219,8 @@ class ImpManSpreadsheet:
 
     def _display_remedy_row(self, name, _list, violation_cells, offbid):
         """ display the name, daily violations, total and remedy for each name - will fill one row of remedy sheet """
+        days = ("saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday")
+        violation_cells = [x for x in violation_cells if x]  # remove all empty elements from violation cells array
         try:
             a_max_array = self.a_max_dict[name]
         except KeyError:
@@ -1321,13 +1229,26 @@ class ImpManSpreadsheet:
         cell.value = name
         cell.style = self.input_name
         cell.number_format = '@'
-        for i in range(7):  # display violations
-            cell = self.remedy.cell(row=self.remedy_row, column=i+2)
-            cell.value = self._remedy_violation_cell(_list, violation_cells[i], a_max_array[i])  # get the formula
-            if i in offbid:
+        if projvar.invran_weekly_span:
+            for i in range(len(self.dates)):  # display violations
+                cell = self.remedy.cell(row=self.remedy_row, column=i+2)
+                cell.value = self._remedy_violation_cell(_list, violation_cells[i], a_max_array[i])  # get the formula
+                if i in offbid:
+                    cell.value = ""
+                cell.style = self.input_s
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+        else:  # for a daily investigation
+            for i in range(7):  # display violations
+                cell = self.remedy.cell(row=self.remedy_row, column=i+2)
                 cell.value = ""
-            cell.style = self.input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
+                if days[i] == violation_cells[0][0]:  # if the correct day-display
+                    # get the formula/ 12 hour kwarg is sent to designate the OT ON route sheet.
+                    cell.value = self._remedy_violation_cell(_list, violation_cells[0], a_max_array[0],
+                                                             _12hour=False)
+                    if i in offbid:
+                        cell.value = ""
+                cell.style = self.input_s
+                cell.number_format = "#,###.00;[RED]-#,###.00"
         # display totals cell at the end of the row
         formula_a = "=IF(SUM(%s!B%s:%s!H%s)>0, SUM(%s!B%s:%s!H%s), \"\")" % \
                     ('remedy', self.remedy_row, 'remedy', self.remedy_row, 'remedy', self.remedy_row, 'remedy',
@@ -1479,6 +1400,8 @@ class ImpManSpreadsheet:
         self.remedy_row = 7
         _list_array = ("nl", "wal", "otdl", "aux")
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        if not projvar.invran_weekly_span:
+            day_array = (projvar.invran_date.strftime("%a").lower(), )
         for _list in _list_array:  # sort names by list
             temp_names = []
             for rec in self.remedy_array:  # create a distinct list of names for each list
@@ -1492,7 +1415,7 @@ class ImpManSpreadsheet:
             for name in temp_names:
                 violation_cells = []  # list with an element for each day, holds cell coordinates or empty string.
                 offbid = []
-                for i in range(7):
+                for i in range(len(self.dates)):
                     add_this = ""
                     for r in self.remedy_array:
                         if r[0] == _list and r[1] == day_array[i] and r[2] == name:
@@ -1576,11 +1499,10 @@ class ImpManSpreadsheet:
             cell = self.remedy_10hr.cell(row=self.remedy10_row, column=7)  # remedy percentage label
             cell.value = "cumulative remedy:"
             cell.style = self.date_dov_title
-            formula = "=SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)" \
+            formula = "=SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)+SUM(%s!J%s:%s!J%s)" \
                       % ("remedy_10hr", self.remedy10_cum[0][0], "remedy_10hr", self.remedy10_cum[0][1],
                          "remedy_10hr", self.remedy10_cum[1][0], "remedy_10hr", self.remedy10_cum[1][1],
-                         "remedy_10hr", self.remedy10_cum[2][0], "remedy_10hr", self.remedy10_cum[2][1],
-                         "remedy_10hr", self.remedy10_cum[3][0], "remedy_10hr", self.remedy10_cum[3][1])
+                         "remedy_10hr", self.remedy10_cum[2][0], "remedy_10hr", self.remedy10_cum[2][1])
             cell = self.remedy_10hr.cell(row=self.remedy10_row, column=10)  # remedy percentage input
             cell.value = formula
             cell.style = self.calcs
@@ -1674,6 +1596,8 @@ class ImpManSpreadsheet:
 
     def _display_remedy10_row(self, name, _list, violation_cells, offbid):
         """ display the name, daily violations, total and remedy for each name - will fill one row of remedy sheet """
+        days = ("saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday")
+        violation_cells = [x for x in violation_cells if x]  # remove all empty elements from violation cells array
         try:
             a_max_array = self.a_max_dict[name]
         except KeyError:
@@ -1682,14 +1606,27 @@ class ImpManSpreadsheet:
         cell.value = name
         cell.style = self.input_name
         cell.number_format = '@'
-        for i in range(7):  # display violations
-            cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
-            # get the formula/ 12 hour kwarg is sent to designate the OT ON route sheet.
-            cell.value = self._remedy_violation_cell(_list, violation_cells[i], a_max_array[i], _12hour=False)
-            if i in offbid:
+        if projvar.invran_weekly_span: # for a weekly investigation
+            for i in range(7):  # display violations
+                cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
+                # get the formula/ 12 hour kwarg is sent to designate the OT ON route sheet.
+                cell.value = self._remedy_violation_cell(_list, violation_cells[i], a_max_array[i], _12hour=False)
+                if i in offbid:
+                    cell.value = ""
+                cell.style = self.input_s
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+        else:  # for a daily investigation
+            for i in range(7):  # display violations
+                cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
                 cell.value = ""
-            cell.style = self.input_s
-            cell.number_format = "#,###.00;[RED]-#,###.00"
+                if days[i] == violation_cells[0][0]:  # if the correct day-display
+                    # get the formula/ 12 hour kwarg is sent to designate the OT ON route sheet.
+                    cell.value = self._remedy_violation_cell(_list, violation_cells[0], a_max_array[0],
+                                                             _12hour=False)
+                    if i in offbid:
+                        cell.value = ""
+                cell.style = self.input_s
+                cell.number_format = "#,###.00;[RED]-#,###.00"
         # display totals cell at the end of the row
         formula_a = "=IF(SUM(%s!B%s:%s!H%s)>0, SUM(%s!B%s:%s!H%s), \"\")" % \
                     ('remedy_10hr', self.remedy10_row, 'remedy_10hr', self.remedy10_row, 'remedy_10hr',
@@ -1713,6 +1650,8 @@ class ImpManSpreadsheet:
         self.remedy10_row = 7
         _list_array = ("nl", "otdl", "aux")
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
+        if not projvar.invran_weekly_span:
+            day_array = (projvar.invran_date.strftime("%a").lower(), )
         for _list in _list_array:  # sort names by list
             temp_names = []
             for rec in self.remedy10_array:  # create a distinct list of names for each list
@@ -1726,7 +1665,7 @@ class ImpManSpreadsheet:
             for name in temp_names:
                 violation_cells = []  # list with an element for each day, holds cell coordinates or empty string.
                 offbid = []
-                for i in range(7):
+                for i in range(len(self.dates)):
                     add_this = ""
                     for r in self.remedy10_array:
                         if r[0] == _list and r[1] == day_array[i] and r[2] == name:
@@ -1746,6 +1685,118 @@ class ImpManSpreadsheet:
                     self.remedy_10hr.row_breaks.append(Break(id=self.remedy10_row))  # effective for windows
             self.remedy10_row += 1
         self._remedy10_equalization()  # write the rows for the end of the sheet
+
+    def build_summary(self):
+        """ build the summary page. """
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building day Summary...")
+        daily_dict = {"saturday": 0, "sunday": 1, "monday": 2, "tuesday": 3, "wednesday": 4, "thursday": 5, "friday": 6}
+        day = daily_dict[self.dates[0].strftime("%A").lower()]
+
+        def get_formula(section_name, column, ii):
+            """ returns the appropriate formula given the args """
+            day_column = ("B", "C", "D", "E", "F", "G", "H")
+            if section_name == "unadjusted":
+                if column == "B":  # availability to 10 hr formula
+                    location = self.availability_10[ii]  # location of the total from the worksheet from the array
+                    return "=%s!%s%s" % (location[0], location[1], location[2])
+                if column == "C":  # mandates on own route formula
+                    location = self.mandates_own_route[ii]  # location of the total from the worksheet from the array
+                    return "=%s!%s%s" % (location[0], location[1], location[2])
+                if column == "F":  # availability to 12 hr formula
+                    location = self.availability_max[ii]  # location of the total from the worksheet from the array
+                    return "=%s!%s%s" % (location[0], location[1], location[2])
+                if column == "G":  # off route mandates formula
+                    location = self.mandates_all[ii]  # get location of total mandates from worksheet from the array
+                    return "=%s!%s%s" % (location[0], location[1], location[2])  # total mandates
+            if section_name == "adjusted":
+                if column == "B":  # availability to 10 hr formula
+                    return "=%s!%s%s" % ("remedy_10hr", day_column[day], self.remedy10_equalizer_rows[1])
+                if column == "C":  # mandates on own route formula
+                    return "=%s!%s%s" % ("remedy_10hr", day_column[day], self.remedy10_equalizer_rows[0])
+                if column == "F":  # availability to 12 hr formula
+                    return "=%s!%s%s" % ("remedy", day_column[day], self.remedy_equalizer_rows[1])
+                if column == "G":  # off route mandates formula
+                    return "=%s!%s%s" % ("remedy", day_column[day], self.remedy_equalizer_rows[0])
+
+        self.summary['A1'] = "Improper Mandate Summary"
+        self.summary['A1'].style = self.ws_header
+        self.summary.merge_cells('A1:E1')
+        self.summary['A3'] = "Pay Period:  "
+        self.summary['A3'].style = self.date_dov_title
+        self.summary['B3'] = projvar.pay_period
+        self.summary['B3'].style = self.date_dov
+        self.summary.merge_cells('B5:D5')
+        self.summary['A4'] = "Station:  "
+        self.summary['A4'].style = self.date_dov_title
+        self.summary['B4'] = projvar.invran_station
+        self.summary['B4'].style = self.date_dov
+        self.summary.merge_cells('B4:D4')
+        sections = ("Unadjusted Totals", "Totals Adjusted for Availability and Tolerances")
+        section = ("unadjusted", "adjusted")
+        row = 6
+        for section_count in range(len(sections)):
+            self.summary['A' + str(row)] = sections[section_count]
+            self.summary['A' + str(row)].style = self.ws_header
+            self.summary.merge_cells('A' + str(row) + ':H' + str(row))
+            row += 1
+            self.summary['B' + str(row)] = "Availability"
+            self.summary['B' + str(row)].style = self.date_dov_title
+            self.summary['B' + str(row + 1)] = "to 10"
+            self.summary['B' + str(row + 1)].style = self.date_dov_title
+            self.summary['C' + str(row)] = "No list"
+            self.summary['C' + str(row)].style = self.date_dov_title
+            self.summary['C' + str(row + 1)] = "overtime"
+            self.summary['C' + str(row + 1)].style = self.date_dov_title
+            self.summary['D' + str(row + 1)] = "violations"
+            self.summary['D' + str(row + 1)].style = self.date_dov_title
+            self.summary['F' + str(row)] = "Availability"
+            self.summary['F' + str(row)].style = self.date_dov_title
+            self.summary['F' + str(row + 1)] = "to 12"
+            self.summary['F' + str(row + 1)].style = self.date_dov_title
+            self.summary['G' + str(row)] = "Off route"
+            self.summary['G' + str(row)].style = self.date_dov_title
+            self.summary['G' + str(row + 1)] = "mandates"
+            self.summary['G' + str(row + 1)].style = self.date_dov_title
+            self.summary['H' + str(row + 1)] = "violations"
+            self.summary['H' + str(row + 1)].style = self.date_dov_title
+            row += 2
+            for i in range(len(self.dates)):
+                self.summary['A' + str(row)].value = format(self.dates[i], "%m/%d/%y %a")
+                self.summary['A' + str(row)].style = self.date_dov_title
+                # self.summary['A' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+                # --------------------------------------------------------------------------------- availability to 10
+                self.summary['B' + str(row)] = get_formula(section[section_count], "B", i)
+                self.summary['B' + str(row)].style = self.input_s
+                self.summary['B' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+                # ----------------------------------------------------------------------------------- no list overtime
+                self.summary['C' + str(row)] = get_formula(section[section_count], "C", i)
+                self.summary['C' + str(row)].style = self.input_s
+                self.summary['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+                # --------------------------------------------------------------------------------- 10 hour violations
+                formula = "=IF(%s!B%s<%s!C%s,%s!B%s,%s!C%s)" \
+                          % ('summary', str(row), 'summary', str(row), 'summary',
+                             str(row), 'summary', str(row))
+                self.summary['D' + str(row)] = formula
+                self.summary['D' + str(row)].style = self.calcs
+                self.summary['D' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+                # --------------------------------------------------------------------------------- availability to 12
+                self.summary['F' + str(row)] = get_formula(section[section_count], "F", i)
+                self.summary['F' + str(row)].style = self.input_s
+                self.summary['F' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+                # ---------------------------------------------------------------------------------- off route mandates
+                self.summary['G' + str(row)] = get_formula(section[section_count], "G", i)
+                self.summary['G' + str(row)].style = self.input_s
+                self.summary['G' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+                # ---------------------------------------------------------------------------------- 12 hour violations
+                formula = "=IF(%s!F%s<%s!G%s,%s!F%s,%s!G%s)" \
+                          % ('summary', str(row), 'summary', str(row), 'summary',
+                             str(row), 'summary', str(row))
+                self.summary['H' + str(row)] = formula
+                self.summary['H' + str(row)].style = self.calcs
+                self.summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+                row += 2
 
     def save_open(self):
         """ name and open the excel file """
