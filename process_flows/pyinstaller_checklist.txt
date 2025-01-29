@@ -5,8 +5,10 @@ ___ 2. Update the version number and release date of the readme.txt
 ___ 3. Update the version number and release date in the klusterbox.py file
 ___ 4. If new modules have been added: 
 	___ 1. Update klusterbox.py AboutKlusterbox() class
-	___ 2. Run NSIS wizard for 64 bit distribution. 
-	___ 3. Run NSIS wixard for 32 bit distribution. 
+	___ 2. Update the klusterwin.spec file
+	___ 3. Update the klustermac.spec file
+	___ 4. Run NSIS wizard for 64 bit distribution. 
+	___ 5. Run NSIS wizard for 32 bit distribution. 
 else: 
 	___ 1. Update the version number in the kb_nsis_script.nsi file
 	___ 2. Update the version number in the kb_nsis_script_32bit.nsi file
