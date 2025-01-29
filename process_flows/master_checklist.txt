@@ -1,14 +1,5 @@
 MASTER CHECKLIST
 
-
-
-*********************************  Updates and Checks  ***********************************
-
- ____ 1. Run Post Development Checklist.
- ____ 2. Do any final checks for the release.
- ____ 3. Correct any errors and re push to git if any changes where made.
-
-
 ************************************  Pyinstaller  ***************************************
 
  ____ 1. Pull from git to Windows if changes were made.

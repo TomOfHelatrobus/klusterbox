@@ -127,6 +127,9 @@ class ImpManSpreadsheet:
         self.order10_nl_blanks = []
         self.order10_otdl_blanks = []
         self.order10_aux_blanks = []
+        self.cell_tol_ot_ownroute = 'reference!C$5'  #
+        self.cell_tol_ot_offroute = 'reference!C$6'
+        self.cell_tol_availability = 'reference!C$7'
 
     def create(self, frame):
         """ master method for calling all methods in class """
@@ -309,7 +312,7 @@ class ImpManSpreadsheet:
         self.reference.column_dimensions["D"].width = 2
         self.reference.column_dimensions["E"].width = 50
         self.remedy.oddFooter.center.text = "&A"
-        self.remedy.column_dimensions["A"].width = 20
+        self.remedy.column_dimensions["A"].width = 21
         self.remedy.column_dimensions["B"].width = 6
         self.remedy.column_dimensions["C"].width = 6
         self.remedy.column_dimensions["D"].width = 6
@@ -320,7 +323,7 @@ class ImpManSpreadsheet:
         self.remedy.column_dimensions["I"].width = 7
         self.remedy.column_dimensions["J"].width = 10
         self.remedy_10hr.oddFooter.center.text = "&A"
-        self.remedy_10hr.column_dimensions["A"].width = 20
+        self.remedy_10hr.column_dimensions["A"].width = 21
         self.remedy_10hr.column_dimensions["B"].width = 6
         self.remedy_10hr.column_dimensions["C"].width = 6
         self.remedy_10hr.column_dimensions["D"].width = 6
@@ -330,93 +333,6 @@ class ImpManSpreadsheet:
         self.remedy_10hr.column_dimensions["H"].width = 6
         self.remedy_10hr.column_dimensions["I"].width = 7
         self.remedy_10hr.column_dimensions["J"].width = 10
-
-    def build_refs(self):
-        """ build the references page. This shows tolerances and defines labels. """
-        self.pbi += 1
-        self.pb.move_count(self.pbi)  # increment progress bar
-        self.pb.change_text("Building Reference Page")
-        # tolerances
-        self.reference['B2'].style = self.list_header
-        self.reference['B2'] = "Tolerances"
-        self.reference['C3'] = self.tol_ot_ownroute  # overtime on own route tolerance
-        self.reference['C3'].style = self.input_s
-        self.reference['C3'].number_format = "#,###.00;[RED]-#,###.00"
-        self.reference['E3'] = "overtime on own route"
-        self.reference['C4'] = self.tol_ot_offroute  # overtime off own route tolerance
-        self.reference['C4'].style = self.input_s
-        self.reference['C4'].number_format = "#,###.00;[RED]-#,###.00"
-        self.reference['E4'] = "overtime off own route"
-        self.reference['C5'] = self.tol_availability  # availability tolerance
-        self.reference['C5'].style = self.input_s
-        self.reference['C5'].number_format = "#,###.00;[RED]-#,###.00"
-        self.reference['E5'] = "availability tolerance"
-        # note guide
-        self.reference['B7'].style = self.list_header
-        self.reference['B7'] = "Note Guide"
-        self.reference['C8'] = "ns day"
-        self.reference['C8'].style = self.input_s
-        self.reference['E8'] = "Carrier worked on their non scheduled day"
-        self.reference['C10'] = "no call"
-        self.reference['C10'].style = self.input_s
-        self.reference['E10'] = "Carrier was not scheduled for overtime"
-        self.reference['C11'] = "light"
-        self.reference['C11'].style = self.input_s
-        self.reference['E11'] = "Carrier on light duty and unavailable for overtime"
-        self.reference['C12'] = "sch chg"
-        self.reference['C12'].style = self.input_s
-        self.reference['E12'] = "Schedule change: unavailable for overtime"
-        self.reference['C13'] = "annual"
-        self.reference['C13'].style = self.input_s
-        self.reference['E13'] = "Annual leave"
-        self.reference['C14'] = "sick"
-        self.reference['C14'].style = self.input_s
-        self.reference['E14'] = "Sick leave"
-        self.reference['C15'] = "excused"
-        self.reference['C15'].style = self.input_s
-        self.reference['E15'] = "Carrier excused from mandatory overtime"
-        # column headers
-        self.reference['B17'].style = self.list_header
-        self.reference['B17'] = "Column Headers"
-        self.reference['C18'] = "Name"
-        self.reference['C18'].style = self.input_s
-        self.reference['E18'] = "The name of the carrier. "
-        self.reference['C19'] = "Note"
-        self.reference['C19'].style = self.input_s
-        self.reference['E19'] = "Special circumstances. See note guide above."
-        self.reference['C20'] = "5200"
-        self.reference['C20'].style = self.input_s
-        self.reference['E20'] = "Total hours worked"
-        self.reference['C21'] = "RS"
-        self.reference['C21'].style = self.input_s
-        self.reference['E21'] = "Return to station time."
-        self.reference['C22'] = "MV off"
-        self.reference['C22'].style = self.input_s
-        self.reference['E22'] = "Time moved off own route"
-        self.reference['C23'] = "MV on"
-        self.reference['C23'].style = self.input_s
-        self.reference['E23'] = "Time moved on/returned to own route"
-        self.reference['C24'] = "Route"
-        self.reference['C24'].style = self.input_s
-        self.reference['E24'] = "Route of overtime/pivot"
-        self.reference['C25'] = "MV Total"
-        self.reference['C25'].style = self.input_s
-        self.reference['E25'] = "Time spent on overtime/pivot off route"
-        self.reference['C26'] = "OT own"
-        self.reference['C26'].style = self.input_s
-        self.reference['E26'] = "Daily overtime on the carrier's own route"
-        self.reference['C27'] = "Off rte"
-        self.reference['C27'].style = self.input_s
-        self.reference['E27'] = "Total daily time spent off route"
-        self.reference['C28'] = "OT off"
-        self.reference['C28'].style = self.input_s
-        self.reference['E28'] = "Daily overtime off route"
-        self.reference['C30'] = "to 10"
-        self.reference['C30'].style = self.input_s
-        self.reference['E30'] = "Total availability to 10 hours"
-        self.reference['C31'] = "to 12"
-        self.reference['C31'].style = self.input_s
-        self.reference['E31'] = "Total availability to 12 hours"
         
     def build_ws_loop(self):
         """ this loops once for each list. """
@@ -790,19 +706,35 @@ class ImpManSpreadsheet:
 
     def display_formulas_non(self):
         """ fill the formulas columns for non list carriers. """
-        ot_formula = "=IF(MAX(MAX(%s!C%s-8,0)-%s!K%s)>reference!C$3, MAX(MAX(%s!C%s-8,0)-%s!K%s),0)" \
+        # ot_formula = "=IF(MAX(MAX(%s!C%s-8,0)-%s!K%s)>reference!C$3, MAX(MAX(%s!C%s-8,0)-%s!K%s),0)" \
+        #              % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+        #                 self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
+        ot_formula = "=IF(MAX(MAX(%s!C%s-8,0)-%s!K%s)>%s, MAX(MAX(%s!C%s-8,0)-%s!K%s),0)" \
                      % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                        self.cell_tol_ot_ownroute,
                         self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row))
         off_rt_formula = "=%s!H%s" % (self.day_of_week[self.i], str(self.row))  # copy data from column H/ MV total
+        # ot_off_rt_formula = "=IF(%s!C%s=\"\",0, " \
+        #                     "IF(OR(%s!B%s=\"ns day\",%s!J%s>=%s!C%s),%s!C%s, " \
+        #                     "IF(%s!C%s<=8+reference!C4,0, " \
+        #                     "MIN(MAX(%s!C%s-8,0), " \
+        #                     "IF(%s!J%s<=reference!C4,0,%s!J%s)))))" \
+        #                     % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+        #                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+        #                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+        #                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+        #                        self.day_of_week[self.i], str(self.row))
         ot_off_rt_formula = "=IF(%s!C%s=\"\",0, " \
                             "IF(OR(%s!B%s=\"ns day\",%s!J%s>=%s!C%s),%s!C%s, " \
-                            "IF(%s!C%s<=8+reference!C4,0, " \
+                            "IF(%s!C%s<=8+%s,0, " \
                             "MIN(MAX(%s!C%s-8,0), " \
-                            "IF(%s!J%s<=reference!C4,0,%s!J%s)))))" \
+                            "IF(%s!J%s<=%s,0,%s!J%s)))))" \
                             % (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                                self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                                self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                               self.cell_tol_ot_offroute,
                                self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                               self.cell_tol_ot_offroute,
                                self.day_of_week[self.i], str(self.row))
         formulas = (ot_formula, off_rt_formula, ot_off_rt_formula)
         column_i = 0
@@ -819,21 +751,23 @@ class ImpManSpreadsheet:
         if self.pref[self.lsi] == "aux":  # alter formula by list preference
             max_hrs = 11.5  # maximux hours for auxiliary carriers
         formula_ten = "=IF(OR(%s!B%s = \"light\", %s!B%s = \"excused\", %s!B%s = \"sch chg\", " \
-                      "%s!B%s = \"annual\", %s!B%s = \"sick\", %s!C%s >= 10 - reference!C5), 0, " \
+                      "%s!B%s = \"annual\", %s!B%s = \"sick\", %s!C%s >= 10 - %s), 0, " \
                       "IF(%s!B%s = \"no call\", 10, " \
                       "IF(%s!C%s = 0, 0, MAX(10 - %s!C%s, 0))))" % \
                       (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
+                       self.cell_tol_availability,
                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                        self.day_of_week[self.i], str(self.row))
         formula_max = "=IF(OR(%s!B%s = \"light\",%s!B%s = \"excused\", %s!B%s = \"sch chg\", %s!B%s = \"annual\", " \
-                      "%s!B%s = \"sick\", %s!C%s >= %s - reference!C5), 0, IF(%s!B%s = \"no call\", %s, " \
+                      "%s!B%s = \"sick\", %s!C%s >= %s - %s), 0, IF(%s!B%s = \"no call\", %s, " \
                       "IF(%s!C%s = 0, 0, MAX(%s - %s!C%s, 0))))" % \
                       (self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
                        self.day_of_week[self.i], str(self.row), self.day_of_week[self.i], str(self.row),
-                       max_hrs, self.day_of_week[self.i], str(self.row),
+                       max_hrs, self.cell_tol_availability,
+                       self.day_of_week[self.i], str(self.row),
                        max_hrs, self.day_of_week[self.i], str(self.row),
                        max_hrs, self.day_of_week[self.i], str(self.row))
         formulas = (formula_ten, formula_max)
@@ -989,12 +923,31 @@ class ImpManSpreadsheet:
     def _build_remedy_header(self):
         """ remedy headers for 12 hour and 10 hour remedies"""
         sheet = (self.remedy, self.remedy_10hr)
-        title = ("Remedies for Improper Overtime OFF Own Route", "Remedies for Improper Overtime ON Own Route")
+        title = ("Remedies for Improperly Mandated Overtime OFF Own Route",
+                 "Remedies for Improperly Mandated Overtime ON Own Route")
+        text = ("This sheet shows potential violations for off route overtime improperly worked by no list "
+                "and work assignment carriers while otdl carriers had not been worked to the full extent. "
+                "Management must utilize otdl carriers to the fullest extent (12 hours for otdl carriers and "
+                "11.50 hours for auxiliary carriers) before mandating no list or work assignment carriers to "
+                "work overtime off their assignments.  Management can use Auxiliary carriers to provide "
+                "assistance instead of otdl carriers. Equalize the potential violations to find the remedy. "
+                "Availability is adjusted for weekly overtime and total hour limits for weekly (but not daily) "
+                "investigations. Off bid violations are not included as potential violations. Availability hours "
+                "for otdl and auxiliary carriers overlaps for both 10 and 12 hour availability. ",
+                "This sheet shows potential violations for overtime improperly worked by no list carriers on "
+                "their own assignment while otdl and auxiliary carriers had not been worked to the full extent "
+                "(10 hours for both otdl and auxiliary carriers). Management must utilize otdl and auxiliary "
+                "carriers to the fullest extent before mandating no list carriers to work overtime on their "
+                "assignments per the Memorandum on the Letter Carrier Paragraph. Equalize the potential violations "
+                "to find the remedy. Availability is adjusted for weekly overtime and total hour limits for "
+                "weekly (but not daily) investigations. Off bid violations are not included as potential violations. "
+                "Availability hours for otdl and auxiliary carriers overlaps for both 10 and 12 hour availability. "
+                )
         for i in range(len(sheet)):
             cell = sheet[i].cell(row=1, column=1)
             cell.value = title[i]
             cell.style = self.ws_header
-            sheet[i].merge_cells('A1:I1')
+            sheet[i].merge_cells('A1:J1')
             cell = sheet[i].cell(row=3, column=1)
             cell.value = "Date:  "  # create date/ pay period/ station header
             cell.style = self.date_dov_title
@@ -1036,6 +989,14 @@ class ImpManSpreadsheet:
                 cell.value = float(self.remedy_rate)
                 cell.style = self.remedy_style
                 cell.number_format = "[$$-409]#,##0.00;[RED]-[$$-409]#,##0.00"
+            else:
+                sheet[i].row_dimensions[5].hidden = True
+            cell = sheet[i].cell(row=7, column=1)
+            cell.value = text[i]
+            cell.style = self.instruct_text
+            cell.alignment = Alignment(wrap_text=True, vertical='top')
+            sheet[i].row_dimensions[7].height = 90
+            sheet[i].merge_cells('A7:J7')
 
     def _remedy_list_header(self, _list):
         """ create headers for each list on the remedy page """
@@ -1220,7 +1181,8 @@ class ImpManSpreadsheet:
     def _display_remedy_row(self, name, _list, violation_cells, offbid):
         """ display the name, daily violations, total and remedy for each name - will fill one row of remedy sheet """
         days = ("saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday")
-        violation_cells = [x for x in violation_cells if x]  # remove all empty elements from violation cells array
+        if not projvar.invran_weekly_span:
+            violation_cells = [x for x in violation_cells if x]  # remove all empty elements from violation cells array
         try:
             a_max_array = self.a_max_dict[name]
         except KeyError:
@@ -1245,7 +1207,7 @@ class ImpManSpreadsheet:
                     # get the formula/ 12 hour kwarg is sent to designate the OT ON route sheet.
                     cell.value = self._remedy_violation_cell(_list, violation_cells[0], a_max_array[0],
                                                              _12hour=False)
-                    if i in offbid:
+                    if 0 in offbid:
                         cell.value = ""
                 cell.style = self.input_s
                 cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -1397,7 +1359,7 @@ class ImpManSpreadsheet:
 
     def _build_remedy(self):
         """ build the remedy page """
-        self.remedy_row = 7
+        self.remedy_row = 9
         _list_array = ("nl", "wal", "otdl", "aux")
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         if not projvar.invran_weekly_span:
@@ -1581,8 +1543,8 @@ class ImpManSpreadsheet:
         cell.value = " <- adjust to zero"
         cell.style = self.date_dov_title
         self.remedy10_row += 1
-        self.remedy_10hr.merge_cells('B' + str(self.remedy_row) + ':H' + str(self.remedy_row))
-        cell = self.remedy_10hr.cell(row=self.remedy_row, column=2)  # row for exposition on equalization
+        self.remedy_10hr.merge_cells('B' + str(self.remedy10_row) + ':H' + str(self.remedy10_row))
+        cell = self.remedy_10hr.cell(row=self.remedy10_row, column=2)  # row for exposition on equalization
         cell.value = "\n" \
                      "1. Using the OTDL Weekly Availability Worksheet, alter/delete availability from the OTDL " \
                      "section if there is no availability. \n" \
@@ -1590,14 +1552,15 @@ class ImpManSpreadsheet:
                      "equalize. \n" \
                      "3. If the value is negative, subtract/delete from OTDL and Auxiliary sections to equalize. \n"
         cell.style = self.instruct_text
-        self.remedy_10hr['B' + str(self.remedy_row)].alignment = Alignment(wrap_text=True, vertical='top',
-                                                                           shrink_to_fit=False)
-        self.remedy_10hr.row_dimensions[self.remedy_row].height = 100
+        self.remedy_10hr['B' + str(self.remedy10_row)].alignment = Alignment(wrap_text=True, vertical='top',
+                                                                             shrink_to_fit=False)
+        self.remedy_10hr.row_dimensions[self.remedy10_row].height = 100
 
     def _display_remedy10_row(self, name, _list, violation_cells, offbid):
         """ display the name, daily violations, total and remedy for each name - will fill one row of remedy sheet """
         days = ("saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday")
-        violation_cells = [x for x in violation_cells if x]  # remove all empty elements from violation cells array
+        if not projvar.invran_weekly_span:
+            violation_cells = [x for x in violation_cells if x]  # remove all empty elements from violation cells array
         try:
             a_max_array = self.a_max_dict[name]
         except KeyError:
@@ -1606,7 +1569,7 @@ class ImpManSpreadsheet:
         cell.value = name
         cell.style = self.input_name
         cell.number_format = '@'
-        if projvar.invran_weekly_span: # for a weekly investigation
+        if projvar.invran_weekly_span:  # for a weekly investigation
             for i in range(7):  # display violations
                 cell = self.remedy_10hr.cell(row=self.remedy10_row, column=i+2)
                 # get the formula/ 12 hour kwarg is sent to designate the OT ON route sheet.
@@ -1647,7 +1610,7 @@ class ImpManSpreadsheet:
 
     def _build_remedy10(self):
         """ build the remedy page """
-        self.remedy10_row = 7
+        self.remedy10_row = 9
         _list_array = ("nl", "otdl", "aux")
         day_array = ("sat", "sun", "mon", "tue", "wed", "thu", "fri")
         if not projvar.invran_weekly_span:
@@ -1692,10 +1655,10 @@ class ImpManSpreadsheet:
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Building day Summary...")
         daily_dict = {"saturday": 0, "sunday": 1, "monday": 2, "tuesday": 3, "wednesday": 4, "thursday": 5, "friday": 6}
-        day = daily_dict[self.dates[0].strftime("%A").lower()]
 
         def get_formula(section_name, column, ii):
             """ returns the appropriate formula given the args """
+            day = daily_dict[self.dates[ii].strftime("%A").lower()]
             day_column = ("B", "C", "D", "E", "F", "G", "H")
             if section_name == "unadjusted":
                 if column == "B":  # availability to 10 hr formula
@@ -1733,7 +1696,7 @@ class ImpManSpreadsheet:
         self.summary['B4'] = projvar.invran_station
         self.summary['B4'].style = self.date_dov
         self.summary.merge_cells('B4:D4')
-        sections = ("Unadjusted Totals", "Totals Adjusted for Availability and Tolerances")
+        sections = ("Unadjusted Totals", "Totals Adjusted for Availability, Off Bid Violations and Tolerances")
         section = ("unadjusted", "adjusted")
         row = 6
         for section_count in range(len(sections)):
@@ -1741,23 +1704,23 @@ class ImpManSpreadsheet:
             self.summary['A' + str(row)].style = self.ws_header
             self.summary.merge_cells('A' + str(row) + ':H' + str(row))
             row += 1
-            self.summary['B' + str(row)] = "Availability"
+            self.summary['B' + str(row)] = "No list"
             self.summary['B' + str(row)].style = self.date_dov_title
-            self.summary['B' + str(row + 1)] = "to 10"
+            self.summary['B' + str(row + 1)] = "overtime"
             self.summary['B' + str(row + 1)].style = self.date_dov_title
-            self.summary['C' + str(row)] = "No list"
+            self.summary['C' + str(row)] = "Availability"
             self.summary['C' + str(row)].style = self.date_dov_title
-            self.summary['C' + str(row + 1)] = "overtime"
+            self.summary['C' + str(row + 1)] = "to 10"
             self.summary['C' + str(row + 1)].style = self.date_dov_title
             self.summary['D' + str(row + 1)] = "violations"
             self.summary['D' + str(row + 1)].style = self.date_dov_title
-            self.summary['F' + str(row)] = "Availability"
+            self.summary['F' + str(row)] = "Off route"
             self.summary['F' + str(row)].style = self.date_dov_title
-            self.summary['F' + str(row + 1)] = "to 12"
+            self.summary['F' + str(row + 1)] = "mandates"
             self.summary['F' + str(row + 1)].style = self.date_dov_title
-            self.summary['G' + str(row)] = "Off route"
+            self.summary['G' + str(row)] = "Availability"
             self.summary['G' + str(row)].style = self.date_dov_title
-            self.summary['G' + str(row + 1)] = "mandates"
+            self.summary['G' + str(row + 1)] = "to 12"
             self.summary['G' + str(row + 1)].style = self.date_dov_title
             self.summary['H' + str(row + 1)] = "violations"
             self.summary['H' + str(row + 1)].style = self.date_dov_title
@@ -1765,13 +1728,12 @@ class ImpManSpreadsheet:
             for i in range(len(self.dates)):
                 self.summary['A' + str(row)].value = format(self.dates[i], "%m/%d/%y %a")
                 self.summary['A' + str(row)].style = self.date_dov_title
-                # self.summary['A' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-                # --------------------------------------------------------------------------------- availability to 10
-                self.summary['B' + str(row)] = get_formula(section[section_count], "B", i)
+                # ----------------------------------------------------------------------------------- no list overtime
+                self.summary['B' + str(row)] = get_formula(section[section_count], "C", i)
                 self.summary['B' + str(row)].style = self.input_s
                 self.summary['B' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-                # ----------------------------------------------------------------------------------- no list overtime
-                self.summary['C' + str(row)] = get_formula(section[section_count], "C", i)
+                # --------------------------------------------------------------------------------- availability to 10
+                self.summary['C' + str(row)] = get_formula(section[section_count], "B", i)
                 self.summary['C' + str(row)].style = self.input_s
                 self.summary['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
                 # --------------------------------------------------------------------------------- 10 hour violations
@@ -1781,12 +1743,12 @@ class ImpManSpreadsheet:
                 self.summary['D' + str(row)] = formula
                 self.summary['D' + str(row)].style = self.calcs
                 self.summary['D' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-                # --------------------------------------------------------------------------------- availability to 12
-                self.summary['F' + str(row)] = get_formula(section[section_count], "F", i)
+                # ---------------------------------------------------------------------------------- off route mandates
+                self.summary['F' + str(row)] = get_formula(section[section_count], "G", i)
                 self.summary['F' + str(row)].style = self.input_s
                 self.summary['F' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
-                # ---------------------------------------------------------------------------------- off route mandates
-                self.summary['G' + str(row)] = get_formula(section[section_count], "G", i)
+                # --------------------------------------------------------------------------------- availability to 12
+                self.summary['G' + str(row)] = get_formula(section[section_count], "F", i)
                 self.summary['G' + str(row)].style = self.input_s
                 self.summary['G' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
                 # ---------------------------------------------------------------------------------- 12 hour violations
@@ -1797,6 +1759,135 @@ class ImpManSpreadsheet:
                 self.summary['H' + str(row)].style = self.calcs
                 self.summary['H' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
                 row += 2
+
+    def build_refs(self):
+        """ build the references page. This shows tolerances and defines labels. """
+        self.pbi += 1
+        self.pb.move_count(self.pbi)  # increment progress bar
+        self.pb.change_text("Building Reference Page")
+        # tolerances
+        row = 1
+        cell = self.reference.cell(row=row, column=1)
+        cell.value = "Improper Mandate Reference Sheet"
+        cell.style = self.ws_header
+        self.reference.merge_cells('A1:E1')
+        row += 2
+        self.reference['B' + str(row)].style = self.list_header
+        self.reference['B' + str(row)] = "Tolerances"
+        row += 1
+        text = "These tolerances will apply to the OT on route, OT off route and Availability totals on the daily " \
+               "worksheets. They can be changed below or in the Klusterbox app (Management> Tolerances). \n" \
+               "Remedy tolerances can be set on the Remedies Worksheet or on the Klusterbox app (Management> " \
+               "Spreadsheet settings> Improper Mandate Spreadsheets> Remedy Settings)."
+        cell = self.reference.cell(row=row, column=3)
+        cell.value = text
+        cell.style = self.instruct_text
+        cell.alignment = Alignment(wrap_text=True, vertical='top')
+        self.reference.merge_cells('C4:E4')
+        self.reference.row_dimensions[4].height = 75
+        row += 1
+        self.reference['C' + str(row)] = self.tol_ot_ownroute  # overtime on own route tolerance
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+        self.reference['E' + str(row)] = "overtime on own route"
+        row += 1
+        self.reference['C' + str(row)] = self.tol_ot_offroute  # overtime off own route tolerance
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+        self.reference['E' + str(row)] = "overtime off own route"
+        row += 1
+        self.reference['C' + str(row)] = self.tol_availability  # availability tolerance
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['C' + str(row)].number_format = "#,###.00;[RED]-#,###.00"
+        self.reference['E' + str(row)] = "availability tolerance"
+        row += 2
+        # note guide
+        self.reference['B' + str(row)].style = self.list_header
+        self.reference['B' + str(row)] = "Note Guide"
+        row += 1
+        self.reference['C' + str(row)] = "ns day"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Carrier worked on their non scheduled day"
+        row += 2
+        self.reference['C' + str(row)] = "no call"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Carrier was not scheduled for overtime"
+        row += 1
+        self.reference['C' + str(row)] = "light"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Carrier on light duty and unavailable for overtime"
+        row += 1
+        self.reference['C' + str(row)] = "sch chg"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Schedule change: unavailable for overtime"
+        row += 1
+        self.reference['C' + str(row)] = "annual"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Annual leave"
+        row += 1
+        self.reference['C' + str(row)] = "sick"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Sick leave"
+        row += 1
+        self.reference['C' + str(row)] = "excused"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Carrier excused from mandatory overtime"
+        row += 2
+        # column headers
+        self.reference['B' + str(row)].style = self.list_header
+        self.reference['B' + str(row)] = "Column Headers"
+        row += 1
+        self.reference['C' + str(row)] = "Name"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "The name of the carrier. "
+        row += 1
+        self.reference['C' + str(row)] = "Note"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Special circumstances. See note guide above."
+        row += 1
+        self.reference['C' + str(row)] = "5200"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Total hours worked"
+        row += 1
+        self.reference['C' + str(row)] = "RS"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Return to station time."
+        row += 1
+        self.reference['C' + str(row)] = "MV off"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Time moved off own route"
+        row += 1
+        self.reference['C' + str(row)] = "MV on"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Time moved on/returned to own route"
+        row += 1
+        self.reference['C' + str(row)] = "Route"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Route of overtime/pivot"
+        row += 1
+        self.reference['C' + str(row)] = "MV Total"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Time spent on overtime/pivot off route"
+        row += 1
+        self.reference['C' + str(row)] = "OT own"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Daily overtime on the carrier's own route"
+        row += 1
+        self.reference['C' + str(row)] = "Off rte"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Total daily time spent off route"
+        row += 1
+        self.reference['C' + str(row)] = "OT off"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Daily overtime off route"
+        row += 2
+        self.reference['C' + str(row)] = "to 10"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Total availability to 10 hours"
+        row += 1
+        self.reference['C' + str(row)] = "to 12"
+        self.reference['C' + str(row)].style = self.input_s
+        self.reference['E' + str(row)] = "Total availability to 12 hours"
 
     def save_open(self):
         """ name and open the excel file """
@@ -2006,8 +2097,6 @@ class OvermaxSpreadsheet:
 
     def set_dimensions(self):
         """ adjust the height and width on the violations/ instructions page """
-        for x in range(2, 10):
-            self.violations.row_dimensions[x].height = 10  # adjust all row height
         sheets = (self.violations, self.instructions)
         for sheet in sheets:
             sheet.column_dimensions["A"].width = 13
@@ -2084,6 +2173,9 @@ class OvermaxSpreadsheet:
     def build_violations(self):
         """ self.violations worksheet - format cells """
         self.pb.change_text("Building violations...")
+        for x in (2, 3, 4, 5, 7, 8, 9):
+            self.violations.row_dimensions[x].height = 10  # adjust all row height
+        self.violations.row_dimensions[6].height = 30  # adjust all row height
         self.violations.merge_cells('A1:R1')
         self.violations['A1'] = "12 and 60 Hour Violations Worksheet"
         self.violations['A1'].style = self.ws_header
@@ -2119,9 +2211,9 @@ class OvermaxSpreadsheet:
         self.violations['A9'].style = self.col_header
         self.violations['B9'] = "list"
         self.violations['B9'].style = self.col_header
-        self.violations.merge_cells('C6:C9')
-        self.violations['C6'] = "Weekly\n5200"
-        self.violations['C6'].style = self.vert_header
+        self.violations.merge_cells('C5:C9')
+        self.violations['C5'] = "Weekly \n5200"
+        self.violations['C5'].style = self.vert_header
         self.violations.merge_cells('D9:E9')
         self.violations['D9'] = "sat"
         self.violations['D9'].style = self.col_center_header
@@ -2168,7 +2260,7 @@ class OvermaxSpreadsheet:
         self.instructions.merge_cells('A1:R1')
         self.instructions['A1'] = "12 and 60 Hour Violations Instructions"
         self.instructions['A1'].style = self.ws_header
-        self.instructions.row_dimensions[3].height = 300
+        self.instructions.row_dimensions[3].height = 290
         self.instructions['A3'].style = self.instruct_text
         self.instructions.merge_cells('A3:X3')
         self.instructions['A3'] = \
@@ -2212,7 +2304,9 @@ class OvermaxSpreadsheet:
             "7. Field O will show the violation in hours which you should seek a remedy " \
             "for. \n".format(Convert(self.wal_12hour).bool_to_onoff())
         self.instructions['A3'].alignment = Alignment(wrap_text=True, vertical='top')
-        for x in range(4, 20):
+        self.instructions.row_dimensions[4].height = 10
+        self.instructions.row_dimensions[5].height = 30
+        for x in range(6, 12):
             self.instructions.row_dimensions[x].height = 10  # adjust all row height
         self.instructions.merge_cells('D6:Q6')
         self.instructions['D6'] = "Daily Paid Leave times with type"
@@ -2224,9 +2318,9 @@ class OvermaxSpreadsheet:
         self.instructions['A8'].style = self.col_header
         self.instructions['B8'] = "list"
         self.instructions['B8'].style = self.col_header
-        self.instructions.merge_cells('C5:C8')
-        self.instructions['C5'] = "Weekly\n5200"
-        self.instructions['C5'].style = self.vert_header
+        self.instructions.merge_cells('C4:C8')
+        self.instructions['C4'] = "Weekly \n5200"
+        self.instructions['C4'].style = self.vert_header
         self.instructions.merge_cells('D8:E8')
         self.instructions['D8'] = "sat"
         self.instructions['D8'].style = self.col_center_header
@@ -2422,6 +2516,7 @@ class OvermaxSpreadsheet:
                      page, str(i + 1))
         self.instructions['S10'] = formula
         self.instructions['S10'].style = self.calcs
+        self.instructions['S11'].style = self.calcs
         self.instructions['S10'].number_format = "#,###.00;[RED]-#,###.00"
         # instructions daily self.violations
         formula_d = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
@@ -2451,6 +2546,7 @@ class OvermaxSpreadsheet:
         self.instructions['T' + str(i)] = formula_d
         self.instructions.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
         self.instructions['T' + str(i)].style = self.calcs
+        self.instructions['T' + str(i+1)].style = self.calcs
         self.instructions['T' + str(i)].number_format = "#,###.00"
         # instructions wed adjustment
         self.instructions.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
@@ -2480,6 +2576,7 @@ class OvermaxSpreadsheet:
                        page, str(i), page, str(i + 1), page, str(i))
         self.instructions['U' + str(i)] = formula_e
         self.instructions['U' + str(i)].style = self.vert_calcs
+        self.instructions['U' + str(i+1)].style = self.vert_calcs
         self.instructions['U' + str(i)].number_format = "#,###.00"
         # instructions thr adjustment
         formula_f = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
@@ -2503,6 +2600,7 @@ class OvermaxSpreadsheet:
         self.instructions.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
         self.instructions['V' + str(i)] = formula_f
         self.instructions['V' + str(i)].style = self.vert_calcs
+        self.instructions['V' + str(i+1)].style = self.vert_calcs
         self.instructions['V' + str(i)].number_format = "#,###.00"
         # instructions fri adjustment
         self.instructions.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
@@ -2520,6 +2618,7 @@ class OvermaxSpreadsheet:
                        page, str(i + 1), page, str(i + 1), page, str(i))
         self.instructions['W' + str(i)] = formula_g
         self.instructions['W' + str(i)].style = self.vert_calcs
+        self.instructions['W' + str(i+1)].style = self.vert_calcs
         self.instructions['W' + str(i)].number_format = "#,###.00"
         # instructions total violation
         self.instructions.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
@@ -2528,6 +2627,7 @@ class OvermaxSpreadsheet:
                        page, str(i), page, str(i))
         self.instructions['X' + str(i)] = formula_h
         self.instructions['X' + str(i)].style = self.calcs
+        self.instructions['X' + str(i+1)].style = self.calcs
         self.instructions['X' + str(i)].number_format = "#,###.00"
         self.instructions['D12'] = "F"
         self.instructions['D12'].style = self.col_center_header
@@ -2557,7 +2657,7 @@ class OvermaxSpreadsheet:
         if self.wal_12hr_mod:
             text_k_a = ""
             text_k_b = " and wal"
-        self.instructions.row_dimensions[14].height = 210
+        self.instructions.row_dimensions[14].height = 190
         self.instructions['A14'].style = self.instruct_text
         self.instructions.merge_cells('A14:X14')
         self.instructions['A14'] = \
@@ -2792,6 +2892,7 @@ class OvermaxSpreadsheet:
                            "violations", str(i + 1), "violations", str(i), "violations", str(i + 1))
             self.violations['S' + str(i)] = formula_c
             self.violations['S' + str(i)].style = self.calcs
+            self.violations['S' + str(i+1)].style = self.calcs
             self.violations['S' + str(i)].number_format = "#,###.00;[RED]-#,###.00"
             # daily violation
             formula_d = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
@@ -2827,6 +2928,7 @@ class OvermaxSpreadsheet:
             self.violations['T' + str(i)] = formula_d
             self.violations.merge_cells('T' + str(i) + ':T' + str(i + 1))  # merge box for daily violation
             self.violations['T' + str(i)].style = self.calcs
+            self.violations['T' + str(i+1)].style = self.calcs
             self.violations['T' + str(i)].number_format = "#,###.00"
             # wed adjustment
             self.violations.merge_cells('U' + str(i) + ':U' + str(i + 1))  # merge box for wed adj
@@ -2857,6 +2959,7 @@ class OvermaxSpreadsheet:
                            "violations", str(i), "violations", str(i + 1), "violations", str(i))
             self.violations['U' + str(i)] = formula_e
             self.violations['U' + str(i)].style = self.vert_calcs
+            self.violations['U' + str(i+1)].style = self.vert_calcs
             self.violations['U' + str(i)].number_format = "#,###.00"
             # thr adjustment
             formula_f = "=IF(OR(%s!B%s=\"%s\",%s!B%s=\"nl\",%s!B%s=\"ptf\",%s!B%s=\"aux\")," \
@@ -2882,6 +2985,7 @@ class OvermaxSpreadsheet:
             self.violations.merge_cells('V' + str(i) + ':V' + str(i + 1))  # merge box for thr adj
             self.violations['V' + str(i)] = formula_f
             self.violations['V' + str(i)].style = self.vert_calcs
+            self.violations['V' + str(i+1)].style = self.vert_calcs
             self.violations['V' + str(i)].number_format = "#,###.00"
             # fri adjustment
             self.violations.merge_cells('W' + str(i) + ':W' + str(i + 1))  # merge box for fri adj
@@ -2903,6 +3007,7 @@ class OvermaxSpreadsheet:
                            "violations", str(i + 1), "violations", str(i + 1), "violations", str(i))
             self.violations['W' + str(i)] = formula_g
             self.violations['W' + str(i)].style = self.vert_calcs
+            self.violations['W' + str(i+1)].style = self.vert_calcs
             self.violations['W' + str(i)].number_format = "#,###.00"
             # total violation
             self.violations.merge_cells('X' + str(i) + ':X' + str(i + 1))  # merge box for total violation
@@ -2914,6 +3019,7 @@ class OvermaxSpreadsheet:
                            "violations", str(i), "violations", str(i))
             self.violations['X' + str(i)] = formula_h
             self.violations['X' + str(i)].style = self.calcs
+            self.violations['X' + str(i+1)].style = self.calcs
             self.violations['X' + str(i)].number_format = "#,###.00"
             # ----------------------------------------------------------------------------------fill cells for summary
             formula_i = "=IF(%s!A%s = 0,\"\",%s!A%s)" % ("violations", str(i), "violations", str(i))
