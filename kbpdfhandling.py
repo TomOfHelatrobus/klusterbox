@@ -75,6 +75,7 @@ class PdfConverter:
         self.lastname = ""  # holds the last name of the employee
         self.fi = ""
         self.jobs = []  # holds the d/a code
+        self.jobs_alt = []  # holds the d/a code if it appears in an altered format
         self.routes = []  # holds the route
         self.level = []  # hold the level (one or two normally)
         self.base_temp = ("Base", "Temp")
@@ -841,6 +842,7 @@ class PdfConverter:
                 self.find_fi(e)  # look for first initial
                 self.find_name(e)  # look for the last name
                 self.find_job(e)  # find the job or d/a code - there might be two
+                self.find_job_alt(e)  # same method as find_job, except looks for alternate format
                 self.find_temproute(e)  # look for temp route
                 self.find_mainroute(e)  # look for the main route
                 self.trap_route(e)  # set trap to catch route # on the next line
@@ -1217,6 +1219,11 @@ class PdfConverter:
             if re.match(r"\s[0-9]{2}-[0-9]$", e):
                 self.parent.jobs.append(e)
 
+        def find_job_alt(self, e):
+            """ does the same as find_job method, except searchs for an alternate format """
+            if re.match(r"[0-9]{2}-[0-9]$", e):
+                self.parent.jobs_alt.append(e)
+
         def find_temproute(self, e):
             """ look for temp route """
             if self.parent.lookfor2route:
@@ -1319,6 +1326,7 @@ class PdfConverter:
         def run(self):
             """ use the collected info to make the csv and reports. """
             self.write_errorreport()  # write error report
+            self.fix_jobs()  # fix potential errors with jobs array
             self.write_baseline()  # write the base line
             self.reorder_days()  # make sure the days are in the correct order
             self.handle_underscoreslash()  # handles the underscore slashes
@@ -1340,6 +1348,9 @@ class PdfConverter:
                 if len(self.parent.jobs) > 0:
                     datainput = "Jobs: {}\n".format(self.parent.jobs)
                     self.parent.kbpc_rpt.write(datainput)
+                if len(self.parent.jobs_alt) > 0:
+                    datainput = "Jobs (alternate): {}\n".format(self.parent.jobs_alt)
+                    self.parent.kbpc_rpt.write(datainput)
                 if len(self.parent.routes) > 0:
                     datainput = "Routes: {}\n".format(self.parent.routes)
                     self.parent.kbpc_rpt.write(datainput)
@@ -1347,9 +1358,17 @@ class PdfConverter:
                     datainput = "Levels: {}".format(self.parent.level)
                     self.parent.kbpc_rpt.write(datainput)
                     if len(self.parent.jobs) != len(self.parent.level):  # detect any levelindex errors
-                        datainput = "   LEVEL INDEXERROR DETECTED!!!"
+                        datainput = "   LEVEL/JOB INDEXERROR DETECTED!!!"
                         self.parent.kbpc_rpt.write(datainput)
                     self.parent.kbpc_rpt.write("\n")
+
+        def fix_jobs(self):
+            """ if the self.jobs array is empty, use the self.jobs_alt array. """
+            joint = self.parent.jobs + self.parent.jobs_alt  # join jobs and jobs_alt arrays
+            if joint and self.parent.level:  # proceed only if both arrays have at least one value
+                while len(joint) > len(self.parent.level):  # ensure jobs is not greater than level
+                    joint.remove(-1)  # remove the last value from the joint array
+                self.parent.jobs = joint  # reassign the jobs array with joint array.
 
         def write_baseline(self):
             """ write the base line """
@@ -1581,6 +1600,7 @@ class PdfConverter:
             self.parent.daily_underscoreslash = []
             self.parent.unprocessed_counter = 0
             self.parent.jobs = []
+            self.parent.jobs_alt = []
             self.parent.routes = []
             self.parent.level = []
             self.parent.franklin_array = []

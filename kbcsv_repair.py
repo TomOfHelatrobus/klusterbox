@@ -24,7 +24,6 @@ class CsvRepair:
         self.tempid = []  # an array of employee ids where Temp line has been read
         self.eid = ""  # the employee id, fourth column in the row.
         self.build_i = 0  # build index - tracks the number of lines written. on 3 get first employee id.
-        self.write_it = True  # if True, will write rows instead of caching them for further analysis
         self.cache = []  # a cache of rows saved for analysis
         self.lastgoodid = None  # the last good id seen
         self.lastgoodname = None  # the last good name seen - not ET, MV a timezone or anything lowercase
@@ -33,11 +32,11 @@ class CsvRepair:
         """ this runs the classes when called. """
         self.file_path = file_path  # after testing uncomment this and put file path into arguments
         self.get_newfilepath()  # create a name for the path
-        self.delete_filepath()
+        self.delete_filepath()  # delete the filepath if it exist to avoid permission error
         self.destroy()  # if the file already exist. destroy it.
-        self.get_file()
-        self.test_write()
-        return self.new_filepath
+        self.get_file()  # read the csv file and assign to self.a_file attribute
+        self.test_write()  # this checks the old csv and writing appropiate lines and skipping blank lines
+        return self.new_filepath  # return the path to the proxy file to be read by auto data entry
 
     def get_newfilepath(self):
         """ this creates a new file path """
@@ -84,6 +83,8 @@ class CsvRepair:
         pb.max_count(rowcount)  # set length of progress bar
         pb.start_up()
         firstline = True
+        secondline = True
+        thirdline = True
         i = 0  # index - used for updating the process bar
         for line in self.a_file:
             pb.move_count(i)  # increment progress bar
@@ -94,6 +95,9 @@ class CsvRepair:
             if firstline:  # do not subject the first line to any test
                 self.build_csv(line)
                 firstline = False
+            elif secondline:  # do not subject the second line to any test
+                self.build_csv(line)
+                secondline = False
             elif self.testfordupfirstline(line):  # returns True if this is a duplicate first line
                 pass
             elif self.testforblank(line):  # returns True if the line is blank
@@ -104,14 +108,14 @@ class CsvRepair:
                 pass
             elif self.testforduptemp(line):  # returns True if redundant Temp lines are found
                 pass
-            else:
+            elif thirdline:
                 self.get_firsteid(line)  # get the first employee id number from the third line - column 4
-                self.checkforneweid(line)  # check if the row has a new employee id.
-                if self.write_it:  # if the first line is a Base line then write, otherwise cache
-                    line = self.testforbadname(line)  # rewrite line if the name is BT or MV
-                    self.build_csv(line)  # writes lines to the csv file
-                else:
-                    self.cache_rows(line)
+                self.cache_rows(line)  # store the line until until there is a new employee id
+                thirdline = False
+            else:
+                self.checkforneweid(line)  # check if the row has a new employee id, if so write cache
+                self.cache_rows(line)  # store all lines until until there is a new employee id
+                self.eid = line[4]  # update the employee id
         pb.stop()  # stop and destroy the progress bar
 
     @staticmethod
@@ -125,11 +129,12 @@ class CsvRepair:
 
     def get_firsteid(self, line):
         """
-        get_firsteid, checkforneweid, checkforbase, cache_rows and cache_analysis all work together to
-        repair the Denton Problem which can be created in the pdf converter. This happens when the csv file
+        get_firsteid, checkforneweid, cache_rows and cache_analysis all work together to
+        repair the a problem which can be created in the pdf converter. This happens when the csv file
         is generated in a such a way that the Base and Temp lines occur in the middle of the times and
         rings. these methods work to indentify when base is not the first row, collects all lines for that
-        carrier, then re arranges them in proper order.
+        carrier, then re arranges them in proper order. If the Base line does not exist, then the cache will not
+        written.
 
         get the first employee id number from the third line - column 4 """
         if self.build_i == 2:  # this is the first row of carrier information
@@ -140,14 +145,6 @@ class CsvRepair:
         if self.eid != line[4]:
             if self.cache:  # if there is something in the cache
                 self.cache_analysis()
-            # get the base and temp lines of the carrier with the new employee id.
-            self.checkforbase(line)
-        self.eid = line[4]
-
-    def checkforbase(self, line):
-        """ checks that the first line of a carrier's information is a base line """
-        if line[18] not in ("Base", ):
-            self.write_it = False
 
     def cache_rows(self, line):
         """ cache rows if the base line is not the first line. """
@@ -155,18 +152,26 @@ class CsvRepair:
 
     def cache_analysis(self):
         """ go through the cache to put it in the correct order """
+        basetemp_exist = False
         basetemp = ("Base", "Temp")
         for type_ in basetemp:  # look for "base" first, then "temp" next
             for row in self.cache:
                 if row[18] == type_:  # if base/temp are found
                     row = self.testforbadname(row)  # rewrite row if the name is BT or MV
                     self.build_csv(row)  # write the line
+                    basetemp_exist = True
+        if not basetemp_exist:  # if there is no Base or Temp for the carrier, do not write cache
+            # uncomment for debugging...
+            # if self.cache:
+            #     name = self.cache[0][5] + " " + self.cache[0][6] + " " + self.cache[0][4]
+            #     print(name)
+            self.cache = []  # empty out the cache
+            return
         for row in self.cache:  # write the remaining rows, omitting base/temp rows.
-            if row[18] not in basetemp:
+            if row[18] not in basetemp:  # skip any rows for Base or Temp
                 row = self.testforbadname(row)  # rewrite row if the name is BT or MV
                 self.build_csv(row)
         self.cache = []  # empty out the cache
-        self.write_it = True  # reset the write_it variable so the cache is not appended.
 
     @staticmethod
     def testfordupfirstline(line):

@@ -61,8 +61,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.08  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Jan 30, 2025"  # format is Jan 1, 2022
+version = 6.09  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Mar 16, 2025"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -6854,7 +6854,7 @@ class AutoDataEntry:
             if len(range_days) > 5:
                 self.parent.t_range = False  # set the range
                 messagebox.showwarning("File Selection Error",
-                                       "Employee Everything Reports that cover only one day /n"
+                                       "Employee Everything Reports that cover only one day \n"
                                        "are not supported in this version of Klusterbox.",
                                        parent=self.parent.frame)
                 return False

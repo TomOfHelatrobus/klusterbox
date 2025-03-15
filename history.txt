@@ -135,5 +135,7 @@ Version 6.08 (01/30/2024)
 	The Improper Mandates workbook was modified to include a remedies worksheet for 10 hour availability vs ot worked on carriers own assignments - this is a suplement to the remedies worksheet for overtime worked off of a carrier's route. Exposition was added to the front of the remedies sheets to define the remedies sheets. Exposition was also added to the reference sheet to define the tolerances. The order of the sheets was changed so that the summary and reference sheets are at the end of the workbook. 
 	Upgrades were made to the formating of the 12 and 60 Hour Violations Worksheet. 
 	
+Version 6.09 (03/16/2025)
+	The pdf converter was modified to allow for variable input for the jobs array. The csv repair module of the automatic data entry which generates the proxy file was modified so that errors in the csv file result in the problem carrier information being aborted - allowing the full report, minus the one carrier, to be generated. 
 	
 	
