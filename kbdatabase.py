@@ -20,13 +20,14 @@ class DataBase:
     def setup(self):
         """ checks for database tables and columns then creates them if they do not exist. """
         self.pbar = ProgressBarDe(label="Building Database", text="Starting Up")
-        self.pbar.max_count(151)
+        self.pbar.max_count(152)
         self.pbar.start_up()
         self.globals()  # pb increment: 1
         self.tables()  # pb increment: 24
         self.stations()  # pb increment: 1
         self.tolerances()  # pb increment: 60
         self.rings()  # pb increment: 1
+        self.add_odlr_odln_makeups()  # pb increment: 1
         self.skippers()  # pb increment: 1
         self.ns_config()  # pb increment: 6
         self.mousewheel()  # pb increment: 1
@@ -225,6 +226,20 @@ class DataBase:
             commit(sql)
         if len(result) < 11:  # if there are not enough columns, add the et column
             sql = 'ALTER table rings3 ADD COLUMN et varchar'
+            commit(sql)
+
+    def add_odlr_odln_makeups(self):
+        """ post 2025 contract changes, add odlr makeups and odln makeups to the otdl preferences table """
+        self.pbar_counter += 1
+        self.pbar.move_count(self.pbar_counter)
+        self.pbar.change_text("Setting up: Tables - Otdl Preferences > odlr/odln makeups")
+        sql = 'PRAGMA table_info(otdl_preference)'  # get table info. returns an array of columns.
+        result = inquire(sql)
+        if len(result) < 6:  # if there are not enough columns, add the leave type column
+            sql = 'ALTER table otdl_preference ADD COLUMN makeups_odlr varchar'
+            commit(sql)
+        if len(result) < 7:  # if there are not enough columns, add the leave time column
+            sql = 'ALTER table otdl_preference ADD COLUMN makeups_odln varchar'
             commit(sql)
 
     def skippers(self):

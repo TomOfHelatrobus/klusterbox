@@ -42,6 +42,8 @@ class Fixes:
             V5008Fix().run()
         if self.version >= 6.01:
             V601Fix().run()
+        if self.version >= 7.00:
+            V700Fix().run()
         return True
 
     def update_lastfix(self):
@@ -325,4 +327,19 @@ class V601Fix:
     def run():
         """search the seniority table. delete any records where the value for senior_date is blank."""
         sql = "DELETE FROM seniority WHERE senior_date = ''"
+        commit(sql)
+
+
+class V700Fix:
+    """ This is a fix to delete records with a Nonetype value in the senior_date column of the senority table. """
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def run():
+        """search the otdl_preference table. replace any records where the value for makeups odlr is null
+        with an empty string."""
+        sql = "UPDATE otdl_preference SET makeups_odlr = '' WHERE makeups_odlr IS NULL"
+        commit(sql)
+        sql = "UPDATE otdl_preference SET makeups_odln = '' WHERE makeups_odln IS NULL"
         commit(sql)

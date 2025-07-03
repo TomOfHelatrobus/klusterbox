@@ -829,9 +829,9 @@ class SpeedCarrierCheck:
         for ls in dlsn_array:  # check for any input that does not conform with list status notation
             ls = ls.strip()  # strip any whitespace
             ls = ls.lower()  # make lowercase
-            if ls in ("n", "w", "o", "a", "p", "c"):  # acceptable values
+            if ls in ("n", "w", "o", "or", "on", "a", "p", "c"):  # acceptable values
                 pass
-            elif ls in ("nl", "wal", "otdl", "odl", "aux", "cca", "ptf"):  # acceptable values
+            elif ls in ("nl", "wal", "otdl", "odlr", "odln", "odl", "aux", "cca", "ptf"):  # acceptable values
                 pass
             else:
                 error = "     ERROR: No such list status or list status notation {}\n".format(ls)
@@ -895,6 +895,10 @@ class SpeedCarrierCheck:
                 new.append("wal")
             if ls in ("otdl", "odl", "o"):
                 new.append("otdl")
+            if ls in ("odlr", "or"):
+                new.append("odlr")
+            if ls in ("odln", "on"):
+                new.append("odln")
             if ls in ("aux", "a", "cca", "c"):
                 new.append("aux")
             if ls in ("ptf", "p"):

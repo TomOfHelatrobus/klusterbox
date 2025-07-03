@@ -138,4 +138,12 @@ Version 6.08 (01/30/2024)
 Version 6.09 (03/16/2025)
 	The pdf converter was modified to allow for variable input for the jobs array. The csv repair module of the automatic data entry which generates the proxy file was modified so that errors in the csv file result in the problem carrier information being aborted - allowing the full report, minus the one carrier, to be generated. 
 	
+Version 7.00 (07/02/2025)
+	Changes were made to comply with the 2023-2026 National Agreement which takes effect on July 1, 2025. New list statuses were added: "odlr" (overtime desired list regular day only) and "odln" (overtime desired list non scheduled day). Input modalities: edit carrier information dialog, multiple input, speedsheets and automatic data entry were updated. All related checks were updated. The improper mandates spreadsheets were updated. Some formatting on the overmax spreadsheet was updated. the otdl weekly availability worksheet was modified so that both odlr and odln appear on the worksheet. The otdl equitability spreadsheet was modified to track either otdl, odlr or odln overtime over the quarter. The otdl preference db table was altered to add make up opporunities for odlr and odln list. A fix was written into the kbfixes module to make all related null values into empty strings. A method was added to eliminate the menu option for the 10 hour preference if the investigation range is after July 1st. 
+	
+	Wrap text was added to some column headings in the improper mandates number 4 spreadsheet. 
+	
+	Fixed a bug with the more moves button in the kbenterrings module. The widget configuration was adjusted so that the appropriate widgets appear on days when odln and odlr are considered available for overtime or not available for overtime. 
+	
+	
 	

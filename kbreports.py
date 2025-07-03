@@ -42,6 +42,13 @@ class Reports:
         # get carrier list
         self.carrier_list = CarrierList(self.start_date, self.end_date, projvar.invran_station).get()
 
+    def post_2025(self):
+        """ check if the investigation range happens before or after the 2023-2026 contract implementation. """
+        effective_date = datetime(2025, 6, 27, 0, 0, 0)  # date of friday before contract is implemented.
+        if self.start_date > effective_date:
+            return True
+        return False
+
     @staticmethod
     def rpt_dt_limiter(date, first_date):
         """ return the first day if it is earlier than the date """
@@ -193,11 +200,26 @@ class Reports:
 
     def rpt_carrier_by_list(self):
         """ generates a report which shows carriers by the list. """
+
+        def replace_liststatus(array, designation):
+            """ rewrite the record so that 'otdl' is changed to 'odlr' or 'odln' so that otdl carriers will be
+            displayed in both odlr nd odln list. """
+            newlist = []
+            for line_ in array:
+                add_line = (line_[0], line_[1], designation, line_[3], line_[4], line_[5])
+                newlist.append(add_line)
+            return newlist
+
         self.get_carrierlist()
         list_dict = {"nl": "No List", "wal": "Work Assignment List",
-                     "otdl": "Overtime Desired List", "ptf": "Part Time Flexible", "aux": "Auxiliary Carrier"}
+                     "otdl": "Overtime Desired List",
+                     "odlr": "Overtime Desired List - Regular Day Only",
+                     "odln": "Overtime Desired List - Non Scheduled Day Only",
+                     "ptf": "Part Time Flexible", "aux": "Auxiliary Carrier"}
         # initialize arrays for data sorting
         otdl_array = []
+        odlr_array = []
+        odln_array = []
         wal_array = []
         nl_array = []
         ptf_array = []
@@ -206,15 +228,27 @@ class Reports:
             for carrier in line:
                 if carrier[2] == "otdl":
                     otdl_array.append(carrier)
-                if carrier[2] == "wal":
+                elif carrier[2] == "odlr":
+                    odlr_array.append(carrier)
+                elif carrier[2] == "odln":
+                    odln_array.append(carrier)
+                elif carrier[2] == "wal":
                     wal_array.append(carrier)
-                if carrier[2] == "nl":
+                elif carrier[2] == "nl":
                     nl_array.append(carrier)
-                if carrier[2] == "ptf":
+                elif carrier[2] == "ptf":
                     ptf_array.append(carrier)
-                if carrier[2] == "aux":
+                elif carrier[2] == "aux":
                     aux_array.append(carrier)
-        array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array  #
+        add_this = replace_liststatus(otdl_array, "odlr")  # ot desired list for regular schedule only
+        odlr_array += add_this
+        odlr_array = sorted(odlr_array, key=itemgetter(1))
+        add_this = replace_liststatus(otdl_array, "odln")  # ot desired list for non scheduled only
+        odln_array += add_this
+        odln_array = sorted(odln_array, key=itemgetter(1))
+        array_var = nl_array + wal_array + otdl_array + odlr_array + odln_array + ptf_array + aux_array
+        if self.post_2025():
+            array_var = nl_array + wal_array + odlr_array + odln_array + ptf_array + aux_array
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # create a file name
         filename = "report_carrier_by_list" + "_" + stamp + ".txt"
         report = open(dir_path('report') + filename, "w")
@@ -650,7 +684,7 @@ class CheatSheet:
         report.write("\n")
         report.write("Carrier Name: full last name, first initial separated by comma\n")
         report.write("\n")
-        report.write("List: \"otdl\", \"wal\", \"nl\", \"aux\", \"ptf\" --> default is \"nl\"\n")
+        report.write("List: \"otdl\", \"odlr\", \"odln\", \"wal\", \"nl\", \"aux\", \"ptf\" --> default is \"nl\"\n")
         report.write("\n")
         report.write("NS Day: \"sat\", \"mon\", \"tue\", \"wed\", \"thu\", \"fri\" --> default is \"none\"\n")
         report.write("	if rotating:\n")
@@ -682,8 +716,8 @@ class CheatSheet:
         report.write("\n")
         report.write("CODE: if List Status is \"wal\" or \"nl\":\n")
         report.write("           \"none\", \"ns day\"\n")
-        report.write("      if List Status is \"otdl\", \"aux\", or \"ptf\":\n")
-        report.write("           \"none\", \"ns day\", \"no call\", \"light\", \"sch chg\",")
+        report.write("      if List Status is \"otdl\", \"odlr\", \"odln\", \"aux\", or \"ptf\":\n")
+        report.write("           \"none\", \"ns day\", \"no call\", \"light\", \"sch chg\",\n")
         report.write("           \"annual\", \"sick\", \"excused\"")
         report.write("\n")
         report.write("LV type: Leave type: \"none\", \"annual\", \"sick\", \"holiday\", \"other\"\n")

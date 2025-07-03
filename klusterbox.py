@@ -61,8 +61,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 6.09  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Mar 16, 2025"  # format is Jan 1, 2022
+version = 7.00  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Jul 2, 2025"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -4015,6 +4015,8 @@ class OtDistribution:
         self.quarter = ""
         self.range = None
         self.list_option_otdl = None
+        self.list_option_odlr = None
+        self.list_option_odln = None
         self.list_option_wal = None
         self.list_option_nl = None
         self.list_option_aux = None
@@ -4154,6 +4156,12 @@ class OtDistribution:
         Checkbutton(self.win.body, text="OTDL", variable=self.list_option_otdl, justify=LEFT) \
             .grid(row=self.row, column=1, sticky=W, columnspan=3)
         self.row += 1
+        Checkbutton(self.win.body, text="ODL Regular only", variable=self.list_option_odlr, justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
+        Checkbutton(self.win.body, text="ODL NS only", variable=self.list_option_odln, justify=LEFT) \
+            .grid(row=self.row, column=1, sticky=W, columnspan=3)
+        self.row += 1
         Checkbutton(self.win.body, text="Work Assignment", variable=self.list_option_wal, justify=LEFT) \
             .grid(row=self.row, column=1, sticky=W, columnspan=3)
         self.row += 1
@@ -4232,11 +4240,15 @@ class OtDistribution:
     def setup_listoption_stringvars(self):
         """ sets up the intvars for the option menus. """
         self.list_option_otdl = IntVar(self.win.body)
+        self.list_option_odlr = IntVar(self.win.body)
+        self.list_option_odln = IntVar(self.win.body)
         self.list_option_wal = IntVar(self.win.body)
         self.list_option_nl = IntVar(self.win.body)
         self.list_option_aux = IntVar(self.win.body)
         self.list_option_ptf = IntVar(self.win.body)
         self.list_option_otdl.set(0)
+        self.list_option_odlr.set(0)
+        self.list_option_odln.set(0)
         self.list_option_wal.set(1)
         self.list_option_nl.set(1)
         self.list_option_aux.set(0)
@@ -4269,8 +4281,9 @@ class OtDistribution:
     def set_listoption_array(self):
         """ get the values from the option menus """
         self.list_option_array = []
-        options = ("otdl", "wal", "nl", "aux", "ptf")
-        strvars = (self.list_option_otdl.get(), self.list_option_wal.get(), self.list_option_nl.get(),
+        options = ("otdl", "odlr", "odln", "wal", "nl", "aux", "ptf")
+        strvars = (self.list_option_otdl.get(), self.list_option_odlr.get(), self.list_option_odln.get(),
+                   self.list_option_wal.get(), self.list_option_nl.get(),
                    self.list_option_aux.get(), self.list_option_ptf.get())
         for i in range(len(strvars)):
             if strvars[i]:
@@ -4301,13 +4314,19 @@ class OtEquitability:
         self.quarter = ""
         self.pref_var = []  # build an array of stringvars for ot preference
         self.makeup_var = []  # build an array of stringvars for ot makeups
+        self.makeup_odlr_var = []  # build an array of stringvars for ot makeups
+        self.makeup_odln_var = []  # build an array of stringvars for ot makeups
         self.onrec_prefs_carriers = []
         self.onrec_prefs = []
         self.onrec_makeups = []
+        self.onrec_makeups_odlr = []
+        self.onrec_makeups_odln = []
         self.status_update = None
         self.delete_report = []  # list of ineligible carriers to be deleted from otdl prefence table
         self.eligible_carriers = []  # carriers on the otdl during the quarter from carriers table
         self.ineligible_carriers = []  # carriers with no otdl rec during quarter, but a rec in otdl prefs
+        self.results_frame = None
+        self.row_rf = 1
 
     def create(self, frame):
         """ called from the main screen to build ot preferences screen"""
@@ -4339,9 +4358,13 @@ class OtEquitability:
         self.quarter = ""
         self.pref_var = []
         self.makeup_var = []
+        self.makeup_odlr_var = []
+        self.makeup_odln_var = []
         self.onrec_prefs_carriers = []
         self.onrec_prefs = []
         self.onrec_makeups = []
+        self.onrec_makeups_odlr = []
+        self.onrec_makeups_odln = []
         # self.status_update = None
         self.delete_report = []  # list of ineligible carriers to be deleted from otdl prefence table
         self.frame = frame  # define the frame
@@ -4364,6 +4387,7 @@ class OtEquitability:
         self.get_onrec_pref_carriers()
         self.get_ineligible()
         self.delete_ineligible()
+        self.build_results_frame()
         self.build_header()
         self.build_main()
         self.deletion_report()
@@ -4441,20 +4465,20 @@ class OtEquitability:
     def get_recsets(self):
         """ gets clock rings for a carrier and defines recset (record set). """
         for carrier in self.carrierlist:
-            otlist = ("otdl",)
+            otlist = ("otdl", "odlr", "odln")
             rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs(otlist)
             if rec:
                 self.recset.append(rec)
 
     def build_invran(self):
         """ creates widgets which allow the user to adjust the investigation range. """
-        Label(self.win.body, text="OTDL Preferences", font=macadj("bold", "Helvetica 18"), anchor="w") \
-            .grid(row=self.row, column=0, sticky="w", columnspan=20)
+        Label(self.win.body, text="OTDL Preferences/ Makeups/ Refusals",
+              font=macadj("bold", "Helvetica 18"), anchor="w").grid(row=self.row, column=0, sticky="w", columnspan=20)
         self.row += 1
         Label(self.win.body, text="").grid(row=self.row, column=0)
         self.row += 1
-        Label(self.win.body, text="QUARTERLY INVESTIGATION RANGE").grid(row=self.row, column=0, columnspan=20,
-                                                                        sticky="w")
+        Label(self.win.body, text="QUARTERLY INVESTIGATION RANGE")\
+            .grid(row=self.row, column=0, columnspan=20, sticky="w")
         self.row += 1
         Label(self.win.body, text=macadj("Year: ", "Year:"), fg="Gray", anchor="w") \
             .grid(row=self.row, column=0, sticky="w")
@@ -4510,7 +4534,7 @@ class OtEquitability:
 
     def get_status(self, recs):
         """ returns true if the carrier's last record is otdl and the station is correct. """
-        if recs[0][2] == "otdl" and recs[0][5] == self.station:
+        if recs[0][2] in ("otdl", "odlr", "odln") and recs[0][5] == self.station:
             return "on"
         return "off"
 
@@ -4521,9 +4545,9 @@ class OtEquitability:
         on_list = False
         for rec in reversed(recs):
             if off_list:
-                if rec[2] == "otdl":
+                if rec[2] in ("otdl", "odlr", "odln"):
                     on_list = True
-            if rec[2] != "otdl":
+            if rec[2] not in ("otdl", "odlr", "odln"):
                 off_list = True
         if off_list and on_list:
             return True
@@ -4557,19 +4581,52 @@ class OtEquitability:
             return 0
         return makeups[0]
 
+    def get_makeups_odlr(self, carrier):
+        """ pull odlr makeups from the dbase """
+        sql = "SELECT makeups_odlr FROM otdl_preference " \
+              "WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
+              % (carrier, self.quarter, self.station)
+        makeups = inquire(sql)
+        if not makeups:
+            return 0
+        return makeups[0]
+
+    def get_makeups_odln(self, carrier):
+        """ pull odln makeups from the dbase """
+        sql = "SELECT makeups_odln FROM otdl_preference " \
+              "WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
+              % (carrier, self.quarter, self.station)
+        makeups = inquire(sql)
+        if not makeups:
+            return 0
+        return makeups[0]
+
     def get_onrecs_set_stringvars(self):
         """ sets stringvars for carriers. """
         i = 0
         for carrier in self.eligible_carriers:
             self.pref_var.append(StringVar(self.win.body))  # build array of string vars for otdl preferences
-            self.makeup_var.append(StringVar(self.win.body))  # build array of string vars for make ups
             pref = self.get_pref(carrier)  # call method to inquire otdl preference table
+            self.pref_var[i].set(pref[0])  # set the preference stringvar
+            self.onrec_prefs.append(pref[0])  # build the array of otdl preferences from otdl preferences table.
+            # ------------------------------------------------------------------------------------------ otdl make ups
+            self.makeup_var.append(StringVar(self.win.body))  # build array of string vars for make ups
             makeup = self.get_makeups(carrier)[0]  # call method to inquire otdl preference table
             makeup = Convert(makeup).empty_not_zero()  # use empty string instead of zero
-            self.pref_var[i].set(pref[0])  # set the preference stringvar
             self.makeup_var[i].set(makeup)
-            self.onrec_prefs.append(pref[0])  # build the array of otdl preferences from otdl preferences table.
             self.onrec_makeups.append(makeup)
+            # ------------------------------------------------------------------------------------------ odlr make ups
+            self.makeup_odlr_var.append(StringVar(self.win.body))  # build array of string vars for make ups
+            makeup = self.get_makeups_odlr(carrier)[0]  # call method to inquire otdl preference table
+            makeup = Convert(makeup).empty_not_zero()  # use empty string instead of zero
+            self.makeup_odlr_var[i].set(makeup)
+            self.onrec_makeups_odlr.append(makeup)
+            # ------------------------------------------------------------------------------------------ odln make ups
+            self.makeup_odln_var.append(StringVar(self.win.body))  # build array of string vars for make ups
+            makeup = self.get_makeups_odln(carrier)[0]  # call method to inquire otdl preference table
+            makeup = Convert(makeup).empty_not_zero()  # use empty string instead of zero
+            self.makeup_odln_var[i].set(makeup)
+            self.onrec_makeups_odln.append(makeup)
             i += 1
 
     def get_onrec_pref_carriers(self):
@@ -4635,77 +4692,114 @@ class OtEquitability:
         if sys.platform == "darwin":
             subprocess.call(["open", dir_path('report') + filename])
 
+    def build_results_frame(self):
+        """ create the frame which will hold the carrier list """
+        self.results_frame = Frame(self.win.body)
+        self.results_frame.grid(row=self.row, sticky=W, columnspan=20)  # put frame on grid
+        self.row_rf = 1
+
     def build_header(self):
         """ build the header for the screen. """
-        Label(self.win.body, text="Name", fg="Gray").grid(row=self.row, column=1, sticky="w")
-        Label(self.win.body, text="Preference", fg="Gray").grid(row=self.row, column=5, sticky="w")
-        Label(self.win.body, text="Make up", fg="Gray").grid(row=self.row, column=6, sticky="w")
-        Label(self.win.body, text="Status", fg="Gray").grid(row=self.row, column=7, sticky="w")
-        Label(self.win.body, text="Check", fg="Gray").grid(row=self.row, column=8, sticky="w")
-        Label(self.win.body, text="Report", fg="Gray").grid(row=self.row, column=9, sticky="w")
-        Label(self.win.body, text="Refusal", fg="Gray").grid(row=self.row, column=10, sticky="w")
-        self.row += 1
+        Label(self.results_frame, text="Makeups", fg="Gray").grid(row=self.row_rf, column=6, sticky="w", columnspan=3)
+        self.row_rf += 1
+        Label(self.results_frame, text="Name", fg="Gray").grid(row=self.row_rf, column=1, sticky="w")
+        Label(self.results_frame, text="Pref", fg="Gray").grid(row=self.row_rf, column=5, sticky="w")
+        Label(self.results_frame, text="otdl", fg="Gray").grid(row=self.row_rf, column=6, sticky="w")
+        Label(self.results_frame, text="odlr", fg="Gray").grid(row=self.row_rf, column=7, sticky="w")
+        Label(self.results_frame, text="odln", fg="Gray").grid(row=self.row_rf, column=8, sticky="w")
+        Label(self.results_frame, text="Status", fg="Gray").grid(row=self.row_rf, column=9, sticky="w")
+        Label(self.results_frame, text="Check", fg="Gray").grid(row=self.row_rf, column=10, sticky="w")
+        Label(self.results_frame, text="Report", fg="Gray").grid(row=self.row_rf, column=11, sticky="w")
+        Label(self.results_frame, text="Refusal", fg="Gray").grid(row=self.row_rf, column=12, sticky="w")
+        self.row_rf += 1
+
+    def _post_2025(self):
+        """ check if the investigation range happens before or after the 2023-2026 contract implementation. """
+        effective_date = datetime(2025, 6, 27, 0, 0, 0)  # date of friday before contract is implemented.
+        if self.startdate > effective_date:
+            return True
+        return False
 
     def build_main(self):
         """ builds the main part of the screen. """
         i = 0
+        post_2025 = self._post_2025()
         for carrier in self.recset:
-            Label(self.win.body, text=i + 1, anchor="w").grid(row=self.row, column=0, sticky="w")
-            Label(self.win.body, text=carrier[0][1], anchor="w").grid(row=self.row, column=1, columnspan=4, sticky="w")
-            om_pref = OptionMenu(self.win.body, self.pref_var[i], "12", "10", "track")
+            Label(self.results_frame, text=i + 1, anchor="w").grid(row=self.row_rf, column=0, sticky="w", padx=2)
+            Label(self.results_frame, text=carrier[0][1], anchor="w")\
+                .grid(row=self.row_rf, column=1, columnspan=4, sticky="w", padx=5)
+            pref_options = ("12", "10", "track")
+            if post_2025:
+                pref_options = ("12", "track")
+            om_pref = OptionMenu(self.results_frame, self.pref_var[i], *pref_options)
             om_pref.config(width=4)
-            om_pref.grid(row=self.row, column=5, sticky="w")
-            Entry(self.win.body, textvariable=self.makeup_var[i], width=macadj(8, 6), justify='right') \
-                .grid(row=self.row, column=6, sticky="w")  # make ups entry field
+            om_pref.grid(row=self.row_rf, column=5, sticky="w")
+            Entry(self.results_frame, textvariable=self.makeup_var[i], width=macadj(7, 6), justify='right') \
+                .grid(row=self.row_rf, column=6, sticky="w")  # otdl make ups entry field
+            Entry(self.results_frame, textvariable=self.makeup_odlr_var[i], width=macadj(7, 6), justify='right') \
+                .grid(row=self.row_rf, column=7, sticky="w")  # odlr make ups entry field
+            Entry(self.results_frame, textvariable=self.makeup_odln_var[i], width=macadj(7, 6), justify='right') \
+                .grid(row=self.row_rf, column=8, sticky="w")  # odln make ups entry field
             status = "on"
             fg = "black"
             if self.get_status(carrier) == "off":  # if there is an error, display in red
                 status = "off"
                 fg = "red"
-            Label(self.win.body, text=status, anchor="w", fg=fg).grid(row=self.row, column=7, sticky="w")
+            Label(self.results_frame, text=status, anchor="w", fg=fg).grid(row=self.row_rf, column=9, sticky="w")
             consistant = "ok"
             fg = "black"
             if self.check_consistancy(carrier):  # if there is an error, display in red
                 consistant = "error"
                 fg = "red"
-            Label(self.win.body, text=consistant, fg=fg, anchor="w").grid(row=self.row, column=8, sticky="w")
-            Button(self.win.body, text="report",
+            Label(self.results_frame, text=consistant, fg=fg, anchor="w").grid(row=self.row_rf, column=10, sticky="w")
+            Button(self.results_frame, text="report",
                    command=lambda car=carrier, con=consistant: self.carrier_report(car, con)) \
-                .grid(row=self.row, column=9, sticky="w")
-            Button(self.win.body, text="refusals",
-                   command=lambda car=carrier[0][1]: RefusalWin().create(self.win.topframe, car,
-                                                                         self.startdate, self.enddate, self.station)) \
-                .grid(row=self.row, column=10, sticky="w")
-            self.row += 1
+                .grid(row=self.row_rf, column=11, sticky="w")
+            Button(self.results_frame, text="refusals",
+                   command=lambda car=carrier[0][1]:
+                   RefusalWin().create(self.win.topframe, car, self.startdate,
+                                       self.enddate, self.station)) \
+                .grid(row=self.row_rf, column=12, sticky="w")
+            self.row_rf += 1
             i += 1
 
     def check_all(self):
         """ router for checking times """
         for i in range(len(self.onrec_makeups)):
-            if not self.check_each(i):
+            if not self.check_by_carrier(i):
                 return False
         return True
 
-    def check_each(self, i):
-        """ checks time values. """
+    def check_by_carrier(self, i):
+        """ loop through all makeup values. """
         carrier = self.recset[i][0][1]
-        makeup = self.makeup_var[i].get()  # call method to inquire otdl preference table
+        loop = 0
+        for makeup in (self.makeup_var[i].get(), self.makeup_odlr_var[i].get(), self.makeup_odln_var[i].get()):
+            if not self.check_by_makeup(loop, carrier, makeup):
+                return False
+            loop += 1
+        return True
+
+    def check_by_makeup(self, loop, carrier, makeup):
+        """ check the time values for each make up value """
+        loop_dict = {0: "otdl", 1: "odlr", 2: "odln"}
         if RingTimeChecker(makeup).check_for_zeros():
             return True
         if not RingTimeChecker(makeup).check_numeric():
-            text = "The Make up value for {} must be a number.".format(carrier)
+            text = "The {} make up value for {} must be a number.".format(loop_dict[loop], carrier)
             self.error_msg(text)
             return False
         if not RingTimeChecker(makeup).over_5000():
-            text = "The Make up value for {} must not exceed 5000.".format(carrier)
+            text = "The {} make up value for {} must not exceed 5000.".format(loop_dict[loop], carrier)
             self.error_msg(text)
             return False
         if not RingTimeChecker(makeup).less_than_zero():
-            text = "The Make up value for {} must not be less than zero.".format(carrier)
+            text = "The {} make up value for {} must not be less than zero.".format(loop_dict[loop], carrier)
             self.error_msg(text)
             return False
         if not RingTimeChecker(makeup).count_decimals_place():
-            text = "The Make up value for {} can not have more than two decimal places.".format(carrier)
+            text = "The {} make up value for {} can not have more than two decimal places."\
+                .format(loop_dict[loop], carrier)
             self.error_msg(text)
             return False
         return True
@@ -4731,6 +4825,22 @@ class OtEquitability:
                       "AND station = '%s'" % (makeup, carrier, self.quarter, self.station)
                 commit(sql)
                 update = True
+            if self.onrec_makeups_odlr[i] != self.makeup_odlr_var[i].get():
+                carrier = self.recset[i][0][1]
+                makeup = Convert(self.makeup_odlr_var[i].get()).empty_not_zero()
+                makeup = Convert(makeup).empty_or_hunredths()
+                sql = "UPDATE otdl_preference SET makeups_odlr = '%s' WHERE carrier_name = '%s' AND quarter = '%s' " \
+                      "AND station = '%s'" % (makeup, carrier, self.quarter, self.station)
+                commit(sql)
+                update = True
+            if self.onrec_makeups_odln[i] != self.makeup_odln_var[i].get():
+                carrier = self.recset[i][0][1]
+                makeup = Convert(self.makeup_odln_var[i].get()).empty_not_zero()
+                makeup = Convert(makeup).empty_or_hunredths()
+                sql = "UPDATE otdl_preference SET makeups_odln = '%s' WHERE carrier_name = '%s' AND quarter = '%s' " \
+                      "AND station = '%s'" % (makeup, carrier, self.quarter, self.station)
+                commit(sql)
+                update = True
             if update:
                 updates += 1
         if home:
@@ -4742,12 +4852,20 @@ class OtEquitability:
     def reset_onrecs_and_vars(self):
         """ sets the preferences and make ups. """
         for i in range(len(self.pref_var)):
-            pref = self.pref_var[i].get()
-            makeup = Convert(self.makeup_var[i].get()).empty_not_zero()
-            makeup = Convert(makeup).empty_or_hunredths()
+            pref = self.pref_var[i].get()  # ------------------------------------------------------------ preferences
             self.onrec_prefs[i] = pref
+            makeup = Convert(self.makeup_var[i].get()).empty_not_zero()  # ------------------------------ otdl makeup
+            makeup = Convert(makeup).empty_or_hunredths()
             self.onrec_makeups[i] = makeup
             self.makeup_var[i].set(makeup)
+            makeup = Convert(self.makeup_odlr_var[i].get()).empty_not_zero()  # -------------------------- odlr makeup
+            makeup = Convert(makeup).empty_or_hunredths()
+            self.onrec_makeups_odlr[i] = makeup
+            self.makeup_odlr_var[i].set(makeup)
+            makeup = Convert(self.makeup_odln_var[i].get()).empty_not_zero()  # -------------------------- odln makeup
+            makeup = Convert(makeup).empty_or_hunredths()
+            self.onrec_makeups_odln[i] = makeup
+            self.makeup_odln_var[i].set(makeup)
 
     def status_report(self, updates):
         """ generates the status update """
@@ -4756,33 +4874,47 @@ class OtEquitability:
 
     def buttons_frame(self):
         """ generates the frame at the bottom of the screen. """
-        button = Button(self.win.buttons)
-        button.config(text="Submit", width=macadj(17, 12),
+        button = Button(self.win.buttons)  # ----------------------------------------------------------------- submit
+        button.config(text="Submit", width=macadj(11, 8),
                       command=lambda: self.apply(True))  # apply and return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-        button = Button(self.win.buttons)
-        button.config(text="Apply", width=macadj(18, 12),
+        button = Button(self.win.buttons)  # ---------------------------------------------------------------- apply
+        button.config(text="Apply", width=macadj(11, 8),
                       command=lambda: self.apply(False))  # apply and no not return to main
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-        button = Button(self.win.buttons)
-        button.config(text="Go Back", width=macadj(18, 12),
+        button = Button(self.win.buttons)  # ---------------------------------------------------------------- go back
+        button.config(text="Go Back", width=macadj(11, 8),
                       command=lambda: MainFrame().start(frame=self.win.topframe))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-        # generate spreadsheet
-        button = Button(self.win.buttons)
-        button.config(text="SpreadSheet", width=macadj(17, 12),
+        button = Button(self.win.buttons)  # ----------------------------------------------- generate OTDL spreadsheet
+        button.config(text="OTDL", width=macadj(11, 8),
                       command=lambda: OTEquitSpreadsheet()
-                      .create(self.win.topframe, self.startdate, self.quartinvran_station.get()))
+                      .create(self.win.topframe, self.startdate, self.quartinvran_station.get(), "otdl"))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-        self.status_update = Label(self.win.buttons, text="", fg="red")
+        button = Button(self.win.buttons)  # ---------------------------------------------- generate ODLR spreadsheet
+        button.config(text="ODLR", width=macadj(11, 8),
+                      command=lambda: OTEquitSpreadsheet()
+                      .create(self.win.topframe, self.startdate, self.quartinvran_station.get(), "odlr"))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+
+        button = Button(self.win.buttons)  # ----------------------------------------------- generate ODLN spreadsheet
+        button.config(text="ODLN", width=macadj(11, 8),
+                      command=lambda: OTEquitSpreadsheet()
+                      .create(self.win.topframe, self.startdate, self.quartinvran_station.get(), "odln"))
+        if sys.platform == "win32":
+            button.config(anchor="w")
+        button.pack(side=LEFT)
+        self.status_update = Label(self.win.buttons, text="", fg="red")  # ---------------------------- status update
         self.status_update.pack(side=LEFT)
 
 
@@ -4797,6 +4929,7 @@ class RefusalWin:
         self.startdate = datetime(1, 1, 1)
         self.enddate = datetime(1, 1, 1)
         self.station = ""
+        self.list_ = []
         self.time_vars = []  # a list of stringvars of refusal times
         self.type_vars = []  # a list of stringvars of refusal types/indicators.
         self.ref_dates = []  # a list of datetime objects corrosponding to refusal times and types
@@ -4923,22 +5056,18 @@ class RefusalWin:
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-
         button = Button(self.win.buttons)
         button.config(text="Apply", width=macadj(20, 21),
                       command=lambda: self.apply(False))  # apply and do no return to main screen
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-
         button = Button(self.win.buttons)
-        button.config(text="Go Back", width=macadj(20, 21),
-                      command=lambda: OtEquitability()
+        button.config(text="Go Back", width=macadj(20, 21), command=lambda: OtEquitability()
                       .create_from_refusals(self.win.topframe, self.enddate, self.station))
         if sys.platform == "win32":
             button.config(anchor="w")
         button.pack(side=LEFT)
-
         self.status_update = Label(self.win.buttons, text="", fg="red")
         self.status_update.pack(side=LEFT)
 
@@ -4963,7 +5092,8 @@ class RefusalWin:
         if home:  # return to the OT Preference screen
             OtEquitability().create_from_refusals(self.win.topframe, self.enddate, self.station)
         else:  # create a new object and recreate the window
-            RefusalWin().create(self.win.topframe, self.carrier_name, self.startdate, self.enddate, self.station)
+            RefusalWin().create(self.win.topframe, self.carrier_name,
+                                self.startdate, self.enddate, self.station)
 
     def checktypes(self, i):
         """ checks the refusal indicator to make sure it is propely formatted. """
@@ -7777,7 +7907,7 @@ class AutoDataEntry:
                 if not self.parent.is_mac:
                     Label(self.win.body, text=projvar.invran_station, fg=color).grid(row=y, column=4, sticky="w")
                 y += 1
-                list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
+                list_options = ("otdl", "odlr", "odln", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
                 if name[3] == "auxiliary":
                     lx = 4  # configure defaults for list status
                 elif name[3] == "part time flex":
@@ -7944,7 +8074,7 @@ class AutoDataEntry:
             self.e_route = []  # create array for routes
             self.l_station = []  # create array for stations
             self.aux_list_tuple = ("aux", "ptf")
-            self.reg_list_tuple = ("nl", "wal", "otdl")
+            self.reg_list_tuple = ("nl", "wal", "otdl", "odlr", "odln")
             self.skip_this_screen = True
             self.color = "blue"  # the display color of information from tacs
             self.eff_date = None  # effective date for check and apply
@@ -8120,7 +8250,7 @@ class AutoDataEntry:
             Label(self.win.body, text=projvar.invran_station, fg=self.color).grid(row=self.y, column=4, sticky="w")
             self.y += 1
             self.carrier_name.append(k_name[1])  # add kb name to the array
-            list_options = ("otdl", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
+            list_options = ("otdl", "odlr", "odln", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
             self.l_s.append(StringVar(self.win.body))
             self.l_s[self.i].set(k_name[2])  # set the list status
             list_status = OptionMenu(self.win.body, self.l_s[self.i], *list_options)
@@ -8593,7 +8723,7 @@ class AutoDataEntry:
                 if result:  # if there is an employee id number in the name index, then continue
                     if self.skim_check_carriers(result):  # get the kb name which correlates to the emp id
                         self.skim_get_routes()  # create an array of the carrier's routes for self.routes
-                        if self.newest_carrier[2] == "otdl":
+                        if self.newest_carrier[2] in ("otdl", "odln"):
                             self._add_otdl_nsdays()  # put ns day new day into the protoarray
                         for i in range(len(self.weekly_protoarray)):  # loop for each day of carrier information
                             self.daily_protoarray = self.weekly_protoarray[i]
@@ -8701,15 +8831,15 @@ class AutoDataEntry:
                 return False
 
         def skim_detect_nsday(self):
-            """ find the code, if any  / as of version 4.003 otdl carriers are allowed ns day code """
-            if self.newest_carrier[2] in ("nl", "wal"):  # if the current day matches the ns day
+            """ find the code, if any. otdl and odln carriers are allowed ns day code """
+            if self.newest_carrier[2] in ("nl", "wal", "odlr"):  # if the current day matches the ns day
                 if self.day_dict[self.daily_protoarray[0]].strftime("%a") == \
                         projvar.ns_code[self.newest_carrier[3]] and \
                         float(self.daily_protoarray[2]) > 0:
                     self.c_code = "ns day"  # enter the code
                 else:
                     self.c_code = "none"  # enter the code
-            elif self.newest_carrier[2] == "otdl":  # if the current day matches the ns day
+            elif self.newest_carrier[2] in ("otdl", "odln"):  # if the current day matches the ns day
                 if self.day_dict[self.daily_protoarray[0]].strftime("%a") == \
                         projvar.ns_code[self.newest_carrier[3]] and \
                         float(self.daily_protoarray[2]) > 0:
@@ -8736,7 +8866,9 @@ class AutoDataEntry:
 
         def _add_otdl_nsdays(self):
             """ this will add a daily array to the weekly protoarray for days where an otdl carrier has an ns day.
-            this is necessary so that a code of ns day can be added for the rings record. """
+            this is necessary so that a code of ns day can be added for the rings record.
+            'overtime desired list for ns days only' (odln) will also use this method to account for
+            unworked ns days """
             nsday = self._get_nsdays(self.newest_carrier[3])  # send the color of the nsday to calculate the nsday
             mod_weekly_protoarray = []
             annual_lv_adj = self._get_lv_adjacent("annual")
@@ -10042,9 +10174,6 @@ class Tolerances:
 
     def apply_tolerance(self, tolerance, tolerance_type):
         """ checks tolerances. """
-        "ot_own_rt"
-        "ot_tol"
-        "av_tol"
         tol_dict = {"ot_own_rt": "overtime on own route", "ot_tol": "non-otdl overtime",
                     "av_tol": "otdl/aux availability"}
         if not isfloat(tolerance):
@@ -10122,13 +10251,11 @@ class SpreadsheetConfig:
         self.pb4_wal_aux = True  # page break between work assignment and otdl for mandates no.4
         self.pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
         self.man4_dis_limit = None
-
         self.impman5_remedy_tolerance = 0.0  # the tolerance for the improper mandate remedy
         self.impman5_maxpivot = 0.0  # the maximum pivot after which an off bid violation is detected
         self.impman5_fullreport = False  # The full text report for the improper mandate 5 report
         self.impman5_report = True  # generate a report for use in contentions for impman 5 - none, short, full
         self.impman5_offbid_exclude = True  # automatically detects and elminates off bid violations for impman5
-
         self.min_overmax = 0.0  # overmax settings
         self.overmax_12hour = None
         self.overmax_wal_dec = None
@@ -10162,12 +10289,10 @@ class SpreadsheetConfig:
         self.pb4_wal_aux_var = None  # page break between work assignment and aux for mandates no.4
         self.pb4_aux_otdl_var = None  # page break between auxiliary and otdl for mandates no.4
         self.man4_dis_limit_var = None  # mandates no.4 display limiter
-
         self.impman5_remedy_tol_var = None  # entry value for the remedy tolerance
         self.impman5_maxpivot_var = None  # entry value for impman5 max pivot
         self.impman5_fullreport_var = None  # var for improper mandate 5 full report
         self.impman5_report_var = None  # var for improper mandate 5 report
-
         self.min_overmax_var = None  # minimum rows for overmax
         self.overmax_12hour_var = None  # 12 and 60 hour option for wal 12 hour daily limit
         self.overmax_wal_dec_var = None  # 12 and 60 hour option for wal dec exemption
@@ -10205,12 +10330,10 @@ class SpreadsheetConfig:
         self.add_pb4_wal_aux = True  # page break between work assignment and otdl for mandates no.4
         self.add_pb4_aux_otdl = True  # page break between otdl and auxiliary for mandates no.4
         self.add_man4_dis_limit = None  # mandates no.4 display limiter
-
         self.add_impman5_remedy_tol = 0.0  # value to add to db for impman5 remedy tolerance
         self.add_impman5_maxpivot = 0.0  # value to add to db for impman5 maximum pivot
         self.add_impman5_fullreport = False  # value for impman5 show full report
         self.add_impman5_report = True  # value for impman5 to show report
-
         self.add_min_overmax = 0.0
         self.add_overmax_12hour = None
         self.add_overmax_wal_dec = None
@@ -12381,6 +12504,8 @@ class MassInput:
         carrier_list = []
         candidates = []
         otdl_array = []
+        odlr_array = []
+        odln_array = []
         wal_array = []
         nl_array = []
         ptf_array = []
@@ -12406,6 +12531,10 @@ class MassInput:
                     if sort == "list":  # sort carrier list by ot list if selected
                         if winner[2] == "otdl":
                             otdl_array.append(winner)
+                        if winner[2] == "odlr":
+                            odlr_array.append(winner)
+                        if winner[2] == "odln":
+                            odln_array.append(winner)
                         if winner[2] == "wal":
                             wal_array.append(winner)
                         if winner[2] == "nl":
@@ -12439,7 +12568,7 @@ class MassInput:
                 self.array_var.append(car)
             list_header = "carrier list"
         if sort == "list":
-            self.array_var = nl_array + wal_array + otdl_array + ptf_array + aux_array
+            self.array_var = nl_array + wal_array + otdl_array + odlr_array + odln_array + ptf_array + aux_array
             if len(nl_array) > 0:
                 list_header = "nl"
             else:
@@ -12463,7 +12592,7 @@ class MassInput:
             ns_dict[d] = "fixed: " + d
         ns_dict["none"] = "none"  # add "none" to dictionary
         # intialize arrays for option menus
-        opt_list = "nl", "wal", "otdl", "aux", "ptf"
+        opt_list = "nl", "wal", "otdl", "odlr", "odln", "aux", "ptf"
         nsk = []
         days = ("sat", "mon", "tue", "wed", "thu", "fri")
         for each in projvar.ns_code.keys():
@@ -12940,14 +13069,18 @@ class CarrierInput:
 
         Radiobutton(list_frame, text="OTDL", variable=self.ls, value='otdl', justify=LEFT) \
             .grid(row=1, column=0, sticky=W)
-        Radiobutton(list_frame, text="Work Assignment", variable=self.ls, value='wal', justify=LEFT) \
-            .grid(row=1, column=1, sticky=W)
-        Radiobutton(list_frame, text="No List", variable=self.ls, value='nl', justify=LEFT) \
+        Radiobutton(list_frame, text="ODL-regular", variable=self.ls, value='odlr', justify=LEFT) \
             .grid(row=2, column=0, sticky=W)
-        Radiobutton(list_frame, text="Auxiliary", variable=self.ls, value='aux', justify=LEFT) \
+        Radiobutton(list_frame, text="ODL-ns day", variable=self.ls, value='odln', justify=LEFT) \
+            .grid(row=3, column=0, sticky=W)
+        Radiobutton(list_frame, text="No List", variable=self.ls, value='nl', justify=LEFT) \
+            .grid(row=1, column=1, sticky=W)
+        Radiobutton(list_frame, text="Work Assignment", variable=self.ls, value='wal', justify=LEFT) \
             .grid(row=2, column=1, sticky=W)
-        Radiobutton(list_frame, text="Part Time Flex", variable=self.ls, value='ptf', justify=LEFT) \
+        Radiobutton(list_frame, text="Auxiliary", variable=self.ls, value='aux', justify=LEFT) \
             .grid(row=3, column=1, sticky=W)
+        Radiobutton(list_frame, text="Part Time Flex", variable=self.ls, value='ptf', justify=LEFT) \
+            .grid(row=4, column=1, sticky=W)
 
     def nsday(self):
         """ set up the ns day"""
@@ -13784,7 +13917,7 @@ class MainFrame:
             for rec in line:
                 if rec_count == 0:  # display the first row of carrier recs
                     Label(self.main_frame, text=ii).grid(row=r, column=0)  # display count
-                    Button(self.main_frame, text=rec[1], width=macadj(25, 23), bg=color, anchor="w",
+                    Button(self.main_frame, text=rec[1], width=macadj(24, 22), bg=color, anchor="w",
                            command=lambda x=rec: EnterRings(x[1]).start()).grid(row=r, column=1)
                     Button(self.main_frame, text="edit", width=4, bg=color, anchor="w",
                            command=lambda x=rec[1]: CarrierInput().edit_carriers(self.win.topframe, x)) \
@@ -13792,13 +13925,13 @@ class MainFrame:
                     ii += 1
                 else:  # display non first rows of carrier recs
                     dt = datetime.strptime(rec[0], "%Y-%m-%d %H:%M:%S")
-                    Button(self.main_frame, text=dt.strftime("%a"), width=macadj(25, 23), bg=color, anchor="e") \
+                    Button(self.main_frame, text=dt.strftime("%a"), width=macadj(24, 22), bg=color, anchor="e") \
                         .grid(row=r, column=1)
                     Button(self.main_frame, text="", width=4, bg=color) \
                         .grid(row=r, column=5)
                 if len(rec) > 2:  # because "out of station" recs only have two items
                     # list
-                    Button(self.main_frame, text=rec[2], width=macadj(3, 4), bg=color, anchor="w").grid(row=r, column=2)
+                    Button(self.main_frame, text=rec[2], width=macadj(4, 5), bg=color, anchor="w").grid(row=r, column=2)
                     day_off = projvar.ns_code[rec[3]].lower()
                     Button(self.main_frame, text=day_off, width=4, bg=color, anchor="w").grid(row=r, column=3)  # nsday
                     Button(self.main_frame, text=rec[4], width=25, bg=color, anchor="w") \
@@ -13833,7 +13966,11 @@ class MainFrame:
             (1, "Over Max Spreadsheet", lambda: OvermaxSpreadsheet().create(self.nav.topframe)),
             (1, "Off Bid Spreadsheet", lambda: OffbidSpreadsheet().create(self.nav.topframe)),
             (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
-             .create(self.nav.topframe, self.ot_date, projvar.invran_station)),
+             .create(self.nav.topframe, self.ot_date, projvar.invran_station, "otdl")),
+            (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
+             .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odlr")),
+            (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
+             .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odln")),
             (1, "OT Distribution Spreadsheet", lambda: OTDistriSpreadsheet()
              .create(self.nav.topframe, projvar.invran_date_week[0],
                      projvar.invran_station, "weekly", self.listoptions)),
@@ -13971,16 +14108,23 @@ class MainFrame:
                                command=lambda: OvermaxSpreadsheet().create(self.win.topframe))
         basic_menu.add_command(label="Off Bid Spreadsheet",
                                command=lambda: OffbidSpreadsheet().create(self.win.topframe))
-        basic_menu.add_command(label="OT Equitability Spreadsheet",
-                               command=lambda: OTEquitSpreadsheet().create(self.win.topframe,
-                                                                           self.ot_date, self.station.get()))
+        basic_menu.add_command(label="OTDL Equitability Spreadsheet",
+                               command=lambda: OTEquitSpreadsheet().
+                               create(self.win.topframe, self.ot_date, self.station.get(), "otdl"))
+        basic_menu.add_command(label="ODLR Equitability Spreadsheet",
+                               command=lambda: OTEquitSpreadsheet().
+                               create(self.win.topframe, self.ot_date, self.station.get(), "odlr"))
+        basic_menu.add_command(label="ODLN Equitability Spreadsheet",
+                               command=lambda: OTEquitSpreadsheet().
+                               create(self.win.topframe, self.ot_date, self.station.get(), "odln"))
         basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda: OTDistriSpreadsheet()
                                .create(self.win.topframe, projvar.invran_date_week[0], self.station.get(),
                                        "weekly", self.listoptions))
         basic_menu.add_command(label="Availability Spreadsheet",
                                command=lambda: OtAvailSpreadsheet().create(self.win.topframe))
         basic_menu.add_separator()
-        basic_menu.add_command(label="OT Preferences", command=lambda: OtEquitability().create(self.win.topframe))
+        basic_menu.add_command(label="OTDL Preferences",
+                               command=lambda: OtEquitability().create(self.win.topframe))
         basic_menu.add_command(label="OT Distribution", command=lambda: OtDistribution().create(self.win.topframe))
         basic_menu.add_separator()
         basic_menu.add_command(label="Informal C", command=lambda: InformalC().informalc(self.win.topframe))
@@ -14007,6 +14151,8 @@ class MainFrame:
             basic_menu.entryconfig(9, state=DISABLED)
             basic_menu.entryconfig(10, state=DISABLED)
             basic_menu.entryconfig(11, state=DISABLED)
+            basic_menu.entryconfig(12, state=DISABLED)
+            basic_menu.entryconfig(13, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)
@@ -14186,7 +14332,7 @@ class MainFrame:
         if self.spreadsheet_pref == "Over Max":
             OvermaxSpreadsheet().create(self.win.topframe)
         if self.spreadsheet_pref == "OT Equitability":
-            OTEquitSpreadsheet().create(self.win.topframe, self.ot_date, self.station.get())
+            OTEquitSpreadsheet().create(self.win.topframe, self.ot_date, self.station.get(), "otdl")
         if self.spreadsheet_pref == "OT Distribution":
             OTDistriSpreadsheet().create(self.win.topframe, projvar.invran_date_week[0],
                                          self.station.get(), "weekly", self.listoptions)

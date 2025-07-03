@@ -217,12 +217,19 @@ class EnterRings:
         results = inquire(sql)
         self.tourrings = int(results[0][0])
 
-    def get_widgetlist(self, i):
-        """ returns a list with moves and/or tourrings or an empty list. """
+    def get_widgetlist(self, i, is_nsday):
+        """ returns a list with moves and/or tourrings or an empty list.
+        args: i is the day and is_nsday is boolean which is True if it is the carrier's nsday.
+        tourrings will show the begin tour and end tour
+        ot rings limiter will hide the moves on and off route"""
         widgetlist = []
         if self.tourrings:
             widgetlist.append("tourrings")
-        if self.daily_carrecs[i][2] in ("otdl",) and not self.ot_rings_limiter:
+        if not self.ot_rings_limiter and self.daily_carrecs[i][2] in ("otdl", "odln", "odlr"):
+            widgetlist.append("moves")
+        elif self.daily_carrecs[i][2] in ("odlr",) and is_nsday:
+            widgetlist.append("moves")
+        elif self.daily_carrecs[i][2] in ("odln",) and not is_nsday:
             widgetlist.append("moves")
         if self.daily_carrecs[i][2] in ("nl", "wal"):
             widgetlist.append("moves")
@@ -317,6 +324,7 @@ class EnterRings:
                 .grid(row=2, sticky="w", columnspan=2)
         frame_i += 2  # the row where daily frames are placed on the grid. 
         for i in range(self.i_range):
+            is_nsday = False
             # for ring in self.daily_ringrecs:  # assign the values for each rings attribute
             grid_i = 0  # counter for the grid within the frame
             self.frame[i].grid(row=frame_i, padx=5, sticky="w")
@@ -324,11 +332,15 @@ class EnterRings:
             if projvar.ns_code[self.carrecs[0][3]] == self.dates[i].strftime("%a"):
                 Label(self.frame[i], text="{} NS DAY".format(self.dates[i].strftime("%a %b %d, %Y")), fg="red") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
+                is_nsday = True
             else:
                 Label(self.frame[i], text=self.dates[i].strftime("%a %b %d, %Y"), fg="blue") \
                     .grid(row=grid_i, column=0, columnspan=5, sticky="w")
+            if self.dates[i].strftime("%a") == "Sun":  # identify Sunday as an ns day for widget list
+                is_nsday = True
             grid_i += 1
-            widgetlist = self.get_widgetlist(i)  # returns a list with moves and/or tourrings or an empty list.
+            widgetlist = self.get_widgetlist(i, is_nsday)
+            # returns a list with moves and/or tourrings or an empty list.
             ww = self.get_ww(widgetlist)
             colcount = 0
             if self.daily_carrecs[i][5] == projvar.invran_station:
@@ -378,7 +390,8 @@ class EnterRings:
                 if "tourrings" in widgetlist:  # move moves button text is conditional on if tourrings
                     mactext = "+mv"  # if tourrings use a shorter version
                 mv_button = Button(self.frame[i], text=macadj("more moves", mactext), fg=macadj("black", "grey"),
-                                   command=lambda x=i: self.more_moves(x, ww, widgetlist, self.frame[i]))
+                                   command=lambda x=i, count=ww, wl=tuple(widgetlist), frame=self.frame[i]:
+                                   self.more_moves(x, count, wl, frame))
                 if "moves" in widgetlist:  # don't show moves for aux, ptf and (maybe) otdl
                     mv_button.grid(row=grid_i, column=colcount)
                     colcount += 1
@@ -393,12 +406,19 @@ class EnterRings:
                 # Codes/Notes
                 if self.daily_carrecs[i][2] == "wal" or self.daily_carrecs[i][2] == "nl":
                     option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *nolist_codes)
+                elif self.daily_carrecs[i][2] == "odln" and not is_nsday:
+                    option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *nolist_codes)
+                elif self.daily_carrecs[i][2] == "odlr" and is_nsday:
+                    option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *nolist_codes)
                 elif self.daily_carrecs[i][2] == "otdl":
+                    option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *ot_codes)
+                elif self.daily_carrecs[i][2] == "odlr" and not is_nsday:
+                    option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *ot_codes)
+                elif self.daily_carrecs[i][2] == "odln" and is_nsday:
                     option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *ot_codes)
                 else:
                     option_menu[i] = OptionMenu(self.frame[i], self.codes[i], *aux_codes)
                 option_menu[i].configure(width=macadj(7, 6))
-
                 option_menu[i].grid(row=grid_i, column=colcount)  # code widget
                 colcount += 1  # increment the column
                 # Leave Type

@@ -83,6 +83,7 @@ class OTEquitSpreadsheet:
         self.frame = None
         self.pb = None  # the progress bar object
         self.pbi = None  # progress bar counter index
+        self.displayed_list = None  # can be otdl, odlr or odln
         self.date = None
         self.station = None
         self.year = None
@@ -99,11 +100,11 @@ class OTEquitSpreadsheet:
         self.otcalcpref = "off_route"  # preference for overtime calculation - "off_route" or "all"
         self.carrier_overview = []  # a list of carrier's name, status and makeups
         self.date_array = []  # a list of all days in the quarter as a datetimes
-        self.assignment_check = []  # multidimensional array of carriers and days with no bid assignment
         self.front_padding = 0  # number of empty triad to fill worksheet prior to startdate
         self.end_padding = 0  # number of empty trids to fill worksheet prior to enddate
         self.end_pad_indicator = 0  # shows days after last day for triad builder
         self.ringrefset = []  # multidimensional array - daily rings/refusals for each otdl carrier
+        self.has_route = True  # indicates that the carrier is not an unassigned carrier and has a route
         self.dates_breakdown = []  # a list of dates for display on spreadsheets
         self.week = ["w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13",
                      "w14", "w15"]
@@ -131,11 +132,13 @@ class OTEquitSpreadsheet:
         self.ws_name = None
         self.ref_ot = None
         self.instruct_text = None
+        self.header_title = ""
 
-    def create(self, frame, date, station):
+    def create(self, frame, date, station, list_):
         """ a master method for building the spreadsheet. """
         self.frame = frame
-        if not self.ask_ok():  # abort if user selects cancel from askokcancel
+        self.displayed_list = self.get_displayed_list(list_)
+        if not self.ask_ok(list_):  # abort if user selects cancel from askokcancel
             return
         self.pb = ProgressBarDe(label="Building OTDL Equitability Spreadsheet")
         self.pb.max_count(100)  # set length of progress bar
@@ -154,7 +157,6 @@ class OTEquitSpreadsheet:
         self.get_carier_overview()  # build a list of carrier's name, status and makeups
         self.carrier_overview_add()  # adds empty sets so the lenght of carrier overview = minimum rows.
         self.get_date_array()  # get a list of all days in the quarter as datetime objects
-        self.get_assignment_check()  # get a multidimensional array of carriers time spent off assignment.
         self.get_front_padding()  # get number of empty triads needed to pad prior to startdate
         self.get_end_padding()  # get number of empty triads needed to pad after enddate
         self.get_ringrefset()  # build multidimensional array - daily rings/refusals for each carrier
@@ -165,6 +167,7 @@ class OTEquitSpreadsheet:
         self.set_dimensions_weekly()  # column widths for weekly worksheets
         self.set_dimensions_instructions()  # column widths for instructions sheet
         self.get_styles()  # define workbook styles
+        self.get_header()  # get the appropriate header for the top of the page pending the list generated
         self.build_header_overview()  # build the header for overview worksheet
         self.build_columnheader_overview()  # build column headers for overview worksheet
         self.build_main_overview()  # build main body for overview worksheet
@@ -177,10 +180,23 @@ class OTEquitSpreadsheet:
         self.build_instructions()
         self.save_open()  # save and open the spreadsheet
 
-    def ask_ok(self):
+    @staticmethod
+    def get_displayed_list(list_):
+        """ create a tuple containing the list which will be included in the db search """
+        otlist = ["otdl", ]
+        if list_ not in otlist:
+            otlist.append(list_)
+        return tuple(otlist)
+
+    def ask_ok(self, list_):
         """ continue the process if user presses ok. """
+        text = "Full (pre-2025)"
+        if list_ == "odlr":
+            text = "Regular Day Only"
+        if list_ == "odln":
+            text = "NS Day Only"
         if messagebox.askokcancel("Spreadsheet generator",
-                                  "Do you want to generate an Over Time Equitability Spreadsheet?",
+                                  "Do you want to generate a {} Over Time Equitability Spreadsheet?".format(text),
                                   parent=self.frame):
             return True
         return False
@@ -220,8 +236,8 @@ class OTEquitSpreadsheet:
     def get_recsets(self):
         """ get the clock rings for the quarter. """
         for carrier in self.carrierlist:
-            otlist = ("otdl", )  # list type for carriers wanted
-            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).get_filtered_recs(otlist)
+            rec = QuarterRecs(carrier[0], self.startdate, self.enddate, self.station).\
+                get_filtered_recs(self.displayed_list)
             if rec:
                 self.recset.append(rec)
 
@@ -234,7 +250,7 @@ class OTEquitSpreadsheet:
 
     def get_status(self, recs):
         """ returns true if the carrier's last record is otdl and the station is correct. """
-        if recs[0][2] == "otdl" and recs[0][5] == self.station:
+        if recs[0][2] in self.displayed_list and recs[0][5] == self.station:
             return True
         return False
 
@@ -265,7 +281,13 @@ class OTEquitSpreadsheet:
 
     def get_makeups(self, carrier):
         """ get makeup records from the otdl preference table. """
-        sql = "SELECT makeups FROM otdl_preference WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" \
+        makeup_type = "makeups"
+        if "odlr" in self.displayed_list:
+            makeup_type = "makeups_odlr"
+        if "odln" in self.displayed_list:
+            makeup_type = "makeups_odln"
+        sql = "SELECT {} FROM otdl_preference " \
+              "WHERE carrier_name = '%s' and quarter = '%s' and station = '%s'" .format(makeup_type) \
               % (carrier, self.full_quarter, self.station)
         makeup = inquire(sql)
         if makeup:
@@ -306,48 +328,6 @@ class OTEquitSpreadsheet:
         self.end_padding = 105 - (self.front_padding + len(self.date_array))
         self.end_pad_indicator = self.front_padding + len(self.date_array)
 
-    def get_assignment_check(self):
-        """ get a multidimensional array of carriers time with no bid assignment """
-        for i in range(len(self.carrier_overview)):
-            if not self.carrier_overview[i][0]:  # if the carrier is not empty set for minimum rows
-                self.assignment_check.append([])  # add empty into the array
-            elif not self.check_for_unassigned(i):  # if there is not a record with no assignment
-                self.assignment_check.append([])  # add empty into the array
-            else:  # if there is a carrier and they have been unassigned at some point in the quarter
-                self.assignment_check.append([])  # add to the array
-                self.get_unassigned(i)  # fill it with dates in which carrier was unassigned
-
-    def check_for_unassigned(self, i):
-        """ check for any records where otdl carrier is unassigned """
-        for rec in self.recset[i]:
-            if rec[4] == "" or rec[4] == "0000":
-                return True
-        return False
-
-    def get_unassigned(self, i):
-        """ get a list of datetimes for periods where a carrier is unassigned."""
-        loop = 0
-        dates = self.get_unassigned_dates(i)
-        for revrec in reversed(self.recset[i]):
-            if not revrec[4] or revrec[4] == "0000":  # if there is no assignment for the record
-                date = max(Convert(revrec[0]).dt_converter(), self.startdate)  # handle RPRs, default to date in range
-                if loop + 1 != len(self.recset[i]):  # if there is at least one more record in the set
-                    while date < dates[loop + 1]:  # until the date matchs the next
-                        self.assignment_check[i].append(date)
-                        date += timedelta(days=1)
-                if loop + 1 == len(self.recset[i]):  # if this is the last record in the set
-                    while date != self.enddate + timedelta(days=1):
-                        self.assignment_check[i].append(date)
-                        date += timedelta(days=1)
-            loop += 1
-
-    def get_unassigned_dates(self, i):
-        """ get reversed list of effective dates from the recset """
-        dates = []
-        for revrec in reversed(self.recset[i]):
-            dates.append(Convert(revrec[0]).dt_converter())
-        return dates
-
     def get_ringrefset(self):
         """ build multidimensional array - daily rings/refusals for each otdl carrier """
         self.pb.max_count(8 + (len(self.carrier_overview)*2))  # set length of progress bar
@@ -359,12 +339,45 @@ class OTEquitSpreadsheet:
             self.ringrefset.append([])  # each carrier has an array
             self.get_daily_ringrefs(i)
 
-    def get_overtime(self, total, moves, code, has_route):
+    def get_overtime(self, total, moves, code):
         """ find the overtime pending ot calculation preference and ns day code """
-        if self.otcalcpref == "off_route" and has_route:
+        if self.otcalcpref == "off_route" and self.has_route:
             return Overtime().proper_overtime(total, moves, code)
         else:  # default to straight overtime if the carrier has no route.
             return Overtime().straight_overtime(total, code)
+
+    def _get_station_qual(self, carrier, date):
+        """ query the db for the current carrier record Return True if the carrier record qualifies per station.
+        method does double duty in filling the has_route variable which show if the carrier has a route or not."""
+        self.has_route = True
+        route = ""
+        station = ""
+        sql = "SELECT carrier_name, list_status, route_s, station " \
+              "FROM carriers WHERE effective_date <= '%s' AND carrier_name = '%s' " \
+              "ORDER BY effective_date DESC" % (date, carrier)
+        results = inquire(sql)
+        if results:
+            route = results[0][2]
+            station = results[0][3]
+        if not route or route == "0000":
+            self.has_route = False
+        if station != self.station:
+            return False
+        return True
+
+    def _nsday_qualification(self, code):
+        """checks the list and ns day then returns True of False is the day should be counted.
+        the method uses the code of the carrier's daily clock ring to detect ns days. """
+        if "odln" in self.displayed_list:
+            if code in ("ns day", "no call"):
+                return True
+            return False
+        if "odlr" in self.displayed_list:
+            if code in ("ns day", "no call"):
+                return False
+            return True
+        if "otdl" in self.displayed_list:
+            return True
 
     def get_daily_ringrefs(self, index):
         """ the ring ref - clock rings and refusals. gets the clock rings to determine the overtime then gets
@@ -375,27 +388,33 @@ class OTEquitSpreadsheet:
             add_this = ["", "", ""]
             daily_ringref.append(add_this)
         for date in self.date_array:  # get the ringrefs from the database or empty if none
-            has_route = True  # notes that the carrier has a bid assignment
-            if date in self.assignment_check[index]:  # if the date matchs a date where the carrier had no assignment
-                has_route = False  # note that the carrier had no assignment
+            station_qualification = self._get_station_qual(carrier, date)
+            ns_qual = False
             overtime = ""
-            sql = "SELECT total, code, moves FROM rings3 WHERE rings_date = '%s' AND carrier_name = '%s'" \
-                  % (date, carrier)
-            results = inquire(sql)
-            if results:
-                total = results[0][0]
-                code = results[0][1]
-                moves = Moves().timeoffroute(results[0][2])  # calculate the time off route
-                overtime = self.get_overtime(total, moves, code, has_route)  # find the overtime
             ref_type = ""
             ref_time = ""
-            sql = "SELECT refusal_type, refusal_time FROM refusals WHERE refusal_date = '%s' AND carrier_name = '%s'" \
-                  % (date, carrier)
-            ref_results = inquire(sql)
-            if ref_results:
-                ref_type = ref_results[0][0]
-                ref_time = ref_results[0][1]
-            add_this = [overtime, ref_type, ref_time]
+            if station_qualification:
+                # get the overtime value
+                sql = "SELECT total, code, moves FROM rings3 " \
+                      "WHERE rings_date = '%s' AND carrier_name = '%s'" % (date, carrier)
+                results = inquire(sql)
+                if results:
+                    total = results[0][0]
+                    code = results[0][1]
+                    moves = Moves().timeoffroute(results[0][2])  # calculate the time off route
+                    ns_qual = self._nsday_qualification(code)  # add only if right day and right list
+                    overtime = self.get_overtime(total, moves, code)  # find the overtime
+                # get the refusal values - type and time
+                sql = "SELECT refusal_type, refusal_time FROM refusals " \
+                      "WHERE refusal_date = '%s' AND carrier_name = '%s'" % (date, carrier)
+                ref_results = inquire(sql)
+                if ref_results:
+                    ref_type = ref_results[0][0]
+                    ref_time = ref_results[0][1]
+            if ns_qual:
+                add_this = [overtime, ref_type, ref_time]  # append the array
+            else:
+                add_this = ["", "", ""]
             daily_ringref.append(add_this)
         for _ in range(self.end_padding):  # insert front padding so empty cells fill worksheet
             add_this = ["", "", ""]
@@ -502,9 +521,6 @@ class OTEquitSpreadsheet:
                                      border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                      fill=PatternFill(fgColor='e1f7f3', fill_type='solid'),
                                      alignment=Alignment(horizontal='right'))
-        """fill_type: Value must be one of {'darkTrellis', 'darkGrid', 'lightVertical', 'darkDown', 'solid', 'lightUp', 
-        'lightHorizontal', 'mediumGray', 'lightTrellis', 'darkHorizontal', 'darkGray', 'lightGray', 'darkVertical', 
-        'gray125', 'darkUp', 'gray0625', 'lightDown', 'lightGrid'"""
         self.input_center = NamedStyle(name="input_center", font=Font(name='Arial', size=8),
                                        border=Border(left=bd, right=bd, top=bd, bottom=bd),
                                        alignment=Alignment(horizontal='center'))
@@ -523,10 +539,20 @@ class OTEquitSpreadsheet:
         self.instruct_text = NamedStyle(name="instruct_text", font=Font(name='Arial', size=10),
                                         alignment=Alignment(horizontal='left', vertical='top'))
 
+    def get_header(self):
+        """ create the header to appear on the top of the worksheet. this will change depending on what list is
+         being shown. """
+        if "otdl" in self.displayed_list:
+            self.header_title = "OTDL Equitability Worksheet"
+        if "odlr" in self.displayed_list:
+            self.header_title = "ODLR Equitability Worksheet"
+        if "odln" in self.displayed_list:
+            self.header_title = "ODLN Equitability Worksheet"
+
     def build_header_overview(self):
         """ build the header for overview worksheet """
         cell = self.overview.cell(row=1, column=1)  # page title
-        cell.value = "OTDL Equitability Worksheet"
+        cell.value = self.header_title
         cell.style = self.ws_header
         self.overview.merge_cells('A1:E1')
         cell = self.overview.cell(row=2, column=1)  # date
@@ -719,7 +745,7 @@ class OTEquitSpreadsheet:
         self.pb.change_text("Building Weekly Worksheets - Headers ")  # update progress bar text
         for i in range(15):
             cell = self.ws[i].cell(row=1, column=1)  # page title
-            cell.value = "OTDL Equitability Worksheet"
+            cell.value = self.header_title
             cell.style = self.ws_header
             self.ws[i].merge_cells('A1:H1')
             cell = self.ws[i].cell(row=1, column=16)  # week
@@ -1005,7 +1031,11 @@ class OTEquitSpreadsheet:
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving Workbook... ")  # update progress bar text
         quarter = self.full_quarter.replace(" ", "")
-        xl_filename = "ot_equit_" + quarter + ".xlsx"
+        xl_filename = "otdl_equit_" + quarter + ".xlsx"
+        if "odlr" in self.displayed_list:
+            xl_filename = "odlr_equit_" + quarter + ".xlsx"
+        if "odln" in self.displayed_list:
+            xl_filename = "odln_equit_" + quarter + ".xlsx"
         try:
             self.wb.save(dir_path('ot_equitability') + xl_filename)
             messagebox.showinfo("Spreadsheet generator",
