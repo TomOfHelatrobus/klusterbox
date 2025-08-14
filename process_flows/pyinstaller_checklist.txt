@@ -137,19 +137,6 @@ ___ ___  5. (in explorer) delete the following folders/files from the kb_install
 	___ ___  a. build
 	___ ___  b. dist
 	___ ___  c. klusterbox.spec or klusterwin.spec or klusterleg.spec 
-	___ ___  d. klusterbox.py (source code)
-	___ ___  e. projvar.py
-	___ ___  f. kbtoolbox.py
-	___ ___  g. kbdatabase.py
-	___ ___  h. kbreports.py
-	___ ___  i. kbspreadsheets.py
-	___ ___  j. kbspeedsheets.py
-	___ ___  l. kbpdfhandling.py
-	___ ___  m. kbcsv_reader.py
-	___ ___  n. kbcsv_repair.py
-	___ ___  o. kbenterrings.py
-	___ ___  p. kbfixes.py
-	___ ___  q. kbinformalc.py
 
 ___ ___  6.(in explorer)  you should have two item in your kb_install folder: the kb_sub folder and the klusterbox.exe file. select both items together and right click. Select Send to > Compressed (zipped) folder.
 

@@ -61,8 +61,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 7.00  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Jul 2, 2025"  # format is Jan 1, 2022
+version = 7.01  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Aug 15, 2025"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -7913,7 +7913,7 @@ class AutoDataEntry:
                 elif name[3] == "part time flex":
                     lx = 3  # set as ptf
                 else:
-                    lx = 2  # set as 'nl' if not 'aux'
+                    lx = 4  # set as 'nl' if not 'aux'
                 self.ai4_l_s.append(StringVar(self.win.body))
                 self.ai4_l_s[i].set(list_options[lx])  # set the list status
                 list_status = OptionMenu(self.win.body, self.ai4_l_s[i], *list_options)
@@ -8902,7 +8902,7 @@ class AutoDataEntry:
         @staticmethod
         def _get_nsdays(nsday):
             """ convert the get the full name of the ns day, i.e. 'Saturday', 'Wednesday' etc """
-            if not nsday:
+            if not nsday or nsday == 'none':
                 return ""  # if there is no ns day, then return empty string
             ns_dict = {'Sat': 'Saturday', 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday', 'Thu': 'Thursday',
                        'Fri': 'Friday', 'none': ''}

@@ -116,6 +116,8 @@ class CsvRepair:
                 self.checkforneweid(line)  # check if the row has a new employee id, if so write cache
                 self.cache_rows(line)  # store all lines until until there is a new employee id
                 self.eid = line[4]  # update the employee id
+        if self.cache:  # if there is something in the cache
+            self.cache_analysis()
         pb.stop()  # stop and destroy the progress bar
 
     @staticmethod

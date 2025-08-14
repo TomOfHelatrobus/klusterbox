@@ -1367,7 +1367,7 @@ class PdfConverter:
             joint = self.parent.jobs + self.parent.jobs_alt  # join jobs and jobs_alt arrays
             if joint and self.parent.level:  # proceed only if both arrays have at least one value
                 while len(joint) > len(self.parent.level):  # ensure jobs is not greater than level
-                    joint.remove(-1)  # remove the last value from the joint array
+                    del joint[-1]  # remove the last value from the joint array
                 self.parent.jobs = joint  # reassign the jobs array with joint array.
 
         def write_baseline(self):

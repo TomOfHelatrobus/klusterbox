@@ -1005,7 +1005,7 @@ class Archive:
         """ this empties and deletes all archive folders."""
         self.frame = frame
         if not messagebox.askokcancel("Archive File Management",
-                                      "This will delete all the files in the all archives. \n\n"
+                                      "This will delete all the files in the archives. \n\n"
                                       "As all data used to generate spreadsheets and reports is "
                                       "kept in the klusterbox database, deleting archives is "
                                       "safe since they can easily be regenerated.",
