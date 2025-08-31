@@ -9,10 +9,14 @@ ___ 4. If new modules have been added:
 	___ 3. Update the klustermac.spec file
 	___ 4. Run NSIS wizard for 64 bit distribution. 
 	___ 5. Run NSIS wizard for 32 bit distribution. 
-else: 
+	else: 
 	___ 1. Update the version number in the kb_nsis_script.nsi file
 	___ 2. Update the version number in the kb_nsis_script_32bit.nsi file
+___ Optional: In terminal/ powershell run 'git status' or 'git diff --stat' to review updates
 ___ 5. Add, commit and push changes to git. 
+	___ 1. git add .
+	___ 2. git commit -m 'v7.01 hello there'
+	___ 3. git push origin master
 
 
 Checklist for running pyinstaller for klusterbox

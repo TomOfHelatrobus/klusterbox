@@ -145,7 +145,7 @@ Version 7.00 (07/02/2025)
 	
 	Fixed a bug with the more moves button in the kbenterrings module. The widget configuration was adjusted so that the appropriate widgets appear on days when odln and odlr are considered available for overtime or not available for overtime. 
 	
-Version 7.01 (08/15/2025)
+Version 7.01 (09/01/2025)
 	CsvRepair().test_write() was modified so that the final cache of information is processed. Before the class was not including the last carrier in the results. 
 	
 	PdfConveter().WriteCsv().fix_jobs() was modified to rephrase joint.remove(-1) to del joint(-1). The previous as not removing the last element of the array and causing a crash of the pdf converter. 
@@ -153,3 +153,6 @@ Version 7.01 (08/15/2025)
 	Automatic data entry was modified so that the default list status for carriers is 'nl'. The index of the value changed with the adding of other list statuses to the array of list statuses. 
 	
 	In Automatic data entry, the staticmethod _get_nsdays() was modified so that an arguement of none would return an empty string immediately. This was causing a crash since 'none' was not included in the projvar.nsday array. 
+	
+	The OtEquitability was modified with the self._overtime_max() method so that for odlr equitability maxes out at 4 hours and odln overtime maxes out at 8 hours. "otdl" equitability was left unmodified. 
+	

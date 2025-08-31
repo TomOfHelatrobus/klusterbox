@@ -379,6 +379,18 @@ class OTEquitSpreadsheet:
         if "otdl" in self.displayed_list:
             return True
 
+    def _overtime_max(self, overtime):
+        """ for odl regular, the maximum overtime is 4 hours
+         for odl nsday, the maximum overtime is 8 hours. """
+        if not overtime:
+            return ""
+        overtime = float(overtime)
+        if "odln" in self.displayed_list:
+            overtime = min(overtime, 8.00)
+        if "odlr" in self.displayed_list:
+            overtime = min(overtime, 4.00)
+        return format(overtime, '.2f')
+
     def get_daily_ringrefs(self, index):
         """ the ring ref - clock rings and refusals. gets the clock rings to determine the overtime then gets
         and stores the refusals time/type in the self.ringrefset variable. """
@@ -404,6 +416,9 @@ class OTEquitSpreadsheet:
                     moves = Moves().timeoffroute(results[0][2])  # calculate the time off route
                     ns_qual = self._nsday_qualification(code)  # add only if right day and right list
                     overtime = self.get_overtime(total, moves, code)  # find the overtime
+                    print("original: ", overtime)
+                    overtime = self._overtime_max(overtime)
+                    print(overtime, type(overtime))
                 # get the refusal values - type and time
                 sql = "SELECT refusal_type, refusal_time FROM refusals " \
                       "WHERE refusal_date = '%s' AND carrier_name = '%s'" % (date, carrier)
