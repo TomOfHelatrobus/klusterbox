@@ -13965,11 +13965,11 @@ class MainFrame:
             (1, "Mandates No.5 Spreadsheet", lambda: ImpManSpreadsheet5().create(self.nav.topframe)),
             (1, "Over Max Spreadsheet", lambda: OvermaxSpreadsheet().create(self.nav.topframe)),
             (1, "Off Bid Spreadsheet", lambda: OffbidSpreadsheet().create(self.nav.topframe)),
-            (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
+            (1, "OTDL Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
              .create(self.nav.topframe, self.ot_date, projvar.invran_station, "otdl")),
-            (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
+            (1, "ODLR Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
              .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odlr")),
-            (1, "OT Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
+            (1, "ODLN Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
              .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odln")),
             (1, "OT Distribution Spreadsheet", lambda: OTDistriSpreadsheet()
              .create(self.nav.topframe, projvar.invran_date_week[0],
