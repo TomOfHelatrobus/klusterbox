@@ -14,7 +14,7 @@ ___  5. In the prompt, enter the following.
 	___  a. Save As: Setup_klusterbox_v<version number>_mac # don't include brackets
 	___  b. Where: Desktop
 	___  c. Name: klusterbox_install
-	___  d. Size: 60MB
+	___  d. Size: 75MB
 	___  e. keep the other settings as default.
 	___  f. Press Save
 

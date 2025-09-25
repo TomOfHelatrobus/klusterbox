@@ -2327,17 +2327,27 @@ class InformalCReports:
             messagebox.showerror("Report Generator",
                                  "The report was not generated.", parent=self.parent.win.topframe)
 
-    def grv_summary(self):
+    def grv_summary(self, shortreport=False):
         """ this a summary of all grievances as they appear on the search results screen.
-        this is called by the button on the bottom of showtime. """
-        if len(self.parent.search_result) == 0:
-            msg = "There are no records matching your search results. "
-            messagebox.showwarning("Informal C Reports", msg, parent=self.parent.win.topframe)
-            return
+        this is called by the button on the bottom of showtime.
+        the shortreport kwarg will generate only a list of grievance numbers with no line breaks."""
+        if shortreport:
+            if len(self.parent.parent.search_result) == 0:
+                msg = "There are no records matching your search results. "
+                messagebox.showwarning("Informal C Reports", msg, parent=self.parent.win.topframe)
+                return
+        else:
+            if len(self.parent.search_result) == 0:
+                msg = "There are no records matching your search results. "
+                messagebox.showwarning("Informal C Reports", msg, parent=self.parent.win.topframe)
+                return
         # --------------------------------------------------------- get the date by which the results are sorted...
         # "Start Incident Date", "End Incident Date", "Meeting Date", "Signed Date", "Proof Due"
         sortby = (3, 4, 5, 10, 12)  # store the indexes of the dates in this tuple.
-        sort_index = sortby[int(self.parent.sortby.get())]  # sent by self.sortby stringvar
+        if shortreport:
+            sort_index = sortby[int(self.parent.parent.sortby.get())]  # sent by self.sortby stringvar
+        else:
+            sort_index = sortby[int(self.parent.sortby.get())]  # sent by self.sortby stringvar
         # convert to backslash date or empty
         # selecteddate = Convert(self.search_result[i][sort_index]).dtstr_to_backslashstr()
         # ---------------------------------------------------------------------------------------------- file name
@@ -2350,22 +2360,30 @@ class InformalCReports:
         report.write("   Grievance List Summary\n\n")
         report.write("   Showing all grievances/settlements within search criteria\'\n\n")
         date_header = ("Start Date", "End Date", "Meeting Date", "Signed Date", "Proof Due")
-        date_head_index = int(self.parent.sortby.get())
-        report.write('{:>18}{:>14}  {:<20}{:<22}  {:<20}\n'
-                     .format("    Grievance #", date_header[date_head_index], "Grievant", "Issue", "Settlement"))
-        report.write("       ----------------------------------------------------------------------------------"
-                     "----\n")
+        if shortreport:
+            report.write('{:>18}\n'.format("    Grievance #"))
+            report.write("       -----------\n")
+        else:
+            date_head_index = int(self.parent.sortby.get())
+            report.write('{:>18}{:>14}  {:<20}{:<22}  {:<20}\n'
+                         .format("    Grievance #", date_header[date_head_index], "Grievant", "Issue", "Settlement"))
+            report.write("       ----------------------------------------------------------------------------------"
+                         "----\n")
         i = 0
-        for r in self.parent.search_result:
-            formatted_date = Convert(r[sort_index]).dtstr_to_backslashstr()
-            report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}  {:<20}\n'
-                         .format(str(i + 1), r[2], formatted_date, r[0], r[6], r[11]))
-            if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
-                report.write("       ----------------------------------------------------------------------"
-                             "----------------\n")
-            i += 1
-        report.write("       --------------------------------------------------------------------------------"
-                     "------\n")  # insert line at the end to close out report
+        if shortreport:
+            for r in self.parent.parent.search_result:
+                report.write('    {:>14}\n'.format(r[2]))
+        else:
+            for r in self.parent.search_result:
+                formatted_date = Convert(r[sort_index]).dtstr_to_backslashstr()
+                report.write('{:>4}{:>14}{:>14}  {:<20}{:<22}  {:<20}\n'
+                             .format(str(i + 1), r[2], formatted_date, r[0], r[6], r[11]))
+                if i % 3 == 0:  # insert a line every third loop for visual clarity and readability
+                    report.write("       ----------------------------------------------------------------------"
+                                 "----------------\n")
+                i += 1
+            report.write("       --------------------------------------------------------------------------------"
+                         "------\n")  # insert line at the end to close out report
         report.close()
         # ----------------------------------------------------------------------------------------- save and open
         if sys.platform == "win32":

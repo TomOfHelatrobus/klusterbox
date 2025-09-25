@@ -156,3 +156,10 @@ Version 7.01 (09/01/2025)
 	
 	The OtEquitability was modified with the self._overtime_max() method so that for odlr equitability maxes out at 4 hours and odln overtime maxes out at 8 hours. "otdl" equitability was left unmodified. 
 	
+Version 7.02(09/27/2025)
+	The OtEquitability was modified with the self._overtime_weekly_max() method so that odlr and odln equitability stops incrementing after the carrier has worked 60 hours in a service week. 
+	
+	An informal c report was added which generated a list of grievance numbers only. 
+	
+	The automatic data entry defaults were adjusted due to adding of new list statuses. InformalCReports().grv_summary() was modified to take a kwarg allowing for a short report. 
+	

@@ -61,8 +61,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 7.01  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Sep 1, 2025"  # format is Jan 1, 2022
+version = 7.02  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Sep 27, 2025"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -1867,6 +1867,9 @@ class InformalC:
             Button(self.win.body, text="Employee ID (text file)", width=30,
                    command=lambda: InformalCReports(self).rptcarrierandid())\
                 .grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Summary (numbers only)", width=30,
+                   command=lambda: InformalCReports(self).grv_summary(shortreport=True)).grid(row=row, column=0, pady=5)
             row += 1
             Label(self.win.body, text="", width=70).grid(row=row)  # widen the column so buttons appear center
             # define the buttons at the bottom of the page:
@@ -7909,9 +7912,9 @@ class AutoDataEntry:
                 y += 1
                 list_options = ("otdl", "odlr", "odln", "wal", "nl", "ptf", "aux")  # create optionmenu for list status
                 if name[3] == "auxiliary":
-                    lx = 4  # configure defaults for list status
+                    lx = 6  # configure defaults for list status
                 elif name[3] == "part time flex":
-                    lx = 3  # set as ptf
+                    lx = 5  # set as ptf
                 else:
                     lx = 4  # set as 'nl' if not 'aux'
                 self.ai4_l_s.append(StringVar(self.win.body))

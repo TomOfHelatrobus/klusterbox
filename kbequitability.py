@@ -100,6 +100,7 @@ class OTEquitSpreadsheet:
         self.otcalcpref = "off_route"  # preference for overtime calculation - "off_route" or "all"
         self.carrier_overview = []  # a list of carrier's name, status and makeups
         self.date_array = []  # a list of all days in the quarter as a datetimes
+        self.firstweek_date_array = []  # list of dates in the week prior to first day of quarter
         self.front_padding = 0  # number of empty triad to fill worksheet prior to startdate
         self.end_padding = 0  # number of empty trids to fill worksheet prior to enddate
         self.end_pad_indicator = 0  # shows days after last day for triad builder
@@ -133,6 +134,7 @@ class OTEquitSpreadsheet:
         self.ref_ot = None
         self.instruct_text = None
         self.header_title = ""
+        self.weekly_total = 0.0
 
     def create(self, frame, date, station, list_):
         """ a master method for building the spreadsheet. """
@@ -140,7 +142,7 @@ class OTEquitSpreadsheet:
         self.displayed_list = self.get_displayed_list(list_)
         if not self.ask_ok(list_):  # abort if user selects cancel from askokcancel
             return
-        self.pb = ProgressBarDe(label="Building OTDL Equitability Spreadsheet")
+        self.pb = ProgressBarDe(label="Building {} Equitability Spreadsheet".format(list_.upper()))
         self.pb.max_count(100)  # set length of progress bar
         self.pb.start_up()  # start the progress bar
         self.pbi = 1
@@ -157,6 +159,7 @@ class OTEquitSpreadsheet:
         self.get_carier_overview()  # build a list of carrier's name, status and makeups
         self.carrier_overview_add()  # adds empty sets so the lenght of carrier overview = minimum rows.
         self.get_date_array()  # get a list of all days in the quarter as datetime objects
+        self._get_firstweek_dates()  # get the days of the first week prior to first day of quarter
         self.get_front_padding()  # get number of empty triads needed to pad prior to startdate
         self.get_end_padding()  # get number of empty triads needed to pad after enddate
         self.get_ringrefset()  # build multidimensional array - daily rings/refusals for each carrier
@@ -319,6 +322,15 @@ class OTEquitSpreadsheet:
             self.date_array.append(running_date)
             running_date += timedelta(days=1)
 
+    def _get_firstweek_dates(self):
+        """ get a list of dates for the first week not included in date array.
+         if the first day of the quarter is tuesday, the daily totals of sat, sun and mon must be added
+         to calculate the 60 hour weekly limit."""
+        running_date = self.startdate
+        while running_date.strftime('%a') != "Sat":
+            self.firstweek_date_array.append(running_date)
+            running_date -= timedelta(days=1)
+
     def get_front_padding(self):
         """ get the number of empty triads to put before startdate to fill worksheet """
         self.front_padding = 6 - self.starting_day()
@@ -391,15 +403,42 @@ class OTEquitSpreadsheet:
             overtime = min(overtime, 4.00)
         return format(overtime, '.2f')
 
+    def _get_firstweek_total(self,index):
+        """ get the 5200 total of the days in the first week prior to the first day of the quarter. """
+        self.weekly_total = 0.0
+        carrier = self.carrier_overview[index][0]  # get the carrier name using carrier overview md array and index
+        for day in self.firstweek_date_array:
+            # get the overtime value
+            sql = "SELECT total FROM rings3 WHERE rings_date = '%s' AND carrier_name = '%s'" % (day, carrier)
+            results = inquire(sql)
+            if results:
+                if results[0][0]:
+                    totalhours = results[0][0]
+                    self.weekly_total += float(totalhours)
+
+    def _overtime_weekly_max(self, total, overtime):
+        """ computes and returns to overtime adjusted for the weekly availability. """
+        if not overtime:
+            return overtime
+        if len(self.displayed_list) < 2:  # do not apply if running only 'otdl' list
+            return overtime
+        wk_max = 60.0  # do not allow overtime if carrier has worked more than 60 hours in a week.
+        allowed_ot = max(wk_max-(self.weekly_total-float(total)), 0)
+        adj_ot = min(allowed_ot, float(overtime))
+        return format(adj_ot, '.2f')
+
     def get_daily_ringrefs(self, index):
         """ the ring ref - clock rings and refusals. gets the clock rings to determine the overtime then gets
         and stores the refusals time/type in the self.ringrefset variable. """
         daily_ringref = []
+        self._get_firstweek_total(index)
         carrier = self.carrier_overview[index][0]  # get the carrier name using carrier overview md array and index
         for _ in range(self.front_padding):  # insert front padding so empty cells fill worksheet
             add_this = ["", "", ""]
             daily_ringref.append(add_this)
         for date in self.date_array:  # get the ringrefs from the database or empty if none
+            if date.strftime("%a") == "Sat":
+                self.weekly_total = 0.0
             station_qualification = self._get_station_qual(carrier, date)
             ns_qual = False
             overtime = ""
@@ -416,9 +455,10 @@ class OTEquitSpreadsheet:
                     moves = Moves().timeoffroute(results[0][2])  # calculate the time off route
                     ns_qual = self._nsday_qualification(code)  # add only if right day and right list
                     overtime = self.get_overtime(total, moves, code)  # find the overtime
-                    print("original: ", overtime)
-                    overtime = self._overtime_max(overtime)
-                    print(overtime, type(overtime))
+                    overtime = self._overtime_max(overtime)  # do not allow ot over daily limit
+                    if total:
+                        self.weekly_total += float(total)
+                    overtime = self._overtime_weekly_max(total, overtime)  # do not allow ot over weekly limit
                 # get the refusal values - type and time
                 sql = "SELECT refusal_type, refusal_time FROM refusals " \
                       "WHERE refusal_date = '%s' AND carrier_name = '%s'" % (date, carrier)
