@@ -5,8 +5,9 @@ ___ 2. Update the version number and release date of the readme.txt
 ___ 3. Update the version number and release date in the klusterbox.py file
 ___ 4. If new modules have been added: 
 	___ 1. Update klusterbox.py AboutKlusterbox() class
-	___ 2. Update the klusterwin.spec file
-	___ 3. Update the klustermac.spec file
+	___ 2. Update the klusterwin.spec file and run pyinstaller
+	___ 2. Update the klusterwin32.spec file and run pyinstaller
+	___ 3. Update the klustermac.spec file and run pyinstaller
 	___ 4. Run NSIS wizard for 64 bit distribution. 
 	___ 5. Run NSIS wizard for 32 bit distribution. 
 	else: 
@@ -43,6 +44,7 @@ ___ ___ ___  1. (in explorer/finder) make sure the kb_install folder is inside t
 		___ ___ ___  12. kbenterrings.py
 		___ ___ ___  13. kbfixes.py
 		___ ___ ___  14. kbinformalc.py
+		___ ___ ___  15. kb_templategofer.py
 
 ___ ___ ___  3. (in terminal/ powershell) navigate to the klusterbox folder.
 
@@ -102,6 +104,7 @@ ___ ___  2. (in explorer) ensure the following files are in the kb_install/kb_su
 	___ ___  12. kbenterrings.py
 	___ ___  13. kbfixes.py
 	___ ___  14. kbinformalc.py
+	___ ___  15. kb_templategofer.py
 	
 	a. make sure the following files/folders are not present in the kb_install/kb_sub folder. Delete them if they are present. kb_sub/images should be the only folder present: 
 
@@ -174,6 +177,7 @@ ___ ___  2. (in explorer) make sure the python source files are in the kb_instal
 	___ ___  12. kbfixes.py
 	___ ___  13. kbinformalc.py
 	___ ___  14. kbpdfhandler.py
+	___ ___  15. kb_templategofer.py
 
 ___ ___  3. (in explorer) make sure the spec file is in the kb_install folder too:
 	___ ___  1. klusterwin.spec or (klusterwin32.spec for 32 bit)
@@ -270,6 +274,7 @@ ___  2. (in finder) make sure the python source files are in the kb_install fold
 	___ 12. kbenterrings.py
 	___ 13. kbfixes.py
 	___ 14. kbinformalc.py
+	___ 15. kb_templategofer.py
 
 ___  2. (in finder) make sure the spec file is also in the kb_install folder:
 

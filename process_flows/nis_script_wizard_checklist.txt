@@ -30,7 +30,7 @@ ___ 3. Click "Next".
 	____ d. Navigate to the klusterbox directory in the dist directory created by pyinstaller. thomas > klusterbox > kb_install > dist
 	____ e. Select klusterbox and press OK. 
 	____ f. In the EditDirectory dialog, leave all other settings as default. 
-	____ g. Press Next. 
+	____ g. Press OK. 
 	____ h. Press Next in the Application Files dialog. 
 
 8. In the Application Icon dialog

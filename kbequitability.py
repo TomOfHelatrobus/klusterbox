@@ -7,6 +7,7 @@ distribution of overtime and mandates among non list carriers.
 import projvar
 from kbtoolbox import commit, inquire, CarrierList, Convert, datetime, dir_path, Handler, Moves, Overtime, \
     ProgressBarDe, Quarter
+# standard libraries
 from tkinter import messagebox
 from datetime import timedelta
 import sys
@@ -403,7 +404,7 @@ class OTEquitSpreadsheet:
             overtime = min(overtime, 4.00)
         return format(overtime, '.2f')
 
-    def _get_firstweek_total(self,index):
+    def _get_firstweek_total(self, index):
         """ get the 5200 total of the days in the first week prior to the first day of the quarter. """
         self.weekly_total = 0.0
         carrier = self.carrier_overview[index][0]  # get the carrier name using carrier overview md array and index

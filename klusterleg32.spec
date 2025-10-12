@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['klusterbox.py'],
-             pathex=['C:\\Users\\toman\\klusterbox\\kb_install'],
+             pathex=['C:\\Users\\thomas\\klusterbox\\kb_install'],
              binaries=[],
              datas=[],
              hiddenimports=[],

@@ -966,9 +966,12 @@ class Archive:
 
     @staticmethod
     def remove_file(folder):
-        """ removes a file and all contents """
+        """ removes a folder and all contents """
         if os.path.isdir(folder):  # if it exist
-            rmtree(folder)  # delete it
+            try:
+                rmtree(folder)  # delete it
+            except PermissionError:  # if it is open, do not delete
+                pass
 
     def remove_file_var(self, frame, folder):
         """ removes a file and all contents """
@@ -2431,6 +2434,124 @@ class InformalCReports:
         except PermissionError:
             messagebox.showerror("Report Generator",
                                  "The report was not generated.", parent=self.parent.win.topframe)
+
+
+class TemplateGoferReport:
+    """
+    Generate a spread sheet with the grievance information for use with Template Gofer.
+    """
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.wb = None  # workbook object
+        self.grvlist = None  # workbook name
+        self.ws_header = None  # style
+        self.input_name = None  # style
+        self.input_s = None  # style
+        self.col_header = None  # style
+        self.i = 0  # this counts the rows/ number of carriers.
+
+    def run(self):
+        """ this method is the master method for running all other methods in proper order """
+        self.get_styles()
+        self.build_workbook()
+        self.set_dimensions()
+        self.build_header()
+        self.fill_body()
+        self.save_open()
+
+    def get_styles(self):
+        """ Named styles for workbook """
+        bd = Side(style='thin', color="80808080")  # defines borders
+        self.ws_header = NamedStyle(name="ws_header", font=Font(bold=True, name='Arial', size=12))
+        self.input_name = NamedStyle(name="input_name", font=Font(name='Arial', size=8),
+                                     border=Border(left=bd, top=bd, right=bd, bottom=bd))
+        self.input_s = NamedStyle(name="input_s", font=Font(name='Arial', size=8),
+                                  border=Border(left=bd, top=bd, right=bd, bottom=bd),
+                                  alignment=Alignment(horizontal='right'))
+        self.col_header = NamedStyle(name="col_header", font=Font(bold=True, name='Arial', size=8),
+                                     alignment=Alignment(horizontal='left'))
+
+    def build_workbook(self):
+        """ creates the workbook object """
+        self.wb = Workbook()  # define the workbook
+        self.grvlist = self.wb.active  # create first worksheet
+        self.grvlist.title = "settlement data"  # title first worksheet
+        self.grvlist.oddFooter.center.text = "&A"
+
+    def set_dimensions(self):
+        """ adjust the height and width on the violations/ instructions page """
+        self.grvlist.column_dimensions["A"].width = 5
+        self.grvlist.column_dimensions["B"].width = 20
+        self.grvlist.column_dimensions["C"].width = 15
+        self.grvlist.column_dimensions["D"].width = 15
+        self.grvlist.column_dimensions["E"].width = 15
+
+    def build_header(self):
+        """ build the header of the spreadsheet """
+        self.grvlist.merge_cells('A1:R1')
+        self.grvlist['A1'] = "Informal C Settlements"
+        self.grvlist['A1'].style = self.ws_header
+        cell = self.grvlist.cell(row=3, column=2)
+        cell.value = "grievance number"
+        cell.style = self.col_header
+        cell = self.grvlist.cell(row=3, column=3)
+        cell.value = "signing date"
+        cell.style = self.col_header
+        cell = self.grvlist.cell(row=3, column=4)
+        cell.value = "decision step"
+        cell.style = self.col_header
+        cell = self.grvlist.cell(row=3, column=5)
+        cell.value = "proof due date"
+        cell.style = self.col_header
+        # freeze panes
+        self.grvlist.freeze_panes = self.grvlist.cell(row=4, column=1)  # ['A3']
+
+    def fill_body(self):
+        """ this loop will fill the body of the spreadsheet with the carrier list """
+
+        self.i = 1
+        for grv in self.parent.parent.search_result:
+            cell = self.grvlist.cell(row=self.i + 3, column=1)  # row count
+            cell.value = str(self.i)
+            cell.style = self.input_name
+            cell = self.grvlist.cell(row=self.i + 3, column=2)  # grievance number
+            cell.value = grv[2]
+            cell.style = self.input_name
+            cell = self.grvlist.cell(row=self.i + 3, column=3)  # signing date
+            cell.value = Convert(grv[10]).dtstring_to_backslashdate()
+            cell.style = self.input_s
+            cell = self.grvlist.cell(row=self.i + 3, column=4)
+            cell.value = grv[9]  # level of resolution
+            cell.style = self.input_s
+            cell = self.grvlist.cell(row=self.i + 3, column=5)
+            cell.value = Convert(grv[12]).dtstring_to_backslashdate()  # proof due date
+            cell.style = self.input_s
+            self.i += 1
+
+    def save_open(self):
+        """ save the spreadsheet and open """
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        xl_filename = "infc_grv_list" + "_" + stamp + ".xlsx"
+        try:
+            self.wb.save(dir_path('infc_grv') + xl_filename)
+            messagebox.showinfo("Spreadsheet generator",
+                                "Your spreadsheet was successfully generated. \n"
+                                "File is named: {}".format(xl_filename),
+                                parent=self.parent.win.topframe)
+            if sys.platform == "win32":  # open the text document
+                os.startfile(dir_path('infc_grv') + xl_filename)
+            if sys.platform == "linux":
+                subprocess.call(["xdg-open", 'kb_sub/infc_grv/' + xl_filename])
+            if sys.platform == "darwin":
+                subprocess.call(["open", dir_path('infc_grv') + xl_filename])
+        except PermissionError:
+            messagebox.showerror("Spreadsheet generator",
+                                 "The spreadsheet was not generated. \n"
+                                 "Suggestion: "
+                                 "Make sure that identically named spreadsheets are closed "
+                                 "(the file can't be overwritten while open).",
+                                 parent=self.parent.win.topframe)
 
 
 class InformalCOptions:

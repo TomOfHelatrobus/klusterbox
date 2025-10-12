@@ -1081,6 +1081,8 @@ class Convert:
 
     def dtstring_to_backslashdate(self):
         """ converts a datetime string into a backslash date """
+        if not self.data:
+            return ""
         self.data = self.str_to_dt()  # convert the string to a proper datetime
         array = self.datetime_separation()  # converts a datetime object into an array
         return array[1] + "/" + array[2] + "/" + array[0]
@@ -1621,8 +1623,8 @@ class Overtime:
         if self.code == "ns day":  # if it is the ns day, the overtime is all hours worked that day.
             return self.total
         overtime = float(self.total) - 8
-        if not self.check_empty_timeoff():
-            return format(overtime, '.2f')
+        if not self.check_empty_timeoff():  # if there is no timeoff carrier's route
+            return ""
         offroute = min(overtime, float(self.timeoff))
         return format(offroute, '.2f')
 

@@ -13,7 +13,7 @@ This version of Klusterbox is being released under the GNU General Public Licens
 # custom modules
 import projvar
 from kbreports import InformalCIndex, Reports, Messenger, CheatSheet, Archive, InformalCReports, RptCarrierId, \
-    InformalCOptions
+    InformalCOptions, TemplateGoferReport
 from kbtoolbox import commit, inquire, Convert, Handler, dir_filedialog, dir_path, gen_ns_dict, \
     informalc_date_checker, isfloat, isint, macadj, MakeWindow, MinrowsChecker, NsDayDict, \
     ProgressBarDe, BackSlashDateChecker, CarrierList, CarrierRecFilter, dir_path_check, dt_converter, \
@@ -34,6 +34,7 @@ from kbenterrings import EnterRings
 from kbinformalc import InfcSpeedSheetGen, InfcSpeedWorkBookGet, Awards, informalc_gen_clist, \
     informalc_date_converter
 from kbfixes import Fixes
+from kb_templategofer import TemplateGofer, GenTgSpreadsheet
 # PDF Converter Libraries
 from PyPDF2 import PdfFileReader, PdfFileWriter
 # Standard Libraries
@@ -61,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 7.02  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Sep 27, 2025"  # format is Jan 1, 2022
+version = 7.03  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Oct 12, 2025"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -1870,6 +1871,9 @@ class InformalC:
             row += 1
             Button(self.win.body, text="Summary (numbers only)", width=30,
                    command=lambda: InformalCReports(self).grv_summary(shortreport=True)).grid(row=row, column=0, pady=5)
+            row += 1
+            Button(self.win.body, text="Template Gofer Spreadsheet", width=30,
+                   command=lambda: TemplateGoferReport(self).run()).grid(row=row, column=0, pady=5)
             row += 1
             Label(self.win.body, text="", width=70).grid(row=row)  # widen the column so buttons appear center
             # define the buttons at the bottom of the page:
@@ -12364,7 +12368,8 @@ class AboutKlusterbox:
                       "kbcsv_reader.py",
                       "kbenterrings.py",
                       "kbfixes.py",
-                      "kbinformalc.py"
+                      "kbinformalc.py",
+                      "kb_templategofer.py"
                       )
         for i in range(len(sourcecode)):
             Button(self.win.body, text="read", width=macadj(7, 7),
@@ -14169,6 +14174,9 @@ class MainFrame:
         automated_menu.add_command(label="PDF Splitter", command=lambda: PdfSplitter().run(self.win.topframe))
         automated_menu.add_command(label="PDF Reorder", command=lambda: PdfReorder().run(self.win.topframe))
         menubar.add_cascade(label="Readers", menu=automated_menu)
+        automated_menu.add_separator()
+        automated_menu.add_command(label="Template Gofer", command=lambda: TemplateGofer().run(self.win.topframe))
+        automated_menu.add_command(label="Gofer Spreadsheet", command=lambda: GenTgSpreadsheet().run(self.win.topframe))
         # reports menu
         reports_menu = Menu(menubar, tearoff=0)
         reports_menu.add_command(label="TACS Cheat Sheet",
