@@ -14003,6 +14003,8 @@ class MainFrame:
             (0, "PDF Converter", lambda: PdfConverter().run(self.nav.topframe)),
             (0, "PDF Splitter", lambda: PdfSplitter().run(self.nav.topframe)),
             (0, "PDF Reorder", lambda: PdfReorder().run(self.nav.topframe)),
+            (0, "Template Gofer", lambda: TemplateGofer().run(self.win.topframe)),
+            (0, "Gofer Spreadsheet", lambda: GenTgSpreadsheet().run(self.win.topframe)),
             # ------------------------------------------------------------------------------------------- report
             (2, "Report Operations __________________________", ""),
             (0, "TACS Cheat Sheet", lambda: CheatSheet().tacs_cheatsheet()),

@@ -96,19 +96,14 @@ class TemplateGofer:
 
     def process_document(self):
         """Perform find/replace and save modified file."""
-
-        # name new file
-        base, ext = os.path.splitext(self.doc_path)
+        base, ext = os.path.splitext(self.doc_path)  # name new file
         new_path = f"{base}_tg{ext}"
-
         if self.check_file_in_use(new_path):
             raise PermissionError(
                 f"The file '{os.path.basename(self.doc_path)}' is currently in use.\n"
                 f"Please close it and try again."
             )
-
         doc = Document(self.doc_path)
-
         for find_text, replace_text in self.replacements:
             # Replace in paragraphs
             for paragraph in doc.paragraphs:
@@ -116,14 +111,12 @@ class TemplateGofer:
                     for run in paragraph.runs:
                         if find_text in run.text:
                             run.text = run.text.replace(find_text, replace_text)
-
             # Replace in tables
             for table in doc.tables:
                 for row in table.rows:
                     for cell in row.cells:
                         if find_text in cell.text:
                             cell.text = cell.text.replace(find_text, replace_text)
-
         # Save as new file
         try:
             doc.save(new_path)
@@ -145,8 +138,8 @@ class TemplateGofer:
             if sys.platform == "darwin":
                 subprocess.call(["open", self.new_file])
         except PermissionError:
-            messagebox.showerror("Document generator",
-                                 "The document will not opened.",
+            messagebox.showerror("Template Gofer",
+                                 "The process has failed and the document will not open.",
                                  parent=self.frame)
 
     def run(self, frame):
@@ -157,12 +150,13 @@ class TemplateGofer:
             self.load_replacements()
             self.select_doc_file()
             self.new_file = self.process_document()
-            messagebox.showinfo("Success", f"Template Gofer completed successfully!\n\nSaved as:\n{self.new_file}",
+            messagebox.showinfo("Template Gofer",
+                                f"Template Gofer completed successfully!\n\nSaved as:\n{self.new_file}",
                                 parent=self.frame)
             self.open()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Process failed.\n\n{str(e)}",
+            messagebox.showerror("Template Gofer", f"Process failed and is canceled.\n\n{str(e)}",
                                  parent=self.frame)
 
 
@@ -226,6 +220,6 @@ class GenTgSpreadsheet:
             if sys.platform == "darwin":
                 subprocess.call(["open", self.filepath])
         except PermissionError:
-            messagebox.showerror("Template Gofer Spreadsheet Generator",
-                                 "The spreadsheet was not opened.",
+            messagebox.showerror("Template Gofer",
+                                 "The process has failed and the spreadsheet will not open.",
                                  parent=self.frame)
