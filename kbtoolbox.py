@@ -881,6 +881,7 @@ def ee_ns_detect(array):
         hr_52 = 0  # straight hours
         hr_53 = 0  # overtime hours
         hr_43 = 0  # penalty hours
+        hr_29 = 0  # penalty plus hours
         for line in array:
             if line[18] in ns_candidates:
                 ns_candidates.remove(line[18])
@@ -892,8 +893,10 @@ def ee_ns_detect(array):
                     hr_53 = spt_20[1]
                 if spt_20[0] == "04300":
                     hr_43 = spt_20[1]
+                if spt_20[0] == "02900":
+                    hr_29 = spt_20[1]
         if float(hr_52) != 0:
-            summ = float(hr_53) + float(hr_43)
+            summ = float(hr_53) + float(hr_43) + float(hr_29)
             if float(hr_52) == round(summ, 2):
                 return d
     if len(ns_candidates) == 1:

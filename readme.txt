@@ -8,8 +8,8 @@
 
 Klusterbox
 Copyright 2019 Thomas Weeks
-most recent version: 7.03		
-released: Oct 10, 2025
+most recent version: 7.04		
+released: Nov 30, 2025
 
 Caution: 
 

@@ -11,10 +11,14 @@ class CountLines:
         self.all_files = []  # a list of python files in the project folder
         self.total_count = 0  # a running count of all the lines of all the python files.
         self.file_index = 0  # this is an index for all_files array
+        self.ignored_files = ("countlines.py", "merge_tables.py", "alias_maker.py")  # files not counted
 
     def run(self):
         """ master method for running other methods."""
         self.get_files()
+        print("")  # print a blank line
+        print("Klusterbox Files and Line Count")  # print a blank line
+        print("")  # print a blank line
         for file in self.all_files:
             self.count_lines(file)
             self.file_index += 1
@@ -24,7 +28,7 @@ class CountLines:
         """ get a list of all files in the directory. put all names into a list. """
         for file in os.listdir():
             if file.endswith(".py"):
-                if file not in ("countlines.py", "merge_tables.py"):  # do not include the countlines.py file
+                if file not in self.ignored_files:  # do not include certain files
                     self.all_files.append(file)
 
     def count_lines(self, file):
@@ -40,6 +44,7 @@ class CountLines:
         print("")
         print("   Number of Files ..............", len(self.all_files))
         print("   Total Lines ..................", self.total_count)
+        print("")
 
     def get_name(self):
         """ returns the name with periods following it to help readability"""

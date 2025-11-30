@@ -168,3 +168,6 @@ Version 7.03 (10/12/2025)
 	
 	A new module was created for TemplateGofer which allows the user to fill in values in a template using a spreadsheet which is created by the Gofer Spreadsheet. A new spreadsheet was added to informal c which generates a spreadsheet that list the grievance number, date signed, level of settlement and proof due date. This functionality was created for rapid generation of non compliance appeals. 
 	
+Version 7.04 (11/30/2025)
+	In the kbtoolbox.py module the ee_ns_detect class was updated to allow for penalty plus overtime. Penalty plus overtime is a new pay category for hours worked over 12 hours in a day or over 60 hours in a week. Klusterbox uses penalty plus overtime along with overtime and penalty overtime to detect the ns day of carriers. 
+	
