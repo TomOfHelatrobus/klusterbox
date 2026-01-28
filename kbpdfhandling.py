@@ -468,7 +468,7 @@ class PdfConverter:
             try:
                 document = PDFDocument(parser)
                 page_count = resolve1(document.catalog['Pages'])['Count']  # This will give you the count of pages
-            except TypeError:
+            except (TypeError, ):
                 page_count = 200
             return page_count
 

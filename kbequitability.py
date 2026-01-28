@@ -522,6 +522,7 @@ class OTEquitSpreadsheet:
         self.overview.column_dimensions["F"].width = 11
         self.overview.column_dimensions["G"].width = 12
         self.overview.column_dimensions["H"].width = 12
+        self.overview.column_dimensions["I"].width = 12
 
     def set_dimensions_weekly(self):
         """ sets the width of the columns for weekly tabs. """
@@ -668,6 +669,9 @@ class OTEquitSpreadsheet:
         cell = self.overview.cell(row=5, column=8)  # diff from avg
         cell.value = "diff from avg"
         cell.style = self.col_center_header
+        cell = self.overview.cell(row=5, column=9)  # diff from max
+        cell.value = "diff from max"
+        cell.style = self.col_center_header
 
     def build_main_overview(self):
         """ build the body of the overview tab. """
@@ -737,11 +741,19 @@ class OTEquitSpreadsheet:
             cell = self.overview.cell(row=row, column=8)  # difference from average
             formula = "=IF(%s!A%s=\"\",0, IF(OR(%s!C%s=12,%s!C%s=10, %s!C%s=\"track\"),%s!G%s-%s!$G$%s,\"off list\"))" \
                       % ("overview", str(row), "overview", str(row), "overview", str(row), "overview", str(row),
-                         "overview", str(row), "overview", str(self.footer_row+2))  # last row is avg
+                         "overview", str(row), "overview", str(self.footer_row+2))  # footer_row+2 is avg
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('H' + str(row) + ":" + 'H' + str(row + 1))
+            cell = self.overview.cell(row=row, column=9)  # difference from max
+            formula = "=IF(%s!A%s=\"\",0, IF(OR(%s!C%s=12,%s!C%s=10, %s!C%s=\"track\"),%s!G%s-%s!$F$%s,\"off list\"))" \
+                      % ("overview", str(row), "overview", str(row), "overview", str(row), "overview", str(row),
+                         "overview", str(row), "overview", str(self.footer_row+4))  # footer_row+4 is max
+            cell.value = formula
+            cell.style = self.calcs
+            cell.number_format = "#,###.00"
+            self.overview.merge_cells('I' + str(row) + ":" + 'I' + str(row + 1))
             row += 2
 
     def get_totalovertime_formula(self, sheet, row, column):
@@ -760,9 +772,10 @@ class OTEquitSpreadsheet:
 
     def build_overview_footer(self):
         """ create the footer at the bottom of the worksheet for averages and totals """
-        cell = self.overview.cell(row=self.footer_row, column=5)  # label total overtime
+        cell = self.overview.cell(row=self.footer_row, column=1)  # label total overtime
         cell.value = "total overtime:"
         cell.style = self.date_dov_title
+        self.overview.merge_cells('A' + str(self.footer_row) + ":" + "E" + str(self.footer_row))
         cell = self.overview.cell(row=self.footer_row, column=6)  # calculate total overtime
         formula = self.get_totalovertime_formula("overview", 7, 6)
         cell.value = formula
@@ -777,11 +790,22 @@ class OTEquitSpreadsheet:
         cell = self.overview.cell(row=self.footer_row, column=8)  # label total opportunities
         cell.value = "  :total opportunities"
         cell.style = self.col_header
-        cell = self.overview.cell(row=self.footer_row+2, column=5)  # label average overtime
+        self.overview.merge_cells('H' + str(self.footer_row) + ":" + "I" + str(self.footer_row))
+        cell = self.overview.cell(row=self.footer_row+2, column=1)  # label average overtime
         cell.value = "average overtime:"
         cell.style = self.date_dov_title
+        self.overview.merge_cells('A' + str(self.footer_row+2) + ":" + "E" + str(self.footer_row+2))
         cell = self.overview.cell(row=self.footer_row+2, column=6)  # calculate average overtime
         formula = "=%s!F%s/%s!$H$3" % ("overview", self.footer_row, "overview")
+        cell.value = formula
+        cell.style = self.calcs
+        cell.number_format = "#,###.00;[RED]-#,###.00"
+        cell = self.overview.cell(row=self.footer_row+4, column=1)  # label max overtime
+        cell.value = "maximum overtime:"
+        cell.style = self.date_dov_title
+        self.overview.merge_cells('A' + str(self.footer_row+4) + ":" + "E" + str(self.footer_row+4))
+        cell = self.overview.cell(row=self.footer_row+4, column=6)  # calculate max overtime
+        formula = "=Max(%s!G%s:G%s)" % ("overview", str(6), str(self.footer_row - 2))
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -793,6 +817,7 @@ class OTEquitSpreadsheet:
         cell = self.overview.cell(row=self.footer_row+2, column=8)  # label average opportunities
         cell.value = "  :average opportunities"
         cell.style = self.col_header
+        self.overview.merge_cells('H' + str(self.footer_row+2) + ":" + "I" + str(self.footer_row+2))
 
     def build_header_weeklysheets(self):
         """ build the header for the weekly worksheet """
