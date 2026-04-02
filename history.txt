@@ -171,6 +171,10 @@ Version 7.03 (10/12/2025)
 Version 7.04 (11/30/2025)
 	In the kbtoolbox.py module the ee_ns_detect class was updated to allow for penalty plus overtime. Penalty plus overtime is a new pay category for hours worked over 12 hours in a day or over 60 hours in a week. Klusterbox uses penalty plus overtime along with overtime and penalty overtime to detect the ns day of carriers. 
 	
-Version 7.05 (undetermined)
+Version 7.05 (04/02/2026)
 	The kbequitability module was modified. The otdl equitability spreadsheets (otdl, odlr and odln) were updated to add a column for differance from maximum to be a supplement of difference from average. 
+	
+	The calculation for overtime on the odlr equitability spreadsheet was altered to allow for overtime from ns days when the total hours worked exceeded 8 hours. Overtime on those days will be the difference from the total hours worked minus 8 hours, with a maximum of 4 hours.
+	
+	There was a bug fix for the autodataentry which could throw an indexerror if the second line of csv file did not have 5 elements. 
 	

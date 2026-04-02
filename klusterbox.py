@@ -63,7 +63,7 @@ __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
 version = 7.05  # version number must be convertable to a float and should increase for Fixes()
-release_date = "undetermined"  # format is Jan 1, 2022
+release_date = "Apr 2, 2026"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -8683,8 +8683,19 @@ class AutoDataEntry:
             Takes the entire csv file, goes line by line and breaks it up into one chunk per carrier
             and sends it to the skim weekly for further breakdown by day
             """
+            def headertest(cc_, line_):
+                """ test for the first or second line """
+                if cc_ == 0:
+                    return True
+                if cc_ == 1:
+                    try:
+                        if line_[4]:
+                            return False
+                    except IndexError:
+                        return True
+                return False
+
             self.parent.get_file()  # read the csv file
-            # row_count = sum(1 for row in self.parent.a_file)  # get number of rows in csv file
             row_count = sum(1 for _ in self.parent.a_file)  # get number of rows in csv file
             self.parent.get_file()  # read the csv file
             pb = ProgressBarDe(title="Entering Carrier Rings", label="Updating Rings: ")
@@ -8695,7 +8706,8 @@ class AutoDataEntry:
             good_id = "no"
             for line in self.parent.a_file:
                 pb.move_count(i)
-                if cc != 0:
+                # if cc != 0:
+                if not headertest(cc, line):
                     if good_id != line[4] and good_id != "no":  # if new carrier_lines or employee
                         self.skim_weekly()  # trigger analysis
                         del self.carrier_lines[:]  # empty array

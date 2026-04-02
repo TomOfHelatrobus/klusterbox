@@ -359,6 +359,16 @@ class OTEquitSpreadsheet:
         else:  # default to straight overtime if the carrier has no route.
             return Overtime().straight_overtime(total, code)
 
+    def _get_nsday_ot_for_odlr(self, overtime, code):
+        """ this will get overtime in excess of 8 hours on ns days if the displayed list is the odlr """
+        if not overtime:
+            return ""
+        if "odlr" in self.displayed_list and code == "ns day":
+            if float(overtime) <= 8.00:
+                return ""
+            return max(float(overtime) - 8.00, 0)
+        return overtime
+
     def _get_station_qual(self, carrier, date):
         """ query the db for the current carrier record Return True if the carrier record qualifies per station.
         method does double duty in filling the has_route variable which show if the carrier has a route or not."""
@@ -386,7 +396,8 @@ class OTEquitSpreadsheet:
                 return True
             return False
         if "odlr" in self.displayed_list:
-            if code in ("ns day", "no call"):
+            # if code in ("ns day", "no call"):
+            if code in ("no call", ):  # allow 'ns day' code for ot worked over 8 hrs on ns days
                 return False
             return True
         if "otdl" in self.displayed_list:
@@ -438,7 +449,7 @@ class OTEquitSpreadsheet:
             add_this = ["", "", ""]
             daily_ringref.append(add_this)
         for date in self.date_array:  # get the ringrefs from the database or empty if none
-            if date.strftime("%a") == "Sat":
+            if date.strftime("%a") == "Sat": # initialize the running total for the week
                 self.weekly_total = 0.0
             station_qualification = self._get_station_qual(carrier, date)
             ns_qual = False
@@ -456,6 +467,7 @@ class OTEquitSpreadsheet:
                     moves = Moves().timeoffroute(results[0][2])  # calculate the time off route
                     ns_qual = self._nsday_qualification(code)  # add only if right day and right list
                     overtime = self.get_overtime(total, moves, code)  # find the overtime
+                    overtime = self._get_nsday_ot_for_odlr(overtime, code)
                     overtime = self._overtime_max(overtime)  # do not allow ot over daily limit
                     if total:
                         self.weekly_total += float(total)
