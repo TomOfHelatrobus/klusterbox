@@ -62,8 +62,8 @@ __author__ = "Thomas Weeks"
 __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
-version = 7.05  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Apr 2, 2026"  # format is Jan 1, 2022
+version = 7.06  # version number must be convertable to a float and should increase for Fixes()
+release_date = "Apr 26, 2026"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -8931,7 +8931,7 @@ class AutoDataEntry:
         def _get_lv_adjacent(self, lv_type):
             """ lv_type is "annual" or "sick"
             build and return of list of days which are adjacent ot annual or sick leave days. """
-            day_array = ("Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+            day_array = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
             lv_adj = []  # an array for annual leave adjacent days
             for day in self.weekly_protoarray:  # loop once for each day in the day array
                 if day[6] == lv_type:  # if the leave type is "annual" or "sick"
@@ -8939,7 +8939,7 @@ class AutoDataEntry:
                     if day_index != 0:  # if the day is not Saturday
                         if day_array[day_index - 1] not in lv_adj:  # if the day is not already in the array
                             lv_adj.append(day_array[day_index - 1])  # add the day to the array
-                    if day_index != 5:  # if the day is not Friday
+                    if day_index != 6:  # if the day is not Friday
                         if day_array[day_index + 1] not in lv_adj:  # if the day is not already in the array
                             lv_adj.append(day_array[day_index + 1])  # add the day to the array
             return lv_adj

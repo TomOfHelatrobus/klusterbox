@@ -178,3 +178,8 @@ Version 7.05 (04/02/2026)
 	
 	There was a bug fix for the autodataentry which could throw an indexerror if the second line of csv file did not have 5 elements. 
 	
+Version 7.06 (04/26/2026)
+		Updated the _get_lv_adjacent method in the Automatic Data Entry to allow for Sunday to be in the day array since sometimes, Sunday is not an ns day. The issue arose and caused a crash. 
+		
+		The equitability spreadsheet was modified to allow for a "catch up" column and an "adj" column. I needed the functionality to match klusterbox results with the results from the OT Admin Equitability Daily Report. The number cruching for overtime was also improved. Comparison with OT Admin reports, showed an error with some calculations. 
+	
