@@ -63,7 +63,7 @@ __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
 version = 7.06  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Apr 26, 2026"  # format is Jan 1, 2022
+release_date = "Oct 1, 2026"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -8706,8 +8706,7 @@ class AutoDataEntry:
             good_id = "no"
             for line in self.parent.a_file:
                 pb.move_count(i)
-                # if cc != 0:
-                if not headertest(cc, line):
+                if not headertest(cc, line):  # if the line is not part of the header
                     if good_id != line[4] and good_id != "no":  # if new carrier_lines or employee
                         self.skim_weekly()  # trigger analysis
                         del self.carrier_lines[:]  # empty array

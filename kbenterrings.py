@@ -233,6 +233,9 @@ class EnterRings:
             widgetlist.append("moves")
         if self.daily_carrecs[i][2] in ("nl", "wal"):
             widgetlist.append("moves")
+        # if there is a route for a ptf or an aux carrier - included for cases were aux carriers have opts.
+        if self.daily_carrecs[i][4] and self.daily_carrecs[i][2] in ("ptf", "aux"):
+            widgetlist.append("moves")
         return widgetlist
 
     @staticmethod

@@ -451,6 +451,19 @@ def ee_skimmer(frame):
     days = ("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
     mv_codes = ("BT", "MV", "ET")
     carrier = []
+
+    def headertest(cc_, line_):
+        """ test for the first or second line """
+        if cc_ == 0:
+            return True
+        if cc_ == 1:
+            try:
+                if line_[4]:
+                    return False
+            except IndexError:
+                return True
+        return False
+
     path = dir_filedialog()
     file_path = filedialog.askopenfilename(initialdir=path, filetypes=[("Excel files", "*.csv *.xls")])
     if file_path[-4:].lower() == ".csv" or file_path[-4:].lower() == ".xls":
@@ -470,7 +483,6 @@ def ee_skimmer(frame):
         cc = 0
         good_id = "no"
         for line in a_file:
-            # print(cc, line)
             if cc == 0:
                 if line[0][:8] != "TAC500R3":
                     messagebox.showwarning("File Selection Error",
@@ -496,7 +508,7 @@ def ee_skimmer(frame):
                 report.write("\nEmployee Everything Report Reader\n")
                 report.write(
                     "pay period: " + pp[:-3] + " " + pp[4] + pp[5] + "-" + pp[6] + "\n\n")  # printe pay period
-            if cc != 0:
+            if not headertest(cc, line):  # if the line is not part of the header
                 if good_id != line[4] and good_id != "no":  # if new carrier or employee
                     ee_analysis(carrier, report)  # trigger analysis
                     del carrier[:]  # empty array
