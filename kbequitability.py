@@ -902,7 +902,7 @@ class OTEquitSpreadsheet:
             cell.style = self.date_dov_title
             self.ws[i].merge_cells('J3:R3')
             cell = self.ws[i].cell(row=3, column=19)  # calculate number of carriers
-            formula = "=%s!%s%s" % ("overview", "H", "3")
+            formula = "=%s!%s%s" % ("overview", "K", "3")
             cell.value = formula
             cell.style = self.calcs
 
