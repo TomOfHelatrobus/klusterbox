@@ -63,7 +63,7 @@ __author_email__ = "tomweeks@klusterbox.com"
 
 # version variables
 version = 7.06  # version number must be convertable to a float and should increase for Fixes()
-release_date = "Oct 1, 2026"  # format is Jan 1, 2022
+release_date = "Oct 30, 2026"  # format is Jan 1, 2022
 
 
 class ProgressBarIn:
@@ -14138,6 +14138,15 @@ class MainFrame:
         basic_menu.add_command(label="ODLN Equitability Spreadsheet",
                                command=lambda: OTEquitSpreadsheet().
                                create(self.win.topframe, self.ot_date, self.station.get(), "odln"))
+        basic_menu.add_command(label="OTDL Equitability Blank",
+                               command=lambda: OTEquitSpreadsheet().
+                               create(self.win.topframe, self.ot_date, self.station.get(), "otdl", fullreport=False))
+        basic_menu.add_command(label="ODLR Equitability Blank",
+                               command=lambda: OTEquitSpreadsheet().
+                               create(self.win.topframe, self.ot_date, self.station.get(), "odlr", fullreport=False))
+        basic_menu.add_command(label="ODLN Equitability Spreadsheet",
+                               command=lambda: OTEquitSpreadsheet().
+                               create(self.win.topframe, self.ot_date, self.station.get(), "odln", fullreport=False))
         basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda: OTDistriSpreadsheet()
                                .create(self.win.topframe, projvar.invran_date_week[0], self.station.get(),
                                        "weekly", self.listoptions))
@@ -14174,6 +14183,9 @@ class MainFrame:
             basic_menu.entryconfig(11, state=DISABLED)
             basic_menu.entryconfig(12, state=DISABLED)
             basic_menu.entryconfig(13, state=DISABLED)
+            basic_menu.entryconfig(14, state=DISABLED)
+            basic_menu.entryconfig(15, state=DISABLED)
+            basic_menu.entryconfig(16, state=DISABLED)
         menubar.add_cascade(label="Basic", menu=basic_menu)
         # automated menu
         automated_menu = Menu(menubar, tearoff=0)

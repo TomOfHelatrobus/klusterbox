@@ -137,14 +137,14 @@ class OTEquitSpreadsheet:
         self.header_title = ""
         self.weekly_total = 0.0
 
-    def create(self, frame, date, station, list_):
+    def create(self, frame, date, station, list_, fullreport=True):
         """ a master method for building the spreadsheet. """
         self.frame = frame
         self.displayed_list = self.get_displayed_list(list_)
         if not self.ask_ok(list_):  # abort if user selects cancel from askokcancel
             return
         self.pb = ProgressBarDe(label="Building {} Equitability Spreadsheet".format(list_.upper()))
-        self.pb.max_count(100)  # set length of progress bar
+        self.pb.max_count(4)  # set length of progress bar - recalculated in get_ringrefset()
         self.pb.start_up()  # start the progress bar
         self.pbi = 1
         self.pb.move_count(self.pbi)  # increment progress bar
@@ -163,26 +163,29 @@ class OTEquitSpreadsheet:
         self._get_firstweek_dates()  # get the days of the first week prior to first day of quarter
         self.get_front_padding()  # get number of empty triads needed to pad prior to startdate
         self.get_end_padding()  # get number of empty triads needed to pad after enddate
-        self.get_ringrefset()  # build multidimensional array - daily rings/refusals for each carrier
-        self.get_date_breakdown()  # build an array of dates for display on the spreadsheets
+        if fullreport:
+            self.get_ringrefset()  # build multidimensional array - daily rings/refusals for each carrier
+            self.get_date_breakdown()  # build an array of dates for display on the spreadsheets
         self.get_footer_row()  # get the row where the footer will be
-        self.build_workbook()  # build the spreadsheet and define the worksheets.
+        self.build_workbook(fullreport)  # build the spreadsheet and define the worksheets.
         self.set_dimensions_overview()  # column widths for overview sheet
-        self.set_dimensions_weekly()  # column widths for weekly worksheets
-        self.set_dimensions_instructions()  # column widths for instructions sheet
+        if fullreport:
+            self.set_dimensions_weekly()  # column widths for weekly worksheets
+            self.set_dimensions_instructions()  # column widths for instructions sheet
         self.get_styles()  # define workbook styles
         self.get_header()  # get the appropriate header for the top of the page pending the list generated
         self.build_header_overview()  # build the header for overview worksheet
-        self.build_columnheader_overview()  # build column headers for overview worksheet
-        self.build_main_overview()  # build main body for overview worksheet
-        self.build_overview_footer()  # create the footer at the bottom of the worksheet for averages and totals
-        self.build_header_weeklysheets()  # build the header for the weekly worksheet
-        self.build_columnheader_worksheets()  # build column headers for weekly worksheet
-        self.build_main_worksheets()  # build the main parts of the worksheet save the triad groups
-        self.triads_delegator()  # orders which triads to build from build triads
-        self.build_worksheet_footer()
-        self.build_instructions()
-        self.save_open()  # save and open the spreadsheet
+        self.build_columnheader_overview(fullreport)  # build column headers for overview worksheet
+        self.build_main_overview(fullreport)  # build main body for overview worksheet
+        self.build_overview_footer(fullreport)  # create the footer at the bottom of the worksheet for averages + totals
+        if fullreport:
+            self.build_header_weeklysheets()  # build the header for the weekly worksheet
+            self.build_columnheader_worksheets()  # build column headers for weekly worksheet
+            self.build_main_worksheets()  # build the main parts of the worksheet save the triad groups
+            self.triads_delegator()  # orders which triads to build from build triads
+            self.build_worksheet_footer()
+            self.build_instructions()
+        self.save_open(fullreport)  # save and open the spreadsheet
 
     @staticmethod
     def get_displayed_list(list_):
@@ -519,7 +522,7 @@ class OTEquitSpreadsheet:
         """ get the number of the row where the footer will go. """
         self.footer_row = (len(self.carrier_overview) * 2) + 7
 
-    def build_workbook(self):
+    def build_workbook(self, fullreport):
         """ get the workbook object. """
         self.pbi += 1  # increment progress bar counter
         self.pb.move_count(self.pbi)  # increment progress bar
@@ -528,14 +531,15 @@ class OTEquitSpreadsheet:
         self.wb = Workbook()  # define the workbook
         self.overview = self.wb.active  # create first worksheet
         self.overview.title = "overview"  # give the first worksheet a name
-        for i in range(15):  # create worksheet for remaining 15 weeks
-            self.ws.append(self.wb.create_sheet(self.week[i]))  # create subsequent worksheets
-            self.ws[i].title = self.week[i]  # title subsequent worksheets
-        self.instructions = self.wb.create_sheet("instructions")
+        if fullreport:
+            for i in range(15):  # create worksheet for remaining 15 weeks
+                self.ws.append(self.wb.create_sheet(self.week[i]))  # create subsequent worksheets
+                self.ws[i].title = self.week[i]  # title subsequent worksheets
+            self.instructions = self.wb.create_sheet("instructions")
 
     def set_dimensions_overview(self):
         """ sets the widths of the columns for the overview tab. """
-        self.overview.row_dimensions[5].height = 20
+        self.overview.row_dimensions[5].height = 25
         self.overview.column_dimensions["A"].width = 6
         self.overview.column_dimensions["B"].width = 12
         self.overview.column_dimensions["C"].width = 5
@@ -671,7 +675,7 @@ class OTEquitSpreadsheet:
         cell.value = formula
         cell.style = self.calcs
 
-    def build_columnheader_overview(self):
+    def build_columnheader_overview(self, fullreport):
         """ build column header for the overview tab. """
         cell = self.overview.cell(row=5, column=1)  # name
         cell.value = "name"
@@ -690,7 +694,9 @@ class OTEquitSpreadsheet:
         cell.value = "adj"
         cell.style = self.col_center_header
         cell = self.overview.cell(row=5, column=7)  # refusals/overtime
-        cell.value = "refusals/overtime"
+        cell.value = "overtime"
+        if fullreport:
+            cell.value = "refusals/overtime"
         cell.style = self.col_center_header
         self.overview.merge_cells('G5:H5')
         cell = self.overview.cell(row=5, column=9)  # opportunities
@@ -703,7 +709,7 @@ class OTEquitSpreadsheet:
         cell.value = "diff from max"
         cell.style = self.col_center_header
 
-    def build_main_overview(self):
+    def build_main_overview(self, fullreport):
         """ build the body of the overview tab. """
         self.pbi += 1  # increment progress bar counter
         self.pb.move_count(self.pbi)  # increment progress bar
@@ -737,10 +743,12 @@ class OTEquitSpreadsheet:
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('F' + str(row) + ':' + 'F' + str(row + 1))
             cell = self.overview.cell(row=row, column=7)  # refusals label
-            cell.value = "ref"
+            if fullreport:
+                cell.value = "ref"
             cell.style = self.ref_ot
             cell = self.overview.cell(row=row+1, column=7)  # OT label
-            cell.value = "ot"
+            if fullreport:
+                cell.value = "ot"
             cell.style = self.ref_ot
             cell = self.overview.cell(row=row, column=8)  # refusals
             formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\")," \
@@ -753,34 +761,43 @@ class OTEquitSpreadsheet:
                          self.week[6], str(row), self.week[7], str(row), self.week[8], str(row),
                          self.week[9], str(row), self.week[10], str(row), self.week[11], str(row),
                          self.week[12], str(row), self.week[13], str(row), self.week[14], str(row))
-            cell.value = formula
+            if fullreport:
+                cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
-            cell = self.overview.cell(row=row + 1, column=8)  # overtime
-            formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\")," \
-                      "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
-                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
-                      "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
-                      "0)" \
-                      % ("overview", str(row), "overview", str(row), "overview", str(row),
-                         self.week[0], str(row+1), self.week[1], str(row+1), self.week[2], str(row+1),
-                         self.week[3], str(row+1), self.week[4], str(row+1), self.week[5], str(row+1),
-                         self.week[6], str(row+1), self.week[7], str(row+1), self.week[8], str(row+1),
-                         self.week[9], str(row+1), self.week[10], str(row+1), self.week[11], str(row+1),
-                         self.week[12], str(row+1), self.week[13], str(row+1), self.week[14], str(row+1))
-            cell.value = formula
-            cell.style = self.calcs
-            cell.number_format = "#,###.00;[RED]-#,###.00"
+            if fullreport:
+                cell = self.overview.cell(row=row + 1, column=8)  # overtime
+                formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\")," \
+                          "SUM(%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
+                          "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s, " \
+                          "%s!S%s, %s!S%s, %s!S%s, %s!S%s, %s!S%s)," \
+                          "0)" \
+                          % ("overview", str(row), "overview", str(row), "overview", str(row),
+                             self.week[0], str(row+1), self.week[1], str(row+1), self.week[2], str(row+1),
+                             self.week[3], str(row+1), self.week[4], str(row+1), self.week[5], str(row+1),
+                             self.week[6], str(row+1), self.week[7], str(row+1), self.week[8], str(row+1),
+                             self.week[9], str(row+1), self.week[10], str(row+1), self.week[11], str(row+1),
+                             self.week[12], str(row+1), self.week[13], str(row+1), self.week[14], str(row+1))
+
+                cell.value = formula
+                cell.style = self.calcs
+                cell.number_format = "#,###.00;[RED]-#,###.00"
+            else:
+                self.overview.merge_cells('H' + str(row) + ":" + 'H' + str(row + 1))
             cell = self.overview.cell(row=row, column=9)  # opportunities
-            formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\"),(%s!H%s+%s!H%s)-%s!D%s+%s!E%s+%s!F%s,0)" % \
+            formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\"),%s!H%s-%s!D%s+%s!E%s+%s!F%s,0)" % \
                       ("overview", str(row), "overview", str(row), "overview", str(row), "overview", str(row),
-                       "overview", str(row+1), "overview", str(row), "overview", str(row), "overview", str(row))
+                       "overview", str(row), "overview", str(row), "overview", str(row))
+            if fullreport:
+                formula = "=IF(OR(%s!C%s=12, %s!C%s=10, %s!C%s=\"track\"),(%s!H%s+%s!H%s)-%s!D%s+%s!E%s+%s!F%s,0)" % \
+                          ("overview", str(row), "overview", str(row), "overview", str(row), "overview", str(row),
+                           "overview", str(row+1), "overview", str(row), "overview", str(row), "overview", str(row))
             cell.value = formula
             cell.style = self.calcs
             cell.number_format = "#,###.00;[RED]-#,###.00"
             self.overview.merge_cells('I' + str(row) + ":" + 'I' + str(row+1))
             cell = self.overview.cell(row=row, column=10)  # difference from average
-            formula = "=IF(%s!A%s=\"\",0, IF(OR(%s!C%s=12,%s!C%s=10, %s!C%s=\"track\"),%s!I%s-%s!$H$%s,\"off list\"))" \
+            formula = "=IF(%s!A%s=\"\",0, IF(OR(%s!C%s=12,%s!C%s=10, %s!C%s=\"track\"),%s!I%s-%s!$I$%s,\"off list\"))" \
                       % ("overview", str(row), "overview", str(row), "overview", str(row), "overview", str(row),
                          "overview", str(row), "overview", str(self.footer_row+2))  # footer_row+2 is avg
             cell.value = formula
@@ -810,14 +827,18 @@ class OTEquitSpreadsheet:
         string += "{}!{}{})".format(sheet, column_dict[column], row)
         return string
 
-    def build_overview_footer(self):
+    def build_overview_footer(self, fullreport):
         """ create the footer at the bottom of the worksheet for averages and totals """
         cell = self.overview.cell(row=self.footer_row, column=1)  # label total overtime
         cell.value = "total overtime:"
         cell.style = self.date_dov_title
         self.overview.merge_cells('A' + str(self.footer_row) + ":" + "G" + str(self.footer_row))
         cell = self.overview.cell(row=self.footer_row, column=8)  # calculate total overtime
-        formula = self.get_totalovertime_formula("overview", 7, 8)
+        if fullreport:
+            formula = self.get_totalovertime_formula("overview", 7, 8)
+        else:
+            formula = "=SUM(%s!H%s:H%s)" \
+                      % ("overview", str(6), str(self.footer_row - 2))
         cell.value = formula
         cell.style = self.calcs
         cell.number_format = "#,###.00;[RED]-#,###.00"
@@ -1146,17 +1167,20 @@ class OTEquitSpreadsheet:
         cell.style = self.instruct_text
         cell.alignment = Alignment(wrap_text=True, vertical='top')
 
-    def save_open(self):
+    def save_open(self, fullreport):
         """ name the excel file """
         self.pbi += 1  # increment progress bar counter
         self.pb.move_count(self.pbi)  # increment progress bar
         self.pb.change_text("Saving Workbook... ")  # update progress bar text
         quarter = self.full_quarter.replace(" ", "")
-        xl_filename = "otdl_equit_" + quarter + ".xlsx"
+        blank = "blank"
+        if fullreport:
+            blank = ""
+        xl_filename = "otdl_equit_" + quarter + blank + ".xlsx"
         if "odlr" in self.displayed_list:
-            xl_filename = "odlr_equit_" + quarter + ".xlsx"
+            xl_filename = "odlr_equit_" + quarter + blank + ".xlsx"
         if "odln" in self.displayed_list:
-            xl_filename = "odln_equit_" + quarter + ".xlsx"
+            xl_filename = "odln_equit_" + quarter + blank + ".xlsx"
         try:
             self.wb.save(dir_path('ot_equitability') + xl_filename)
             messagebox.showinfo("Spreadsheet generator",
