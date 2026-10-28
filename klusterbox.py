@@ -13990,6 +13990,12 @@ class MainFrame:
              .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odlr")),
             (1, "ODLN Equitability Spreadsheet", lambda: OTEquitSpreadsheet()
              .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odln")),
+            (1, "OTDL Equitability Blank", lambda: OTEquitSpreadsheet()
+             .create(self.nav.topframe, self.ot_date, projvar.invran_station, "otdl", fullreport=False)),
+            (1, "ODLR Equitability Blank", lambda: OTEquitSpreadsheet()
+             .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odlr", fullreport=False)),
+            (1, "ODLN Equitability Blank", lambda: OTEquitSpreadsheet()
+             .create(self.nav.topframe, self.ot_date, projvar.invran_station, "odln", fullreport=False)),
             (1, "OT Distribution Spreadsheet", lambda: OTDistriSpreadsheet()
              .create(self.nav.topframe, projvar.invran_date_week[0],
                      projvar.invran_station, "weekly", self.listoptions)),
@@ -14096,7 +14102,7 @@ class MainFrame:
                 label.grid(row=row, column=1, pady=5, sticky="w", columnspan=3)
                 row += 1
             else:  # the option is a button
-                button = Button(self.nav.body, text=options[i][1], width=21, anchor="w", padx=5,
+                button = Button(self.nav.body, text=options[i][1], width=25, anchor="w", padx=5,
                                 activebackground="grey", highlightcolor="red", command=options[i][2])
                 button.grid(row=row, column=1, sticky="w")
                 if not projvar.invran_day and options[i][0]:  # disable the button until invran is set.
@@ -14144,7 +14150,7 @@ class MainFrame:
         basic_menu.add_command(label="ODLR Equitability Blank",
                                command=lambda: OTEquitSpreadsheet().
                                create(self.win.topframe, self.ot_date, self.station.get(), "odlr", fullreport=False))
-        basic_menu.add_command(label="ODLN Equitability Spreadsheet",
+        basic_menu.add_command(label="ODLN Equitability Blank",
                                command=lambda: OTEquitSpreadsheet().
                                create(self.win.topframe, self.ot_date, self.station.get(), "odln", fullreport=False))
         basic_menu.add_command(label="OT Distribution Spreadsheet", command=lambda: OTDistriSpreadsheet()
